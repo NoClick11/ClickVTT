@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body,
+html {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+@layer base {
+    /* Paleta ClickVTT: preto (--preto-*) e ouro (--ouro-*), escalas 50–950 em tailwind.config.js */
+    :root {
+        --background: 270 10% 96%;
+        --foreground: 262 29% 5%;
+        --card: 0 0% 100%;
+        --card-foreground: 262 29% 5%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 262 29% 5%;
+        --primary: 37 59% 37%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 264 10% 90%;
+        --secondary-foreground: 262 17% 9%;
+        --muted: 264 10% 90%;
+        --muted-foreground: 266 8% 38%;
+        --accent: 46 81% 90%;
+        --accent-foreground: 34 50% 26%;
+        --destructive: 0 72% 45%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 267 9% 81%;
+        --input: 267 9% 81%;
+        --ring: 40 60% 45%;
+        --chart-1: 42 63% 55%;
+        --chart-2: 37 59% 37%;
+        --chart-3: 266 8% 38%;
+        --chart-4: 44 77% 67%;
+        --chart-5: 264 9% 67%;
+        --radius: 0.5rem;
+        --sidebar-background: 264 10% 90%;
+        --sidebar-foreground: 264 13% 15%;
+        --sidebar-primary: 37 59% 37%;
+        --sidebar-primary-foreground: 0 0% 100%;
+        --sidebar-accent: 267 9% 81%;
+        --sidebar-accent-foreground: 262 17% 9%;
+        --sidebar-border: 267 9% 81%;
+        --sidebar-ring: 40 60% 45%;
+    }
+
+    .dark {
+        --background: 262 29% 5%;
+        --foreground: 264 10% 90%;
+        --card: 262 17% 9%;
+        --card-foreground: 264 10% 90%;
+        --popover: 262 17% 9%;
+        --popover-foreground: 264 10% 90%;
+        --primary: 42 63% 55%;
+        --primary-foreground: 262 29% 5%;
+        --secondary: 264 13% 15%;
+        --secondary-foreground: 264 10% 90%;
+        --muted: 262 17% 9%;
+        --muted-foreground: 264 9% 67%;
+        --accent: 264 13% 15%;
+        --accent-foreground: 46 79% 79%;
+        --destructive: 0 72% 55%;
+        --destructive-foreground: 270 10% 96%;
+        --border: 265 11% 22%;
+        --input: 264 13% 15%;
+        --ring: 42 63% 55%;
+        --chart-1: 42 63% 55%;
+        --chart-2: 44 77% 67%;
+        --chart-3: 264 9% 67%;
+        --chart-4: 37 59% 37%;
+        --chart-5: 266 6% 51%;
+        --sidebar-background: 262 17% 9%;
+        --sidebar-foreground: 264 10% 90%;
+        --sidebar-primary: 42 63% 55%;
+        --sidebar-primary-foreground: 262 29% 5%;
+        --sidebar-accent: 264 13% 15%;
+        --sidebar-accent-foreground: 46 79% 79%;
+        --sidebar-border: 265 11% 22%;
+        --sidebar-ring: 42 63% 55%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+}
