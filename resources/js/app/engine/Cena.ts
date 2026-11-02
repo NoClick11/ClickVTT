@@ -62,6 +62,8 @@ export class Cena {
     private animacao: (() => void) | null = null;
     private estilo: EstiloPintura = { cor: '#ef4444', espessura: 4, tamanho: 28 };
     private tracoAtual: number[] = [];
+    /** Faixa da direita coberta por painéis (ex.: chat): a vista se centraliza só na área livre. */
+    private margemDireita = 0;
     private iniciou = false;
     private host!: HTMLElement;
     private pronto = false;
@@ -155,6 +157,15 @@ export class Cena {
         this.atualizarCursor();
     }
 
+    setMargemDireita(px: number): void {
+        const delta = px - this.margemDireita;
+        this.margemDireita = px;
+        if (this.pronto && delta !== 0) {
+            this.mundo.x -= delta / 2; // mantém o mapa centralizado na área visível sem perder zoom/pan
+            this.aoMudarVista();
+        }
+    }
+
     setEstilo(estilo: EstiloPintura): void {
         this.estilo = { ...estilo };
     }
@@ -178,7 +189,7 @@ export class Cena {
     ajustarVista(): void {
         if (!this.pagina) return;
         const { largura, altura } = this.dimensoesPagina();
-        const vw = this.app.screen.width;
+        const vw = this.app.screen.width - this.margemDireita;
         const vh = this.app.screen.height - MARGEM_TOPO; // a barra superior cobre o topo do canvas
         const escala = clamp(Math.min(vw / largura, vh / altura) * 0.92, ESCALA_MIN, ESCALA_MAX);
         this.mundo.scale.set(escala);

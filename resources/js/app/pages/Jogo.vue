@@ -88,6 +88,23 @@ watch(animacao, (v) => {
     }
 });
 const filaAnimacao = ref<Mensagem[]>([]);
+const innerWidth = window.innerWidth;
+
+// Chat como barra lateral à direita (preferência salva): aberta por padrão.
+const chatAberto = ref((() => {
+    try {
+        return localStorage.getItem('clickvtt.chatAberto') !== '0';
+    } catch {
+        return true;
+    }
+})());
+watch(chatAberto, (v) => {
+    try {
+        localStorage.setItem('clickvtt.chatAberto', v ? '1' : '0');
+    } catch {
+        /* ignora */
+    }
+});
 
 watch(() => props.objetos, (novos) => (objetos.value = copia(novos)));
 watch(() => props.combate, (c) => (combate.value = copia(c)));
@@ -456,6 +473,7 @@ function alternarPorta(id: number) {
                 :mestre="mestre"
                 :personagem-id="personagem.id"
                 :estilo="estilo"
+                :margem-direita="chatAberto ? Math.min(320, innerWidth * 0.85) : 0"
                 @criar-traco="criarTraco"
                 @criar-texto="pedirTexto"
                 @selecionar="selecionadoId = $event"
@@ -488,13 +506,16 @@ function alternarPorta(id: number) {
                     @configurar="configurar(pagina.id)"
                 />
                 <SeletorCamada v-if="mestre" :camada="camada" @camada="(c) => ((camada = c), (ferramenta = 'selecionar'))" />
-                <Inspetor v-if="mestre && selecionado && pagina" :objeto="selecionado" :pagina="pagina" @atualizar="atualizarSelecionado" @remover="removerSelecionado" />
-                <ControlesZoom :escala="escala" @mais="canvas?.zoomPor(1.25)" @menos="canvas?.zoomPor(1 / 1.25)" @ajustar="canvas?.ajustar()" />
+                <!-- Área do mapa: recua para não ficar sob a barra do chat -->
+                <div class="pointer-events-none absolute bottom-0 left-0 top-0 transition-[right] duration-200" :style="{ right: chatAberto ? 'min(20rem, 85vw)' : '0px' }">
+                    <Inspetor v-if="mestre && selecionado && pagina" :objeto="selecionado" :pagina="pagina" @atualizar="atualizarSelecionado" @remover="removerSelecionado" />
+                    <ControlesZoom :escala="escala" @mais="canvas?.zoomPor(1.25)" @menos="canvas?.zoomPor(1 / 1.25)" @ajustar="canvas?.ajustar()" />
+                    <BarraTurnos :combate="combate" :mestre="mestre" @anterior="passarTurno(-1)" @proximo="passarTurno(1)" @abrir="(painelTurnos = true), (painelDados = false)" />
+                </div>
                 <OpcoesFerramenta v-if="(ferramenta === 'pintar' || ferramenta === 'texto') && !painelDados && !painelTurnos" :ferramenta="ferramenta" v-model:estilo="estilo" />
                 <PainelDados v-if="painelDados" :mestre="mestre" :rolando="rolando" @rolar="rolar" @fechar="painelDados = false" />
                 <PainelTurnos v-if="painelTurnos && mestre" :combate="combate" :personagens="personagens" @atualizar="salvarCombate" @fechar="painelTurnos = false" />
-                <BarraTurnos :combate="combate" :mestre="mestre" @anterior="passarTurno(-1)" @proximo="passarTurno(1)" @abrir="(painelTurnos = true), (painelDados = false)" />
-                <PainelChat v-model:animacao="animacao" :mensagens="mensagens" :meu-id="personagem.id" @enviar="enviarTexto" />
+                <PainelChat v-model:animacao="animacao" v-model:aberto="chatAberto" :mensagens="mensagens" :meu-id="personagem.id" @enviar="enviarTexto" />
 
                 <form
                     v-if="textoPendente"

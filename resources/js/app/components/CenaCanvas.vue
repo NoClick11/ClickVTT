@@ -11,6 +11,7 @@ const props = defineProps<{
     mestre: boolean;
     personagemId: number | null;
     estilo: EstiloPintura;
+    margemDireita: number;
 }>();
 
 const emit = defineEmits<{
@@ -52,6 +53,7 @@ onMounted(async () => {
     nova.setPagina(props.pagina);
     nova.setCamadaAtiva(props.camada);
     nova.setFerramenta(props.ferramenta);
+    nova.setMargemDireita(props.margemDireita);
     nova.setEstilo(props.estilo);
     nova.setObjetos(props.objetos);
 });
@@ -66,6 +68,7 @@ watch(() => props.pagina, (p) => cena?.setPagina(p), { deep: true });
 watch(() => props.objetos, (o) => cena?.setObjetos(o), { deep: true });
 watch(() => props.camada, (c) => cena?.setCamadaAtiva(c));
 watch(() => props.ferramenta, (f) => cena?.setFerramenta(f));
+watch(() => props.margemDireita, (m) => cena?.setMargemDireita(m));
 watch(() => props.estilo, (e) => cena?.setEstilo(e), { deep: true });
 
 defineExpose({
