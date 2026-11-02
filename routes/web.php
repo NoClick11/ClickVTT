@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\App\BroadcastAuthController;
+use App\Http\Controllers\App\ChatController;
+use App\Http\Controllers\App\CombateController;
 use App\Http\Controllers\App\JogoController;
 use App\Http\Controllers\App\ObjetoController;
 use App\Http\Controllers\App\PaginaController;
@@ -43,6 +46,10 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::delete('pastas/{pasta}', [PastaController::class, 'destroy'])->name('pastas.destroy');
     Route::patch('objetos/{objeto}', [ObjetoController::class, 'update'])->name('objetos.update');
     Route::delete('objetos/{objeto}', [ObjetoController::class, 'destroy'])->name('objetos.destroy');
+    Route::post('mensagens', [ChatController::class, 'texto'])->middleware('throttle:60,1')->name('mensagens.store');
+    Route::post('rolagens', [ChatController::class, 'rolar'])->middleware('throttle:60,1')->name('rolagens.store');
+    Route::put('combate', [CombateController::class, 'atualizar'])->name('combate.update');
+    Route::post('broadcasting/auth', BroadcastAuthController::class)->name('broadcasting.auth');
 });
 
 Route::redirect('dashboard', '/')->name('dashboard');

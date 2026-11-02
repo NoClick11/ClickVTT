@@ -17,6 +17,7 @@ class Mesa extends Model
     protected function casts(): array
     {
         return [
+            'combate' => 'array',
             'favorita' => 'boolean',
             'travada' => 'boolean',
         ];
@@ -58,6 +59,11 @@ class Mesa extends Model
     public function pastas(): HasMany
     {
         return $this->hasMany(Pasta::class)->orderBy('ordem')->orderBy('id');
+    }
+
+    public function mensagens(): HasMany
+    {
+        return $this->hasMany(Mensagem::class);
     }
 
     public function capaUrl(): ?string

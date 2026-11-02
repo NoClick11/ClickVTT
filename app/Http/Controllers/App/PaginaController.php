@@ -7,6 +7,7 @@ use App\Models\Mesa;
 use App\Models\Pagina;
 use App\Models\Personagem;
 use App\Support\AcessoMesa;
+use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,30 +16,33 @@ class PaginaController extends Controller
 {
     public function store(Request $request, Mesa $mesa): JsonResponse
     {
-        AcessoMesa::exigirMestre($request, $mesa);
+        $acesso = AcessoMesa::exigirMestre($request, $mesa);
         $dados = $this->validar($request, $mesa);
         $dados['ordem'] ??= ($mesa->paginas()->max('ordem') ?? 0) + 1;
 
         $pagina = $mesa->paginas()->create($dados)->refresh(); // traz os defaults do banco
+        Transmitir::cena($mesa, null, $acesso->personagem->id, true);
 
         return response()->json($pagina->paraFront(), 201);
     }
 
     public function update(Request $request, Mesa $mesa, Pagina $pagina): JsonResponse
     {
-        AcessoMesa::exigirMestre($request, $mesa);
+        $acesso = AcessoMesa::exigirMestre($request, $mesa);
         $this->pertence($mesa, $pagina);
         $pagina->update($this->validar($request, $mesa, parcial: true));
+        Transmitir::cena($mesa, $pagina->id, $acesso->personagem->id);
 
         return response()->json($pagina->paraFront());
     }
 
     public function destroy(Request $request, Mesa $mesa, Pagina $pagina): JsonResponse
     {
-        AcessoMesa::exigirMestre($request, $mesa);
+        $acesso = AcessoMesa::exigirMestre($request, $mesa);
         $this->pertence($mesa, $pagina);
         abort_if($mesa->paginas()->count() <= 1, 422, 'A mesa precisa ter ao menos uma página.');
         $pagina->delete();
+        Transmitir::cena($mesa, null, $acesso->personagem->id);
 
         return response()->json(['ok' => true]);
     }
@@ -46,10 +50,11 @@ class PaginaController extends Controller
     /** Arrastar jogador para uma página: ele passa a ver aquela página. */
     public function moverJogador(Request $request, Mesa $mesa, Pagina $pagina, Personagem $personagem): JsonResponse
     {
-        AcessoMesa::exigirMestre($request, $mesa);
+        $acesso = AcessoMesa::exigirMestre($request, $mesa);
         $this->pertence($mesa, $pagina);
         abort_unless($personagem->mesa_id === $mesa->id, 404);
         $personagem->update(['pagina_id' => $pagina->id]);
+        Transmitir::cena($mesa, $pagina->id, $acesso->personagem->id);
 
         return response()->json($personagem->paraFront());
     }
