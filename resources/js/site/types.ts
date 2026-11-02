@@ -28,4 +28,5 @@ export interface Personagem {
     papel: Papel;
     cor: string;
     tem_senha: boolean;
+    pagina_id?: number | null;
 }
