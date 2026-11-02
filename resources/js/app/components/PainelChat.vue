@@ -37,6 +37,33 @@ function enviar() {
     emit('enviar', t);
     texto.value = '';
 }
+/**
+ * Agrupa mensagens seguidas da mesma pessoa (como no Roll20): o nome aparece só na primeira.
+ * Quebra o grupo quando muda o autor ou quando passa mais de 1 hora desde a mensagem anterior.
+ */
+const INTERVALO_MAX_MS = 60 * 60 * 1000;
+interface Grupo {
+    chave: number;
+    autor: Mensagem['autor'];
+    inicio: Mensagem;
+    mensagens: Mensagem[];
+}
+const grupos = computed<Grupo[]>(() => {
+    const saida: Grupo[] = [];
+    let anterior: Mensagem | null = null;
+    for (const m of props.mensagens) {
+        const atual = saida[saida.length - 1];
+        const mesmoAutor = !!anterior && (anterior.autor?.id ?? null) === (m.autor?.id ?? null);
+        const tempo = (x: Mensagem) => (x.criada_em ? new Date(x.criada_em).getTime() : 0);
+        const recente = !!anterior && tempo(m) - tempo(anterior) <= INTERVALO_MAX_MS;
+        if (atual && mesmoAutor && recente) atual.mensagens.push(m);
+        else saida.push({ chave: m.id, autor: m.autor, inicio: m, mensagens: [m] });
+        anterior = m;
+    }
+
+    return saida;
+});
+
 const destaque = (m: Mensagem, v: number) => (m.dados?.faces === 20 && v === 20 ? 'critico' : m.dados?.faces === 20 && v === 1 ? 'falha' : null);
 const hora = (m: Mensagem) => (m.criada_em ? new Date(m.criada_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
 </script>
@@ -68,26 +95,26 @@ const hora = (m: Mensagem) => (m.criada_em ? new Date(m.criada_em).toLocaleTimeS
 
         <ol ref="lista" class="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 py-2" aria-live="polite">
             <li v-if="!mensagens.length" class="m-auto max-w-48 text-center text-xs text-preto-400">Nenhuma mensagem ainda. Role um dado ou escreva algo.</li>
-            <li v-for="m in mensagens" :key="m.id" class="rounded-md bg-preto-900/70 px-2.5 py-1.5">
+            <li v-for="g in grupos" :key="g.chave" class="rounded-md bg-preto-900/70 px-2.5 py-1.5">
                 <p class="flex items-baseline justify-between gap-2 text-xs">
-                    <span class="truncate font-semibold" :style="{ color: m.autor?.cor ?? '#ecc96c' }">{{ m.autor?.nome ?? 'Sistema' }}<span v-if="m.autor?.id === meuId" class="font-normal text-preto-400"> (você)</span></span>
-                    <span class="shrink-0 text-[10px] text-preto-500">{{ hora(m) }}</span>
+                    <span class="truncate font-semibold" :style="{ color: g.autor?.cor ?? '#ecc96c' }">{{ g.autor?.nome ?? 'Sistema' }}<span v-if="g.autor?.id === meuId" class="font-normal text-preto-400"> (você)</span></span>
+                    <span class="shrink-0 text-[10px] text-preto-500">{{ hora(g.inicio) }}</span>
                 </p>
-                <p v-if="m.tipo === 'texto'" class="break-words text-preto-100">{{ m.texto }}</p>
-                <template v-else-if="m.visibilidade === 'secreto_oculto'">
-                    <p class="text-xs italic text-preto-300">🎲 {{ m.texto }}</p>
-                </template>
-                <template v-else-if="m.dados">
-                    <p class="text-xs text-preto-300">
-                        rolou {{ m.texto }}
-                        <span v-if="m.visibilidade === 'mestre'" class="ml-1 rounded bg-preto-800 px-1 text-[10px] uppercase text-ouro-300">privada</span>
-                        <span v-if="m.visibilidade === 'secreto'" class="ml-1 rounded bg-preto-800 px-1 text-[10px] uppercase text-ouro-300">segredo</span>
-                    </p>
-                    <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                        <span v-for="(v, i) in m.dados.resultados" :key="i" class="size-8"><DadoIcone :dado="m.dados.dado" :valor="v" :destaque="destaque(m, v)" /></span>
-                        <strong v-if="m.dados.quantidade > 1" class="ml-1 text-base text-ouro-200">= {{ m.dados.total }}</strong>
-                    </div>
-                </template>
+                <div v-for="m in g.mensagens" :key="m.id" class="mt-0.5 first:mt-0" :title="hora(m)" data-mensagem>
+                    <p v-if="m.tipo === 'texto'" class="break-words text-preto-100">{{ m.texto }}</p>
+                    <p v-else-if="m.visibilidade === 'secreto_oculto'" class="text-xs italic text-preto-300">🎲 {{ m.texto }}</p>
+                    <template v-else-if="m.dados">
+                        <p class="text-xs text-preto-300">
+                            rolou {{ m.texto }}
+                            <span v-if="m.visibilidade === 'mestre'" class="ml-1 rounded bg-preto-800 px-1 text-[10px] uppercase text-ouro-300">privada</span>
+                            <span v-if="m.visibilidade === 'secreto'" class="ml-1 rounded bg-preto-800 px-1 text-[10px] uppercase text-ouro-300">segredo</span>
+                        </p>
+                        <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                            <span v-for="(v, i) in m.dados.resultados" :key="i" class="size-8"><DadoIcone :dado="m.dados.dado" :valor="v" :destaque="destaque(m, v)" /></span>
+                            <strong v-if="m.dados.quantidade > 1" class="ml-1 text-base text-ouro-200">= {{ m.dados.total }}</strong>
+                        </div>
+                    </template>
+                </div>
             </li>
         </ol>
 
