@@ -92,9 +92,9 @@ export class ObjetoVisual {
             this.desenharParede(g);
         } else if (this.ehToken && !this.arquivoCarregado) {
             // Sem imagem: círculo colorido com a inicial. Com imagem, ela ocupa o token inteiro.
-            const r = Math.min(largura, altura) / 2;
-            g.circle(largura / 2, altura / 2, r).fill({ color: corHex(dados?.cor), alpha: 1 });
-            g.circle(largura / 2, altura / 2, r).stroke({ color: camada === 'mestre' ? 0xd4a843 : 0x0d0a12, width: 3, alpha: 0.9 });
+            // Preenche o token inteiro (elipse): esticar o token estica o desenho, como a imagem.
+            g.ellipse(largura / 2, altura / 2, largura / 2, altura / 2).fill({ color: corHex(dados?.cor), alpha: 1 });
+            g.ellipse(largura / 2, altura / 2, largura / 2, altura / 2).stroke({ color: camada === 'mestre' ? 0xd4a843 : 0x0d0a12, width: 3, alpha: 0.9 });
         } else if (!this.arquivoCarregado) {
             // Mapa/imagem ainda carregando ou sem arquivo.
             g.rect(0, 0, largura, altura).fill({ color: 0x25212b, alpha: 0.6 }).stroke({ color: 0x4a4452, width: 2 });

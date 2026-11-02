@@ -13,7 +13,7 @@ import {
 
 const ESCALA_MIN = 0.05;
 const ESCALA_MAX = 8;
-const TAMANHO_ALCA = 10; // px na tela
+const TAMANHO_ALCA = 8; // px na tela
 const MARGEM_TOPO = 48; // altura da barra superior
 const ALCAS: AlcaRedimensionar[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
@@ -286,25 +286,35 @@ export class Cena {
         }
         if (!this.opcoes.mestre) return;
         const s = TAMANHO_ALCA / this.mundo.scale.x;
-        for (const a of ALCAS) {
+        for (const a of this.alcasVisiveis(largura, altura)) {
             const p = this.posicaoAlca(a, x, y, largura, altura);
             g.rect(p.x - s / 2, p.y - s / 2, s, s).fill(0x0d0a12).stroke({ color: 0xd4a843, width: 1.5, pixelLine: true });
         }
     }
 
+    /** Alças ficam FORA da borda (não cobrem a imagem); alças de aresta somem quando a aresta é curta na tela. */
     private posicaoAlca(a: AlcaRedimensionar, x: number, y: number, w: number, h: number): { x: number; y: number } {
-        const cx = a.includes('w') ? x : a.includes('e') ? x + w : x + w / 2;
-        const cy = a.includes('n') ? y : a.includes('s') ? y + h : y + h / 2;
+        const fora = TAMANHO_ALCA / this.mundo.scale.x / 2 + 1 / this.mundo.scale.x;
+        const cx = a.includes('w') ? x - fora : a.includes('e') ? x + w + fora : x + w / 2;
+        const cy = a.includes('n') ? y - fora : a.includes('s') ? y + h + fora : y + h / 2;
 
         return { x: cx, y: cy };
+    }
+
+    private alcasVisiveis(w: number, h: number): AlcaRedimensionar[] {
+        const e = this.mundo.scale.x;
+        const larga = w * e >= 56;
+        const alta = h * e >= 56;
+
+        return ALCAS.filter((a) => (a === 'n' || a === 's' ? larga : a === 'e' || a === 'w' ? alta : true));
     }
 
     private alcaEm(px: number, py: number): AlcaRedimensionar | null {
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
         if (!v || !this.opcoes.mestre || v.dto.tipo === 'parede') return null;
-        const tol = (TAMANHO_ALCA * 0.8) / this.mundo.scale.x;
+        const tol = (TAMANHO_ALCA * 0.9) / this.mundo.scale.x;
         const { x, y, largura, altura } = v.dto;
-        for (const a of ALCAS) {
+        for (const a of this.alcasVisiveis(largura, altura)) {
             const p = this.posicaoAlca(a, x, y, largura, altura);
             if (Math.abs(px - p.x) <= tol && Math.abs(py - p.y) <= tol) return a;
         }
