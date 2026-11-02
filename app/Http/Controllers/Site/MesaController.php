@@ -37,6 +37,34 @@ class MesaController extends Controller
         ]);
     }
 
+    public function show(Request $request, Mesa $mesa): Response
+    {
+        $this->autorizar($request, $mesa);
+        $mesa->load('sistema');
+
+        return Inertia::render('site/MesaDetalhe', [
+            'mesa' => [
+                'id' => $mesa->id,
+                'slug' => $mesa->slug,
+                'nome' => $mesa->nome,
+                'descricao' => $mesa->descricao,
+                'capa' => $mesa->capaUrl(),
+                'sistema' => ['nome' => $mesa->sistema->nome, 'icone' => $mesa->sistema->icone],
+                'convite_url' => route('convite.show', $mesa->convite_token),
+            ],
+            'personagens' => $mesa->personagens()->orderByRaw("papel = 'mestre' desc")->orderBy('nome')->get()
+                ->map(fn ($p) => $p->paraFront()),
+        ]);
+    }
+
+    public function novoConvite(Request $request, Mesa $mesa): RedirectResponse
+    {
+        $this->autorizar($request, $mesa);
+        $mesa->forceFill(['convite_token' => \Illuminate\Support\Str::random(32)])->save();
+
+        return back();
+    }
+
     public function store(MesaRequest $request): RedirectResponse
     {
         $dados = $request->safe()->except(['capa', 'remover_capa']);
