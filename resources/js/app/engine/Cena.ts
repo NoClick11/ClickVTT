@@ -17,7 +17,7 @@ const TAMANHO_ALCA = 10; // px na tela
 const MARGEM_TOPO = 48; // altura da barra superior
 const ALCAS: AlcaRedimensionar[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
-type Modo = 'nenhum' | 'pan' | 'mover' | 'redimensionar' | 'regua';
+type Modo = 'nenhum' | 'pan' | 'mover' | 'redimensionar' | 'regua' | 'desenhar';
 
 interface Opcoes {
     mestre: boolean;
@@ -39,6 +39,7 @@ export class Cena {
     private overlay = new Container();
     private selecaoG = new Graphics();
     private reguaG = new Graphics();
+    private desenhoG = new Graphics();
     private reguaTexto = new Text({ text: '', style: { fontFamily: 'sans-serif', fontSize: 14, fill: 0xfaf0cf, fontWeight: '600', stroke: { color: 0x0d0a12, width: 4 } } });
 
     private visuais = new Map<number, ObjetoVisual>();
@@ -54,6 +55,7 @@ export class Cena {
     private inicioObjeto: CamposGeometria = {};
     private alca: AlcaRedimensionar | null = null;
     private reguaInicio = { x: 0, y: 0 };
+    private desenhoInicio = { x: 0, y: 0 };
     private iniciou = false;
     private host!: HTMLElement;
     private pronto = false;
@@ -84,7 +86,7 @@ export class Cena {
             this.mundo.addChild(c);
             if (id === 'mapa') this.mundo.addChild(this.grade);
         }
-        this.overlay.addChild(this.selecaoG, this.reguaG, this.reguaTexto);
+        this.overlay.addChild(this.selecaoG, this.reguaG, this.desenhoG, this.reguaTexto);
         this.reguaTexto.visible = false;
         this.mundo.addChild(this.overlay);
 
@@ -116,14 +118,14 @@ export class Cena {
         if (!this.pronto) return;
         const ids = new Set<number>();
         for (const dto of lista) {
-            if (dto.tipo === 'luz' || dto.tipo === 'parede') continue; // fase de iluminação
             ids.add(dto.id);
             const existente = this.visuais.get(dto.id);
             if (existente) {
                 if (this.modo === 'nenhum' || this.selecionadoId !== dto.id) existente.atualizar(dto);
                 this.moverParaCamada(existente, dto.camada);
             } else {
-                const v = new ObjetoVisual(dto);
+                const v = new ObjetoVisual(dto, this.opcoes.mestre);
+                v.definirEnfase(this.camadaAtiva === 'iluminacao');
                 this.visuais.set(dto.id, v);
                 this.camadas.get(dto.camada)?.addChild(v.container);
             }
@@ -141,6 +143,7 @@ export class Cena {
 
     setCamadaAtiva(camada: Camada): void {
         this.camadaAtiva = camada;
+        for (const v of this.visuais.values()) v.definirEnfase(camada === 'iluminacao');
         const sel = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
         if (sel && sel.dto.camada !== camada) this.selecionar(null);
         this.atualizarCursor();
@@ -149,6 +152,7 @@ export class Cena {
     setFerramenta(f: Ferramenta): void {
         this.ferramenta = f;
         this.limparRegua();
+        this.desenhoG.clear();
         this.atualizarCursor();
     }
 
@@ -253,7 +257,8 @@ export class Cena {
     }
 
     private objetoEm(x: number, y: number): ObjetoVisual | null {
-        const candidatos = [...this.visuais.values()].filter((v) => this.podeInteragir(v) && v.contem(x, y));
+        const tol = 10 / this.mundo.scale.x;
+        const candidatos = [...this.visuais.values()].filter((v) => this.podeInteragir(v) && v.acerta(x, y, tol));
         candidatos.sort((a, b) => b.dto.z - a.dto.z || b.dto.id - a.dto.id);
 
         return candidatos[0] ?? null;
@@ -266,6 +271,11 @@ export class Cena {
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
         if (!v) return;
         const { x, y, largura, altura } = v.dto;
+        const pts = v.dto.dados?.pontos;
+        if (v.dto.tipo === 'parede' && pts?.length === 4) {
+            g.moveTo(pts[0], pts[1]).lineTo(pts[2], pts[3]).stroke({ color: 0xd4a843, width: 14, alpha: 0.35, cap: 'round' });
+            return; // paredes não se movem nem se redimensionam: exclua e desenhe de novo
+        }
         g.rect(x, y, largura, altura).stroke({ color: 0xd4a843, width: 1.5, alpha: 0.95, pixelLine: true });
         if (!this.opcoes.mestre) return;
         const s = TAMANHO_ALCA / this.mundo.scale.x;
@@ -284,7 +294,7 @@ export class Cena {
 
     private alcaEm(px: number, py: number): AlcaRedimensionar | null {
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
-        if (!v || !this.opcoes.mestre) return null;
+        if (!v || !this.opcoes.mestre || v.dto.tipo === 'parede') return null;
         const tol = (TAMANHO_ALCA * 0.8) / this.mundo.scale.x;
         const { x, y, largura, altura } = v.dto;
         for (const a of ALCAS) {
@@ -379,6 +389,13 @@ export class Cena {
             },
             { passive: false },
         );
+        ouvir(canvas, 'dblclick', (e) => {
+            if (!this.opcoes.mestre) return;
+            const t = this.posTela(e);
+            const p = this.paraMundo(t.x, t.y);
+            const alvo = this.objetoEm(p.x, p.y);
+            if (alvo?.dto.tipo === 'parede' && alvo.dto.dados?.tipo === 'porta') this.opcoes.eventos.alternarPorta(alvo.dto.id);
+        });
         ouvir(canvas, 'pointerdown', (e) => this.aoPressionar(e));
         ouvir(canvas, 'pointermove', (e) => this.aoMover(e));
         ouvir(canvas, 'pointerup', (e) => this.aoSoltar(e));
@@ -427,6 +444,12 @@ export class Cena {
             this.reguaInicio = { x: this.snapCentro(p.x), y: this.snapCentro(p.y) };
             return;
         }
+        if (this.ferramenta === 'parede' || this.ferramenta === 'porta' || this.ferramenta === 'janela') {
+            if (!this.opcoes.mestre) return;
+            this.modo = 'desenhar';
+            this.desenhoInicio = { x: this.snap(p.x), y: this.snap(p.y) };
+            return;
+        }
         if (this.ferramenta === 'luz') {
             if (this.opcoes.mestre) this.opcoes.eventos.criarLuz(this.snapCentro(p.x), this.snapCentro(p.y));
             return;
@@ -443,7 +466,7 @@ export class Cena {
         }
         const alvo = this.objetoEm(p.x, p.y);
         this.selecionar(alvo?.dto.id ?? null);
-        if (alvo) {
+        if (alvo && alvo.dto.tipo !== 'parede') {
             this.modo = 'mover';
             this.inicioObjeto = { x: alvo.dto.x, y: alvo.dto.y };
         }
@@ -459,12 +482,17 @@ export class Cena {
             this.desenharSelecao();
             return;
         }
+        if (this.modo === 'desenhar') {
+            const fim = { x: this.snap(p.x), y: this.snap(p.y) };
+            this.desenhoG.clear().moveTo(this.desenhoInicio.x, this.desenhoInicio.y).lineTo(fim.x, fim.y).stroke({ color: 0xf4e0a0, width: 8, alpha: 0.6, cap: 'round' });
+            return;
+        }
         if (this.modo === 'regua') {
             this.atualizarRegua({ x: this.snapCentro(p.x), y: this.snapCentro(p.y) });
             return;
         }
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
-        if (this.modo === 'mover' && v) {
+        if (this.modo === 'mover' && v && v.dto.tipo !== 'parede') {
             // Só começa a arrastar após alguns px, para que um clique não mova o objeto.
             if (!this.iniciou && Math.hypot(tela.x - this.inicioTela.x, tela.y - this.inicioTela.y) < 3) return;
             this.iniciou = true;
@@ -491,6 +519,16 @@ export class Cena {
 
     private aoSoltar(e: PointerEvent): void {
         if (this.app.canvas.hasPointerCapture(e.pointerId)) this.app.canvas.releasePointerCapture(e.pointerId);
+        if (this.modo === 'desenhar') {
+            const tela = this.posTela(e);
+            const p = this.paraMundo(tela.x, tela.y);
+            const fim = { x: this.snap(p.x), y: this.snap(p.y) };
+            this.desenhoG.clear();
+            if (Math.hypot(fim.x - this.desenhoInicio.x, fim.y - this.desenhoInicio.y) * this.mundo.scale.x > 8) {
+                const tipo = this.ferramenta === 'porta' ? 'porta' : this.ferramenta === 'janela' ? 'janela' : 'parede';
+                this.opcoes.eventos.criarParede([this.desenhoInicio.x, this.desenhoInicio.y, fim.x, fim.y], tipo);
+            }
+        }
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
         if (v && ((this.modo === 'mover' && this.iniciou) || this.modo === 'redimensionar')) {
             const { x, y, largura, altura } = v.dto;
@@ -504,7 +542,7 @@ export class Cena {
     private atualizarCursor(forcado?: string): void {
         if (!this.pronto) return;
         const emPan = this.espaco || this.ferramenta === 'mover';
-        const padrao = this.ferramenta === 'regua' || this.ferramenta === 'luz' ? 'crosshair' : emPan ? 'grab' : 'default';
+        const padrao = ['regua', 'luz', 'parede', 'porta', 'janela'].includes(this.ferramenta) ? 'crosshair' : emPan ? 'grab' : 'default';
         this.app.canvas.style.cursor = forcado ?? padrao;
     }
 }

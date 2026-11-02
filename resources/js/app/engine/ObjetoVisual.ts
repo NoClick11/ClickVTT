@@ -13,11 +13,13 @@ export class ObjetoVisual {
     private texturaVideo: Texture | null = null;
     private rotulo: Text | null = null;
     private arquivoCarregado: string | null = null;
+    private marcador = new Graphics();
     private destruido = false;
+    private enfase = true;
 
-    constructor(dto: ObjetoDto) {
+    constructor(dto: ObjetoDto, private mestre = false) {
         this.dto = { ...dto };
-        this.container.addChild(this.fundo);
+        this.container.addChild(this.fundo, this.marcador);
         this.aplicar();
         void this.carregarMidia();
     }
@@ -33,6 +35,24 @@ export class ObjetoVisual {
     definirGeometria(campos: Partial<Pick<ObjetoDto, 'x' | 'y' | 'largura' | 'altura'>>): void {
         Object.assign(this.dto, campos);
         this.aplicar();
+    }
+
+    /** Paredes ficam esmaecidas quando a camada de iluminação não está ativa. */
+    definirEnfase(ativa: boolean): void {
+        this.enfase = ativa;
+        this.aplicar();
+    }
+
+    /** Clique em (x, y): retângulo para a maioria; segmento (com tolerância) para paredes. */
+    acerta(x: number, y: number, tolerancia: number): boolean {
+        const pts = this.dto.dados?.pontos;
+        if (this.dto.tipo === 'parede' && pts?.length === 4) return distanciaAoSegmento(x, y, pts[0], pts[1], pts[2], pts[3]) <= tolerancia;
+        if (this.dto.tipo === 'luz') {
+            const { x: ox, y: oy, largura, altura } = this.dto;
+            return Math.hypot(x - (ox + largura / 2), y - (oy + altura / 2)) <= Math.max(Math.min(largura, altura) / 2, tolerancia);
+        }
+
+        return this.contem(x, y);
     }
 
     contem(x: number, y: number): boolean {
@@ -56,8 +76,9 @@ export class ObjetoVisual {
         const { x, y, largura, altura, camada } = this.dto;
         this.container.position.set(x, y);
         // Objetos da camada do mestre aparecem esmaecidos: o jogador não os vê.
-        this.container.alpha = camada === 'mestre' ? 0.6 : 1;
+        this.container.alpha = camada === 'mestre' ? 0.6 : this.dto.tipo === 'parede' && !this.enfase ? 0.25 : 1;
         this.desenharFundo();
+        this.desenharMarcador();
         this.ajustarMidia();
         this.atualizarRotulo(largura, altura);
     }
@@ -65,7 +86,11 @@ export class ObjetoVisual {
     private desenharFundo(): void {
         const { largura, altura, camada, dados, nome } = this.dto;
         const g = this.fundo.clear();
-        if (this.ehToken) {
+        if (this.dto.tipo === 'luz') {
+            this.desenharLuz(g);
+        } else if (this.dto.tipo === 'parede') {
+            this.desenharParede(g);
+        } else if (this.ehToken) {
             const r = Math.min(largura, altura) / 2;
             g.circle(largura / 2, altura / 2, r).fill({ color: corHex(dados?.cor), alpha: this.arquivoCarregado ? 0.001 : 1 });
             g.circle(largura / 2, altura / 2, r).stroke({ color: camada === 'mestre' ? 0xd4a843 : 0x0d0a12, width: 3, alpha: 0.9 });
@@ -74,6 +99,39 @@ export class ObjetoVisual {
             g.rect(0, 0, largura, altura).fill({ color: 0x25212b, alpha: 0.6 }).stroke({ color: 0x4a4452, width: 2 });
         }
         void nome;
+    }
+
+    /** Brilho radial somado ao mapa (visível ao jogador). */
+    private desenharLuz(g: Graphics): void {
+        const { largura, altura, dados } = this.dto;
+        const r = Math.min(largura, altura) / 2;
+        const cor = corHex(dados?.cor ?? '#ffd27a');
+        const aneis = 28;
+        for (let i = 0; i < aneis; i++) g.circle(largura / 2, altura / 2, r * (1 - i / aneis)).fill({ color: cor, alpha: 0.045 });
+        g.blendMode = 'add';
+    }
+
+    /** Parede, porta ou janela: só o mestre recebe estes objetos. */
+    private desenharParede(g: Graphics): void {
+        const pts = this.dto.dados?.pontos;
+        if (!pts || pts.length !== 4) return;
+        const tipo = this.dto.dados?.tipo ?? 'parede';
+        const aberta = !!this.dto.dados?.aberta;
+        const cor = tipo === 'porta' ? 0x38bdf8 : tipo === 'janela' ? 0x67e8f9 : 0xf4e0a0;
+        const [ox, oy] = [this.dto.x, this.dto.y];
+        const a = { x: pts[0] - ox, y: pts[1] - oy };
+        const b = { x: pts[2] - ox, y: pts[3] - oy };
+        g.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ color: cor, width: tipo === 'janela' ? 6 : 9, alpha: tipo === 'porta' && aberta ? 0.35 : 0.95, cap: 'round' });
+        g.circle(a.x, a.y, 7).fill(0x0d0a12).stroke({ color: cor, width: 2 });
+        g.circle(b.x, b.y, 7).fill(0x0d0a12).stroke({ color: cor, width: 2 });
+    }
+
+    /** Luz: ponto de controle visível só ao mestre (o jogador vê apenas o brilho). */
+    private desenharMarcador(): void {
+        const g = this.marcador.clear();
+        if (this.dto.tipo !== 'luz' || !this.mestre) return;
+        g.circle(this.dto.largura / 2, this.dto.altura / 2, 9).fill(0x0d0a12).stroke({ color: corHex(this.dto.dados?.cor ?? '#ffd27a'), width: 3 });
+        g.circle(this.dto.largura / 2, this.dto.altura / 2, 3).fill(0xffffff);
     }
 
     private atualizarRotulo(largura: number, altura: number): void {
@@ -184,4 +242,13 @@ export class ObjetoVisual {
 
 export function corHex(cor?: string): number {
     return cor && /^#[0-9a-f]{6}$/i.test(cor) ? parseInt(cor.slice(1), 16) : 0xd4a843;
+}
+
+function distanciaAoSegmento(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const comprimento2 = dx * dx + dy * dy;
+    const t = comprimento2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / comprimento2));
+
+    return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 }

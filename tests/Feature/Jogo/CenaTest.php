@@ -190,4 +190,26 @@ class CenaTest extends TestCase
         $this->como($c->mestre)->post($url, $campos + ['arquivo' => UploadedFile::fake()->create('virus.php', 1, 'text/x-php')], ['Accept' => 'application/json'])
             ->assertStatus(422);
     }
+
+    public function test_alterar_dados_de_uma_porta_nao_perde_os_pontos(): void
+    {
+        $c = $this->cenario();
+        $porta = $c->pagina->objetos()->create([
+            'camada' => 'iluminacao', 'tipo' => 'parede', 'x' => 0, 'y' => 0, 'largura' => 100, 'altura' => 1,
+            'dados' => ['pontos' => [0, 0, 100, 0], 'tipo' => 'porta', 'aberta' => false],
+        ]);
+        $this->como($c->mestre)->patchJson(route('jogo.objetos.update', [$c->mesa->id, $porta->id]), ['dados' => ['aberta' => true]])->assertOk();
+        $porta->refresh();
+        $this->assertTrue($porta->dados['aberta']);
+        $this->assertSame([0, 0, 100, 0], $porta->dados['pontos']);
+        $this->assertSame('porta', $porta->dados['tipo']);
+    }
+
+    public function test_cor_do_token_e_salva_na_criacao(): void
+    {
+        $c = $this->cenario();
+        $this->como($c->mestre)->postJson(route('jogo.objetos.store', [$c->mesa->id, $c->pagina->id]), [
+            'camada' => 'jogadores', 'tipo' => 'token', 'x' => 0, 'y' => 0, 'largura' => 70, 'altura' => 70, 'dados' => ['cor' => '#2563eb'],
+        ])->assertCreated()->assertJsonPath('dados.cor', '#2563eb');
+    }
 }

@@ -85,7 +85,9 @@ function aoAlterar(id: number, campos: CamposGeometria, final: boolean) {
 function atualizarSelecionado(campos: Partial<ObjetoDto>) {
     const o = selecionado.value;
     if (!o) return;
-    Object.assign(o, campos);
+    const { dados, ...resto } = campos;
+    Object.assign(o, resto);
+    if (dados) o.dados = { ...o.dados, ...dados }; // o servidor também mescla: pontos/tipo nunca se perdem
     api.atualizarObjeto(o.id, campos).catch(falhou);
 }
 
@@ -231,10 +233,45 @@ function aoTeclar(e: KeyboardEvent) {
 onMounted(() => window.addEventListener('keydown', aoTeclar));
 onBeforeUnmount(() => window.removeEventListener('keydown', aoTeclar));
 
-// Placeholders da fase de iluminação (ligados em seguida).
-const criarLuz = (_x: number, _y: number) => undefined;
-const criarParede = (_p: [number, number, number, number], _t: TipoParede) => undefined;
-const alternarPorta = (_id: number) => undefined;
+// --- iluminação (só o mestre) ------------------------------------------------------
+
+async function criarLuz(cx: number, cy: number) {
+    if (!props.pagina || !props.mestre) return;
+    const raio = props.pagina.tamanho_quadrado * 4; // 4 quadrados (6 m)
+    try {
+        objetos.value.push(
+            await api.criarObjeto(props.pagina.id, {
+                camada: 'iluminacao', tipo: 'luz', nome: 'Luz',
+                x: cx - raio, y: cy - raio, largura: raio * 2, altura: raio * 2,
+                dados: { raio, cor: '#ffd27a' },
+            }),
+        );
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+
+async function criarParede(p: [number, number, number, number], tipo: TipoParede) {
+    if (!props.pagina || !props.mestre) return;
+    const [x1, y1, x2, y2] = p;
+    try {
+        const novo = await api.criarObjeto(props.pagina.id, {
+            camada: 'iluminacao', tipo: 'parede', nome: tipo,
+            x: Math.min(x1, x2), y: Math.min(y1, y2), largura: Math.max(1, Math.abs(x2 - x1)), altura: Math.max(1, Math.abs(y2 - y1)),
+            dados: { pontos: p, tipo, aberta: false },
+        });
+        objetos.value.push(novo);
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+
+function alternarPorta(id: number) {
+    const o = objetos.value.find((x) => x.id === id);
+    if (!o || o.dados?.tipo !== 'porta') return;
+    selecionadoId.value = id;
+    atualizarSelecionado({ dados: { aberta: !o.dados.aberta } });
+}
 </script>
 
 <template>

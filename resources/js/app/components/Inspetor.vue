@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowDownToLine, ArrowUpToLine, Trash2 } from 'lucide-vue-next';
 import { computed } from 'vue';
-import { CAMADAS, type Camada, type CamposGeometria, type ObjetoDto, type PaginaDto } from '../engine/tipos';
+import { CAMADAS, type Camada, type CamposGeometria, type ObjetoDto, type PaginaDto, type TipoParede } from '../engine/tipos';
 
 const props = defineProps<{ objeto: ObjetoDto; pagina: PaginaDto }>();
 const emit = defineEmits<{ atualizar: [campos: Partial<ObjetoDto>]; remover: [] }>();
@@ -23,11 +23,30 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
 
 <template>
     <aside class="pointer-events-auto absolute right-3 top-16 z-10 w-64 rounded-lg border border-ouro-500/20 bg-preto-950/92 p-3 text-sm text-preto-100 backdrop-blur" aria-label="Objeto selecionado">
-        <p class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ouro-400">{{ objeto.tipo === 'token' ? 'Token' : 'Objeto' }}</p>
+        <p class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ouro-400">{{ { token: 'Token', luz: 'Luz', parede: 'Parede, porta ou janela', imagem: 'Imagem' }[objeto.tipo] }}</p>
         <div class="grid gap-3">
-            <label class="grid gap-1">
+            <label v-if="objeto.tipo !== 'parede'" class="grid gap-1">
                 <span class="text-xs text-preto-300">Nome</span>
                 <Input :class="campo" :model-value="objeto.nome ?? ''" @change="(e: Event) => emit('atualizar', { nome: (e.target as HTMLInputElement).value })" />
+            </label>
+            <template v-if="objeto.tipo === 'parede'">
+                <label class="grid gap-1">
+                    <span class="text-xs text-preto-300">Tipo</span>
+                    <select :class="[campo, 'rounded-md border']" :value="objeto.dados?.tipo ?? 'parede'" @change="(e) => emit('atualizar', { dados: { tipo: (e.target as HTMLSelectElement).value as TipoParede } })">
+                        <option value="parede">Parede</option>
+                        <option value="porta">Porta</option>
+                        <option value="janela">Janela</option>
+                    </select>
+                </label>
+                <label v-if="objeto.dados?.tipo === 'porta'" class="flex items-center gap-2">
+                    <input type="checkbox" class="size-4 accent-ouro-500" :checked="!!objeto.dados?.aberta" @change="(e) => emit('atualizar', { dados: { aberta: (e.target as HTMLInputElement).checked } })" />
+                    <span>Aberta <span class="text-xs text-preto-400">(duplo clique alterna)</span></span>
+                </label>
+            </template>
+            <template v-else>
+            <label v-if="objeto.tipo === 'luz'" class="grid gap-1">
+                <span class="text-xs text-preto-300">Cor da luz</span>
+                <Input type="color" class="h-8 p-1" :model-value="objeto.dados?.cor ?? '#ffd27a'" @change="(e: Event) => emit('atualizar', { dados: { cor: (e.target as HTMLInputElement).value } })" />
             </label>
             <div class="grid grid-cols-2 gap-2">
                 <label class="grid gap-1">
@@ -40,6 +59,7 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
                 </label>
             </div>
             <p class="-mt-1 text-xs text-preto-400">{{ distancia(objeto.largura) }} × {{ distancia(objeto.altura) }} {{ pagina.unidade }}</p>
+            </template>
             <label v-if="objeto.tipo !== 'luz' && objeto.tipo !== 'parede'" class="grid gap-1">
                 <span class="text-xs text-preto-300">Camada</span>
                 <select :class="[campo, 'rounded-md border']" :value="objeto.camada" @change="(e) => emit('atualizar', { camada: (e.target as HTMLSelectElement).value as Camada })">

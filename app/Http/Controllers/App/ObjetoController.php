@@ -73,6 +73,10 @@ class ObjetoController extends Controller
             if (isset($dados['camada'])) {
                 $this->validarCamada($dados['camada'], $objeto->tipo);
             }
+            // `dados` é mesclado: pontos/tipo de uma parede nunca se perdem ao mudar só a cor ou aberta.
+            if (array_key_exists('dados', $dados) && is_array($dados['dados'])) {
+                $dados['dados'] = array_merge($objeto->dados ?? [], $dados['dados']);
+            }
         } else {
             // Jogador: só move o PRÓPRIO token, na camada Jogadores e na página onde está.
             abort_unless(
