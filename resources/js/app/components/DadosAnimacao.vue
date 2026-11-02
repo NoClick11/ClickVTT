@@ -61,7 +61,7 @@ onBeforeUnmount(() => timers.forEach((t) => (clearTimeout(t as number), clearInt
 </script>
 
 <template>
-    <div ref="raiz" class="pointer-events-none fixed inset-0 z-40 flex items-center justify-center" aria-hidden="true">
+    <div ref="raiz" :data-mensagem-id="mensagem.id" class="pointer-events-none fixed inset-0 z-40 flex items-center justify-center" aria-hidden="true">
         <div class="relative h-0 w-0">
             <div
                 v-for="(_, i) in d.resultados"

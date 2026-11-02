@@ -4,7 +4,7 @@ import { computed, ref } from 'vue';
 import { DADOS, type Dado, type VisibilidadeRolagem } from '../tipos-mesa';
 import DadoIcone from './DadoIcone.vue';
 
-const props = defineProps<{ mestre: boolean; rolando: boolean }>();
+const props = defineProps<{ mestre: boolean }>();
 const emit = defineEmits<{ rolar: [dado: Dado, quantidade: number, visibilidade: VisibilidadeRolagem]; fechar: [] }>();
 
 const dado = ref<Dado>('d20');
@@ -81,7 +81,7 @@ const opcoes = computed<{ id: VisibilidadeRolagem; rotulo: string; dica: string 
             </button>
         </div>
 
-        <Button class="mt-3 w-full bg-ouro-500 font-semibold text-preto-950 hover:bg-ouro-400" :disabled="rolando" @click="emit('rolar', dado, quantidade, visibilidade)">
+        <Button class="mt-3 w-full bg-ouro-500 font-semibold text-preto-950 hover:bg-ouro-400" @click="emit('rolar', dado, quantidade, visibilidade)">
             Rolar {{ quantidade }}{{ dado }}
         </Button>
     </section>

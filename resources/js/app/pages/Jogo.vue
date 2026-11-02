@@ -65,7 +65,6 @@ const painelTurnos = ref(false);
 const estilo = ref<EstiloPintura>({ cor: '#ef4444', espessura: 4, tamanho: 28 });
 const mensagens = ref<Mensagem[]>(copia(props.mensagens));
 const combate = ref<Combate>(copia(props.combate));
-const rolando = ref(false);
 const textoPendente = ref<{ x: number; y: number; tela: { x: number; y: number }; valor: string } | null>(null);
 
 // Animação dos dados: ligada por padrão (exceto para quem pede movimento reduzido); preferência salva no navegador.
@@ -87,7 +86,8 @@ watch(animacao, (v) => {
         /* ignora */
     }
 });
-const filaAnimacao = ref<Mensagem[]>([]);
+// Só a rolagem MAIS RECENTE é animada: uma nova rolagem substitui a animação em curso (sem fila).
+const animacaoAtual = ref<Mensagem | null>(null);
 const innerWidth = window.innerWidth;
 
 // Chat como barra lateral à direita (preferência salva): aberta por padrão.
@@ -333,17 +333,15 @@ function receberMensagem(m: Mensagem, substitui = false): boolean {
     return false;
 }
 function aoNovaMensagem(m: Mensagem, substitui = false) {
-    if (receberMensagem(m, substitui) && m.tipo === 'rolagem' && m.dados && animacao.value) filaAnimacao.value.push(m);
+    if (receberMensagem(m, substitui) && m.tipo === 'rolagem' && m.dados && animacao.value) animacaoAtual.value = m;
 }
 
+/** Sem trava no botão: cada clique rola. As respostas entram no chat na hora; a animação mostra só a mais recente. */
 async function rolar(dado: Dado, quantidade: number, visibilidade: VisibilidadeRolagem) {
-    rolando.value = true;
     try {
         aoNovaMensagem(await api.rolar(dado, quantidade, visibilidade));
     } catch (e) {
         avisar(mensagemDe(e));
-    } finally {
-        setTimeout(() => (rolando.value = false), 600);
     }
 }
 async function enviarTexto(texto: string) {
@@ -513,7 +511,7 @@ function alternarPorta(id: number) {
                     <BarraTurnos :combate="combate" :mestre="mestre" @anterior="passarTurno(-1)" @proximo="passarTurno(1)" @abrir="(painelTurnos = true), (painelDados = false)" />
                 </div>
                 <OpcoesFerramenta v-if="(ferramenta === 'pintar' || ferramenta === 'texto') && !painelDados && !painelTurnos" :ferramenta="ferramenta" v-model:estilo="estilo" />
-                <PainelDados v-if="painelDados" :mestre="mestre" :rolando="rolando" @rolar="rolar" @fechar="painelDados = false" />
+                <PainelDados v-if="painelDados" :mestre="mestre" @rolar="rolar" @fechar="painelDados = false" />
                 <PainelTurnos v-if="painelTurnos && mestre" :combate="combate" :personagens="personagens" @atualizar="salvarCombate" @fechar="painelTurnos = false" />
                 <PainelChat v-model:animacao="animacao" v-model:aberto="chatAberto" :mensagens="mensagens" :meu-id="personagem.id" @enviar="enviarTexto" />
 
@@ -539,7 +537,7 @@ function alternarPorta(id: number) {
             <div v-if="erro" role="alert" class="pointer-events-auto absolute left-1/2 top-16 z-30 max-w-md -translate-x-1/2 rounded-md border border-ouro-500/40 bg-preto-900 px-4 py-2 text-sm text-ouro-100 shadow-lg">{{ erro }}</div>
         </div>
 
-        <DadosAnimacao v-if="filaAnimacao.length" :key="filaAnimacao[0].id" :mensagem="filaAnimacao[0]" @fim="filaAnimacao.shift()" />
+        <DadosAnimacao v-if="animacaoAtual" :key="animacaoAtual.id" :mensagem="animacaoAtual" @fim="animacaoAtual = null" />
 
         <input ref="inputMapa" type="file" class="sr-only" tabindex="-1" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4" @change="enviarMapa" />
 
