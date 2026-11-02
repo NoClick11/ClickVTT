@@ -8,17 +8,33 @@ use App\Models\Personagem;
 use Illuminate\Http\Request;
 
 /**
- * Quem está acessando a mesa de jogo: o personagem que entrou pelo convite (sessão).
+ * Quem está acessando a mesa de jogo. A sessão guarda TODOS os personagens autenticados neste
+ * navegador (`acesso_mesas.{mesa}.{personagem} = true`), então o mestre e um jogador podem
+ * estar abertos ao mesmo tempo, cada um na sua aba. Cada aba informa QUEM é: pela URL
+ * (`/jogo/{mesa}/{personagem}`) ou pelo cabeçalho `X-Personagem` nas chamadas da API.
+ * O personagem informado só vale se já tiver entrado (senha) neste navegador.
  * Mestre = personagem com papel "mestre". Não há atalho pela conta logada.
  */
 final class AcessoMesa
 {
     private function __construct(public readonly Personagem $personagem) {}
 
-    public static function resolver(Request $request, Mesa $mesa): ?self
+    /** Ids dos personagens que já entraram nesta mesa neste navegador. */
+    public static function autorizados(Request $request, Mesa $mesa): array
     {
-        $id = $request->session()->get(ConviteController::SESSAO.'.'.$mesa->id);
-        $personagem = $id ? $mesa->personagens()->find($id) : null;
+        return array_map('intval', array_keys((array) $request->session()->get(ConviteController::SESSAO.'.'.$mesa->id, [])));
+    }
+
+    public static function resolver(Request $request, Mesa $mesa, ?int $personagemId = null): ?self
+    {
+        $autorizados = self::autorizados($request, $mesa);
+        $id = $personagemId ?? ($request->header('X-Personagem') !== null ? (int) $request->header('X-Personagem') : null);
+        // Sem indicação, só vale se houver um único personagem autenticado (sem ambiguidade).
+        $id ??= count($autorizados) === 1 ? $autorizados[0] : null;
+        if ($id === null || ! in_array($id, $autorizados, true)) {
+            return null;
+        }
+        $personagem = $mesa->personagens()->find($id);
 
         return $personagem ? new self($personagem) : null;
     }

@@ -15,8 +15,9 @@ function xsrf(): string {
     return m ? decodeURIComponent(m[1]) : '';
 }
 
-async function requisitar<T>(metodo: string, url: string, corpo?: object | FormData): Promise<T> {
-    const cabecalhos: Record<string, string> = { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf(), 'X-Requested-With': 'XMLHttpRequest' };
+async function requisitar<T>(personagemId: number, metodo: string, url: string, corpo?: object | FormData): Promise<T> {
+    // X-Personagem diz ao servidor QUEM está agindo nesta aba (mestre e jogador podem coexistir no navegador).
+    const cabecalhos: Record<string, string> = { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf(), 'X-Requested-With': 'XMLHttpRequest', 'X-Personagem': String(personagemId) };
     let body: BodyInit | undefined;
     if (corpo instanceof FormData) {
         body = corpo;
@@ -40,20 +41,20 @@ async function requisitar<T>(metodo: string, url: string, corpo?: object | FormD
 }
 
 /** Cliente da API da mesa de jogo (rotas `jogo.*`). */
-export function apiMesa(mesaId: number) {
+export function apiMesa(mesaId: number, personagemId: number) {
     const r = (nome: string, ...params: (number | string)[]) => route(nome, [mesaId, ...params]);
 
     return {
-        criarObjeto: (paginaId: number, dados: object | FormData) => requisitar<ObjetoDto>('POST', r('jogo.objetos.store', paginaId), dados),
-        atualizarObjeto: (id: number, campos: object) => requisitar<ObjetoDto>('PATCH', r('jogo.objetos.update', id), campos),
-        removerObjeto: (id: number) => requisitar<{ ok: true }>('DELETE', r('jogo.objetos.destroy', id)),
-        criarPagina: (dados: object) => requisitar<PaginaDto>('POST', r('jogo.paginas.store'), dados),
-        atualizarPagina: (id: number, campos: object) => requisitar<PaginaDto>('PATCH', r('jogo.paginas.update', id), campos),
-        removerPagina: (id: number) => requisitar<{ ok: true }>('DELETE', r('jogo.paginas.destroy', id)),
-        moverJogador: (paginaId: number, personagemId: number) => requisitar<object>('POST', r('jogo.paginas.jogador', paginaId, personagemId)),
-        criarPasta: (nome: string) => requisitar<{ id: number; nome: string; ordem: number }>('POST', r('jogo.pastas.store'), { nome }),
-        atualizarPasta: (id: number, campos: object) => requisitar<{ id: number; nome: string; ordem: number }>('PATCH', r('jogo.pastas.update', id), campos),
-        removerPasta: (id: number) => requisitar<{ ok: true }>('DELETE', r('jogo.pastas.destroy', id)),
+        criarObjeto: (paginaId: number, dados: object | FormData) => requisitar<ObjetoDto>(personagemId, 'POST', r('jogo.objetos.store', paginaId), dados),
+        atualizarObjeto: (id: number, campos: object) => requisitar<ObjetoDto>(personagemId, 'PATCH', r('jogo.objetos.update', id), campos),
+        removerObjeto: (id: number) => requisitar<{ ok: true }>(personagemId, 'DELETE', r('jogo.objetos.destroy', id)),
+        criarPagina: (dados: object) => requisitar<PaginaDto>(personagemId, 'POST', r('jogo.paginas.store'), dados),
+        atualizarPagina: (id: number, campos: object) => requisitar<PaginaDto>(personagemId, 'PATCH', r('jogo.paginas.update', id), campos),
+        removerPagina: (id: number) => requisitar<{ ok: true }>(personagemId, 'DELETE', r('jogo.paginas.destroy', id)),
+        moverJogador: (paginaId: number, personagemId: number) => requisitar<object>(personagemId, 'POST', r('jogo.paginas.jogador', paginaId, personagemId)),
+        criarPasta: (nome: string) => requisitar<{ id: number; nome: string; ordem: number }>(personagemId, 'POST', r('jogo.pastas.store'), { nome }),
+        atualizarPasta: (id: number, campos: object) => requisitar<{ id: number; nome: string; ordem: number }>(personagemId, 'PATCH', r('jogo.pastas.update', id), campos),
+        removerPasta: (id: number) => requisitar<{ ok: true }>(personagemId, 'DELETE', r('jogo.pastas.destroy', id)),
     };
 }
 

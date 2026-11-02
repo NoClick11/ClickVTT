@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Mesa;
 use App\Models\Objeto;
 use App\Models\Pagina;
+use App\Models\Personagem;
 use App\Support\AcessoMesa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,9 +16,20 @@ use Inertia\Response;
 /** Mesa de jogo. O servidor decide o que cada papel recebe (a camada do mestre nunca vai ao jogador). */
 class JogoController extends Controller
 {
-    public function show(Request $request, Mesa $mesa): Response|RedirectResponse
+    /** Sem personagem na URL: entra direto se houver um só personagem autenticado; senão, convite. */
+    public function entrada(Request $request, Mesa $mesa): RedirectResponse
     {
         $acesso = AcessoMesa::resolver($request, $mesa);
+
+        return $acesso
+            ? to_route('jogo', [$mesa->slug, $acesso->personagem->id])
+            : redirect()->route('convite.show', $mesa->convite_token);
+    }
+
+    public function show(Request $request, Mesa $mesa, Personagem $personagem): Response|RedirectResponse
+    {
+        abort_unless($personagem->mesa_id === $mesa->id, 404);
+        $acesso = AcessoMesa::resolver($request, $mesa, $personagem->id);
         if (! $acesso) {
             return redirect()->route('convite.show', $mesa->convite_token);
         }
@@ -42,7 +54,7 @@ class JogoController extends Controller
             'paginas' => $mestre ? $mesa->paginas->map->paraFront()->values() : [],
             'pastas' => $mestre ? $mesa->pastas->map(fn ($p) => ['id' => $p->id, 'nome' => $p->nome, 'ordem' => $p->ordem])->values() : [],
             'personagens' => $mestre ? $mesa->personagens()->orderBy('nome')->get()->map->paraFront()->values() : [],
-            'sairUrl' => route('convite.sair', $mesa->convite_token),
+            'sairUrl' => route('convite.sair', $mesa->convite_token).'?personagem='.$acesso->personagem->id,
         ]);
     }
 

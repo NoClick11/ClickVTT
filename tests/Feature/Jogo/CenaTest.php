@@ -44,19 +44,19 @@ class CenaTest extends TestCase
 
     private function como(Personagem $p): static
     {
-        return $this->withSession(['acesso_mesas' => [$p->mesa_id => $p->id]]);
+        return $this->withSession(['acesso_mesas' => [$p->mesa_id => [$p->id => true]]])->withHeader('X-Personagem', (string) $p->id);
     }
 
     public function test_manda_para_o_convite_quando_nao_entrou(): void
     {
         $c = $this->cenario();
-        $this->get(route('jogo', $c->mesa->slug))->assertRedirect(route('convite.show', $c->mesa->convite_token));
+        $this->get(route('jogo', [$c->mesa->slug, $c->ana->id]))->assertRedirect(route('convite.show', $c->mesa->convite_token));
     }
 
     public function test_mestre_recebe_todas_as_camadas_e_paredes(): void
     {
         $c = $this->cenario();
-        $this->como($c->mestre)->get(route('jogo', $c->mesa->slug))->assertInertia(fn (Assert $p) => $p
+        $this->como($c->mestre)->get(route('jogo', [$c->mesa->slug, $c->mestre->id]))->assertInertia(fn (Assert $p) => $p
             ->component('app/Jogo')->where('mestre', true)
             ->has('objetos', 6)->has('paginas', 1)->has('personagens', 3));
     }
@@ -64,7 +64,7 @@ class CenaTest extends TestCase
     public function test_jogador_nunca_recebe_camada_do_mestre_nem_paredes(): void
     {
         $c = $this->cenario();
-        $this->como($c->ana)->get(route('jogo', $c->mesa->slug))->assertInertia(fn (Assert $p) => $p
+        $this->como($c->ana)->get(route('jogo', [$c->mesa->slug, $c->ana->id]))->assertInertia(fn (Assert $p) => $p
             ->where('mestre', false)
             ->has('objetos', 4) // mapa, 2 tokens de jogadores, luz
             ->where('objetos', function ($objetos) use ($c) {
@@ -83,9 +83,9 @@ class CenaTest extends TestCase
 
         $this->como($c->mestre)->postJson(route('jogo.paginas.jogador', [$c->mesa->id, $outra->id, $c->ana->id]))->assertOk();
 
-        $this->como($c->ana->refresh())->get(route('jogo', $c->mesa->slug))->assertInertia(fn (Assert $p) => $p
+        $this->como($c->ana->refresh())->get(route('jogo', [$c->mesa->slug, $c->ana->id]))->assertInertia(fn (Assert $p) => $p
             ->where('pagina.id', $outra->id)->has('objetos', 1));
-        $this->como($c->bia)->get(route('jogo', $c->mesa->slug))->assertInertia(fn (Assert $p) => $p
+        $this->como($c->bia)->get(route('jogo', [$c->mesa->slug, $c->bia->id]))->assertInertia(fn (Assert $p) => $p
             ->where('pagina.id', $c->pagina->id));
     }
 
@@ -93,7 +93,7 @@ class CenaTest extends TestCase
     {
         $c = $this->cenario();
         $outra = $c->mesa->paginas()->create(['nome' => 'Segredo', 'ordem' => 2]);
-        $this->como($c->ana)->get(route('jogo', $c->mesa->slug).'?pagina='.$outra->id)
+        $this->como($c->ana)->get(route('jogo', [$c->mesa->slug, $c->ana->id]).'?pagina='.$outra->id)
             ->assertInertia(fn (Assert $p) => $p->where('pagina.id', $c->pagina->id));
     }
 
@@ -211,5 +211,64 @@ class CenaTest extends TestCase
         $this->como($c->mestre)->postJson(route('jogo.objetos.store', [$c->mesa->id, $c->pagina->id]), [
             'camada' => 'jogadores', 'tipo' => 'token', 'x' => 0, 'y' => 0, 'largura' => 70, 'altura' => 70, 'dados' => ['cor' => '#2563eb'],
         ])->assertCreated()->assertJsonPath('dados.cor', '#2563eb');
+    }
+
+    public function test_mestre_e_jogador_podem_estar_abertos_ao_mesmo_tempo_no_mesmo_navegador(): void
+    {
+        $c = $this->cenario();
+        // A sessão do navegador tem os DOIS personagens autenticados (abas diferentes).
+        $sessao = ['acesso_mesas' => [$c->mesa->id => [$c->mestre->id => true, $c->ana->id => true]]];
+        $url = fn ($p) => route('jogo', [$c->mesa->slug, $p->id]);
+
+        $this->withSession($sessao)->get($url($c->mestre))->assertInertia(fn (Assert $p) => $p
+            ->where('mestre', true)->where('personagem.nome', 'Mestre')->has('objetos', 6));
+        $this->withSession($sessao)->get($url($c->ana))->assertInertia(fn (Assert $p) => $p
+            ->where('mestre', false)->where('personagem.nome', 'Ana')->has('objetos', 4));
+
+        // Cada aba age como o seu personagem na API (cabeçalho X-Personagem).
+        $this->withSession($sessao)->withHeader('X-Personagem', (string) $c->mestre->id)
+            ->postJson(route('jogo.pastas.store', $c->mesa->id), ['nome' => 'Cap 1'])->assertCreated();
+        $this->withSession($sessao)->withHeader('X-Personagem', (string) $c->ana->id)
+            ->postJson(route('jogo.pastas.store', $c->mesa->id), ['nome' => 'Cap 2'])->assertForbidden();
+        // Sem indicar quem é, a API recusa (ambíguo).
+        $this->withSession($sessao)->postJson(route('jogo.pastas.store', $c->mesa->id), ['nome' => 'Cap 3'])->assertForbidden();
+    }
+
+    public function test_nao_da_para_se_passar_por_personagem_que_nao_entrou(): void
+    {
+        $c = $this->cenario();
+        $sessao = ['acesso_mesas' => [$c->mesa->id => [$c->ana->id => true]]];
+
+        $this->withSession($sessao)->get(route('jogo', [$c->mesa->slug, $c->mestre->id]))
+            ->assertRedirect(route('convite.show', $c->mesa->convite_token));
+        $this->withSession($sessao)->withHeader('X-Personagem', (string) $c->mestre->id)
+            ->postJson(route('jogo.pastas.store', $c->mesa->id), ['nome' => 'X'])->assertForbidden();
+    }
+
+    public function test_entrar_com_outro_personagem_nao_derruba_o_anterior(): void
+    {
+        $c = $this->cenario();
+        $c->mestre->update(['senha' => 'mestre123']);
+        $c->ana->update(['senha' => 'ana12345']);
+        $entrar = fn ($p, $senha) => $this->post(route('convite.entrar', $c->mesa->convite_token), ['personagem_id' => $p->id, 'senha' => $senha]);
+
+        $entrar($c->mestre, 'mestre123')->assertRedirect(route('jogo', [$c->mesa->slug, $c->mestre->id]));
+        $entrar($c->ana, 'ana12345')->assertRedirect(route('jogo', [$c->mesa->slug, $c->ana->id]));
+
+        $this->get(route('jogo', [$c->mesa->slug, $c->mestre->id]))->assertInertia(fn (Assert $p) => $p->where('mestre', true));
+        $this->get(route('jogo', [$c->mesa->slug, $c->ana->id]))->assertInertia(fn (Assert $p) => $p->where('mestre', false));
+
+        // Sair como Ana não desconecta o mestre.
+        $this->post(route('convite.sair', $c->mesa->convite_token), ['personagem' => $c->ana->id]);
+        $this->get(route('jogo', [$c->mesa->slug, $c->mestre->id]))->assertOk();
+        $this->get(route('jogo', [$c->mesa->slug, $c->ana->id]))->assertRedirect(route('convite.show', $c->mesa->convite_token));
+    }
+
+    public function test_entrada_direta_redireciona_para_o_unico_personagem_autenticado(): void
+    {
+        $c = $this->cenario();
+        $this->como($c->ana)->get(route('jogo.entrada', $c->mesa->slug))->assertRedirect(route('jogo', [$c->mesa->slug, $c->ana->id]));
+        $this->flushSession();
+        $this->get(route('jogo.entrada', $c->mesa->slug))->assertRedirect(route('convite.show', $c->mesa->convite_token));
     }
 }

@@ -28,7 +28,8 @@ Route::middleware('auth')->group(function () {
 Route::get('convite/{token}', [ConviteController::class, 'show'])->name('convite.show');
 Route::post('convite/{token}', [ConviteController::class, 'entrar'])->middleware('throttle:8,1')->name('convite.entrar');
 Route::post('convite/{token}/sair', [ConviteController::class, 'sair'])->name('convite.sair');
-Route::get('jogo/{mesa:slug}', [JogoController::class, 'show'])->name('jogo');
+Route::get('jogo/{mesa:slug}', [JogoController::class, 'entrada'])->name('jogo.entrada');
+Route::get('jogo/{mesa:slug}/{personagem}', [JogoController::class, 'show'])->name('jogo');
 
 // API da mesa de jogo (JSON). Autorização por papel em App\Support\AcessoMesa.
 Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {

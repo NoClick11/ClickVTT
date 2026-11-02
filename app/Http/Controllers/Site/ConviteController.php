@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Site;
 
 use App\Http\Controllers\Controller;
 use App\Models\Mesa;
+use App\Support\AcessoMesa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -23,6 +24,7 @@ class ConviteController extends Controller
         return Inertia::render('site/Convite', [
             'token' => $token,
             'mesa' => [
+                'slug' => $mesa->slug,
                 'nome' => $mesa->nome,
                 'descricao' => $mesa->descricao,
                 'capa' => $mesa->capaUrl(),
@@ -31,7 +33,7 @@ class ConviteController extends Controller
             ],
             'personagens' => $mesa->personagens()->orderByRaw("papel = 'mestre' desc")->orderBy('nome')->get()
                 ->map(fn ($p) => $p->paraFront()),
-            'entrouComo' => $request->session()->get(self::SESSAO.'.'.$mesa->id),
+            'jaEntrou' => AcessoMesa::autorizados($request, $mesa),
         ]);
     }
 
@@ -51,16 +53,20 @@ class ConviteController extends Controller
             throw ValidationException::withMessages(['senha' => 'Senha incorreta.']);
         }
 
+        // Acumula: entrar com outro personagem NÃO derruba os que já estão abertos em outras abas.
         $request->session()->regenerate();
-        $request->session()->put(self::SESSAO.'.'.$mesa->id, $personagem->id);
+        $request->session()->put(self::SESSAO.'.'.$mesa->id.'.'.$personagem->id, true);
 
-        return to_route('jogo', $mesa->slug);
+        return to_route('jogo', [$mesa->slug, $personagem->id]);
     }
 
     public function sair(Request $request, string $token): RedirectResponse
     {
         $mesa = $this->mesa($token);
-        $request->session()->forget(self::SESSAO.'.'.$mesa->id);
+        // Sai só do personagem desta aba (os demais continuam entrados).
+        $chave = self::SESSAO.'.'.$mesa->id;
+        $personagemId = $request->input('personagem');
+        $personagemId ? $request->session()->forget($chave.'.'.(int) $personagemId) : $request->session()->forget($chave);
 
         return to_route('convite.show', $token);
     }

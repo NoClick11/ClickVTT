@@ -31,7 +31,8 @@ const props = defineProps<{
     sairUrl: string;
 }>();
 
-const api = apiMesa(props.mesa.id);
+const api = apiMesa(props.mesa.id, props.personagem.id);
+const urlJogo = () => route('jogo', [props.mesa.slug, props.personagem.id]);
 const copia = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 
 // Camada padrão = Jogadores (só o mestre troca). Estado local da tela:
@@ -160,7 +161,7 @@ function abrirPagina(id: number) {
     menuAberto.value = false;
     if (id === props.pagina?.id) return;
     selecionadoId.value = null;
-    router.visit(`${route('jogo', props.mesa.slug)}?pagina=${id}`, { preserveState: true, preserveScroll: true, only: ['pagina', 'objetos'] });
+    router.visit(`${urlJogo()}?pagina=${id}`, { preserveState: true, preserveScroll: true, only: ['pagina', 'objetos'] });
 }
 
 const acao = (fn: () => Promise<unknown>, recarga: string[]) => () =>
@@ -197,7 +198,7 @@ async function salvarConfig(id: number, campos: Partial<PaginaDto>) {
 async function excluirPagina(id: number) {
     try {
         await api.removerPagina(id);
-        if (id === props.pagina?.id) router.visit(route('jogo', props.mesa.slug));
+        if (id === props.pagina?.id) router.visit(urlJogo());
         else recarregar(['paginas', 'personagens']);
     } catch (e) {
         avisar(mensagemDe(e));

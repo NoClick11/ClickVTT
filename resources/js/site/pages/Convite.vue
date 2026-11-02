@@ -11,13 +11,14 @@ import { computed } from 'vue';
 
 const props = defineProps<{
     token: string;
-    mesa: { nome: string; descricao: string | null; capa: string | null; tema_entrada: 'padrao' | 'minimo'; sistema: string };
+    mesa: { slug: string; nome: string; descricao: string | null; capa: string | null; tema_entrada: 'padrao' | 'minimo'; sistema: string };
     personagens: Personagem[];
-    entrouComo: number | null;
+    jaEntrou: number[];
 }>();
 
-const form = useForm({ personagem_id: props.entrouComo ?? props.personagens[0]?.id ?? (null as number | null), senha: '' });
+const form = useForm({ personagem_id: props.personagens[0]?.id ?? (null as number | null), senha: '' });
 const escolhido = computed(() => props.personagens.find((p) => p.id === form.personagem_id));
+const jaEntrou = computed(() => !!form.personagem_id && props.jaEntrou.includes(form.personagem_id));
 const minimo = computed(() => props.mesa.tema_entrada === 'minimo');
 
 const entrar = () => form.post(route('convite.entrar', props.token), { onFinish: () => form.reset('senha') });
@@ -54,6 +55,10 @@ const entrar = () => form.post(route('convite.entrar', props.token), { onFinish:
                     </div>
                     <InputError :message="form.errors.personagem_id" />
                 </Campo>
+                <p v-if="jaEntrou" class="rounded-md border border-ouro-500/30 bg-ouro-500/10 px-3 py-2 text-sm text-ouro-100">
+                    {{ escolhido?.nome }} já entrou neste navegador (talvez em outra aba).
+                    <a :href="route('jogo', [mesa.slug, form.personagem_id!])" class="font-semibold underline">Continuar</a>
+                </p>
                 <Campo v-if="escolhido?.tem_senha" label="Senha" for="c-senha">
                     <Input id="c-senha" v-model="form.senha" type="password" autocomplete="current-password" autofocus />
                     <InputError :message="form.errors.senha" />
