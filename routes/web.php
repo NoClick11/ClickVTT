@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\App\JogoController;
+use App\Http\Controllers\App\ObjetoController;
+use App\Http\Controllers\App\PaginaController;
+use App\Http\Controllers\App\PastaController;
 use App\Http\Controllers\Site\ConviteController;
 use App\Http\Controllers\Site\MesaController;
 use App\Http\Controllers\Site\PersonagemController;
@@ -26,6 +29,20 @@ Route::get('convite/{token}', [ConviteController::class, 'show'])->name('convite
 Route::post('convite/{token}', [ConviteController::class, 'entrar'])->middleware('throttle:8,1')->name('convite.entrar');
 Route::post('convite/{token}/sair', [ConviteController::class, 'sair'])->name('convite.sair');
 Route::get('jogo/{mesa:slug}', [JogoController::class, 'show'])->name('jogo');
+
+// API da mesa de jogo (JSON). Autorização por papel em App\Support\AcessoMesa.
+Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
+    Route::post('paginas', [PaginaController::class, 'store'])->name('paginas.store');
+    Route::patch('paginas/{pagina}', [PaginaController::class, 'update'])->name('paginas.update');
+    Route::delete('paginas/{pagina}', [PaginaController::class, 'destroy'])->name('paginas.destroy');
+    Route::post('paginas/{pagina}/jogadores/{personagem}', [PaginaController::class, 'moverJogador'])->name('paginas.jogador');
+    Route::post('paginas/{pagina}/objetos', [ObjetoController::class, 'store'])->name('objetos.store');
+    Route::post('pastas', [PastaController::class, 'store'])->name('pastas.store');
+    Route::patch('pastas/{pasta}', [PastaController::class, 'update'])->name('pastas.update');
+    Route::delete('pastas/{pasta}', [PastaController::class, 'destroy'])->name('pastas.destroy');
+    Route::patch('objetos/{objeto}', [ObjetoController::class, 'update'])->name('objetos.update');
+    Route::delete('objetos/{objeto}', [ObjetoController::class, 'destroy'])->name('objetos.destroy');
+});
 
 Route::redirect('dashboard', '/')->name('dashboard');
 

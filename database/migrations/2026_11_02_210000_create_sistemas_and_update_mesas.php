@@ -39,7 +39,10 @@ return new class extends Migration
             $table->dropColumn(['sistema', 'proxima_sessao']);
         });
 
-        DB::statement('ALTER TABLE mesas ALTER COLUMN sistema_id SET NOT NULL');
+        // SQLite (usado nos testes) não suporta ALTER COLUMN; a coluna fica nullable lá.
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE mesas ALTER COLUMN sistema_id SET NOT NULL');
+        }
     }
 
     public function down(): void

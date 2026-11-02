@@ -50,6 +50,16 @@ class Mesa extends Model
         return $this->hasMany(Personagem::class);
     }
 
+    public function paginas(): HasMany
+    {
+        return $this->hasMany(Pagina::class)->orderBy('ordem')->orderBy('id');
+    }
+
+    public function pastas(): HasMany
+    {
+        return $this->hasMany(Pasta::class)->orderBy('ordem')->orderBy('id');
+    }
+
     public function capaUrl(): ?string
     {
         return $this->capa ? '/storage/'.$this->capa : null;

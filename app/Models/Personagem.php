@@ -11,7 +11,7 @@ class Personagem extends Model
 
     public const PAPEIS = ['jogador', 'mestre'];
 
-    protected $fillable = ['nome', 'papel', 'cor', 'senha'];
+    protected $fillable = ['nome', 'papel', 'cor', 'senha', 'pagina_id'];
 
     protected $hidden = ['senha'];
 
@@ -25,6 +25,11 @@ class Personagem extends Model
         return $this->belongsTo(Mesa::class);
     }
 
+    public function pagina(): BelongsTo
+    {
+        return $this->belongsTo(Pagina::class);
+    }
+
     /** Dados seguros para o front (nunca expõe o hash). */
     public function paraFront(): array
     {
@@ -34,6 +39,7 @@ class Personagem extends Model
             'papel' => $this->papel,
             'cor' => $this->cor,
             'tem_senha' => $this->senha !== null,
+            'pagina_id' => $this->pagina_id,
         ];
     }
 }
