@@ -143,7 +143,8 @@ class CenaTest extends TestCase
         $this->postJson(route('jogo.paginas.store', $m), ['nome' => 'X'])->assertForbidden();
 
         $this->como($c->mestre)->postJson(route('jogo.pastas.store', $m), ['nome' => 'Capítulo 1'])->assertCreated();
-        $this->como($c->mestre)->postJson(route('jogo.paginas.store', $m), ['nome' => 'Floresta'])->assertCreated();
+        $this->como($c->mestre)->postJson(route('jogo.paginas.store', $m), ['nome' => 'Floresta'])->assertCreated()
+            ->assertJsonPath('colunas', 25)->assertJsonPath('tamanho_quadrado', 70)->assertJsonPath('grade_quadrada', true)->assertJsonPath('distancia_quadrado', 1.5);
         $this->como($c->mestre)->patchJson(route('jogo.paginas.update', [$m, $c->pagina->id]), [
             'nome' => 'Taverna', 'colunas' => 40, 'grade_quadrada' => false, 'distancia_quadrado' => 1.5,
         ])->assertOk()->assertJsonPath('grade_quadrada', false);

@@ -34,6 +34,8 @@ class ObjetoController extends Controller
             'dados.pontos.*' => ['numeric'],
             'dados.tipo' => ['nullable', Rule::in(['parede', 'porta', 'janela'])],
             'dados.raio' => ['required_if:tipo,luz', 'numeric', 'min:1'],
+            'dados.cor' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'dados.aberta' => ['nullable', 'boolean'],
         ]);
         $this->validarCamada($dados['camada'], $dados['tipo']);
 
@@ -44,7 +46,7 @@ class ObjetoController extends Controller
             $dados['arquivo_tipo'] = $this->tipoDoArquivo($arquivo->getClientOriginalExtension());
         }
 
-        $objeto = $pagina->objetos()->create($dados);
+        $objeto = $pagina->objetos()->create($dados)->refresh();
 
         return response()->json($objeto->paraFront(), 201);
     }
@@ -64,6 +66,9 @@ class ObjetoController extends Controller
                 'altura' => ['sometimes', 'numeric', 'min:1', 'max:20000'],
                 'z' => ['sometimes', 'integer'],
                 'dados' => ['sometimes', 'nullable', 'array'],
+                'dados.cor' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
+                'dados.aberta' => ['nullable', 'boolean'],
+                'dados.raio' => ['nullable', 'numeric', 'min:1'],
             ]);
             if (isset($dados['camada'])) {
                 $this->validarCamada($dados['camada'], $objeto->tipo);

@@ -19,7 +19,7 @@ class PaginaController extends Controller
         $dados = $this->validar($request, $mesa);
         $dados['ordem'] ??= ($mesa->paginas()->max('ordem') ?? 0) + 1;
 
-        $pagina = $mesa->paginas()->create($dados);
+        $pagina = $mesa->paginas()->create($dados)->refresh(); // traz os defaults do banco
 
         return response()->json($pagina->paraFront(), 201);
     }
