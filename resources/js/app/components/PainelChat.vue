@@ -100,7 +100,7 @@ const hora = (m: Mensagem) => (m.criada_em ? new Date(m.criada_em).toLocaleTimeS
                     <span class="truncate font-semibold" :style="{ color: g.autor?.cor ?? '#ecc96c' }">{{ g.autor?.nome ?? 'Sistema' }}<span v-if="g.autor?.id === meuId" class="font-normal text-preto-400"> (você)</span></span>
                     <span class="shrink-0 text-[10px] text-preto-500">{{ hora(g.inicio) }}</span>
                 </p>
-                <div v-for="m in g.mensagens" :key="m.id" class="mt-0.5 first:mt-0" :title="hora(m)" data-mensagem>
+                <div v-for="m in g.mensagens" :key="m.id" class="mt-1.5 border-t border-preto-800/70 pt-1.5 first-of-type:mt-0.5 first-of-type:border-t-0 first-of-type:pt-0" :title="hora(m)" data-mensagem>
                     <p v-if="m.tipo === 'texto'" class="break-words text-preto-100">{{ m.texto }}</p>
                     <p v-else-if="m.visibilidade === 'secreto_oculto'" class="text-xs italic text-preto-300">🎲 {{ m.texto }}</p>
                     <template v-else-if="m.dados">
