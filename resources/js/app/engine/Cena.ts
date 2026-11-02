@@ -6,6 +6,7 @@ import {
     type Camada,
     type CamposGeometria,
     type CenaEventos,
+    type EstiloPintura,
     type Ferramenta,
     type ObjetoDto,
     type PaginaDto,
@@ -17,7 +18,7 @@ const TAMANHO_ALCA = 8; // px na tela
 const MARGEM_TOPO = 48; // altura da barra superior
 const ALCAS: AlcaRedimensionar[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
-type Modo = 'nenhum' | 'pan' | 'mover' | 'redimensionar' | 'regua' | 'desenhar';
+type Modo = 'nenhum' | 'pan' | 'mover' | 'redimensionar' | 'regua' | 'desenhar' | 'pintar';
 
 interface Opcoes {
     mestre: boolean;
@@ -59,6 +60,8 @@ export class Cena {
     /** Destino encaixado no grid durante o redimensionamento (mostrado como contorno-guia). */
     private alvoEncaixe: CamposGeometria | null = null;
     private animacao: (() => void) | null = null;
+    private estilo: EstiloPintura = { cor: '#ef4444', espessura: 4, tamanho: 28 };
+    private tracoAtual: number[] = [];
     private iniciou = false;
     private host!: HTMLElement;
     private pronto = false;
@@ -150,6 +153,10 @@ export class Cena {
         const sel = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
         if (sel && sel.dto.camada !== camada) this.selecionar(null);
         this.atualizarCursor();
+    }
+
+    setEstilo(estilo: EstiloPintura): void {
+        this.estilo = { ...estilo };
     }
 
     setFerramenta(f: Ferramenta): void {
@@ -273,7 +280,7 @@ export class Cena {
         const g = this.selecaoG.clear();
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
         if (!v) return;
-        const { x, y, largura, altura } = v.dto;
+        const { x, y, largura, altura } = v.caixa();
         const pts = v.dto.dados?.pontos;
         if (v.dto.tipo === 'parede' && pts?.length === 4) {
             g.moveTo(pts[0], pts[1]).lineTo(pts[2], pts[3]).stroke({ color: 0xd4a843, width: 14, alpha: 0.35, cap: 'round' });
@@ -284,7 +291,7 @@ export class Cena {
         if (guia && this.modo === 'redimensionar') {
             g.rect(guia.x!, guia.y!, guia.largura!, guia.altura!).fill({ color: 0xd4a843, alpha: 0.12 }).stroke({ color: 0xf4e0a0, width: 1.5, alpha: 0.9, pixelLine: true });
         }
-        if (!this.opcoes.mestre) return;
+        if (!this.opcoes.mestre || v.dto.tipo === 'texto') return;
         const s = TAMANHO_ALCA / this.mundo.scale.x;
         for (const a of this.alcasVisiveis(largura, altura)) {
             const p = this.posicaoAlca(a, x, y, largura, altura);
@@ -311,7 +318,7 @@ export class Cena {
 
     private alcaEm(px: number, py: number): AlcaRedimensionar | null {
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
-        if (!v || !this.opcoes.mestre || v.dto.tipo === 'parede') return null;
+        if (!v || !this.opcoes.mestre || v.dto.tipo === 'parede' || v.dto.tipo === 'texto') return null;
         const tol = (TAMANHO_ALCA * 0.9) / this.mundo.scale.x;
         const { x, y, largura, altura } = v.dto;
         for (const a of this.alcasVisiveis(largura, altura)) {
@@ -464,6 +471,15 @@ export class Cena {
             this.reguaInicio = { x: this.snapCentro(p.x), y: this.snapCentro(p.y) };
             return;
         }
+        if (this.ferramenta === 'pintar') {
+            this.modo = 'pintar';
+            this.tracoAtual = [p.x, p.y];
+            return;
+        }
+        if (this.ferramenta === 'texto') {
+            this.opcoes.eventos.criarTexto(p.x, p.y, tela);
+            return;
+        }
         if (this.ferramenta === 'parede' || this.ferramenta === 'porta' || this.ferramenta === 'janela') {
             if (!this.opcoes.mestre) return;
             this.modo = 'desenhar';
@@ -500,6 +516,16 @@ export class Cena {
             this.mundo.position.set(this.mundo.x + (tela.x - this.inicioTela.x), this.mundo.y + (tela.y - this.inicioTela.y));
             this.inicioTela = tela;
             this.desenharSelecao();
+            return;
+        }
+        if (this.modo === 'pintar') {
+            const n = this.tracoAtual.length;
+            const minimo = 2 / this.mundo.scale.x;
+            if (Math.hypot(p.x - this.tracoAtual[n - 2], p.y - this.tracoAtual[n - 1]) >= minimo && n < 5000) this.tracoAtual.push(p.x, p.y);
+            const g = this.desenhoG.clear();
+            g.moveTo(this.tracoAtual[0], this.tracoAtual[1]);
+            for (let i = 2; i < this.tracoAtual.length; i += 2) g.lineTo(this.tracoAtual[i], this.tracoAtual[i + 1]);
+            g.stroke({ color: parseInt(this.estilo.cor.slice(1), 16), width: this.estilo.espessura, cap: 'round', join: 'round' });
             return;
         }
         if (this.modo === 'desenhar') {
@@ -541,6 +567,22 @@ export class Cena {
 
     private aoSoltar(e: PointerEvent): void {
         if (this.app.canvas.hasPointerCapture(e.pointerId)) this.app.canvas.releasePointerCapture(e.pointerId);
+        if (this.modo === 'pintar') {
+            this.desenhoG.clear();
+            const pts = this.tracoAtual;
+            this.tracoAtual = [];
+            if (pts.length < 4) pts.push(pts[0] + 0.5, pts[1] + 0.5); // clique simples vira um ponto
+            const xs = pts.filter((_, i) => i % 2 === 0);
+            const ys = pts.filter((_, i) => i % 2 === 1);
+            const [minX, minY] = [Math.min(...xs), Math.min(...ys)];
+            const relativos = pts.map((v, i) => Math.round((v - (i % 2 === 0 ? minX : minY)) * 10) / 10);
+            this.opcoes.eventos.criarTraco({
+                x: minX, y: minY,
+                largura: Math.max(1, Math.max(...xs) - minX),
+                altura: Math.max(1, Math.max(...ys) - minY),
+                pontos: relativos,
+            });
+        }
         if (this.modo === 'desenhar') {
             const tela = this.posTela(e);
             const p = this.paraMundo(tela.x, tela.y);
@@ -605,7 +647,7 @@ export class Cena {
     private atualizarCursor(forcado?: string): void {
         if (!this.pronto) return;
         const emPan = this.espaco || this.ferramenta === 'mover';
-        const padrao = ['regua', 'luz', 'parede', 'porta', 'janela'].includes(this.ferramenta) ? 'crosshair' : emPan ? 'grab' : 'default';
+        const padrao = ['regua', 'luz', 'parede', 'porta', 'janela', 'pintar'].includes(this.ferramenta) ? 'crosshair' : this.ferramenta === 'texto' ? 'text' : emPan ? 'grab' : 'default';
         this.app.canvas.style.cursor = forcado ?? padrao;
     }
 }

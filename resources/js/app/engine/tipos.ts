@@ -8,14 +8,21 @@ export const CAMADAS: { id: Camada; nome: string; dica: string }[] = [
     { id: 'iluminacao', nome: 'Iluminação', dica: 'Luzes, paredes, portas e janelas' },
 ];
 
-export type Ferramenta = 'selecionar' | 'mover' | 'regua' | 'parede' | 'porta' | 'janela' | 'luz';
+export type Ferramenta = 'selecionar' | 'mover' | 'regua' | 'pintar' | 'texto' | 'parede' | 'porta' | 'janela' | 'luz';
+
+/** Estilo atual das ferramentas de pintar (traço) e texto. */
+export interface EstiloPintura {
+    cor: string;
+    espessura: number;
+    tamanho: number;
+}
 
 export type TipoParede = 'parede' | 'porta' | 'janela';
 
 export interface ObjetoDto {
     id: number;
     camada: Camada;
-    tipo: 'imagem' | 'token' | 'luz' | 'parede';
+    tipo: 'imagem' | 'token' | 'luz' | 'parede' | 'traco' | 'texto';
     personagem_id: number | null;
     nome: string | null;
     x: number;
@@ -25,7 +32,19 @@ export interface ObjetoDto {
     z: number;
     arquivo: string | null;
     arquivo_tipo: 'imagem' | 'video' | 'gif' | null;
-    dados: { raio?: number; cor?: string; pontos?: number[]; tipo?: TipoParede; aberta?: boolean } | null;
+    dados: {
+        raio?: number;
+        cor?: string;
+        /** parede: absolutos; traço: relativos ao x,y do objeto */
+        pontos?: number[];
+        tipo?: TipoParede;
+        aberta?: boolean;
+        espessura?: number;
+        largura_original?: number;
+        altura_original?: number;
+        texto?: string;
+        tamanho?: number;
+    } | null;
 }
 
 export interface PaginaDto {
@@ -51,6 +70,10 @@ export interface CenaEventos {
     alterar: (id: number, campos: CamposGeometria, final: boolean) => void;
     zoom: (escala: number) => void;
     criarLuz: (x: number, y: number) => void;
+    /** `pontos` relativos a (x, y); bbox já calculada. */
+    criarTraco: (traco: { x: number; y: number; largura: number; altura: number; pontos: number[] }) => void;
+    /** Clique com a ferramenta texto: mundo (x, y) e posição na tela para o campo de digitação. */
+    criarTexto: (x: number, y: number, tela: { x: number; y: number }) => void;
     criarParede: (pontos: [number, number, number, number], tipo: TipoParede) => void;
     /** Clique numa porta (ferramenta selecionar, mestre ou jogador) alterna aberta/fechada. */
     alternarPorta: (id: number) => void;

@@ -3,16 +3,24 @@ import { Head, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { Personagem } from '@/site/types';
 import { apiMesa, ErroApi, medirArquivo } from '../api';
+import { conectar, type Conexao } from '../realtime';
+import type { Combate, Dado, Mensagem, VisibilidadeRolagem } from '../tipos-mesa';
 import BarraFerramentas from '../components/BarraFerramentas.vue';
 import BarraSuperior from '../components/BarraSuperior.vue';
 import CenaCanvas from '../components/CenaCanvas.vue';
 import ConfigPaginaDialog from '../components/ConfigPaginaDialog.vue';
+import BarraTurnos from '../components/BarraTurnos.vue';
 import ControlesZoom from '../components/ControlesZoom.vue';
+import DadosAnimacao from '../components/DadosAnimacao.vue';
+import OpcoesFerramenta from '../components/OpcoesFerramenta.vue';
+import PainelChat from '../components/PainelChat.vue';
+import PainelDados from '../components/PainelDados.vue';
+import PainelTurnos from '../components/PainelTurnos.vue';
 import Inspetor from '../components/Inspetor.vue';
 import MenuPaginas from '../components/MenuPaginas.vue';
 import NovoTokenDialog from '../components/NovoTokenDialog.vue';
 import SeletorCamada from '../components/SeletorCamada.vue';
-import { CAMADAS, type Camada, type CamposGeometria, type Ferramenta, type ObjetoDto, type PaginaDto, type TipoParede } from '../engine/tipos';
+import { CAMADAS, type Camada, type CamposGeometria, type EstiloPintura, type Ferramenta, type ObjetoDto, type PaginaDto, type TipoParede } from '../engine/tipos';
 
 interface Pasta {
     id: number;
@@ -28,6 +36,8 @@ const props = defineProps<{
     paginas: PaginaDto[];
     pastas: Pasta[];
     personagens: Personagem[];
+    combate: Combate;
+    mensagens: Mensagem[];
     sairUrl: string;
 }>();
 
@@ -50,8 +60,37 @@ const configAberta = ref(false);
 const configPagina = ref<PaginaDto | null>(null);
 const configErro = ref<string | undefined>();
 const tokenAberto = ref(false);
+const painelDados = ref(false);
+const painelTurnos = ref(false);
+const estilo = ref<EstiloPintura>({ cor: '#ef4444', espessura: 4, tamanho: 28 });
+const mensagens = ref<Mensagem[]>(copia(props.mensagens));
+const combate = ref<Combate>(copia(props.combate));
+const rolando = ref(false);
+const textoPendente = ref<{ x: number; y: number; tela: { x: number; y: number }; valor: string } | null>(null);
+
+// Animação dos dados: ligada por padrão (exceto para quem pede movimento reduzido); preferência salva no navegador.
+function lerPreferencia(): boolean {
+    try {
+        const v = localStorage.getItem('clickvtt.animacaoDados');
+        if (v !== null) return v === '1';
+    } catch {
+        /* armazenamento indisponível */
+    }
+
+    return !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+}
+const animacao = ref(lerPreferencia());
+watch(animacao, (v) => {
+    try {
+        localStorage.setItem('clickvtt.animacaoDados', v ? '1' : '0');
+    } catch {
+        /* ignora */
+    }
+});
+const filaAnimacao = ref<Mensagem[]>([]);
 
 watch(() => props.objetos, (novos) => (objetos.value = copia(novos)));
+watch(() => props.combate, (c) => (combate.value = copia(c)));
 
 const selecionado = computed(() => objetos.value.find((o) => o.id === selecionadoId.value) ?? null);
 const camadaNome = computed(() => CAMADAS.find((c) => c.id === (['jogadores', 'mestre'].includes(camada.value) ? camada.value : 'jogadores'))!.nome);
@@ -94,7 +133,7 @@ function atualizarSelecionado(campos: Partial<ObjetoDto>) {
 
 function removerSelecionado() {
     const o = selecionado.value;
-    if (!o || !props.mestre) return;
+    if (!o || (!props.mestre && !['traco', 'texto'].includes(o.tipo))) return;
     objetos.value = objetos.value.filter((x) => x.id !== o.id);
     selecionadoId.value = null;
     api.removerObjeto(o.id).catch(falhou);
@@ -221,6 +260,135 @@ async function reordenar(id: number, direcao: -1 | 1) {
 const moverJogador = (paginaId: number, personagemId: number) => acao(() => api.moverJogador(paginaId, personagemId), ['personagens'])();
 const trazerTodos = (paginaId: number) => acao(() => Promise.all(props.personagens.map((p) => api.moverJogador(paginaId, p.id))), ['personagens'])();
 
+// --- pintar e texto ----------------------------------------------------------------
+
+/** Jogador sempre desenha na camada Jogadores; o mestre, na camada ativa (menos Iluminação). */
+const camadaDeDesenho = (): Camada => (props.mestre && camada.value !== 'iluminacao' ? camada.value : 'jogadores');
+
+async function criarTraco(t: { x: number; y: number; largura: number; altura: number; pontos: number[] }) {
+    if (!props.pagina) return;
+    try {
+        objetos.value.push(
+            await api.criarObjeto(props.pagina.id, {
+                camada: camadaDeDesenho(), tipo: 'traco', x: t.x, y: t.y, largura: t.largura, altura: t.altura,
+                dados: { pontos: t.pontos, cor: estilo.value.cor, espessura: estilo.value.espessura, largura_original: t.largura, altura_original: t.altura },
+            }),
+        );
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+
+function pedirTexto(x: number, y: number, tela: { x: number; y: number }) {
+    textoPendente.value = { x, y, tela, valor: '' };
+}
+
+async function confirmarTexto() {
+    const t = textoPendente.value;
+    textoPendente.value = null;
+    if (!t || !t.valor.trim() || !props.pagina) return;
+    const tamanho = estilo.value.tamanho;
+    try {
+        objetos.value.push(
+            await api.criarObjeto(props.pagina.id, {
+                camada: camadaDeDesenho(), tipo: 'texto', x: t.x, y: t.y,
+                largura: Math.max(10, t.valor.length * tamanho * 0.6), altura: tamanho * 1.3,
+                dados: { texto: t.valor.trim(), cor: estilo.value.cor, tamanho },
+            }),
+        );
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+
+// --- chat, dados e turnos ----------------------------------------------------------------
+
+/** Insere (ou completa) uma mensagem; devolve true se era nova. Dedupe por id: chega pela API e pelo canal. */
+function receberMensagem(m: Mensagem, substitui = false): boolean {
+    const i = mensagens.value.findIndex((x) => x.id === m.id);
+    if (i === -1) {
+        mensagens.value.push(m);
+        return true;
+    }
+    // Aviso de "rolou em segredo" é trocado pelo resultado completo; nunca o contrário.
+    if (substitui || (mensagens.value[i].visibilidade === 'secreto_oculto' && m.visibilidade !== 'secreto_oculto')) mensagens.value[i] = m;
+
+    return false;
+}
+function aoNovaMensagem(m: Mensagem, substitui = false) {
+    if (receberMensagem(m, substitui) && m.tipo === 'rolagem' && m.dados && animacao.value) filaAnimacao.value.push(m);
+}
+
+async function rolar(dado: Dado, quantidade: number, visibilidade: VisibilidadeRolagem) {
+    rolando.value = true;
+    try {
+        aoNovaMensagem(await api.rolar(dado, quantidade, visibilidade));
+    } catch (e) {
+        avisar(mensagemDe(e));
+    } finally {
+        setTimeout(() => (rolando.value = false), 600);
+    }
+}
+async function enviarTexto(texto: string) {
+    try {
+        aoNovaMensagem(await api.enviarTexto(texto));
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+async function salvarCombate(novo: Combate) {
+    combate.value = novo;
+    try {
+        await api.salvarCombate(novo);
+    } catch (e) {
+        avisar(mensagemDe(e));
+        combate.value = copia(props.combate);
+    }
+}
+function passarTurno(delta: 1 | -1) {
+    const c = combate.value;
+    const o = [...c.itens].sort((a, b) => (b.iniciativa ?? -Infinity) - (a.iniciativa ?? -Infinity));
+    if (!o.length) return;
+    const i = o.findIndex((x) => x.id === c.atual);
+    const prox = i === -1 ? 0 : i + delta;
+    const rodada = prox >= o.length ? c.rodada + 1 : prox < 0 ? Math.max(1, c.rodada - 1) : c.rodada;
+    salvarCombate({ ...c, atual: o[(prox + o.length) % o.length].id, rodada });
+}
+
+// --- tempo real (Reverb): chat, turnos e sincronia da cena ---------------------------------------
+
+let conexao: Conexao | null = null;
+let temporizadorCena: ReturnType<typeof setTimeout> | undefined;
+const meuId = props.personagem.id;
+
+/** Outro participante mudou a cena: recarrega só o necessário (e não para quem agiu). */
+function aoMudarCena(payload: { ator: number | null }) {
+    if (payload.ator === meuId) return;
+    clearTimeout(temporizadorCena);
+    temporizadorCena = setTimeout(() => router.reload({ only: ['objetos', 'pagina', 'paginas', 'pastas', 'personagens'] }), 120);
+}
+
+onMounted(() => {
+    try {
+        conexao = conectar(props.mesa.id, meuId);
+        const base = `mesa.${props.mesa.id}`;
+        const abrir = (canal: ReturnType<Conexao['echo']['private']>) =>
+            canal
+                .listen('.mensagem', (e: { mensagem: Mensagem; substitui?: boolean }) => aoNovaMensagem(e.mensagem, !!e.substitui))
+                .listen('.cena', (e: { ator: number | null }) => aoMudarCena(e))
+                .listen('.combate', (e: { combate: Combate; ator: number }) => e.ator !== meuId && (combate.value = e.combate));
+        abrir(conexao.echo.private(base));
+        abrir(conexao.echo.private(`${base}.personagem.${meuId}`));
+        if (props.mestre) abrir(conexao.echo.private(`${base}.mestre`));
+    } catch (e) {
+        console.warn('Tempo real indisponível', e);
+    }
+});
+onBeforeUnmount(() => {
+    clearTimeout(temporizadorCena);
+    conexao?.fechar();
+});
+
 // --- teclado -------------------------------------------------------------------
 
 function aoTeclar(e: KeyboardEvent) {
@@ -287,6 +455,9 @@ function alternarPorta(id: number) {
                 :ferramenta="ferramenta"
                 :mestre="mestre"
                 :personagem-id="personagem.id"
+                :estilo="estilo"
+                @criar-traco="criarTraco"
+                @criar-texto="pedirTexto"
                 @selecionar="selecionadoId = $event"
                 @alterar="aoAlterar"
                 @zoom="escala = $event"
@@ -307,7 +478,11 @@ function alternarPorta(id: number) {
                     :ferramenta="ferramenta"
                     :mestre="mestre"
                     :camada-iluminacao="camada === 'iluminacao'"
+                    :dados="painelDados"
+                    :turnos="painelTurnos"
                     @ferramenta="ferramenta = $event"
+                    @dados="(painelDados = !painelDados), (painelTurnos = false)"
+                    @turnos="(painelTurnos = !painelTurnos), (painelDados = false)"
                     @enviar-mapa="inputMapa?.click()"
                     @novo-token="tokenAberto = true"
                     @configurar="configurar(pagina.id)"
@@ -315,10 +490,35 @@ function alternarPorta(id: number) {
                 <SeletorCamada v-if="mestre" :camada="camada" @camada="(c) => ((camada = c), (ferramenta = 'selecionar'))" />
                 <Inspetor v-if="mestre && selecionado && pagina" :objeto="selecionado" :pagina="pagina" @atualizar="atualizarSelecionado" @remover="removerSelecionado" />
                 <ControlesZoom :escala="escala" @mais="canvas?.zoomPor(1.25)" @menos="canvas?.zoomPor(1 / 1.25)" @ajustar="canvas?.ajustar()" />
+                <OpcoesFerramenta v-if="(ferramenta === 'pintar' || ferramenta === 'texto') && !painelDados && !painelTurnos" :ferramenta="ferramenta" v-model:estilo="estilo" />
+                <PainelDados v-if="painelDados" :mestre="mestre" :rolando="rolando" @rolar="rolar" @fechar="painelDados = false" />
+                <PainelTurnos v-if="painelTurnos && mestre" :combate="combate" :personagens="personagens" @atualizar="salvarCombate" @fechar="painelTurnos = false" />
+                <BarraTurnos :combate="combate" :mestre="mestre" @anterior="passarTurno(-1)" @proximo="passarTurno(1)" @abrir="(painelTurnos = true), (painelDados = false)" />
+                <PainelChat v-model:animacao="animacao" :mensagens="mensagens" :meu-id="personagem.id" @enviar="enviarTexto" />
+
+                <form
+                    v-if="textoPendente"
+                    class="pointer-events-auto absolute z-30"
+                    :style="{ left: textoPendente.tela.x + 'px', top: textoPendente.tela.y + 'px' }"
+                    @submit.prevent="confirmarTexto"
+                >
+                    <input
+                        v-model="textoPendente.valor"
+                        autofocus
+                        maxlength="500"
+                        placeholder="Digite e pressione Enter…"
+                        aria-label="Texto na cena"
+                        class="h-9 w-64 rounded-md border border-ouro-400 bg-preto-950 px-3 text-sm text-preto-100 shadow-lg focus-visible:outline-none"
+                        @keydown.esc.prevent="textoPendente = null"
+                        @blur="confirmarTexto"
+                    />
+                </form>
             </template>
 
             <div v-if="erro" role="alert" class="pointer-events-auto absolute left-1/2 top-16 z-30 max-w-md -translate-x-1/2 rounded-md border border-ouro-500/40 bg-preto-900 px-4 py-2 text-sm text-ouro-100 shadow-lg">{{ erro }}</div>
         </div>
+
+        <DadosAnimacao v-if="filaAnimacao.length" :key="filaAnimacao[0].id" :mensagem="filaAnimacao[0]" @fim="filaAnimacao.shift()" />
 
         <input ref="inputMapa" type="file" class="sr-only" tabindex="-1" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4" @change="enviarMapa" />
 

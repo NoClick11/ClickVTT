@@ -1,4 +1,5 @@
 import type { ObjetoDto, PaginaDto } from './engine/tipos';
+import type { Combate, Mensagem, VisibilidadeRolagem } from './tipos-mesa';
 
 export class ErroApi extends Error {
     constructor(
@@ -53,6 +54,9 @@ export function apiMesa(mesaId: number, atorId: number) {
         atualizarPagina: (id: number, campos: object) => requisitar<PaginaDto>(atorId, 'PATCH', r('jogo.paginas.update', id), campos),
         removerPagina: (id: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.paginas.destroy', id)),
         moverJogador: (paginaId: number, personagemId: number) => requisitar<object>(atorId, 'POST', r('jogo.paginas.jogador', paginaId, personagemId)),
+        enviarTexto: (texto: string) => requisitar<Mensagem>(atorId, 'POST', r('jogo.mensagens.store'), { texto }),
+        rolar: (dado: string, quantidade: number, visibilidade: VisibilidadeRolagem) => requisitar<Mensagem>(atorId, 'POST', r('jogo.rolagens.store'), { dado, quantidade, visibilidade }),
+        salvarCombate: (combate: Combate) => requisitar<Combate>(atorId, 'PUT', r('jogo.combate.update'), combate),
         criarPasta: (nome: string) => requisitar<{ id: number; nome: string; ordem: number }>(atorId, 'POST', r('jogo.pastas.store'), { nome }),
         atualizarPasta: (id: number, campos: object) => requisitar<{ id: number; nome: string; ordem: number }>(atorId, 'PATCH', r('jogo.pastas.update', id), campos),
         removerPasta: (id: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.pastas.destroy', id)),

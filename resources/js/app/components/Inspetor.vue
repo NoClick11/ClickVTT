@@ -23,9 +23,9 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
 
 <template>
     <aside class="pointer-events-auto absolute right-3 top-16 z-10 w-64 rounded-lg border border-ouro-500/20 bg-preto-950/92 p-3 text-sm text-preto-100 backdrop-blur" aria-label="Objeto selecionado">
-        <p class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ouro-400">{{ { token: 'Token', luz: 'Luz', parede: 'Parede, porta ou janela', imagem: 'Imagem' }[objeto.tipo] }}</p>
+        <p class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ouro-400">{{ { token: 'Token', luz: 'Luz', parede: 'Parede, porta ou janela', imagem: 'Imagem', traco: 'Desenho', texto: 'Texto' }[objeto.tipo] }}</p>
         <div class="grid gap-3">
-            <label v-if="objeto.tipo !== 'parede'" class="grid gap-1">
+            <label v-if="objeto.tipo !== 'parede' && objeto.tipo !== 'texto' && objeto.tipo !== 'traco'" class="grid gap-1">
                 <span class="text-xs text-preto-300">Nome</span>
                 <Input :class="campo" :model-value="objeto.nome ?? ''" @change="(e: Event) => emit('atualizar', { nome: (e.target as HTMLInputElement).value })" />
             </label>
@@ -43,7 +43,27 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
                     <span>Aberta <span class="text-xs text-preto-400">(duplo clique alterna)</span></span>
                 </label>
             </template>
+            <template v-else-if="objeto.tipo === 'texto'">
+                <label class="grid gap-1">
+                    <span class="text-xs text-preto-300">Texto</span>
+                    <Input :class="campo" :model-value="objeto.dados?.texto ?? ''" @change="(e: Event) => emit('atualizar', { dados: { texto: (e.target as HTMLInputElement).value } })" />
+                </label>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="grid gap-1">
+                        <span class="text-xs text-preto-300">Tamanho</span>
+                        <Input :class="campo" type="number" min="6" max="400" :model-value="objeto.dados?.tamanho ?? 28" @change="(e: Event) => emit('atualizar', { dados: { tamanho: Number((e.target as HTMLInputElement).value) } })" />
+                    </label>
+                    <label class="grid gap-1">
+                        <span class="text-xs text-preto-300">Cor</span>
+                        <Input type="color" class="h-8 p-1" :model-value="objeto.dados?.cor ?? '#ffffff'" @change="(e: Event) => emit('atualizar', { dados: { cor: (e.target as HTMLInputElement).value } })" />
+                    </label>
+                </div>
+            </template>
             <template v-else>
+            <label v-if="objeto.tipo === 'traco'" class="grid gap-1">
+                <span class="text-xs text-preto-300">Cor do traço</span>
+                <Input type="color" class="h-8 p-1" :model-value="objeto.dados?.cor ?? '#ef4444'" @change="(e: Event) => emit('atualizar', { dados: { cor: (e.target as HTMLInputElement).value } })" />
+            </label>
             <label v-if="objeto.tipo === 'luz'" class="grid gap-1">
                 <span class="text-xs text-preto-300">Cor da luz</span>
                 <Input type="color" class="h-8 p-1" :model-value="objeto.dados?.cor ?? '#ffd27a'" @change="(e: Event) => emit('atualizar', { dados: { cor: (e.target as HTMLInputElement).value } })" />

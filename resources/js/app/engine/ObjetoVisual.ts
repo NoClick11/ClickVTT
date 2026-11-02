@@ -12,6 +12,7 @@ export class ObjetoVisual {
     private video: HTMLVideoElement | null = null;
     private texturaVideo: Texture | null = null;
     private rotulo: Text | null = null;
+    private textoLivre: Text | null = null;
     private arquivoCarregado: string | null = null;
     private marcador = new Graphics();
     private destruido = false;
@@ -52,11 +53,23 @@ export class ObjetoVisual {
             return Math.hypot(x - (ox + largura / 2), y - (oy + altura / 2)) <= Math.max(Math.min(largura, altura) / 2, tolerancia);
         }
 
+        if (this.dto.tipo === 'traco' && this.dto.dados?.pontos) {
+            const p = this.dto.dados.pontos;
+            const sx = this.dto.largura / (this.dto.dados.largura_original || this.dto.largura);
+            const sy = this.dto.altura / (this.dto.dados.altura_original || this.dto.altura);
+            const folga = tolerancia + (this.dto.dados.espessura ?? 4) / 2;
+            for (let i = 0; i + 3 < p.length; i += 2) {
+                if (distanciaAoSegmento(x, y, this.dto.x + p[i] * sx, this.dto.y + p[i + 1] * sy, this.dto.x + p[i + 2] * sx, this.dto.y + p[i + 3] * sy) <= folga) return true;
+            }
+
+            return false;
+        }
+
         return this.contem(x, y);
     }
 
     contem(x: number, y: number): boolean {
-        const { x: ox, y: oy, largura, altura } = this.dto;
+        const { x: ox, y: oy, largura, altura } = this.caixa();
         return x >= ox && x <= ox + largura && y >= oy && y <= oy + altura;
     }
 
@@ -86,7 +99,11 @@ export class ObjetoVisual {
     private desenharFundo(): void {
         const { largura, altura, camada, dados, nome } = this.dto;
         const g = this.fundo.clear();
-        if (this.dto.tipo === 'luz') {
+        if (this.dto.tipo === 'traco') {
+            this.desenharTraco(g);
+        } else if (this.dto.tipo === 'texto') {
+            this.desenharTexto();
+        } else if (this.dto.tipo === 'luz') {
             this.desenharLuz(g);
         } else if (this.dto.tipo === 'parede') {
             this.desenharParede(g);
@@ -100,6 +117,42 @@ export class ObjetoVisual {
             g.rect(0, 0, largura, altura).fill({ color: 0x25212b, alpha: 0.6 }).stroke({ color: 0x4a4452, width: 2 });
         }
         void nome;
+    }
+
+    /** Traço livre: pontos relativos ao objeto; esticar o objeto estica o desenho. */
+    private desenharTraco(g: Graphics): void {
+        const { dados, largura, altura } = this.dto;
+        const pts = dados?.pontos;
+        if (!pts || pts.length < 4) return;
+        const sx = largura / (dados?.largura_original || largura);
+        const sy = altura / (dados?.altura_original || altura);
+        g.moveTo(pts[0] * sx, pts[1] * sy);
+        for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i] * sx, pts[i + 1] * sy);
+        g.stroke({ color: corHex(dados?.cor), width: dados?.espessura ?? 4, cap: 'round', join: 'round' });
+    }
+
+    /** Texto livre (não estica): o tamanho vem de `dados.tamanho`. */
+    private desenharTexto(): void {
+        const { dados } = this.dto;
+        if (!this.textoLivre) {
+            this.textoLivre = new Text({ text: '', style: { fontFamily: 'Georgia, serif', fontWeight: '700', fill: 0xffffff, fontSize: 28 } });
+            this.container.addChild(this.textoLivre);
+        }
+        const t = this.textoLivre;
+        t.text = dados?.texto ?? '';
+        t.style.fontSize = dados?.tamanho ?? 28;
+        t.style.fill = corHex(dados?.cor ?? '#ffffff');
+        t.style.stroke = { color: 0x0d0a12, width: Math.max(2, (dados?.tamanho ?? 28) / 8) };
+    }
+
+    /** Caixa real em coordenadas do mundo (texto usa a medida do próprio texto). */
+    caixa(): { x: number; y: number; largura: number; altura: number } {
+        if (this.dto.tipo === 'texto' && this.textoLivre) {
+            return { x: this.dto.x, y: this.dto.y, largura: this.textoLivre.width, altura: this.textoLivre.height };
+        }
+        const { x, y, largura, altura } = this.dto;
+
+        return { x, y, largura, altura };
     }
 
     /** Brilho radial somado ao mapa (visível ao jogador). */
