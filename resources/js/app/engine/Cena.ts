@@ -56,6 +56,9 @@ export class Cena {
     private alca: AlcaRedimensionar | null = null;
     private reguaInicio = { x: 0, y: 0 };
     private desenhoInicio = { x: 0, y: 0 };
+    /** Destino encaixado no grid durante o redimensionamento (mostrado como contorno-guia). */
+    private alvoEncaixe: CamposGeometria | null = null;
+    private animacao: (() => void) | null = null;
     private iniciou = false;
     private host!: HTMLElement;
     private pronto = false;
@@ -277,6 +280,10 @@ export class Cena {
             return; // paredes não se movem nem se redimensionam: exclua e desenhe de novo
         }
         g.rect(x, y, largura, altura).stroke({ color: 0xd4a843, width: 1.5, alpha: 0.95, pixelLine: true });
+        const guia = this.alvoEncaixe;
+        if (guia && this.modo === 'redimensionar') {
+            g.rect(guia.x!, guia.y!, guia.largura!, guia.altura!).fill({ color: 0xd4a843, alpha: 0.12 }).stroke({ color: 0xf4e0a0, width: 1.5, alpha: 0.9, pixelLine: true });
+        }
         if (!this.opcoes.mestre) return;
         const s = TAMANHO_ALCA / this.mundo.scale.x;
         for (const a of ALCAS) {
@@ -305,18 +312,20 @@ export class Cena {
         return null;
     }
 
-    private redimensionar(p: { x: number; y: number }, manterProporcao: boolean): CamposGeometria {
+    /** `encaixar`: arestas nos quadrados (resultado final); sem isso, acompanha o mouse livremente. */
+    private redimensionar(p: { x: number; y: number }, manterProporcao: boolean, encaixar: boolean): CamposGeometria {
         const { x, y, largura: w0, altura: h0 } = this.inicioObjeto as Required<CamposGeometria>;
         const a = this.alca!;
         const minimo = this.snapAtivo ? (this.pagina?.tamanho_quadrado ?? 70) : 10;
+        const ajustar = (v: number) => (encaixar ? this.snap(v) : v);
         let esq = x;
         let dir = x + w0;
         let topo = y;
         let base = y + h0;
-        if (a.includes('w')) esq = Math.min(this.snap(p.x), dir - minimo);
-        if (a.includes('e')) dir = Math.max(this.snap(p.x), esq + minimo);
-        if (a.includes('n')) topo = Math.min(this.snap(p.y), base - minimo);
-        if (a.includes('s')) base = Math.max(this.snap(p.y), topo + minimo);
+        if (a.includes('w')) esq = Math.min(ajustar(p.x), dir - minimo);
+        if (a.includes('e')) dir = Math.max(ajustar(p.x), esq + minimo);
+        if (a.includes('n')) topo = Math.min(ajustar(p.y), base - minimo);
+        if (a.includes('s')) base = Math.max(ajustar(p.y), topo + minimo);
 
         if (manterProporcao && a.length === 2) {
             const razao = w0 / h0;
@@ -423,6 +432,7 @@ export class Cena {
     }
 
     private aoPressionar(e: PointerEvent): void {
+        this.animacao?.();
         this.app.canvas.setPointerCapture(e.pointerId);
         const tela = this.posTela(e);
         const p = this.paraMundo(tela.x, tela.y);
@@ -506,7 +516,9 @@ export class Cena {
             return;
         }
         if (this.modo === 'redimensionar' && v && this.alca) {
-            const campos = this.redimensionar(p, e.shiftKey);
+            // Acompanha o mouse livremente; o encaixe no grid vem como guia e é aplicado (animado) ao soltar.
+            const campos = this.redimensionar(p, e.shiftKey, false);
+            this.alvoEncaixe = this.snapAtivo ? this.redimensionar(p, e.shiftKey, true) : null;
             v.definirGeometria(campos);
             this.desenharSelecao();
             this.opcoes.eventos.alterar(v.dto.id, campos, false);
@@ -530,13 +542,54 @@ export class Cena {
             }
         }
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
-        if (v && ((this.modo === 'mover' && this.iniciou) || this.modo === 'redimensionar')) {
-            const { x, y, largura, altura } = v.dto;
-            this.opcoes.eventos.alterar(v.dto.id, this.modo === 'mover' ? { x, y } : { x, y, largura, altura }, true);
-        }
+        const modo = this.modo;
         this.modo = 'nenhum';
         this.alca = null;
         this.atualizarCursor();
+        if (!v) return;
+        if (modo === 'mover' && this.iniciou) {
+            const { x, y } = v.dto;
+            this.opcoes.eventos.alterar(v.dto.id, { x, y }, true);
+        } else if (modo === 'redimensionar') {
+            const alvo = this.alvoEncaixe;
+            this.alvoEncaixe = null;
+            const concluir = () => {
+                const { x, y, largura, altura } = v.dto;
+                this.opcoes.eventos.alterar(v.dto.id, { x, y, largura, altura }, true);
+            };
+            if (alvo) this.animarPara(v, alvo, concluir);
+            else concluir();
+        }
+    }
+
+    /** Desliza suavemente o objeto até o tamanho encaixado no grid (ease-out). */
+    private animarPara(v: ObjetoVisual, alvo: CamposGeometria, fim: () => void): void {
+        this.animacao?.();
+        const de = { x: v.dto.x, y: v.dto.y, largura: v.dto.largura, altura: v.dto.altura };
+        const duracao = 140;
+        let decorrido = 0;
+        const passo = (t: { deltaMS: number }) => {
+            decorrido += t.deltaMS;
+            const k = Math.min(1, decorrido / duracao);
+            const e = 1 - Math.pow(1 - k, 3);
+            v.definirGeometria({
+                x: de.x + (alvo.x! - de.x) * e,
+                y: de.y + (alvo.y! - de.y) * e,
+                largura: de.largura + (alvo.largura! - de.largura) * e,
+                altura: de.altura + (alvo.altura! - de.altura) * e,
+            });
+            this.desenharSelecao();
+            if (k >= 1) encerrar();
+        };
+        const encerrar = () => {
+            this.app.ticker.remove(passo);
+            this.animacao = null;
+            v.definirGeometria(alvo);
+            this.desenharSelecao();
+            fim();
+        };
+        this.animacao = encerrar; // outra ação interrompe e conclui na hora
+        this.app.ticker.add(passo);
     }
 
     private atualizarCursor(forcado?: string): void {

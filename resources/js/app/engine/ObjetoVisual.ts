@@ -90,9 +90,10 @@ export class ObjetoVisual {
             this.desenharLuz(g);
         } else if (this.dto.tipo === 'parede') {
             this.desenharParede(g);
-        } else if (this.ehToken) {
+        } else if (this.ehToken && !this.arquivoCarregado) {
+            // Sem imagem: círculo colorido com a inicial. Com imagem, ela ocupa o token inteiro.
             const r = Math.min(largura, altura) / 2;
-            g.circle(largura / 2, altura / 2, r).fill({ color: corHex(dados?.cor), alpha: this.arquivoCarregado ? 0.001 : 1 });
+            g.circle(largura / 2, altura / 2, r).fill({ color: corHex(dados?.cor), alpha: 1 });
             g.circle(largura / 2, altura / 2, r).stroke({ color: camada === 'mestre' ? 0xd4a843 : 0x0d0a12, width: 3, alpha: 0.9 });
         } else if (!this.arquivoCarregado) {
             // Mapa/imagem ainda carregando ou sem arquivo.
@@ -151,26 +152,13 @@ export class ObjetoVisual {
         this.rotulo.position.set(largura / 2, altura / 2);
     }
 
+    /** A mídia preenche todo o objeto (estica, sem recortar): o que foi colocado dentro nunca é cortado. */
     private ajustarMidia(): void {
         const m = this.midia;
         if (!m) return;
-        const { largura, altura } = this.dto;
-        if (this.ehToken) {
-            // Imagem do token recortada em círculo (cobre o círculo).
-            const lado = Math.max(largura, altura);
-            m.width = lado;
-            m.height = lado;
-            m.position.set((largura - lado) / 2, (altura - lado) / 2);
-            const mascara = (m as Container & { __mascara?: Graphics }).__mascara ?? new Graphics();
-            (m as Container & { __mascara?: Graphics }).__mascara = mascara;
-            mascara.clear().circle(largura / 2, altura / 2, Math.min(largura, altura) / 2).fill(0xffffff);
-            if (!mascara.parent) this.container.addChild(mascara);
-            m.mask = mascara;
-        } else {
-            m.width = largura;
-            m.height = altura;
-            m.position.set(0, 0);
-        }
+        m.width = this.dto.largura;
+        m.height = this.dto.altura;
+        m.position.set(0, 0);
     }
 
     private async carregarMidia(): Promise<void> {
@@ -231,9 +219,6 @@ export class ObjetoVisual {
         this.texturaVideo?.destroy(true);
         this.texturaVideo = null;
         if (this.midia) {
-            this.midia.mask = null;
-            const mascara = (this.midia as Container & { __mascara?: Graphics }).__mascara;
-            mascara?.destroy();
             this.midia.destroy();
             this.midia = null;
         }
