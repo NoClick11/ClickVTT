@@ -15,6 +15,8 @@ import DadosAnimacao from '../components/DadosAnimacao.vue';
 import OpcoesFerramenta from '../components/OpcoesFerramenta.vue';
 import BarraLateral, { type AbaLateral } from '../components/BarraLateral.vue';
 import PainelChat from '../components/PainelChat.vue';
+import FichaDnd5e from '../ficha/FichaDnd5e.vue';
+import JanelaFlutuante from '../ficha/JanelaFlutuante.vue';
 import AtribuirJogadoresDialog from '../components/AtribuirJogadoresDialog.vue';
 import PainelPersonagens from '../components/PainelPersonagens.vue';
 import PainelDados from '../components/PainelDados.vue';
@@ -332,11 +334,28 @@ watch(
     { deep: true },
 );
 
-const fichasAbertas = ref<number[]>([]);
-/** Clicar num personagem abre a ficha e, se ele for meu, o torna o ativo. */
+// Fichas abertas em janelas flutuantes. A ordem do array é a ordem de empilhamento (a última fica por cima).
+interface FichaAberta {
+    id: number;
+    x: number;
+    y: number;
+}
+const fichasAbertas = ref<FichaAberta[]>([]);
+const personagensAbertos = computed(() => fichasAbertas.value.map((f, i) => ({ ...f, z: 30 + i, personagem: props.personagens.find((p) => p.id === f.id) })).filter((f) => f.personagem));
+const tamanhoFicha = () => ({ largura: Math.min(940, window.innerWidth - 32), altura: Math.min(700, window.innerHeight - 76) });
+function focarFicha(id: number) {
+    const i = fichasAbertas.value.findIndex((f) => f.id === id);
+    if (i >= 0 && i < fichasAbertas.value.length - 1) fichasAbertas.value.push(...fichasAbertas.value.splice(i, 1));
+}
+function fecharFicha(id: number) {
+    fichasAbertas.value = fichasAbertas.value.filter((f) => f.id !== id);
+}
+/** Clicar num personagem abre a ficha (janela flutuante) e, se ele for meu, o torna o ativo. */
 function abrirPersonagem(id: number) {
     if (props.meusPersonagens.includes(id)) ativoId.value = id;
-    if (!fichasAbertas.value.includes(id)) fichasAbertas.value.push(id);
+    if (fichasAbertas.value.some((f) => f.id === id)) return focarFicha(id);
+    const desloca = (fichasAbertas.value.length % 6) * 28;
+    fichasAbertas.value.push({ id, x: 90 + desloca, y: 64 + desloca });
 }
 
 const atribuindo = ref<Personagem | null>(null);
@@ -636,6 +655,23 @@ function alternarPorta(id: number) {
 
             <div v-if="erro" role="alert" class="pointer-events-auto absolute left-1/2 top-16 z-30 max-w-md -translate-x-1/2 rounded-md border border-ouro-500/40 bg-preto-900 px-4 py-2 text-sm text-ouro-100 shadow-lg">{{ erro }}</div>
         </div>
+
+        <!-- Fichas: janelas flutuantes por cima do mapa (arrastar, redimensionar, várias abertas) -->
+        <JanelaFlutuante
+            v-for="f in personagensAbertos"
+            :key="f.id"
+            :titulo="`Ficha · ${f.personagem!.nome}`"
+            :cor="f.personagem!.cor"
+            :x="f.x"
+            :y="f.y"
+            :largura="tamanhoFicha().largura"
+            :altura="tamanhoFicha().altura"
+            :z="f.z"
+            @focar="focarFicha(f.id)"
+            @fechar="fecharFicha(f.id)"
+        >
+            <FichaDnd5e :personagem="f.personagem!" />
+        </JanelaFlutuante>
 
         <DadosAnimacao v-if="animacaoAtual" :key="animacaoAtual.id" :mensagem="animacaoAtual" @fim="animacaoAtual = null" />
 
