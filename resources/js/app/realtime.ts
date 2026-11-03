@@ -22,7 +22,7 @@ export interface Conexao {
 
 /**
  * Conexão com o Reverb desta aba. Canais privados são autorizados pelo servidor com o acesso do
- * convite + X-Personagem (quem é esta aba). Host: VITE_REVERB_HOST ou o próprio endereço da página.
+ * convite + X-Jogador (quem é esta aba). Host: VITE_REVERB_HOST ou o próprio endereço da página.
  */
 export function conectar(mesaId: number, atorId: number): Conexao {
     const esquema = import.meta.env.VITE_REVERB_SCHEME ?? (location.protocol === 'https:' ? 'https' : 'http');
@@ -36,7 +36,7 @@ export function conectar(mesaId: number, atorId: number): Conexao {
         forceTLS: esquema === 'https',
         enabledTransports: ['ws', 'wss'],
         authEndpoint: route('jogo.broadcasting.auth', mesaId),
-        auth: { headers: { 'X-Personagem': String(atorId), 'X-XSRF-TOKEN': xsrf(), Accept: 'application/json' } },
+        auth: { headers: { 'X-Jogador': String(atorId), 'X-XSRF-TOKEN': xsrf(), Accept: 'application/json' } },
     });
 
     return { echo, fechar: () => echo.disconnect() };

@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import type { Personagem } from '@/site/types';
+import type { Jogador } from '@/site/types';
 import { ChevronDown, ChevronUp, Eye, MoreVertical, Pencil, Settings2, Trash2, Users } from 'lucide-vue-next';
 import { nextTick, ref } from 'vue';
 import type { PaginaDto } from '../engine/tipos';
@@ -10,7 +10,7 @@ import type { PaginaDto } from '../engine/tipos';
 const props = defineProps<{
     pagina: PaginaDto;
     atual: boolean;
-    jogadores: Personagem[];
+    jogadores: Jogador[];
     pastas: { id: number; nome: string }[];
     ultima: boolean;
 }>();
@@ -21,7 +21,7 @@ const emit = defineEmits<{
     excluir: [];
     moverParaPasta: [pastaId: number | null];
     reordenar: [direcao: -1 | 1];
-    soltar: [personagemId: number];
+    soltar: [jogadorId: number];
     trazerTodos: [];
 }>();
 
@@ -50,11 +50,11 @@ function pedirExclusao() {
 }
 function aoSoltar(e: DragEvent) {
     sobre.value = false;
-    const id = Number(e.dataTransfer?.getData('text/x-personagem'));
+    const id = Number(e.dataTransfer?.getData('text/x-jogador'));
     if (id) emit('soltar', id);
 }
-function aoArrastarJogador(e: DragEvent, p: Personagem) {
-    e.dataTransfer?.setData('text/x-personagem', String(p.id));
+function aoArrastarJogador(e: DragEvent, p: Jogador) {
+    e.dataTransfer?.setData('text/x-jogador', String(p.id));
     if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
 }
 </script>

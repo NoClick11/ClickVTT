@@ -24,6 +24,8 @@ export interface ObjetoDto {
     camada: Camada;
     tipo: 'imagem' | 'token' | 'luz' | 'parede' | 'traco' | 'texto';
     personagem_id: number | null;
+    /** jogador que fez (traço/texto) */
+    jogador_id: number | null;
     nome: string | null;
     x: number;
     y: number;

@@ -9,7 +9,8 @@ export interface Mensagem {
     tipo: 'texto' | 'rolagem';
     /** `secreto_oculto` = aviso mostrado aos jogadores quando o mestre rola em segredo. */
     visibilidade: VisibilidadeRolagem | 'secreto_oculto';
-    autor: { id: number; nome: string; cor: string } | null;
+    /** `id` = JOGADOR que enviou; nome/cor = do personagem quando falou como ele. */
+    autor: { id: number; personagem_id: number | null; nome: string; cor: string } | null;
     texto: string | null;
     dados: { dado: Dado; faces: number; quantidade: number; resultados: number[]; total: number } | null;
     criada_em: string | null;
@@ -29,12 +30,4 @@ export interface Combate {
     rodada: number;
     atual: string | null;
     itens: ItemTurno[];
-}
-
-/** Personagem como todos podem ver (sem senha nem página). */
-export interface PersonagemElenco {
-    id: number;
-    nome: string;
-    papel: 'jogador' | 'mestre';
-    cor: string;
 }

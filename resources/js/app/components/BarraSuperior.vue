@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import { Button } from '@/components/ui/button';
-import { PAPEIS, type Personagem } from '@/site/types';
+import { PAPEIS, type Jogador, type Personagem } from '@/site/types';
 import { BookOpen, Crown, LogOut } from 'lucide-vue-next';
 
-defineProps<{ mesaNome: string; paginaNome: string; personagem: Personagem; mestre: boolean }>();
+defineProps<{ mesaNome: string; paginaNome: string; jogador: Jogador; ativo: Personagem | null; mestre: boolean }>();
 defineEmits<{ paginas: []; sair: [] }>();
 </script>
 
@@ -23,8 +23,9 @@ defineEmits<{ paginas: []; sair: [] }>();
         </div>
         <div class="flex items-center gap-2">
             <span class="flex items-center gap-1.5 text-sm text-preto-200">
-                <span class="size-2.5 rounded-full" :style="{ backgroundColor: personagem.cor }" />
-                {{ personagem.nome }}
+                <span class="size-2.5 rounded-full" :style="{ backgroundColor: ativo?.cor ?? jogador.cor }" />
+                {{ jogador.nome }}
+                <span v-if="ativo" class="text-xs text-preto-400" title="Personagem ativo: chat e dados saem como ele">como <span :style="{ color: ativo.cor }">{{ ativo.nome }}</span></span>
                 <Crown v-if="mestre" class="size-3.5 text-ouro-400" :aria-label="PAPEIS.mestre" />
             </span>
             <Button size="icon" variant="ghost" class="size-8" aria-label="Sair da mesa" @click="$emit('sair')"><LogOut class="size-4" /></Button>

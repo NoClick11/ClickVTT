@@ -15,7 +15,7 @@ const personagemId = ref<number | null>(null);
 const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
 
 const ordenados = computed(() => [...props.combate.itens].sort((a, b) => (b.iniciativa ?? -Infinity) - (a.iniciativa ?? -Infinity)));
-const disponiveis = computed(() => props.personagens.filter((p) => p.papel !== 'mestre' && !props.combate.itens.some((i) => i.personagem_id === p.id)));
+const disponiveis = computed(() => props.personagens.filter((p) => !props.combate.itens.some((i) => i.personagem_id === p.id)));
 
 const novoId = () => Math.random().toString(36).slice(2, 10);
 const salvar = (parcial: Partial<Combate>) => emit('atualizar', { ...props.combate, ...parcial });

@@ -9,7 +9,8 @@ const props = defineProps<{
     camada: Camada;
     ferramenta: Ferramenta;
     mestre: boolean;
-    personagemId: number | null;
+    jogadorId: number | null;
+    personagensPermitidos: number[];
     estilo: EstiloPintura;
     margemDireita: number;
 }>();
@@ -32,7 +33,8 @@ let destruido = false;
 onMounted(async () => {
     const nova = new Cena({
         mestre: props.mestre,
-        personagemId: props.personagemId,
+        jogadorId: props.jogadorId,
+        personagensPermitidos: props.personagensPermitidos,
         eventos: {
             selecionar: (id) => emit('selecionar', id),
             alterar: (id, campos, final) => emit('alterar', id, campos, final),
@@ -68,6 +70,7 @@ watch(() => props.pagina, (p) => cena?.setPagina(p), { deep: true });
 watch(() => props.objetos, (o) => cena?.setObjetos(o), { deep: true });
 watch(() => props.camada, (c) => cena?.setCamadaAtiva(c));
 watch(() => props.ferramenta, (f) => cena?.setFerramenta(f));
+watch(() => props.personagensPermitidos, (ids) => cena?.setPersonagensPermitidos(ids), { deep: true });
 watch(() => props.margemDireita, (m) => cena?.setMargemDireita(m));
 watch(() => props.estilo, (e) => cena?.setEstilo(e), { deep: true });
 

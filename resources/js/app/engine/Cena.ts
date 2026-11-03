@@ -22,8 +22,10 @@ type Modo = 'nenhum' | 'pan' | 'mover' | 'redimensionar' | 'regua' | 'desenhar' 
 
 interface Opcoes {
     mestre: boolean;
-    /** Id do personagem do jogador (para mover só o próprio token). */
-    personagemId: number | null;
+    /** Id do JOGADOR desta aba (traços/textos dele). */
+    jogadorId: number | null;
+    /** Personagens que este jogador controla: só os tokens deles podem ser movidos. */
+    personagensPermitidos: number[];
     eventos: CenaEventos;
 }
 
@@ -157,6 +159,10 @@ export class Cena {
         this.atualizarCursor();
     }
 
+    setPersonagensPermitidos(ids: number[]): void {
+        this.opcoes.personagensPermitidos = ids;
+    }
+
     setMargemDireita(px: number): void {
         const delta = px - this.margemDireita;
         this.margemDireita = px;
@@ -287,7 +293,10 @@ export class Cena {
     private podeInteragir(v: ObjetoVisual): boolean {
         if (this.opcoes.mestre) return v.dto.camada === this.camadaAtiva;
 
-        return v.dto.camada === 'jogadores' && v.dto.personagem_id !== null && v.dto.personagem_id === this.opcoes.personagemId;
+        if (v.dto.camada !== 'jogadores') return false;
+        if (v.dto.tipo === 'token') return v.dto.personagem_id !== null && this.opcoes.personagensPermitidos.includes(v.dto.personagem_id);
+
+        return (v.dto.tipo === 'traco' || v.dto.tipo === 'texto') && v.dto.jogador_id !== null && v.dto.jogador_id === this.opcoes.jogadorId;
     }
 
     private objetoEm(x: number, y: number): ObjetoVisual | null {

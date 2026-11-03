@@ -49,7 +49,7 @@ function criar() {
                 <DialogDescription>Será colocado no centro da vista, na camada {{ camadaNome }}.</DialogDescription>
             </DialogHeader>
             <form class="grid gap-4" @submit.prevent="criar">
-                <Campo label="Personagem" for="t-pers" dica="Vincule a um personagem para o jogador poder mover o token.">
+                <Campo label="Personagem" for="t-pers" dica="Vincule a um personagem para os jogadores dele poderem mover o token.">
                     <select id="t-pers" v-model="personagemId" :class="campo">
                         <option :value="null">Token avulso (monstro, NPC…)</option>
                         <option v-for="p in personagens" :key="p.id" :value="p.id">{{ p.nome }}</option>

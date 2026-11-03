@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import type { Personagem } from '@/site/types';
+import type { Jogador } from '@/site/types';
 import { ChevronDown, ChevronRight, Crown, FilePlus, Folder, FolderPlus, Settings2, Trash2, Users } from 'lucide-vue-next';
 import { computed, nextTick, ref } from 'vue';
 import type { PaginaDto } from '../engine/tipos';
@@ -15,7 +15,7 @@ interface Pasta {
     ordem: number;
 }
 
-const props = defineProps<{ open: boolean; paginas: PaginaDto[]; pastas: Pasta[]; personagens: Personagem[]; paginaAtualId: number | null }>();
+const props = defineProps<{ open: boolean; paginas: PaginaDto[]; pastas: Pasta[]; jogadores: Jogador[]; paginaAtualId: number | null }>();
 const emit = defineEmits<{
     'update:open': [boolean];
     abrir: [id: number];
@@ -26,15 +26,15 @@ const emit = defineEmits<{
     excluirPagina: [id: number];
     moverParaPasta: [id: number, pastaId: number | null];
     reordenar: [id: number, direcao: -1 | 1];
-    moverJogador: [paginaId: number, personagemId: number];
+    moverJogador: [paginaId: number, jogadorId: number];
     trazerTodos: [paginaId: number];
     renomearPasta: [id: number, nome: string];
     excluirPasta: [id: number];
 }>();
 
 const primeiraId = computed(() => props.paginas[0]?.id ?? null);
-const paginaDe = (p: Personagem) => p.pagina_id ?? primeiraId.value;
-const jogadoresNa = (paginaId: number) => props.personagens.filter((p) => paginaDe(p) === paginaId);
+const paginaDe = (p: Jogador) => p.pagina_id ?? primeiraId.value;
+const jogadoresNa = (paginaId: number) => props.jogadores.filter((p) => paginaDe(p) === paginaId);
 const paginasDaPasta = (pastaId: number | null) => props.paginas.filter((p) => p.pasta_id === pastaId);
 
 const editando = ref<{ tipo: 'pagina' | 'pasta'; id: number; valor: string } | null>(null);
@@ -69,8 +69,8 @@ function excluir(chave: string, acao: () => void) {
 }
 
 // Arrastar e soltar: o jogador (ou o mestre) vai para a página onde for solto.
-function iniciarArraste(e: DragEvent, p: Personagem) {
-    e.dataTransfer?.setData('text/x-personagem', String(p.id));
+function iniciarArraste(e: DragEvent, p: Jogador) {
+    e.dataTransfer?.setData('text/x-jogador', String(p.id));
     e.dataTransfer!.effectAllowed = 'move';
 }
 </script>
@@ -93,7 +93,7 @@ function iniciarArraste(e: DragEvent, p: Personagem) {
                     <h3 class="mb-2 flex items-center gap-1.5 px-1 text-[11px] font-semibold uppercase tracking-wider text-ouro-400"><Users class="size-3.5" /> Jogadores</h3>
                     <ul class="flex flex-wrap gap-1.5">
                         <li
-                            v-for="p in personagens"
+                            v-for="p in jogadores"
                             :key="p.id"
                             draggable="true"
                             class="flex cursor-grab items-center gap-1.5 rounded-full border border-preto-700 bg-preto-900 py-1 pl-1.5 pr-2.5 text-xs active:cursor-grabbing"

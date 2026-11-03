@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import type { Personagem } from '@/site/types';
+import type { Jogador, Personagem } from '@/site/types';
 import { apiMesa, ErroApi, medirArquivo } from '../api';
 import { conectar, type Conexao } from '../realtime';
-import type { Combate, Dado, Mensagem, PersonagemElenco, VisibilidadeRolagem } from '../tipos-mesa';
+import type { Combate, Dado, Mensagem, VisibilidadeRolagem } from '../tipos-mesa';
 import BarraFerramentas from '../components/BarraFerramentas.vue';
 import BarraSuperior from '../components/BarraSuperior.vue';
 import CenaCanvas from '../components/CenaCanvas.vue';
@@ -15,6 +15,7 @@ import DadosAnimacao from '../components/DadosAnimacao.vue';
 import OpcoesFerramenta from '../components/OpcoesFerramenta.vue';
 import BarraLateral, { type AbaLateral } from '../components/BarraLateral.vue';
 import PainelChat from '../components/PainelChat.vue';
+import AtribuirJogadoresDialog from '../components/AtribuirJogadoresDialog.vue';
 import PainelPersonagens from '../components/PainelPersonagens.vue';
 import PainelDados from '../components/PainelDados.vue';
 import PainelTurnos from '../components/PainelTurnos.vue';
@@ -31,21 +32,23 @@ interface Pasta {
 }
 const props = defineProps<{
     mesa: { id: number; slug: string; nome: string; capa: string | null };
-    personagem: Personagem;
+    jogador: Jogador;
     mestre: boolean;
     pagina: PaginaDto | null;
     objetos: ObjetoDto[];
     paginas: PaginaDto[];
     pastas: Pasta[];
+    jogadores: Jogador[];
     personagens: Personagem[];
-    elenco: PersonagemElenco[];
+    /** ids dos personagens que ESTE jogador controla (o mestre controla todos) */
+    meusPersonagens: number[];
     combate: Combate;
     mensagens: Mensagem[];
     sairUrl: string;
 }>();
 
-const api = apiMesa(props.mesa.id, props.personagem.id);
-const urlJogo = () => route('jogo', [props.mesa.slug, props.personagem.id]);
+const api = apiMesa(props.mesa.id, props.jogador.id);
+const urlJogo = () => route('jogo', [props.mesa.slug, props.jogador.id]);
 const copia = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 
 // Camada padrão = Jogadores (só o mestre troca). Estado local da tela:
@@ -128,7 +131,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', aoRedimensionar));
 const comToken = computed(() => objetos.value.filter((o) => o.tipo === 'token' && o.personagem_id !== null).map((o) => o.personagem_id as number));
 const paginaDe = computed(() => {
     const m: Record<number, PaginaDto | undefined> = {};
-    for (const p of props.personagens) m[p.id] = props.paginas.find((x) => x.id === (p.pagina_id ?? props.paginas[0]?.id));
+    for (const p of props.jogadores) m[p.id] = props.paginas.find((x) => x.id === (p.pagina_id ?? props.paginas[0]?.id));
 
     return m;
 });
@@ -181,7 +184,7 @@ function atualizarSelecionado(campos: Partial<ObjetoDto>) {
 
 function removerSelecionado() {
     const o = selecionado.value;
-    if (!o || (!props.mestre && !['traco', 'texto'].includes(o.tipo))) return;
+    if (!o || (!props.mestre && !(['traco', 'texto'].includes(o.tipo) && o.jogador_id === props.jogador.id))) return;
     objetos.value = objetos.value.filter((x) => x.id !== o.id);
     selecionadoId.value = null;
     api.removerObjeto(o.id).catch(falhou);
@@ -305,8 +308,52 @@ async function reordenar(id: number, direcao: -1 | 1) {
     await acao(() => Promise.all([api.atualizarPagina(atual.id, { ordem: Math.max(0, ordemAtual) }), api.atualizarPagina(vizinha.id, { ordem: Math.max(0, ordemVizinha) })]), ['paginas'])();
 }
 
-const moverJogador = (paginaId: number, personagemId: number) => acao(() => api.moverJogador(paginaId, personagemId), ['personagens'])();
-const trazerTodos = (paginaId: number) => acao(() => Promise.all(props.personagens.map((p) => api.moverJogador(paginaId, p.id))), ['personagens'])();
+const moverJogador = (paginaId: number, jogadorId: number) => acao(() => api.moverJogador(paginaId, jogadorId), ['jogadores'])();
+const trazerTodos = (paginaId: number) => acao(() => Promise.all(props.jogadores.map((j) => api.moverJogador(paginaId, j.id))), ['jogadores'])();
+
+// --- personagem ativo ------------------------------------------------------------
+// Chat e dados da barra saem como o personagem ATIVO: o último em que o jogador clicou (entre os dele).
+const chaveAtivo = `clickvtt.ativo.${props.mesa.id}.${props.jogador.id}`;
+function ativoInicial(): number | null {
+    const salvo = Number(lerLocal(chaveAtivo, ''));
+    if (salvo && props.meusPersonagens.includes(salvo)) return salvo;
+
+    return props.mestre ? null : (props.meusPersonagens[0] ?? null);
+}
+const ativoId = ref<number | null>(ativoInicial());
+const ativo = computed(() => props.personagens.find((p) => p.id === ativoId.value) ?? null);
+watch(ativoId, (v) => gravarLocal(chaveAtivo, v === null ? '' : String(v)));
+// Se o mestre mudar os donos e o ativo deixar de ser meu, volta ao padrão.
+watch(
+    () => props.meusPersonagens,
+    (ids) => {
+        if (ativoId.value !== null && !ids.includes(ativoId.value)) ativoId.value = props.mestre ? null : (ids[0] ?? null);
+    },
+    { deep: true },
+);
+
+const fichasAbertas = ref<number[]>([]);
+/** Clicar num personagem abre a ficha e, se ele for meu, o torna o ativo. */
+function abrirPersonagem(id: number) {
+    if (props.meusPersonagens.includes(id)) ativoId.value = id;
+    if (!fichasAbertas.value.includes(id)) fichasAbertas.value.push(id);
+}
+
+const atribuindo = ref<Personagem | null>(null);
+const atribuicaoAberta = ref(false);
+function pedirAtribuicao(id: number) {
+    atribuindo.value = props.personagens.find((p) => p.id === id) ?? null;
+    atribuicaoAberta.value = atribuindo.value !== null;
+}
+async function salvarAtribuicao(personagemId: number, jogadores: number[]) {
+    try {
+        await api.atribuirJogadores(personagemId, jogadores);
+        atribuicaoAberta.value = false;
+        recarregar(['personagens', 'meusPersonagens']);
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
 
 // --- pintar e texto ----------------------------------------------------------------
 
@@ -365,21 +412,21 @@ function receberMensagem(m: Mensagem, substitui = false): boolean {
 }
 function aoNovaMensagem(m: Mensagem, substitui = false) {
     const nova = receberMensagem(m, substitui);
-    if (nova && m.autor?.id !== props.personagem.id && !(lateralAberta.value && abaLateral.value === 'chat')) naoLidas.value++;
+    if (nova && m.autor?.id !== props.jogador.id && !(lateralAberta.value && abaLateral.value === 'chat')) naoLidas.value++;
     if (nova && m.tipo === 'rolagem' && m.dados && animacao.value) animacaoAtual.value = m;
 }
 
 /** Sem trava no botão: cada clique rola. As respostas entram no chat na hora; a animação mostra só a mais recente. */
 async function rolar(dado: Dado, quantidade: number, visibilidade: VisibilidadeRolagem) {
     try {
-        aoNovaMensagem(await api.rolar(dado, quantidade, visibilidade));
+        aoNovaMensagem(await api.rolar(dado, quantidade, visibilidade, ativoId.value));
     } catch (e) {
         avisar(mensagemDe(e));
     }
 }
 async function enviarTexto(texto: string) {
     try {
-        aoNovaMensagem(await api.enviarTexto(texto));
+        aoNovaMensagem(await api.enviarTexto(texto, ativoId.value));
     } catch (e) {
         avisar(mensagemDe(e));
     }
@@ -407,13 +454,13 @@ function passarTurno(delta: 1 | -1) {
 
 let conexao: Conexao | null = null;
 let temporizadorCena: ReturnType<typeof setTimeout> | undefined;
-const meuId = props.personagem.id;
+const meuId = props.jogador.id;
 
 /** Outro participante mudou a cena: recarrega só o necessário (e não para quem agiu). */
 function aoMudarCena(payload: { ator: number | null }) {
     if (payload.ator === meuId) return;
     clearTimeout(temporizadorCena);
-    temporizadorCena = setTimeout(() => router.reload({ only: ['objetos', 'pagina', 'paginas', 'pastas', 'personagens'] }), 120);
+    temporizadorCena = setTimeout(() => router.reload({ only: ['objetos', 'pagina', 'paginas', 'pastas', 'jogadores', 'personagens', 'meusPersonagens'] }), 120);
 }
 
 onMounted(() => {
@@ -426,7 +473,7 @@ onMounted(() => {
                 .listen('.cena', (e: { ator: number | null }) => aoMudarCena(e))
                 .listen('.combate', (e: { combate: Combate; ator: number }) => e.ator !== meuId && (combate.value = e.combate));
         abrir(conexao.echo.private(base));
-        abrir(conexao.echo.private(`${base}.personagem.${meuId}`));
+        abrir(conexao.echo.private(`${base}.jogador.${meuId}`));
         if (props.mestre) abrir(conexao.echo.private(`${base}.mestre`));
     } catch (e) {
         console.warn('Tempo real indisponível', e);
@@ -502,7 +549,8 @@ function alternarPorta(id: number) {
                 :camada="camada"
                 :ferramenta="ferramenta"
                 :mestre="mestre"
-                :personagem-id="personagem.id"
+                :jogador-id="jogador.id"
+                :personagens-permitidos="meusPersonagens"
                 :estilo="estilo"
                 :margem-direita="margemDireita"
                 @criar-traco="criarTraco"
@@ -520,7 +568,7 @@ function alternarPorta(id: number) {
         </div>
 
         <div class="pointer-events-none absolute inset-0">
-            <BarraSuperior :mesa-nome="mesa.nome" :pagina-nome="pagina?.nome ?? '—'" :personagem="personagem" :mestre="mestre" @paginas="menuAberto = true" @sair="router.post(sairUrl)" />
+            <BarraSuperior :mesa-nome="mesa.nome" :pagina-nome="pagina?.nome ?? '—'" :jogador="jogador" :ativo="ativo" :mestre="mestre" @paginas="menuAberto = true" @sair="router.post(sairUrl)" />
 
             <template v-if="pagina">
                 <BarraFerramentas
@@ -548,10 +596,22 @@ function alternarPorta(id: number) {
                 <PainelTurnos v-if="painelTurnos && mestre" :combate="combate" :personagens="personagens" @atualizar="salvarCombate" @fechar="painelTurnos = false" />
                 <BarraLateral v-model:aba="abaLateral" v-model:aberta="lateralAberta" :nao-lidas="naoLidas">
                     <template #chat>
-                        <PainelChat :mensagens="mensagens" :meu-id="personagem.id" :visivel="lateralAberta && abaLateral === 'chat'" @enviar="enviarTexto" />
+                        <PainelChat :mensagens="mensagens" :meu-id="jogador.id" :visivel="lateralAberta && abaLateral === 'chat'" @enviar="enviarTexto" />
                     </template>
                     <template #personagens>
-                        <PainelPersonagens :elenco="elenco" :meu-id="personagem.id" :mestre="mestre" :pagina-de="paginaDe" :com-token="comToken" @focar="focarPersonagem" />
+                        <PainelPersonagens
+                            :personagens="personagens"
+                            :jogadores="jogadores"
+                            :meu-id="jogador.id"
+                            :mestre="mestre"
+                            :ativo-id="ativoId"
+                            :meus-personagens="meusPersonagens"
+                            :pagina-de="paginaDe"
+                            :com-token="comToken"
+                            @abrir="abrirPersonagem"
+                            @focar="focarPersonagem"
+                            @atribuir="pedirAtribuicao"
+                        />
                     </template>
                 </BarraLateral>
 
@@ -586,7 +646,7 @@ function alternarPorta(id: number) {
                 v-model:open="menuAberto"
                 :paginas="paginas"
                 :pastas="pastas"
-                :personagens="personagens"
+                :jogadores="jogadores"
                 :pagina-atual-id="pagina?.id ?? null"
                 @abrir="abrirPagina"
                 @configurar="configurar"
@@ -602,6 +662,7 @@ function alternarPorta(id: number) {
                 @excluir-pasta="(id) => acao(() => api.removerPasta(id), ['pastas', 'paginas'])()"
             />
             <ConfigPaginaDialog v-model:open="configAberta" :pagina="configPagina" :erro="configErro" @salvar="salvarConfig" />
+            <AtribuirJogadoresDialog v-model:open="atribuicaoAberta" :personagem="atribuindo" :jogadores="jogadores" @salvar="salvarAtribuicao" />
             <NovoTokenDialog v-model:open="tokenAberto" :personagens="personagens" :camada-nome="camadaNome" @criar="criarToken" />
         </template>
     </div>
