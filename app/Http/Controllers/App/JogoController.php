@@ -54,6 +54,9 @@ class JogoController extends Controller
             'paginas' => $mestre ? $mesa->paginas->map->paraFront()->values() : [],
             'pastas' => $mestre ? $mesa->pastas->map(fn ($p) => ['id' => $p->id, 'nome' => $p->nome, 'ordem' => $p->ordem])->values() : [],
             'personagens' => $mestre ? $mesa->personagens()->orderBy('nome')->get()->map->paraFront()->values() : [],
+            // Elenco público: todos veem quem está na mesa (sem senha, sem página).
+            'elenco' => $mesa->personagens()->orderByRaw("papel = 'mestre' desc")->orderBy('nome')->get()
+                ->map(fn ($p) => ['id' => $p->id, 'nome' => $p->nome, 'papel' => $p->papel, 'cor' => $p->cor])->values(),
             'combate' => $mesa->combate ?? ['ativo' => false, 'rodada' => 1, 'atual' => null, 'itens' => []],
             'mensagens' => $mesa->mensagens()->with('personagem')->latest('id')->limit(80)->get()->reverse()
                 ->map(fn ($m) => $m->para($acesso->personagem))->filter()->values(),

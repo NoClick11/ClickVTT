@@ -211,6 +211,19 @@ export class Cena {
         return this.paraMundo(this.app.screen.width / 2, this.app.screen.height / 2);
     }
 
+    /** Centraliza a vista num objeto (mantém o zoom) e, opcionalmente, o seleciona. */
+    focar(id: number, selecionar = false): void {
+        const v = this.visuais.get(id);
+        if (!v) return;
+        const c = v.caixa();
+        const livreW = this.app.screen.width - this.margemDireita;
+        const livreH = this.app.screen.height - MARGEM_TOPO;
+        const e = this.mundo.scale.x;
+        this.mundo.position.set(livreW / 2 - (c.x + c.largura / 2) * e, MARGEM_TOPO + livreH / 2 - (c.y + c.altura / 2) * e);
+        if (selecionar && this.podeInteragir(v)) this.selecionar(id);
+        this.aoMudarVista();
+    }
+
     get escala(): number {
         return this.mundo.scale.x;
     }

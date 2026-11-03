@@ -1,31 +1,28 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
-import { MessageSquare, PanelRightClose, Send, Sparkles } from 'lucide-vue-next';
+import { MessageSquare, Send, Sparkles } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import type { Mensagem } from '../tipos-mesa';
 import DadoIcone from './DadoIcone.vue';
 
-const props = defineProps<{ mensagens: Mensagem[]; animacao: boolean; meuId: number; aberto: boolean }>();
-const emit = defineEmits<{ enviar: [texto: string]; 'update:animacao': [boolean]; 'update:aberto': [boolean] }>();
+const props = defineProps<{ mensagens: Mensagem[]; animacao: boolean; meuId: number; visivel: boolean }>();
+const emit = defineEmits<{ enviar: [texto: string]; 'update:animacao': [boolean] }>();
 
-const aberto = computed({ get: () => props.aberto, set: (v: boolean) => emit('update:aberto', v) });
 const texto = ref('');
 const lista = ref<HTMLElement | null>(null);
-const naoLidas = ref(0);
 
 watch(
     () => props.mensagens.length,
     async () => {
-        if (!aberto.value) naoLidas.value++;
         await nextTick();
         if (lista.value) lista.value.scrollTop = lista.value.scrollHeight;
     },
     { flush: 'post' },
 );
 onMounted(() => lista.value && (lista.value.scrollTop = lista.value.scrollHeight));
-watch(aberto, async (v) => {
+// A aba continua montada (v-show): ao reaparecer, volta para o fim da conversa.
+watch(() => props.visivel, async (v) => {
     if (v) {
-        naoLidas.value = 0;
         await nextTick();
         if (lista.value) lista.value.scrollTop = lista.value.scrollHeight;
     }
@@ -69,28 +66,13 @@ const hora = (m: Mensagem) => (m.criada_em ? new Date(m.criada_em).toLocaleTimeS
 </script>
 
 <template>
-    <!-- Barra lateral fixa à direita, como no Foundry/Roll20. Recolher deixa só a aba na borda. -->
-    <button
-        v-if="!aberto"
-        type="button"
-        class="pointer-events-auto absolute right-0 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-1.5 rounded-l-lg border border-r-0 border-ouro-500/30 bg-preto-950/95 px-2 py-3 text-ouro-300 backdrop-blur transition hover:text-ouro-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
-        aria-label="Abrir chat"
-        @click="aberto = true"
-    >
-        <MessageSquare class="size-5" />
-        <span v-if="naoLidas" class="rounded-full bg-ouro-500 px-1.5 text-[10px] font-semibold text-preto-950">{{ naoLidas }}</span>
-    </button>
-
-    <aside v-else class="pointer-events-auto absolute bottom-0 right-0 top-12 z-10 flex w-[min(20rem,85vw)] flex-col border-l border-ouro-500/25 bg-preto-950/95 text-sm text-preto-100 shadow-2xl backdrop-blur" aria-label="Chat">
+    <div class="flex min-h-0 flex-1 flex-col text-sm text-preto-100">
         <header class="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-preto-800 px-3">
             <h2 class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ouro-400"><MessageSquare class="size-3.5" /> Chat</h2>
-            <div class="flex items-center gap-1">
-                <label class="flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs text-preto-300 hover:text-ouro-200" title="Animação dos dados">
-                    <Sparkles class="size-3.5" :class="animacao ? 'text-ouro-400' : ''" />
-                    <input type="checkbox" class="size-3.5 accent-ouro-500" :checked="animacao" aria-label="Animação dos dados" @change="emit('update:animacao', ($event.target as HTMLInputElement).checked)" />
-                </label>
-                <button type="button" class="rounded p-1 text-preto-300 hover:text-ouro-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400" aria-label="Recolher chat" @click="aberto = false"><PanelRightClose class="size-4" /></button>
-            </div>
+            <label class="flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs text-preto-300 hover:text-ouro-200" title="Animação dos dados">
+                <Sparkles class="size-3.5" :class="animacao ? 'text-ouro-400' : ''" />
+                <input type="checkbox" class="size-3.5 accent-ouro-500" :checked="animacao" aria-label="Animação dos dados" @change="emit('update:animacao', ($event.target as HTMLInputElement).checked)" />
+            </label>
         </header>
 
         <ol ref="lista" class="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 py-2" aria-live="polite">
@@ -122,5 +104,5 @@ const hora = (m: Mensagem) => (m.criada_em ? new Date(m.criada_em).toLocaleTimeS
             <input v-model="texto" type="text" maxlength="1000" placeholder="Mensagem…" aria-label="Mensagem do chat" class="h-9 min-w-0 flex-1 rounded-md border border-preto-700 bg-preto-900 px-2.5 text-sm text-preto-100 placeholder:text-preto-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ouro-400" />
             <Button type="submit" size="icon" class="size-9 bg-ouro-500 text-preto-950 hover:bg-ouro-400" aria-label="Enviar"><Send class="size-4" /></Button>
         </form>
-    </aside>
+    </div>
 </template>

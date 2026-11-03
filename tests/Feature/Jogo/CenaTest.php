@@ -271,4 +271,14 @@ class CenaTest extends TestCase
         $this->flushSession();
         $this->get(route('jogo.entrada', $c->mesa->slug))->assertRedirect(route('convite.show', $c->mesa->convite_token));
     }
+
+    public function test_todos_recebem_o_elenco_publico_sem_dados_sensiveis(): void
+    {
+        $c = $this->cenario();
+        foreach ([$c->ana, $c->mestre] as $quem) {
+            $props = $this->como($quem)->get(route('jogo', [$c->mesa->slug, $quem->id]))->viewData('page')['props'];
+            $this->assertSame(['Mestre', 'Ana', 'Bia'], array_column($props['elenco'], 'nome'));
+            $this->assertSame(['id', 'nome', 'papel', 'cor'], array_keys($props['elenco'][0]));
+        }
+    }
 }

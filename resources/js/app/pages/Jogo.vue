@@ -4,7 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { Personagem } from '@/site/types';
 import { apiMesa, ErroApi, medirArquivo } from '../api';
 import { conectar, type Conexao } from '../realtime';
-import type { Combate, Dado, Mensagem, VisibilidadeRolagem } from '../tipos-mesa';
+import type { Combate, Dado, Mensagem, PersonagemElenco, VisibilidadeRolagem } from '../tipos-mesa';
 import BarraFerramentas from '../components/BarraFerramentas.vue';
 import BarraSuperior from '../components/BarraSuperior.vue';
 import CenaCanvas from '../components/CenaCanvas.vue';
@@ -13,7 +13,9 @@ import BarraTurnos from '../components/BarraTurnos.vue';
 import ControlesZoom from '../components/ControlesZoom.vue';
 import DadosAnimacao from '../components/DadosAnimacao.vue';
 import OpcoesFerramenta from '../components/OpcoesFerramenta.vue';
+import BarraLateral, { type AbaLateral } from '../components/BarraLateral.vue';
 import PainelChat from '../components/PainelChat.vue';
+import PainelPersonagens from '../components/PainelPersonagens.vue';
 import PainelDados from '../components/PainelDados.vue';
 import PainelTurnos from '../components/PainelTurnos.vue';
 import Inspetor from '../components/Inspetor.vue';
@@ -36,6 +38,7 @@ const props = defineProps<{
     paginas: PaginaDto[];
     pastas: Pasta[];
     personagens: Personagem[];
+    elenco: PersonagemElenco[];
     combate: Combate;
     mensagens: Mensagem[];
     sairUrl: string;
@@ -88,23 +91,52 @@ watch(animacao, (v) => {
 });
 // Só a rolagem MAIS RECENTE é animada: uma nova rolagem substitui a animação em curso (sem fila).
 const animacaoAtual = ref<Mensagem | null>(null);
-const innerWidth = window.innerWidth;
 
-// Chat como barra lateral à direita (preferência salva): aberta por padrão.
-const chatAberto = ref((() => {
+// Barra lateral à direita, com abas (Chat, Personagens). Aba ativa e aberta/recolhida ficam salvas.
+const FAIXA_ABAS = 44; // largura da faixa vertical de abas (px)
+function lerLocal(chave: string, padrao: string): string {
     try {
-        return localStorage.getItem('clickvtt.chatAberto') !== '0';
+        return localStorage.getItem(chave) ?? padrao;
     } catch {
-        return true;
+        return padrao;
     }
-})());
-watch(chatAberto, (v) => {
+}
+function gravarLocal(chave: string, valor: string) {
     try {
-        localStorage.setItem('clickvtt.chatAberto', v ? '1' : '0');
+        localStorage.setItem(chave, valor);
     } catch {
         /* ignora */
     }
+}
+const abaLateral = ref<AbaLateral>(lerLocal('clickvtt.abaLateral', 'chat') === 'personagens' ? 'personagens' : 'chat');
+const lateralAberta = ref(lerLocal('clickvtt.lateralAberta', '1') !== '0');
+const naoLidas = ref(0);
+watch(abaLateral, (v) => gravarLocal('clickvtt.abaLateral', v));
+watch(lateralAberta, (v) => gravarLocal('clickvtt.lateralAberta', v ? '1' : '0'));
+// Mensagens que chegam com o chat fora de vista contam como não lidas.
+watch([abaLateral, lateralAberta], () => {
+    if (lateralAberta.value && abaLateral.value === 'chat') naoLidas.value = 0;
 });
+const larguraTela = ref(window.innerWidth);
+const larguraPainel = computed(() => (lateralAberta.value ? Math.min(320, larguraTela.value * 0.85 - FAIXA_ABAS) : 0));
+/** Faixa coberta pela barra lateral: o mapa e seus controles recuam esse tanto. */
+const margemDireita = computed(() => FAIXA_ABAS + larguraPainel.value);
+const aoRedimensionar = () => (larguraTela.value = window.innerWidth);
+onMounted(() => window.addEventListener('resize', aoRedimensionar));
+onBeforeUnmount(() => window.removeEventListener('resize', aoRedimensionar));
+
+// Personagens: quem tem token na página aberta e (mestre) em que página cada um está.
+const comToken = computed(() => objetos.value.filter((o) => o.tipo === 'token' && o.personagem_id !== null).map((o) => o.personagem_id as number));
+const paginaDe = computed(() => {
+    const m: Record<number, PaginaDto | undefined> = {};
+    for (const p of props.personagens) m[p.id] = props.paginas.find((x) => x.id === (p.pagina_id ?? props.paginas[0]?.id));
+
+    return m;
+});
+function focarPersonagem(personagemId: number) {
+    const token = objetos.value.find((o) => o.tipo === 'token' && o.personagem_id === personagemId);
+    if (token) canvas.value?.focar(token.id, props.mestre && camada.value === 'jogadores');
+}
 
 watch(() => props.objetos, (novos) => (objetos.value = copia(novos)));
 watch(() => props.combate, (c) => (combate.value = copia(c)));
@@ -333,7 +365,9 @@ function receberMensagem(m: Mensagem, substitui = false): boolean {
     return false;
 }
 function aoNovaMensagem(m: Mensagem, substitui = false) {
-    if (receberMensagem(m, substitui) && m.tipo === 'rolagem' && m.dados && animacao.value) animacaoAtual.value = m;
+    const nova = receberMensagem(m, substitui);
+    if (nova && m.autor?.id !== props.personagem.id && !(lateralAberta.value && abaLateral.value === 'chat')) naoLidas.value++;
+    if (nova && m.tipo === 'rolagem' && m.dados && animacao.value) animacaoAtual.value = m;
 }
 
 /** Sem trava no botão: cada clique rola. As respostas entram no chat na hora; a animação mostra só a mais recente. */
@@ -471,7 +505,7 @@ function alternarPorta(id: number) {
                 :mestre="mestre"
                 :personagem-id="personagem.id"
                 :estilo="estilo"
-                :margem-direita="chatAberto ? Math.min(320, innerWidth * 0.85) : 0"
+                :margem-direita="margemDireita"
                 @criar-traco="criarTraco"
                 @criar-texto="pedirTexto"
                 @selecionar="selecionadoId = $event"
@@ -505,7 +539,7 @@ function alternarPorta(id: number) {
                 />
                 <SeletorCamada v-if="mestre" :camada="camada" @camada="(c) => ((camada = c), (ferramenta = 'selecionar'))" />
                 <!-- Área do mapa: recua para não ficar sob a barra do chat -->
-                <div class="pointer-events-none absolute bottom-0 left-0 top-0 transition-[right] duration-200" :style="{ right: chatAberto ? 'min(20rem, 85vw)' : '0px' }">
+                <div class="pointer-events-none absolute bottom-0 left-0 top-0 transition-[right] duration-200" :style="{ right: margemDireita + 'px' }">
                     <Inspetor v-if="mestre && selecionado && pagina" :objeto="selecionado" :pagina="pagina" @atualizar="atualizarSelecionado" @remover="removerSelecionado" />
                     <ControlesZoom :escala="escala" @mais="canvas?.zoomPor(1.25)" @menos="canvas?.zoomPor(1 / 1.25)" @ajustar="canvas?.ajustar()" />
                     <BarraTurnos :combate="combate" :mestre="mestre" @anterior="passarTurno(-1)" @proximo="passarTurno(1)" @abrir="(painelTurnos = true), (painelDados = false)" />
@@ -513,7 +547,14 @@ function alternarPorta(id: number) {
                 <OpcoesFerramenta v-if="(ferramenta === 'pintar' || ferramenta === 'texto') && !painelDados && !painelTurnos" :ferramenta="ferramenta" v-model:estilo="estilo" />
                 <PainelDados v-if="painelDados" :mestre="mestre" @rolar="rolar" @fechar="painelDados = false" />
                 <PainelTurnos v-if="painelTurnos && mestre" :combate="combate" :personagens="personagens" @atualizar="salvarCombate" @fechar="painelTurnos = false" />
-                <PainelChat v-model:animacao="animacao" v-model:aberto="chatAberto" :mensagens="mensagens" :meu-id="personagem.id" @enviar="enviarTexto" />
+                <BarraLateral v-model:aba="abaLateral" v-model:aberta="lateralAberta" :nao-lidas="naoLidas">
+                    <template #chat>
+                        <PainelChat v-model:animacao="animacao" :mensagens="mensagens" :meu-id="personagem.id" :visivel="lateralAberta && abaLateral === 'chat'" @enviar="enviarTexto" />
+                    </template>
+                    <template #personagens>
+                        <PainelPersonagens :elenco="elenco" :meu-id="personagem.id" :mestre="mestre" :pagina-de="paginaDe" :com-token="comToken" @focar="focarPersonagem" />
+                    </template>
+                </BarraLateral>
 
                 <form
                     v-if="textoPendente"

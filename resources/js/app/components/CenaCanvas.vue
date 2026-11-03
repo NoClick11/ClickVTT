@@ -76,6 +76,7 @@ defineExpose({
     zoomPor: (f: number) => cena?.zoomPor(f),
     centro: () => cena?.centroDaVista() ?? { x: 0, y: 0 },
     selecionar: (id: number | null) => cena?.selecionar(id),
+    focar: (id: number, selecionar = false) => cena?.focar(id, selecionar),
 });
 </script>
 

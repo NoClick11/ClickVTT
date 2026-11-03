@@ -30,3 +30,11 @@ export interface Combate {
     atual: string | null;
     itens: ItemTurno[];
 }
+
+/** Personagem como todos podem ver (sem senha nem página). */
+export interface PersonagemElenco {
+    id: number;
+    nome: string;
+    papel: 'jogador' | 'mestre';
+    cor: string;
+}
