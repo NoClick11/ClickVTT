@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Send, Sparkles } from 'lucide-vue-next';
+import { Send } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import type { Mensagem } from '../tipos-mesa';
 import DadoIcone from './DadoIcone.vue';
 
-const props = defineProps<{ mensagens: Mensagem[]; animacao: boolean; meuId: number; visivel: boolean }>();
-const emit = defineEmits<{ enviar: [texto: string]; 'update:animacao': [boolean] }>();
+const props = defineProps<{ mensagens: Mensagem[]; meuId: number; visivel: boolean }>();
+const emit = defineEmits<{ enviar: [texto: string] }>();
 
 const texto = ref('');
 const lista = ref<HTMLElement | null>(null);
@@ -67,13 +67,6 @@ const hora = (m: Mensagem) => (m.criada_em ? new Date(m.criada_em).toLocaleTimeS
 
 <template>
     <div class="flex min-h-0 flex-1 flex-col text-sm text-preto-100">
-        <header class="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-preto-800 px-3">
-            <h2 class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ouro-400"><MessageSquare class="size-3.5" /> Chat</h2>
-            <label class="flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs text-preto-300 hover:text-ouro-200" title="Animação dos dados">
-                <Sparkles class="size-3.5" :class="animacao ? 'text-ouro-400' : ''" />
-                <input type="checkbox" class="size-3.5 accent-ouro-500" :checked="animacao" aria-label="Animação dos dados" @change="emit('update:animacao', ($event.target as HTMLInputElement).checked)" />
-            </label>
-        </header>
 
         <ol ref="lista" class="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 py-2" aria-live="polite">
             <li v-if="!mensagens.length" class="m-auto max-w-48 text-center text-xs text-preto-400">Nenhuma mensagem ainda. Role um dado ou escreva algo.</li>

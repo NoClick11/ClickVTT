@@ -4,8 +4,8 @@ import { computed, ref } from 'vue';
 import { DADOS, type Dado, type VisibilidadeRolagem } from '../tipos-mesa';
 import DadoIcone from './DadoIcone.vue';
 
-const props = defineProps<{ mestre: boolean }>();
-const emit = defineEmits<{ rolar: [dado: Dado, quantidade: number, visibilidade: VisibilidadeRolagem]; fechar: [] }>();
+const props = defineProps<{ mestre: boolean; animacao: boolean }>();
+const emit = defineEmits<{ rolar: [dado: Dado, quantidade: number, visibilidade: VisibilidadeRolagem]; fechar: []; 'update:animacao': [boolean] }>();
 
 const dado = ref<Dado>('d20');
 const quantidade = ref(1);
@@ -80,6 +80,11 @@ const opcoes = computed<{ id: VisibilidadeRolagem; rotulo: string; dica: string 
                 {{ o.rotulo }}
             </button>
         </div>
+
+        <label class="mt-3 flex cursor-pointer items-center justify-between gap-2 rounded-md border border-preto-700 px-2.5 py-1.5 text-preto-200 hover:border-ouro-500/50">
+            <span>Animação dos dados</span>
+            <input type="checkbox" class="size-4 accent-ouro-500" :checked="animacao" aria-label="Animação dos dados" @change="emit('update:animacao', ($event.target as HTMLInputElement).checked)" />
+        </label>
 
         <Button class="mt-3 w-full bg-ouro-500 font-semibold text-preto-950 hover:bg-ouro-400" @click="emit('rolar', dado, quantidade, visibilidade)">
             Rolar {{ quantidade }}{{ dado }}

@@ -92,8 +92,7 @@ watch(animacao, (v) => {
 // Só a rolagem MAIS RECENTE é animada: uma nova rolagem substitui a animação em curso (sem fila).
 const animacaoAtual = ref<Mensagem | null>(null);
 
-// Barra lateral à direita, com abas (Chat, Personagens). Aba ativa e aberta/recolhida ficam salvas.
-const FAIXA_ABAS = 44; // largura da faixa vertical de abas (px)
+// Barra lateral à direita, com abas no topo (Chat, Personagens). Aba ativa e aberta/recolhida ficam salvas.
 function lerLocal(chave: string, padrao: string): string {
     try {
         return localStorage.getItem(chave) ?? padrao;
@@ -118,9 +117,9 @@ watch([abaLateral, lateralAberta], () => {
     if (lateralAberta.value && abaLateral.value === 'chat') naoLidas.value = 0;
 });
 const larguraTela = ref(window.innerWidth);
-const larguraPainel = computed(() => (lateralAberta.value ? Math.min(320, larguraTela.value * 0.85 - FAIXA_ABAS) : 0));
+const larguraPainel = computed(() => (lateralAberta.value ? Math.min(320, larguraTela.value * 0.85) : 0));
 /** Faixa coberta pela barra lateral: o mapa e seus controles recuam esse tanto. */
-const margemDireita = computed(() => FAIXA_ABAS + larguraPainel.value);
+const margemDireita = computed(() => larguraPainel.value);
 const aoRedimensionar = () => (larguraTela.value = window.innerWidth);
 onMounted(() => window.addEventListener('resize', aoRedimensionar));
 onBeforeUnmount(() => window.removeEventListener('resize', aoRedimensionar));
@@ -539,17 +538,17 @@ function alternarPorta(id: number) {
                 />
                 <SeletorCamada v-if="mestre" :camada="camada" @camada="(c) => ((camada = c), (ferramenta = 'selecionar'))" />
                 <!-- Área do mapa: recua para não ficar sob a barra do chat -->
-                <div class="pointer-events-none absolute bottom-0 left-0 top-0 transition-[right] duration-200" :style="{ right: margemDireita + 'px' }">
+                <div class="pointer-events-none absolute bottom-0 left-0 top-0 transition-[right] duration-200" :style="{ right: margemDireita + 'px', top: lateralAberta ? '0px' : '2.75rem' }">
                     <Inspetor v-if="mestre && selecionado && pagina" :objeto="selecionado" :pagina="pagina" @atualizar="atualizarSelecionado" @remover="removerSelecionado" />
                     <ControlesZoom :escala="escala" @mais="canvas?.zoomPor(1.25)" @menos="canvas?.zoomPor(1 / 1.25)" @ajustar="canvas?.ajustar()" />
                     <BarraTurnos :combate="combate" :mestre="mestre" @anterior="passarTurno(-1)" @proximo="passarTurno(1)" @abrir="(painelTurnos = true), (painelDados = false)" />
                 </div>
                 <OpcoesFerramenta v-if="(ferramenta === 'pintar' || ferramenta === 'texto') && !painelDados && !painelTurnos" :ferramenta="ferramenta" v-model:estilo="estilo" />
-                <PainelDados v-if="painelDados" :mestre="mestre" @rolar="rolar" @fechar="painelDados = false" />
+                <PainelDados v-if="painelDados" v-model:animacao="animacao" :mestre="mestre" @rolar="rolar" @fechar="painelDados = false" />
                 <PainelTurnos v-if="painelTurnos && mestre" :combate="combate" :personagens="personagens" @atualizar="salvarCombate" @fechar="painelTurnos = false" />
                 <BarraLateral v-model:aba="abaLateral" v-model:aberta="lateralAberta" :nao-lidas="naoLidas">
                     <template #chat>
-                        <PainelChat v-model:animacao="animacao" :mensagens="mensagens" :meu-id="personagem.id" :visivel="lateralAberta && abaLateral === 'chat'" @enviar="enviarTexto" />
+                        <PainelChat :mensagens="mensagens" :meu-id="personagem.id" :visivel="lateralAberta && abaLateral === 'chat'" @enviar="enviarTexto" />
                     </template>
                     <template #personagens>
                         <PainelPersonagens :elenco="elenco" :meu-id="personagem.id" :mestre="mestre" :pagina-de="paginaDe" :com-token="comToken" @focar="focarPersonagem" />
