@@ -5,25 +5,29 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { useForm } from '@inertiajs/vue3';
 import { computed, watch } from 'vue';
-import { PAPEIS, type Personagem } from '../types';
+import type { Jogador, Personagem } from '../types';
 import Campo from './Campo.vue';
 
-const props = defineProps<{ open: boolean; mesaId: number; personagem: Personagem | null }>();
+const props = defineProps<{ open: boolean; mesaId: number; personagem: Personagem | null; jogadores: Jogador[] }>();
 const emit = defineEmits<{ 'update:open': [boolean] }>();
 
 const edicao = computed(() => props.personagem !== null);
-const form = useForm({ nome: '', papel: 'jogador', cor: '#d4a843', senha: '', remover_senha: false });
+const form = useForm<{ nome: string; cor: string; jogadores: number[] }>({ nome: '', cor: '#d4a843', jogadores: [] });
 const cores = ['#d4a843', '#dc2626', '#ea580c', '#16a34a', '#0d9488', '#2563eb', '#7c3aed', '#db2777'];
-const campo = 'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
+const candidatos = computed(() => props.jogadores.filter((j) => j.papel === 'jogador'));
 
 watch(
     () => [props.open, props.personagem] as const,
     ([aberto, p]) => {
         if (!aberto) return;
         form.clearErrors();
-        form.defaults({ nome: p?.nome ?? '', papel: p?.papel ?? 'jogador', cor: p?.cor ?? cores[Math.floor(Math.random() * cores.length)], senha: '', remover_senha: false }).reset();
+        form.defaults({ nome: p?.nome ?? '', cor: p?.cor ?? cores[Math.floor(Math.random() * cores.length)], jogadores: p?.jogadores.map((j) => j.id) ?? [] }).reset();
     },
 );
+
+function alternar(id: number, marcado: boolean) {
+    form.jogadores = marcado ? [...new Set([...form.jogadores, id])] : form.jogadores.filter((x) => x !== id);
+}
 
 function salvar() {
     const opcoes = { preserveScroll: true, onSuccess: () => emit('update:open', false) };
@@ -37,16 +41,12 @@ function salvar() {
         <DialogContent class="sm:max-w-md">
             <DialogHeader>
                 <DialogTitle class="font-serif text-xl">{{ edicao ? 'Editar personagem' : 'Novo personagem' }}</DialogTitle>
-                <DialogDescription>O jogador escolhe este personagem no link de convite e digita a senha.</DialogDescription>
+                <DialogDescription>A ficha do personagem. Escolha quais jogadores o controlam; sem jogadores, só o mestre o controla (NPC).</DialogDescription>
             </DialogHeader>
             <form class="grid gap-4" @submit.prevent="salvar">
-                <Campo label="Nome" for="p-nome" obrigatorio>
-                    <Input id="p-nome" v-model="form.nome" autofocus />
+                <Campo label="Nome" for="pj-nome" obrigatorio>
+                    <Input id="pj-nome" v-model="form.nome" autofocus />
                     <InputError :message="form.errors.nome" />
-                </Campo>
-                <Campo label="Papel" for="p-papel" dica="O Mestre controla a mesa; o Jogador joga com o personagem.">
-                    <select id="p-papel" v-model="form.papel" :class="campo"><option v-for="(rotulo, k) in PAPEIS" :key="k" :value="k">{{ rotulo }}</option></select>
-                    <InputError :message="form.errors.papel" />
                 </Campo>
                 <Campo label="Cor">
                     <div class="flex flex-wrap gap-2">
@@ -64,13 +64,16 @@ function salvar() {
                     </div>
                     <InputError :message="form.errors.cor" />
                 </Campo>
-                <Campo label="Senha" for="p-senha" :dica="edicao && personagem?.tem_senha ? 'Deixe em branco para manter a senha atual.' : 'Opcional, mas recomendada (mínimo 4 caracteres).'">
-                    <Input id="p-senha" v-model="form.senha" type="text" autocomplete="off" placeholder="Senha do personagem" />
-                    <InputError :message="form.errors.senha" />
-                    <label v-if="edicao && personagem?.tem_senha" class="flex items-center gap-2 text-sm text-muted-foreground">
-                        <input v-model="form.remover_senha" type="checkbox" class="size-4 accent-ouro-500" /> Remover senha (entrar sem senha)
+                <fieldset class="grid gap-2">
+                    <legend class="mb-1 text-sm font-medium">Jogadores deste personagem</legend>
+                    <p v-if="!candidatos.length" class="rounded-md border border-dashed p-3 text-xs text-muted-foreground">Nenhum jogador ainda. Crie os jogadores primeiro.</p>
+                    <label v-for="j in candidatos" :key="j.id" class="flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 hover:border-ouro-500/50">
+                        <input type="checkbox" class="size-4 accent-ouro-500" :checked="form.jogadores.includes(j.id)" @change="alternar(j.id, ($event.target as HTMLInputElement).checked)" />
+                        <span class="size-3 rounded-full" :style="{ backgroundColor: j.cor }" />
+                        <span class="text-sm">{{ j.nome }}</span>
                     </label>
-                </Campo>
+                    <InputError :message="form.errors.jogadores" />
+                </fieldset>
                 <div class="flex justify-end gap-2">
                     <Button type="button" variant="ghost" @click="emit('update:open', false)">Cancelar</Button>
                     <Button type="submit" class="bg-ouro-500 text-preto-950 hover:bg-ouro-400" :disabled="form.processing">{{ edicao ? 'Salvar' : 'Criar personagem' }}</Button>

@@ -22,11 +22,23 @@ export type Papel = 'jogador' | 'mestre';
 
 export const PAPEIS: Record<Papel, string> = { jogador: 'Jogador', mestre: 'Mestre' };
 
-export interface Personagem {
+/** Quem entra na mesa pelo convite (o mestre também é um jogador). */
+export interface Jogador {
     id: number;
     nome: string;
     papel: Papel;
     cor: string;
-    tem_senha: boolean;
+    tem_senha?: boolean;
     pagina_id?: number | null;
+}
+
+/** Resumo de um jogador (dono de personagem). */
+export type DonoPersonagem = Pick<Jogador, 'id' | 'nome' | 'cor'>;
+
+/** Ficha (PC ou NPC). Pode ter vários jogadores; um jogador pode ter vários personagens. */
+export interface Personagem {
+    id: number;
+    nome: string;
+    cor: string;
+    jogadores: DonoPersonagem[];
 }

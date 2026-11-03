@@ -30,7 +30,7 @@ function novoLink() {
         <DialogContent>
             <DialogHeader>
                 <DialogTitle class="font-serif text-xl">Convidar jogadores</DialogTitle>
-                <DialogDescription>Envie este link. O jogador escolhe o personagem e digita a senha que você definiu.</DialogDescription>
+                <DialogDescription>Envie este link. O jogador escolhe o nome dele e digita a senha que você definiu.</DialogDescription>
             </DialogHeader>
             <div class="flex gap-2">
                 <Input :model-value="url" readonly aria-label="Link de convite" @focus="($event.target as HTMLInputElement).select()" />
