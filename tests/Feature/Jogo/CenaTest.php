@@ -2,11 +2,14 @@
 
 namespace Tests\Feature\Jogo;
 
+use App\Events\EventoMesa;
+use App\Models\Jogador;
 use App\Models\Personagem;
 use App\Models\Sistema;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -15,16 +18,23 @@ class CenaTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** Mesa com mestre, dois jogadores, uma página e um objeto em cada camada. */
+    /**
+     * Mesa com mestre, dois jogadores (Ana e Bia), um personagem de cada (Aria da Ana, Bruno da Bia),
+     * uma página e um objeto em cada camada.
+     */
     private function cenario(): object
     {
         $dono = User::factory()->create();
         $mesa = $dono->mesas()->create([
             'nome' => 'Teste', 'slug' => 'teste-'.uniqid(), 'sistema_id' => Sistema::value('id'), 'tema_entrada' => 'padrao',
         ]);
-        $mestre = $mesa->personagens()->create(['nome' => 'Mestre', 'papel' => 'mestre', 'cor' => '#d4a843']);
-        $ana = $mesa->personagens()->create(['nome' => 'Ana', 'papel' => 'jogador', 'cor' => '#2563eb']);
-        $bia = $mesa->personagens()->create(['nome' => 'Bia', 'papel' => 'jogador', 'cor' => '#16a34a']);
+        $mestre = $mesa->jogadores()->create(['nome' => 'Mestre', 'papel' => 'mestre', 'cor' => '#d4a843']);
+        $ana = $mesa->jogadores()->create(['nome' => 'Ana', 'papel' => 'jogador', 'cor' => '#2563eb']);
+        $bia = $mesa->jogadores()->create(['nome' => 'Bia', 'papel' => 'jogador', 'cor' => '#16a34a']);
+        $aria = $mesa->personagens()->create(['nome' => 'Aria', 'cor' => '#2563eb']);
+        $bruno = $mesa->personagens()->create(['nome' => 'Bruno', 'cor' => '#16a34a']);
+        $aria->jogadores()->attach($ana);
+        $bruno->jogadores()->attach($bia);
         $pagina = $mesa->paginas()->create(['nome' => 'Taverna', 'ordem' => 1]);
 
         $novo = fn (string $camada, string $tipo, array $extra = []) => $pagina->objetos()->create(
@@ -32,19 +42,19 @@ class CenaTest extends TestCase
         );
 
         return (object) [
-            'mesa' => $mesa, 'pagina' => $pagina, 'mestre' => $mestre, 'ana' => $ana, 'bia' => $bia,
+            'mesa' => $mesa, 'pagina' => $pagina, 'mestre' => $mestre, 'ana' => $ana, 'bia' => $bia, 'aria' => $aria, 'bruno' => $bruno,
             'mapa' => $novo('mapa', 'imagem'),
             'segredo' => $novo('mestre', 'token', ['nome' => 'Emboscada']),
-            'tokenAna' => $novo('jogadores', 'token', ['personagem_id' => $ana->id]),
-            'tokenBia' => $novo('jogadores', 'token', ['personagem_id' => $bia->id]),
+            'tokenAna' => $novo('jogadores', 'token', ['personagem_id' => $aria->id]),
+            'tokenBia' => $novo('jogadores', 'token', ['personagem_id' => $bruno->id]),
             'luz' => $novo('iluminacao', 'luz', ['dados' => ['raio' => 140]]),
             'parede' => $novo('iluminacao', 'parede', ['dados' => ['pontos' => [0, 0, 100, 0], 'tipo' => 'parede']]),
         ];
     }
 
-    private function como(Personagem $p): static
+    private function como(Jogador $p): static
     {
-        return $this->withSession(['acesso_mesas' => [$p->mesa_id => [$p->id => true]]])->withHeader('X-Personagem', (string) $p->id);
+        return $this->withSession(['acesso_mesas' => [$p->mesa_id => [$p->id => true]]])->withHeader('X-Jogador', (string) $p->id);
     }
 
     public function test_manda_para_o_convite_quando_nao_entrou(): void
@@ -58,7 +68,7 @@ class CenaTest extends TestCase
         $c = $this->cenario();
         $this->como($c->mestre)->get(route('jogo', [$c->mesa->slug, $c->mestre->id]))->assertInertia(fn (Assert $p) => $p
             ->component('app/Jogo')->where('mestre', true)
-            ->has('objetos', 6)->has('paginas', 1)->has('personagens', 3));
+            ->has('objetos', 6)->has('paginas', 1)->has('jogadores', 3)->has('personagens', 2));
     }
 
     public function test_jogador_nunca_recebe_camada_do_mestre_nem_paredes(): void
@@ -72,7 +82,8 @@ class CenaTest extends TestCase
 
                 return $ids->doesntContain($c->segredo->id) && $ids->doesntContain($c->parede->id) && $ids->contains($c->luz->id);
             })
-            ->where('paginas', [])->where('personagens', []));
+            ->where('paginas', [])->has('jogadores', 3)->has('personagens', 2)
+            ->where('jogadores.0', fn ($j) => ! isset($j['pagina_id']) && ! isset($j['tem_senha'])));
     }
 
     public function test_jogador_ve_a_pagina_onde_o_mestre_o_colocou(): void
@@ -221,14 +232,14 @@ class CenaTest extends TestCase
         $url = fn ($p) => route('jogo', [$c->mesa->slug, $p->id]);
 
         $this->withSession($sessao)->get($url($c->mestre))->assertInertia(fn (Assert $p) => $p
-            ->where('mestre', true)->where('personagem.nome', 'Mestre')->has('objetos', 6));
+            ->where('mestre', true)->where('jogador.nome', 'Mestre')->has('objetos', 6));
         $this->withSession($sessao)->get($url($c->ana))->assertInertia(fn (Assert $p) => $p
-            ->where('mestre', false)->where('personagem.nome', 'Ana')->has('objetos', 4));
+            ->where('mestre', false)->where('jogador.nome', 'Ana')->has('objetos', 4));
 
-        // Cada aba age como o seu personagem na API (cabeçalho X-Personagem).
-        $this->withSession($sessao)->withHeader('X-Personagem', (string) $c->mestre->id)
+        // Cada aba age como o seu jogador na API (cabeçalho X-Jogador).
+        $this->withSession($sessao)->withHeader('X-Jogador', (string) $c->mestre->id)
             ->postJson(route('jogo.pastas.store', $c->mesa->id), ['nome' => 'Cap 1'])->assertCreated();
-        $this->withSession($sessao)->withHeader('X-Personagem', (string) $c->ana->id)
+        $this->withSession($sessao)->withHeader('X-Jogador', (string) $c->ana->id)
             ->postJson(route('jogo.pastas.store', $c->mesa->id), ['nome' => 'Cap 2'])->assertForbidden();
         // Sem indicar quem é, a API recusa (ambíguo).
         $this->withSession($sessao)->postJson(route('jogo.pastas.store', $c->mesa->id), ['nome' => 'Cap 3'])->assertForbidden();
@@ -241,7 +252,7 @@ class CenaTest extends TestCase
 
         $this->withSession($sessao)->get(route('jogo', [$c->mesa->slug, $c->mestre->id]))
             ->assertRedirect(route('convite.show', $c->mesa->convite_token));
-        $this->withSession($sessao)->withHeader('X-Personagem', (string) $c->mestre->id)
+        $this->withSession($sessao)->withHeader('X-Jogador', (string) $c->mestre->id)
             ->postJson(route('jogo.pastas.store', $c->mesa->id), ['nome' => 'X'])->assertForbidden();
     }
 
@@ -250,7 +261,7 @@ class CenaTest extends TestCase
         $c = $this->cenario();
         $c->mestre->update(['senha' => 'mestre123']);
         $c->ana->update(['senha' => 'ana12345']);
-        $entrar = fn ($p, $senha) => $this->post(route('convite.entrar', $c->mesa->convite_token), ['personagem_id' => $p->id, 'senha' => $senha]);
+        $entrar = fn ($p, $senha) => $this->post(route('convite.entrar', $c->mesa->convite_token), ['jogador_id' => $p->id, 'senha' => $senha]);
 
         $entrar($c->mestre, 'mestre123')->assertRedirect(route('jogo', [$c->mesa->slug, $c->mestre->id]));
         $entrar($c->ana, 'ana12345')->assertRedirect(route('jogo', [$c->mesa->slug, $c->ana->id]));
@@ -259,12 +270,12 @@ class CenaTest extends TestCase
         $this->get(route('jogo', [$c->mesa->slug, $c->ana->id]))->assertInertia(fn (Assert $p) => $p->where('mestre', false));
 
         // Sair como Ana não desconecta o mestre.
-        $this->post(route('convite.sair', $c->mesa->convite_token), ['personagem' => $c->ana->id]);
+        $this->post(route('convite.sair', $c->mesa->convite_token), ['jogador' => $c->ana->id]);
         $this->get(route('jogo', [$c->mesa->slug, $c->mestre->id]))->assertOk();
         $this->get(route('jogo', [$c->mesa->slug, $c->ana->id]))->assertRedirect(route('convite.show', $c->mesa->convite_token));
     }
 
-    public function test_entrada_direta_redireciona_para_o_unico_personagem_autenticado(): void
+    public function test_entrada_direta_redireciona_para_o_unico_jogador_autenticado(): void
     {
         $c = $this->cenario();
         $this->como($c->ana)->get(route('jogo.entrada', $c->mesa->slug))->assertRedirect(route('jogo', [$c->mesa->slug, $c->ana->id]));
@@ -272,13 +283,109 @@ class CenaTest extends TestCase
         $this->get(route('jogo.entrada', $c->mesa->slug))->assertRedirect(route('convite.show', $c->mesa->convite_token));
     }
 
-    public function test_todos_recebem_o_elenco_publico_sem_dados_sensiveis(): void
+    public function test_todos_recebem_jogadores_e_personagens_publicos_sem_dados_sensiveis(): void
     {
         $c = $this->cenario();
+        $c->ana->update(['senha' => 'segredo123']);
         foreach ([$c->ana, $c->mestre] as $quem) {
             $props = $this->como($quem)->get(route('jogo', [$c->mesa->slug, $quem->id]))->viewData('page')['props'];
-            $this->assertSame(['Mestre', 'Ana', 'Bia'], array_column($props['elenco'], 'nome'));
-            $this->assertSame(['id', 'nome', 'papel', 'cor'], array_keys($props['elenco'][0]));
+            $this->assertSame(['Mestre', 'Ana', 'Bia'], array_column($props['jogadores'], 'nome'));
+            $this->assertSame(['Aria', 'Bruno'], array_column($props['personagens'], 'nome'));
+            $this->assertSame('Ana', $props['personagens'][0]['jogadores'][0]['nome']);
+            $this->assertStringNotContainsString('segredo123', json_encode($props));
+            if (! $quem->ehMestre()) {
+                $this->assertSame(['id', 'nome', 'papel', 'cor'], array_keys($props['jogadores'][1])); // sem senha nem página
+            }
         }
+    }
+
+    public function test_jogador_move_tokens_de_todos_os_seus_personagens_e_de_nenhum_alheio(): void
+    {
+        $c = $this->cenario();
+        $dois = $c->mesa->personagens()->create(['nome' => 'Aria II', 'cor' => '#0ea5e9']);
+        $dois->jogadores()->attach($c->ana);
+        $segundo = $c->pagina->objetos()->create(['camada' => 'jogadores', 'tipo' => 'token', 'personagem_id' => $dois->id, 'x' => 0, 'y' => 0, 'largura' => 70, 'altura' => 70]);
+        $mover = fn ($o) => $this->como($c->ana)->patchJson(route('jogo.objetos.update', [$c->mesa->id, $o->id]), ['x' => 70, 'y' => 70]);
+
+        $mover($c->tokenAna)->assertOk();
+        $mover($segundo)->assertOk();
+        $mover($c->tokenBia)->assertForbidden(); // personagem da Bia
+    }
+
+    public function test_personagem_com_dois_jogadores_pode_ser_movido_por_ambos(): void
+    {
+        $c = $this->cenario();
+        $c->aria->jogadores()->attach($c->bia); // Aria agora é da Ana E da Bia
+        $mover = fn ($j) => $this->como($j)->patchJson(route('jogo.objetos.update', [$c->mesa->id, $c->tokenAna->id]), ['x' => 140, 'y' => 0]);
+
+        $mover($c->ana)->assertOk();
+        $mover($c->bia)->assertOk();
+        $this->assertSame(2, $c->aria->jogadores()->count());
+    }
+
+    public function test_mestre_atribui_jogadores_a_um_personagem(): void
+    {
+        Event::fake([EventoMesa::class]);
+        $c = $this->cenario();
+        $url = route('jogo.personagens.atribuir', [$c->mesa->id, $c->aria->id]);
+
+        $this->como($c->ana)->putJson($url, ['jogadores' => [$c->ana->id, $c->bia->id]])->assertForbidden();
+        $this->como($c->mestre)->putJson($url, ['jogadores' => [$c->bia->id]])->assertOk()->assertJsonPath('jogadores.0.nome', 'Bia');
+        $this->assertSame([$c->bia->id], $c->aria->jogadores()->pluck('jogadores.id')->all());
+        $this->como($c->mestre)->putJson($url, ['jogadores' => [$c->ana->id, $c->bia->id]])->assertOk();
+        $this->assertCount(2, $c->aria->jogadores);
+        $this->como($c->mestre)->putJson($url, ['jogadores' => []])->assertOk();
+        $this->assertCount(0, $c->aria->fresh()->jogadores);
+        // não dá para atribuir o mestre nem jogador de outra mesa
+        $this->como($c->mestre)->putJson($url, ['jogadores' => [$c->mestre->id]])->assertStatus(422);
+        $outra = $this->cenario();
+        $this->como($c->mestre)->putJson($url, ['jogadores' => [$outra->ana->id]])->assertStatus(422);
+        Event::assertDispatched(EventoMesa::class, fn ($e) => $e->nome === 'cena');
+    }
+
+    public function test_desenho_e_do_jogador_e_so_ele_apaga(): void
+    {
+        $c = $this->cenario();
+        $traco = ['camada' => 'jogadores', 'tipo' => 'traco', 'x' => 0, 'y' => 0, 'largura' => 5, 'altura' => 5, 'dados' => ['pontos' => [0, 0, 5, 5]]];
+        $id = $this->como($c->ana)->postJson(route('jogo.objetos.store', [$c->mesa->id, $c->pagina->id]), $traco)->assertCreated()->json('id');
+
+        $this->assertSame($c->ana->id, \App\Models\Objeto::find($id)->jogador_id);
+        $this->como($c->bia)->deleteJson(route('jogo.objetos.destroy', [$c->mesa->id, $id]))->assertForbidden();
+        $this->como($c->ana)->patchJson(route('jogo.objetos.update', [$c->mesa->id, $id]), ['x' => 10, 'y' => 10])->assertOk();
+        $this->como($c->ana)->deleteJson(route('jogo.objetos.destroy', [$c->mesa->id, $id]))->assertOk();
+    }
+
+    public function test_migracao_preserva_tokens_mensagens_e_senhas_dos_personagens_antigos(): void
+    {
+        $this->artisan('migrate:rollback', ['--step' => 1])->assertExitCode(0);
+        $dono = User::factory()->create();
+        $mesa = $dono->mesas()->create(['nome' => 'Velha', 'slug' => 'velha', 'sistema_id' => Sistema::value('id'), 'tema_entrada' => 'padrao']);
+        $pagina = $mesa->paginas()->create(['nome' => 'P', 'ordem' => 1]);
+        $agora = now();
+        $antigo = fn (string $nome, string $papel) => \Illuminate\Support\Facades\DB::table('personagens')->insertGetId([
+            'mesa_id' => $mesa->id, 'nome' => $nome, 'papel' => $papel, 'cor' => '#112233', 'senha' => bcrypt('x-'.$nome), 'pagina_id' => $pagina->id, 'created_at' => $agora, 'updated_at' => $agora,
+        ]);
+        $mestreId = $antigo('Mestre', 'mestre');
+        $anaId = $antigo('Ana', 'jogador');
+        $token = \Illuminate\Support\Facades\DB::table('objetos')->insertGetId(['pagina_id' => $pagina->id, 'camada' => 'jogadores', 'tipo' => 'token', 'personagem_id' => $anaId, 'x' => 1, 'y' => 1, 'largura' => 70, 'altura' => 70, 'created_at' => $agora, 'updated_at' => $agora]);
+        $traco = \Illuminate\Support\Facades\DB::table('objetos')->insertGetId(['pagina_id' => $pagina->id, 'camada' => 'jogadores', 'tipo' => 'traco', 'personagem_id' => $anaId, 'x' => 1, 'y' => 1, 'largura' => 5, 'altura' => 5, 'created_at' => $agora, 'updated_at' => $agora]);
+        $msgAna = \Illuminate\Support\Facades\DB::table('mensagens')->insertGetId(['mesa_id' => $mesa->id, 'personagem_id' => $anaId, 'tipo' => 'texto', 'visibilidade' => 'todos', 'texto' => 'oi', 'created_at' => $agora, 'updated_at' => $agora]);
+        $msgMestre = \Illuminate\Support\Facades\DB::table('mensagens')->insertGetId(['mesa_id' => $mesa->id, 'personagem_id' => $mestreId, 'tipo' => 'texto', 'visibilidade' => 'todos', 'texto' => 'ola', 'created_at' => $agora, 'updated_at' => $agora]);
+
+        $this->artisan('migrate')->assertExitCode(0);
+
+        $ana = Jogador::where('mesa_id', $mesa->id)->where('nome', 'Ana')->first();
+        $mestre = Jogador::where('mesa_id', $mesa->id)->where('nome', 'Mestre')->first();
+        $this->assertSame('mestre', $mestre->papel);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('x-Ana', $ana->senha));      // senha (já com hash) preservada
+        $this->assertSame($pagina->id, $ana->pagina_id);
+        $this->assertSame([$anaId], $ana->personagens()->pluck('personagens.id')->all());      // mesmo id: o token continua válido
+        $this->assertNull(Personagem::find($mestreId));                                         // o "personagem" do mestre era só o login
+        $this->assertSame($anaId, \Illuminate\Support\Facades\DB::table('objetos')->where('id', $token)->value('personagem_id'));
+        $this->assertNull(\Illuminate\Support\Facades\DB::table('objetos')->where('id', $traco)->value('personagem_id'));
+        $this->assertSame($ana->id, \Illuminate\Support\Facades\DB::table('objetos')->where('id', $traco)->value('jogador_id'));
+        $this->assertSame($ana->id, \Illuminate\Support\Facades\DB::table('mensagens')->where('id', $msgAna)->value('jogador_id'));
+        $this->assertSame($mestre->id, \Illuminate\Support\Facades\DB::table('mensagens')->where('id', $msgMestre)->value('jogador_id'));
+        $this->assertNull(\Illuminate\Support\Facades\DB::table('mensagens')->where('id', $msgMestre)->value('personagem_id'));
     }
 }

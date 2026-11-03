@@ -3,7 +3,7 @@
 namespace Tests\Feature\Jogo;
 
 use App\Events\EventoMesa;
-use App\Models\Personagem;
+use App\Models\Jogador;
 use App\Models\Sistema;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,20 +19,22 @@ class ChatTest extends TestCase
     {
         $dono = User::factory()->create();
         $mesa = $dono->mesas()->create(['nome' => 'T', 'slug' => 't-'.uniqid(), 'sistema_id' => Sistema::value('id'), 'tema_entrada' => 'padrao']);
-        $mestre = $mesa->personagens()->create(['nome' => 'Mestre', 'papel' => 'mestre', 'cor' => '#d4a843']);
-        $ana = $mesa->personagens()->create(['nome' => 'Ana', 'papel' => 'jogador', 'cor' => '#2563eb']);
-        $bia = $mesa->personagens()->create(['nome' => 'Bia', 'papel' => 'jogador', 'cor' => '#16a34a']);
+        $mestre = $mesa->jogadores()->create(['nome' => 'Mestre', 'papel' => 'mestre', 'cor' => '#d4a843']);
+        $ana = $mesa->jogadores()->create(['nome' => 'Ana', 'papel' => 'jogador', 'cor' => '#2563eb']);
+        $bia = $mesa->jogadores()->create(['nome' => 'Bia', 'papel' => 'jogador', 'cor' => '#16a34a']);
+        $aria = $mesa->personagens()->create(['nome' => 'Aria', 'cor' => '#0ea5e9']);
+        $aria->jogadores()->attach($ana);
         $pagina = $mesa->paginas()->create(['nome' => 'P', 'ordem' => 1]);
 
-        return (object) compact('mesa', 'mestre', 'ana', 'bia', 'pagina');
+        return (object) compact('mesa', 'mestre', 'ana', 'bia', 'aria', 'pagina');
     }
 
-    private function como(Personagem $p): static
+    private function como(Jogador $p): static
     {
-        return $this->withSession(['acesso_mesas' => [$p->mesa_id => [$p->id => true]]])->withHeader('X-Personagem', (string) $p->id);
+        return $this->withSession(['acesso_mesas' => [$p->mesa_id => [$p->id => true]]])->withHeader('X-Jogador', (string) $p->id);
     }
 
-    private function rolar($c, Personagem $quem, array $corpo)
+    private function rolar($c, Jogador $quem, array $corpo)
     {
         return $this->como($quem)->postJson(route('jogo.rolagens.store', $c->mesa->id), $corpo + ['dado' => 'd20', 'quantidade' => 1, 'visibilidade' => 'todos']);
     }
@@ -80,7 +82,7 @@ class ChatTest extends TestCase
         Event::fake([EventoMesa::class]);
         $c = $this->cenario();
         $this->rolar($c, $c->ana, ['visibilidade' => 'mestre'])->assertCreated();
-        Event::assertDispatched(EventoMesa::class, fn ($e) => $e->canais === ["personagem.{$c->ana->id}", 'mestre']);
+        Event::assertDispatched(EventoMesa::class, fn ($e) => $e->canais === ["jogador.{$c->ana->id}", 'mestre']);
         Event::assertNotDispatched(EventoMesa::class, fn ($e) => in_array('mesa', $e->canais, true));
     }
 
@@ -105,7 +107,7 @@ class ChatTest extends TestCase
         $this->rolar($c, $c->mestre, ['visibilidade' => 'mestre'])->assertCreated();        // só mestre
         $this->como($c->ana)->postJson(route('jogo.mensagens.store', $c->mesa->id), ['texto' => 'olá'])->assertCreated();
 
-        $ver = fn (Personagem $p) => $this->como($p)->get(route('jogo', [$c->mesa->slug, $p->id]))->viewData('page')['props']['mensagens'];
+        $ver = fn (Jogador $p) => $this->como($p)->get(route('jogo', [$c->mesa->slug, $p->id]))->viewData('page')['props']['mensagens'];
 
         $mestre = $ver($c->mestre);
         $this->assertCount(5, $mestre);
@@ -135,30 +137,30 @@ class ChatTest extends TestCase
     public function test_autorizacao_dos_canais_privados(): void
     {
         $c = $this->cenario();
-        $auth = fn (Personagem $p, string $canal) => $this->como($p)->post(route('jogo.broadcasting.auth', $c->mesa->id), ['channel_name' => $canal, 'socket_id' => '123.456']);
+        $auth = fn (Jogador $p, string $canal) => $this->como($p)->post(route('jogo.broadcasting.auth', $c->mesa->id), ['channel_name' => $canal, 'socket_id' => '123.456']);
         $id = $c->mesa->id;
 
         $auth($c->ana, "private-mesa.{$id}")->assertOk();
-        $auth($c->ana, "private-mesa.{$id}.personagem.{$c->ana->id}")->assertOk();
+        $auth($c->ana, "private-mesa.{$id}.jogador.{$c->ana->id}")->assertOk();
         $auth($c->ana, "private-mesa.{$id}.mestre")->assertForbidden();                 // jogador não escuta o canal do mestre
-        $auth($c->ana, "private-mesa.{$id}.personagem.{$c->bia->id}")->assertForbidden(); // nem o de outro jogador
+        $auth($c->ana, "private-mesa.{$id}.jogador.{$c->bia->id}")->assertForbidden(); // nem o de outro jogador
         $auth($c->mestre, "private-mesa.{$id}.mestre")->assertOk();
         $this->flushSession();
-        $this->withHeaders(['X-Personagem' => ''])->post(route('jogo.broadcasting.auth', $id), ['channel_name' => "private-mesa.{$id}", 'socket_id' => '1.2'])->assertForbidden();
+        $this->withHeaders(['X-Jogador' => ''])->post(route('jogo.broadcasting.auth', $id), ['channel_name' => "private-mesa.{$id}", 'socket_id' => '1.2'])->assertForbidden();
     }
 
     public function test_so_o_mestre_altera_o_combate_e_o_estado_chega_aos_jogadores(): void
     {
         Event::fake([EventoMesa::class]);
         $c = $this->cenario();
-        $estado = ['ativo' => true, 'rodada' => 2, 'atual' => 'a', 'itens' => [['id' => 'a', 'nome' => 'Ana', 'iniciativa' => 15, 'cor' => '#2563eb', 'personagem_id' => $c->ana->id]]];
+        $estado = ['ativo' => true, 'rodada' => 2, 'atual' => 'a', 'itens' => [['id' => 'a', 'nome' => 'Aria', 'iniciativa' => 15, 'cor' => '#2563eb', 'personagem_id' => $c->aria->id]]];
 
         $this->como($c->ana)->putJson(route('jogo.combate.update', $c->mesa->id), $estado)->assertForbidden();
         $this->como($c->mestre)->putJson(route('jogo.combate.update', $c->mesa->id), $estado)->assertOk();
         Event::assertDispatched(EventoMesa::class, fn ($e) => $e->nome === 'combate' && $e->canais === ['mesa']);
 
         $this->como($c->ana)->get(route('jogo', [$c->mesa->slug, $c->ana->id]))->assertInertia(fn (Assert $p) => $p
-            ->where('combate.ativo', true)->where('combate.rodada', 2)->where('combate.itens.0.nome', 'Ana'));
+            ->where('combate.ativo', true)->where('combate.rodada', 2)->where('combate.itens.0.nome', 'Aria'));
     }
 
     public function test_jogador_desenha_na_camada_jogadores_e_apaga_so_o_proprio(): void
@@ -169,7 +171,8 @@ class ChatTest extends TestCase
         $url = route('jogo.objetos.store', [$c->mesa->id, $c->pagina->id]);
 
         $criado = $this->como($c->ana)->postJson($url, $traco)->assertCreated()->json();
-        $this->assertSame($c->ana->id, $criado['personagem_id']);
+        $this->assertSame($c->ana->id, $criado['jogador_id']);
+        $this->assertNull($criado['personagem_id']);
         $this->como($c->ana)->postJson($url, ['camada' => 'mestre'] + $traco)->assertForbidden();                    // só Jogadores
         $this->como($c->ana)->postJson($url, ['tipo' => 'token'] + $traco)->assertForbidden();                       // só traço/texto
         $this->como($c->ana)->postJson($url, ['tipo' => 'texto', 'dados' => ['texto' => 'Olá', 'cor' => '#ffffff', 'tamanho' => 24]] + $traco)->assertCreated();
@@ -187,5 +190,21 @@ class ChatTest extends TestCase
         $this->como($c->ana)->postJson(route('jogo.objetos.store', [$c->mesa->id, $c->pagina->id]), [
             'camada' => 'jogadores', 'tipo' => 'traco', 'x' => 0, 'y' => 0, 'largura' => 5, 'altura' => 5, 'dados' => ['pontos' => [0, 0, 1, 1, 2]],
         ])->assertStatus(422);
+    }
+
+    public function test_fala_e_rola_como_o_personagem_ativo_somente_se_for_seu(): void
+    {
+        $c = $this->cenario();
+        $alheio = $c->mesa->personagens()->create(['nome' => 'Bruno', 'cor' => '#16a34a']); // de ninguém
+        $texto = fn (Jogador $quem, ?int $personagem) => $this->como($quem)->postJson(route('jogo.mensagens.store', $c->mesa->id), ['texto' => 'oi', 'personagem_id' => $personagem]);
+
+        $texto($c->ana, $c->aria->id)->assertCreated()->assertJsonPath('autor.nome', 'Aria')->assertJsonPath('autor.id', $c->ana->id)->assertJsonPath('autor.personagem_id', $c->aria->id);
+        $texto($c->ana, null)->assertCreated()->assertJsonPath('autor.nome', 'Ana');          // sem ativo: fala como o jogador
+        $texto($c->ana, $alheio->id)->assertStatus(422);                                         // não é dele
+        $texto($c->bia, $c->aria->id)->assertStatus(422);                                        // é da Ana
+        $texto($c->mestre, $alheio->id)->assertCreated();                                       // mestre fala como qualquer um
+
+        $this->rolar($c, $c->ana, ['personagem_id' => $c->aria->id])->assertCreated()->assertJsonPath('autor.nome', 'Aria');
+        $this->rolar($c, $c->ana, ['personagem_id' => $alheio->id])->assertStatus(422);
     }
 }

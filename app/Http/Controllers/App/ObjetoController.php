@@ -52,10 +52,11 @@ class ObjetoController extends Controller
         if ($acesso->ehMestre()) {
             $somenteMestre = $dados['camada'] === 'mestre' || $dados['tipo'] === 'parede';
         } else {
-            // Jogador: só traço e texto, na camada Jogadores, na própria página, em seu nome.
+            // Jogador: só traço e texto, na camada Jogadores, na própria página, em seu nome (jogador).
             abort_unless(in_array($dados['tipo'], self::TIPOS_DO_JOGADOR, true) && $dados['camada'] === 'jogadores', 403);
             abort_unless($pagina->id === $this->paginaDe($mesa, $acesso), 403);
-            $dados['personagem_id'] = $acesso->personagem->id;
+            $dados['jogador_id'] = $acesso->jogador->id;
+            $dados['personagem_id'] = null;
             $somenteMestre = false;
         }
 
@@ -68,7 +69,7 @@ class ObjetoController extends Controller
         }
 
         $objeto = $pagina->objetos()->create($dados)->refresh();
-        Transmitir::cena($mesa, $pagina->id, $acesso->personagem->id, $somenteMestre);
+        Transmitir::cena($mesa, $pagina->id, $acesso->jogador->id, $somenteMestre);
 
         return response()->json($objeto->paraFront(), 201);
     }
@@ -103,10 +104,10 @@ class ObjetoController extends Controller
                 $dados['dados'] = array_merge($objeto->dados ?? [], $dados['dados']);
             }
         } else {
-            // Jogador: só move o PRÓPRIO token/desenho, na camada Jogadores e na página onde está.
+            // Jogador: só move token de personagem SEU ou desenho/texto SEU, na camada Jogadores e na página onde está.
             abort_unless(
                 $objeto->camada === 'jogadores'
-                && $objeto->personagem_id === $acesso->personagem->id
+                && $this->ehMeu($objeto, $acesso)
                 && $objeto->pagina_id === $this->paginaDe($mesa, $acesso),
                 403,
             );
@@ -114,7 +115,7 @@ class ObjetoController extends Controller
         }
 
         $objeto->update($dados);
-        Transmitir::cena($mesa, $objeto->pagina_id, $acesso->personagem->id, $this->soMestre($objeto));
+        Transmitir::cena($mesa, $objeto->pagina_id, $acesso->jogador->id, $this->soMestre($objeto));
 
         return response()->json($objeto->paraFront());
     }
@@ -129,16 +130,24 @@ class ObjetoController extends Controller
             abort_unless(
                 in_array($objeto->tipo, self::TIPOS_DO_JOGADOR, true)
                 && $objeto->camada === 'jogadores'
-                && $objeto->personagem_id === $acesso->personagem->id,
+                && $objeto->jogador_id === $acesso->jogador->id,
                 403,
             );
         }
         $paginaId = $objeto->pagina_id;
         $somenteMestre = $this->soMestre($objeto);
         $objeto->delete();
-        Transmitir::cena($mesa, $paginaId, $acesso->personagem->id, $somenteMestre);
+        Transmitir::cena($mesa, $paginaId, $acesso->jogador->id, $somenteMestre);
 
         return response()->json(['ok' => true]);
+    }
+
+    /** Token: o personagem é de um dos personagens do jogador. Desenho/texto: foi ele que fez. */
+    private function ehMeu(Objeto $objeto, AcessoMesa $acesso): bool
+    {
+        return in_array($objeto->tipo, self::TIPOS_DO_JOGADOR, true)
+            ? $objeto->jogador_id === $acesso->jogador->id
+            : $objeto->tipo === 'token' && $acesso->podeControlar($objeto->personagem_id);
     }
 
     private function soMestre(Objeto $objeto): bool
@@ -153,7 +162,7 @@ class ObjetoController extends Controller
 
     private function paginaDe(Mesa $mesa, AcessoMesa $acesso): ?int
     {
-        return $acesso->personagem->pagina_id ?? $mesa->paginas()->value('id');
+        return $acesso->jogador->pagina_id ?? $mesa->paginas()->value('id');
     }
 
     /** Paredes e luzes vivem na iluminação; traços e textos nunca (só nas outras camadas). */

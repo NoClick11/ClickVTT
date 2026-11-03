@@ -51,6 +51,11 @@ class Mesa extends Model
         return $this->hasMany(Personagem::class);
     }
 
+    public function jogadores(): HasMany
+    {
+        return $this->hasMany(Jogador::class);
+    }
+
     public function paginas(): HasMany
     {
         return $this->hasMany(Pagina::class)->orderBy('ordem')->orderBy('id');

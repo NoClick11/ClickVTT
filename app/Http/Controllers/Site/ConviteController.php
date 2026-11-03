@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/** Entrada de jogadores por link de convite: escolhe o personagem e digita a senha (modelo Foundry). */
+/** Entrada por link de convite: escolhe o JOGADOR e digita a senha (modelo Foundry). */
 class ConviteController extends Controller
 {
     public const SESSAO = 'acesso_mesas';
@@ -31,8 +31,8 @@ class ConviteController extends Controller
                 'tema_entrada' => $mesa->tema_entrada,
                 'sistema' => $mesa->sistema->nome,
             ],
-            'personagens' => $mesa->personagens()->orderByRaw("papel = 'mestre' desc")->orderBy('nome')->get()
-                ->map(fn ($p) => $p->paraFront()),
+            'jogadores' => $mesa->jogadores()->orderByRaw("papel = 'mestre' desc")->orderBy('nome')->get()
+                ->map(fn ($j) => $j->paraFront()),
             'jaEntrou' => AcessoMesa::autorizados($request, $mesa),
         ]);
     }
@@ -41,32 +41,32 @@ class ConviteController extends Controller
     {
         $mesa = $this->mesa($token);
         $dados = $request->validate([
-            'personagem_id' => ['required', 'integer'],
+            'jogador_id' => ['required', 'integer'],
             'senha' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $personagem = $mesa->personagens()->find($dados['personagem_id']);
-        if (! $personagem) {
-            throw ValidationException::withMessages(['personagem_id' => 'Personagem não encontrado.']);
+        $jogador = $mesa->jogadores()->find($dados['jogador_id']);
+        if (! $jogador) {
+            throw ValidationException::withMessages(['jogador_id' => 'Jogador não encontrado.']);
         }
-        if ($personagem->senha !== null && ! Hash::check($dados['senha'] ?? '', $personagem->senha)) {
+        if ($jogador->senha !== null && ! Hash::check($dados['senha'] ?? '', $jogador->senha)) {
             throw ValidationException::withMessages(['senha' => 'Senha incorreta.']);
         }
 
-        // Acumula: entrar com outro personagem NÃO derruba os que já estão abertos em outras abas.
+        // Acumula: entrar com outro jogador NÃO derruba os que já estão abertos em outras abas.
         $request->session()->regenerate();
-        $request->session()->put(self::SESSAO.'.'.$mesa->id.'.'.$personagem->id, true);
+        $request->session()->put(self::SESSAO.'.'.$mesa->id.'.'.$jogador->id, true);
 
-        return to_route('jogo', [$mesa->slug, $personagem->id]);
+        return to_route('jogo', [$mesa->slug, $jogador->id]);
     }
 
     public function sair(Request $request, string $token): RedirectResponse
     {
         $mesa = $this->mesa($token);
-        // Sai só do personagem desta aba (os demais continuam entrados).
+        // Sai só do jogador desta aba (os demais continuam entrados).
         $chave = self::SESSAO.'.'.$mesa->id;
-        $personagemId = $request->input('personagem');
-        $personagemId ? $request->session()->forget($chave.'.'.(int) $personagemId) : $request->session()->forget($chave);
+        $jogadorId = $request->input('jogador');
+        $jogadorId ? $request->session()->forget($chave.'.'.(int) $jogadorId) : $request->session()->forget($chave);
 
         return to_route('convite.show', $token);
     }

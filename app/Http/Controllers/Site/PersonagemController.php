@@ -9,11 +9,13 @@ use App\Models\Personagem;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
+/** Personagens (fichas) da mesa e os jogadores de cada um. Só o dono da mesa gerencia. */
 class PersonagemController extends Controller
 {
     public function store(PersonagemRequest $request, Mesa $mesa): RedirectResponse
     {
-        $mesa->personagens()->create($request->safe()->only(['nome', 'papel', 'cor', 'senha']));
+        $personagem = $mesa->personagens()->create($request->safe()->only(['nome', 'cor']));
+        $personagem->jogadores()->sync($request->validated('jogadores', []));
 
         return back();
     }
@@ -21,14 +23,8 @@ class PersonagemController extends Controller
     public function update(PersonagemRequest $request, Mesa $mesa, Personagem $personagem): RedirectResponse
     {
         abort_unless($personagem->mesa_id === $mesa->id, 404);
-
-        $dados = $request->safe()->only(['nome', 'papel', 'cor']);
-        if ($request->filled('senha')) {
-            $dados['senha'] = $request->input('senha');
-        } elseif ($request->boolean('remover_senha')) {
-            $dados['senha'] = null;
-        }
-        $personagem->update($dados);
+        $personagem->update($request->safe()->only(['nome', 'cor']));
+        $personagem->jogadores()->sync($request->validated('jogadores', []));
 
         return back();
     }

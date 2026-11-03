@@ -16,7 +16,7 @@ class Objeto extends Model
     protected $table = 'objetos';
 
     protected $fillable = [
-        'camada', 'tipo', 'personagem_id', 'nome', 'x', 'y', 'largura', 'altura', 'z',
+        'camada', 'tipo', 'personagem_id', 'jogador_id', 'nome', 'x', 'y', 'largura', 'altura', 'z',
         'arquivo', 'arquivo_tipo', 'dados',
     ];
 
@@ -40,6 +40,11 @@ class Objeto extends Model
     public function pagina(): BelongsTo
     {
         return $this->belongsTo(Pagina::class);
+    }
+
+    public function jogador(): BelongsTo
+    {
+        return $this->belongsTo(Jogador::class);
     }
 
     public function personagem(): BelongsTo
@@ -66,6 +71,7 @@ class Objeto extends Model
             'camada' => $this->camada,
             'tipo' => $this->tipo,
             'personagem_id' => $this->personagem_id,
+            'jogador_id' => $this->jogador_id,
             'nome' => $this->nome,
             'x' => $this->x, 'y' => $this->y,
             'largura' => $this->largura, 'altura' => $this->altura,

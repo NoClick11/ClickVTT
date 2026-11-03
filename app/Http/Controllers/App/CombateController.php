@@ -8,6 +8,7 @@ use App\Support\AcessoMesa;
 use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /** Turnos/iniciativa: só o mestre altera; todos veem. Por enquanto é apenas visual. */
 class CombateController extends Controller
@@ -24,11 +25,11 @@ class CombateController extends Controller
             'itens.*.nome' => ['required', 'string', 'max:60'],
             'itens.*.iniciativa' => ['nullable', 'numeric', 'between:-999,999'],
             'itens.*.cor' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            'itens.*.personagem_id' => ['nullable', 'integer'],
+            'itens.*.personagem_id' => ['nullable', 'integer', Rule::exists('personagens', 'id')->where('mesa_id', $mesa->id)],
         ]);
         $mesa->forceFill(['combate' => $dados])->save();
 
-        Transmitir::enviar($mesa, 'combate', ['combate' => $dados, 'ator' => $acesso->personagem->id], ['mesa']);
+        Transmitir::enviar($mesa, 'combate', ['combate' => $dados, 'ator' => $acesso->jogador->id], ['mesa']);
 
         return response()->json($dados);
     }

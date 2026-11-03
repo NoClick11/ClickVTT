@@ -10,10 +10,10 @@ use Illuminate\Support\Facades\Broadcast;
 
 /**
  * Autoriza canais privados do Reverb. Os jogadores não têm conta: a autorização vem do acesso
- * por convite (sessão) + X-Personagem da aba. Canais:
- *  - private-mesa.{id}                  qualquer personagem que entrou
+ * por convite (sessão) + X-Jogador da aba. Canais:
+ *  - private-mesa.{id}                  qualquer jogador que entrou
  *  - private-mesa.{id}.mestre           só o mestre
- *  - private-mesa.{id}.personagem.{pid} só o próprio personagem
+ *  - private-mesa.{id}.jogador.{jid}    só o próprio jogador
  */
 class BroadcastAuthController extends Controller
 {
@@ -26,7 +26,7 @@ class BroadcastAuthController extends Controller
         $permitido = match (true) {
             $canal === $base => true,
             $canal === "{$base}.mestre" => $acesso->ehMestre(),
-            $canal === "{$base}.personagem.{$acesso->personagem->id}" => true,
+            $canal === "{$base}.jogador.{$acesso->jogador->id}" => true,
             default => false,
         };
         abort_unless($permitido, 403);

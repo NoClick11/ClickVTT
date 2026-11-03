@@ -52,7 +52,9 @@ class MesaController extends Controller
                 'sistema' => ['nome' => $mesa->sistema->nome, 'icone' => $mesa->sistema->icone],
                 'convite_url' => route('convite.show', $mesa->convite_token),
             ],
-            'personagens' => $mesa->personagens()->orderByRaw("papel = 'mestre' desc")->orderBy('nome')->get()
+            'jogadores' => $mesa->jogadores()->orderByRaw("papel = 'mestre' desc")->orderBy('nome')->get()
+                ->map(fn ($j) => $j->paraFront()),
+            'personagens' => $mesa->personagens()->with('jogadores')->orderBy('nome')->get()
                 ->map(fn ($p) => $p->paraFront()),
         ]);
     }

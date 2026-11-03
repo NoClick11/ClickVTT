@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Site;
 
-use App\Models\Personagem;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -23,10 +22,10 @@ class PersonagemRequest extends FormRequest
                 'required', 'string', 'max:60',
                 Rule::unique('personagens', 'nome')->where('mesa_id', $mesa->id)->ignore($personagem?->id),
             ],
-            'papel' => ['required', Rule::in(Personagem::PAPEIS)],
             'cor' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            'senha' => ['nullable', 'string', 'min:4', 'max:100'],
-            'remover_senha' => ['nullable', 'boolean'],
+            // Jogadores deste personagem (só jogadores da própria mesa; o mestre controla todos por padrão).
+            'jogadores' => ['nullable', 'array'],
+            'jogadores.*' => ['integer', Rule::exists('jogadores', 'id')->where('mesa_id', $mesa->id)->where('papel', 'jogador')],
         ];
     }
 
@@ -35,7 +34,7 @@ class PersonagemRequest extends FormRequest
         return [
             'nome.unique' => 'Já existe um personagem com esse nome nesta mesa.',
             'cor.regex' => 'Cor inválida.',
-            'senha.min' => 'A senha precisa ter ao menos 4 caracteres.',
+            'jogadores.*.exists' => 'Jogador inválido para esta mesa.',
         ];
     }
 }

@@ -16,10 +16,14 @@ class ChatController extends Controller
     public function texto(Request $request, Mesa $mesa): JsonResponse
     {
         $acesso = AcessoMesa::exigir($request, $mesa);
-        $dados = $request->validate(['texto' => ['required', 'string', 'max:1000']]);
+        $dados = $request->validate([
+            'texto' => ['required', 'string', 'max:1000'],
+            'personagem_id' => ['nullable', 'integer', Rule::in($acesso->personagensPermitidos())], // "falando como"
+        ]);
 
         $mensagem = $mesa->mensagens()->create([
-            'personagem_id' => $acesso->personagem->id, 'tipo' => 'texto', 'visibilidade' => 'todos', 'texto' => trim($dados['texto']),
+            'jogador_id' => $acesso->jogador->id, 'personagem_id' => $dados['personagem_id'] ?? null,
+            'tipo' => 'texto', 'visibilidade' => 'todos', 'texto' => trim($dados['texto']),
         ]);
 
         return $this->entregar($mesa, $mensagem, $acesso);
@@ -38,6 +42,7 @@ class ChatController extends Controller
             'dado' => ['required', Rule::in(array_keys(Mensagem::DADOS))],
             'quantidade' => ['required', 'integer', 'min:1', 'max:6'],
             'visibilidade' => ['required', Rule::in($permitidas)],
+            'personagem_id' => ['nullable', 'integer', Rule::in($acesso->personagensPermitidos())], // personagem ativo
         ]);
 
         $faces = Mensagem::DADOS[$dados['dado']];
@@ -45,7 +50,8 @@ class ChatController extends Controller
         $total = array_sum($resultados);
 
         $mensagem = $mesa->mensagens()->create([
-            'personagem_id' => $acesso->personagem->id,
+            'jogador_id' => $acesso->jogador->id,
+            'personagem_id' => $dados['personagem_id'] ?? null,
             'tipo' => 'rolagem',
             'visibilidade' => $dados['visibilidade'],
             'texto' => "{$dados['quantidade']}{$dados['dado']}",
@@ -58,8 +64,8 @@ class ChatController extends Controller
     /** Distribui a mensagem: cada canal recebe só o que pode ver. Quem enviou recebe a sua pela resposta. */
     private function entregar(Mesa $mesa, Mensagem $mensagem, AcessoMesa $acesso): JsonResponse
     {
-        $mensagem->load('personagem');
-        $autor = $acesso->personagem->id;
+        $mensagem->load(['personagem', 'jogador']);
+        $autor = $acesso->jogador->id;
 
         switch ($mensagem->visibilidade) {
             case 'todos':
@@ -71,16 +77,16 @@ class ChatController extends Controller
                 Transmitir::enviar($mesa, 'mensagem', ['mensagem' => $mensagem->para($this->mestreFicticio()), 'ator' => $autor, 'substitui' => true], ['mestre']);
                 break;
             case 'mestre':
-                $canais = $acesso->ehMestre() ? ['mestre'] : ["personagem.{$autor}", 'mestre'];
-                Transmitir::enviar($mesa, 'mensagem', ['mensagem' => $mensagem->para($acesso->personagem), 'ator' => $autor], $canais);
+                $canais = $acesso->ehMestre() ? ['mestre'] : ["jogador.{$autor}", 'mestre'];
+                Transmitir::enviar($mesa, 'mensagem', ['mensagem' => $mensagem->para($acesso->jogador), 'ator' => $autor], $canais);
                 break;
         }
 
-        return response()->json($mensagem->para($acesso->personagem), 201);
+        return response()->json($mensagem->para($acesso->jogador), 201);
     }
 
-    private function mestreFicticio(): \App\Models\Personagem
+    private function mestreFicticio(): \App\Models\Jogador
     {
-        return new \App\Models\Personagem(['papel' => 'mestre']);
+        return new \App\Models\Jogador(['papel' => 'mestre']);
     }
 }
