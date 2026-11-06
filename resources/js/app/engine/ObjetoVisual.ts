@@ -1,5 +1,6 @@
 import { Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { GifSprite } from 'pixi.js/gif';
+import { iconeDoStatus } from '../nucleo/status';
 import type { ObjetoDto } from './tipos';
 
 /** Representa um objeto da cena no Pixi: imagem/vídeo/GIF (mapa), token (círculo), luz ou parede. */
@@ -15,12 +16,14 @@ export class ObjetoVisual {
     private textoLivre: Text | null = null;
     private arquivoCarregado: string | null = null;
     private marcador = new Graphics();
+    private iconesStatus = new Container();
+    private statusDesenhado = '';
     private destruido = false;
     private enfase = true;
 
     constructor(dto: ObjetoDto, private mestre = false) {
         this.dto = { ...dto };
-        this.container.addChild(this.fundo, this.marcador);
+        this.container.addChild(this.fundo, this.marcador, this.iconesStatus);
         this.aplicar();
         void this.carregarMidia();
     }
@@ -92,6 +95,7 @@ export class ObjetoVisual {
         this.container.alpha = camada === 'mestre' ? 0.6 : this.dto.tipo === 'parede' && !this.enfase ? 0.25 : 1;
         this.desenharFundo();
         this.desenharMarcador();
+        this.desenharStatus();
         this.ajustarMidia();
         this.atualizarRotulo(largura, altura);
     }
@@ -186,6 +190,45 @@ export class ObjetoVisual {
         if (this.dto.tipo !== 'luz' || !this.mestre) return;
         g.circle(this.dto.largura / 2, this.dto.altura / 2, 9).fill(0x0d0a12).stroke({ color: corHex(this.dto.dados?.cor ?? '#ffd27a'), width: 3 });
         g.circle(this.dto.largura / 2, this.dto.altura / 2, 3).fill(0xffffff);
+    }
+
+    /**
+     * Ícones dos efeitos ativos do personagem no canto superior do token, em fileira (até 4 e um "+N" para o resto).
+     * Cada efeito tem o seu ícone (`nucleo/status.ts`). O tamanho acompanha o token, com mínimo legível.
+     */
+    private desenharStatus(): void {
+        const ids = this.ehToken ? (this.dto.status ?? []) : [];
+        const lado = Math.max(16, Math.min(30, Math.min(this.dto.largura, this.dto.altura) * 0.3));
+        const chave = `${ids.join(',')}|${Math.round(lado)}|${Math.round(this.dto.largura)}`;
+        if (chave === this.statusDesenhado) return;
+        this.statusDesenhado = chave;
+        for (const filho of this.iconesStatus.removeChildren()) filho.destroy({ children: true });
+        const visiveis = ids.length > 4 ? ids.slice(0, 3) : ids;
+        const itens =
+            ids.length > 4
+                ? [...visiveis.map((id) => ({ id, resto: 0 })), { id: '', resto: ids.length - 3 }]
+                : visiveis.map((id) => ({ id, resto: 0 }));
+        itens.forEach((it, i) => {
+            const { icone, cor } = iconeDoStatus(it.id);
+            const bolha = new Container();
+            bolha.position.set(this.dto.largura - lado * 0.5 - i * (lado * 0.85), -lado * 0.25);
+            const fundo = new Graphics()
+                .circle(0, 0, lado / 2)
+                .fill({ color: 0x0d0a12, alpha: 0.92 })
+                .stroke({ color: it.resto ? 0xd4a843 : corHex(cor), width: 2 });
+            const texto = new Text({
+                text: it.resto ? `+${it.resto}` : icone,
+                style: {
+                    fontFamily: 'Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif',
+                    fontSize: lado * (it.resto ? 0.5 : 0.62),
+                    fill: 0xffffff,
+                    fontWeight: '700',
+                },
+            });
+            texto.anchor.set(0.5);
+            bolha.addChild(fundo, texto);
+            this.iconesStatus.addChild(bolha);
+        });
     }
 
     private atualizarRotulo(largura: number, altura: number): void {

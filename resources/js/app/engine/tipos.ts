@@ -24,6 +24,8 @@ export interface ObjetoDto {
     camada: Camada;
     tipo: 'imagem' | 'token' | 'luz' | 'parede' | 'traco' | 'texto';
     personagem_id: number | null;
+    /** token: ids dos efeitos (condições) ativos do personagem, desenhados como ícones no token. */
+    status?: string[];
     /** jogador que fez (traço/texto) */
     jogador_id: number | null;
     nome: string | null;

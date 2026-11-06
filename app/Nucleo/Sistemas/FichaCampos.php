@@ -71,7 +71,8 @@ class FichaCampos
             throw ValidationException::withMessages($comPrefixo);
         }
 
-        $nova = $ficha ?? $sistema->fichaPadrao();
+        // A ficha salva antes de um campo existir ganha o padrão dele (ver `Personagem::fichaCompleta`).
+        $nova = array_replace_recursive($sistema->fichaPadrao(), $ficha ?? []);
         foreach ($campos as $caminho => $valor) {
             Arr::set($nova, (string) $caminho, $valor);
         }

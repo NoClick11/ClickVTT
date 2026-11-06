@@ -60,6 +60,11 @@ class FichaController extends Controller
             'personagem_id' => $atual->id, 'campos' => $campos, 'criacao' => $atual->criacao, 'ator' => $acesso->jogador->id,
         ], $canais);
 
+        // Os ícones de efeito no token são públicos: quem muda as condições avisa a mesa toda (só os ids, nunca a ficha).
+        if (array_key_exists('condicoes', $campos)) {
+            Transmitir::enviar($mesa, 'status', ['personagem_id' => $atual->id, 'status' => array_values($atual->ficha['condicoes'] ?? [])], ['mesa']);
+        }
+
         return response()->json(['ficha' => $atual->ficha, 'criacao' => $atual->criacao]);
     }
 

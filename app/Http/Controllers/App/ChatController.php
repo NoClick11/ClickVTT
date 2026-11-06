@@ -94,7 +94,7 @@ class ChatController extends Controller
         if (! $sistema) {
             return [null, [], [], []];
         }
-        $ficha = $personagem->ficha ?? $sistema->fichaPadrao();
+        $ficha = $personagem->fichaCompleta($sistema);
         $ids = $sistema->itensReferenciados($ficha);
         $itens = $ids ? $mesa->itens()->whereIn('id', $ids)->get()->mapWithKeys(fn ($i) => [$i->id => $i->paraFront()])->all() : [];
 

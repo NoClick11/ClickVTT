@@ -172,6 +172,20 @@ watch(
     () => props.objetos,
     (novos) => (objetos.value = copia(novos)),
 );
+
+// Efeitos ativos de cada personagem (ícones no token). Vêm públicos do servidor e mudam ao vivo (evento `status`).
+const statusPorPersonagem = ref<Record<number, string[]>>({});
+function sincronizarStatus() {
+    statusPorPersonagem.value = Object.fromEntries(props.personagens.map((p) => [p.id, [...(p.status ?? [])]]));
+}
+sincronizarStatus();
+watch(() => props.personagens, sincronizarStatus, { deep: true });
+/** Os tokens que o mapa desenha, cada um com os efeitos do seu personagem. */
+const objetosDaCena = computed(() =>
+    objetos.value.map((o) =>
+        o.tipo === 'token' && o.personagem_id !== null ? { ...o, status: statusPorPersonagem.value[o.personagem_id] ?? [] } : o,
+    ),
+);
 watch(
     () => props.combate,
     (c) => (combate.value = copia(c)),
@@ -468,6 +482,7 @@ function salvarFicha(personagemId: number, campos: Record<string, unknown>) {
     const ficha = fichas.value[personagemId];
     if (!ficha) return;
     for (const [caminho, valor] of Object.entries(campos)) definirCaminho(ficha, caminho, copia(valor));
+    if ('condicoes' in campos) statusPorPersonagem.value[personagemId] = [...((campos.condicoes as string[] | null) ?? [])];
     const fila = (filasFicha.get(personagemId) ?? Promise.resolve())
         .then(() => api.salvarFicha(personagemId, campos))
         .then(() => undefined)
@@ -733,6 +748,7 @@ onMounted(() => {
                 .listen('.mensagem', (e: { mensagem: Mensagem; substitui?: boolean }) => aoNovaMensagem(e.mensagem, !!e.substitui))
                 .listen('.cena', (e: { ator: number | null }) => aoMudarCena(e))
                 .listen('.ficha', aoMudarFicha)
+                .listen('.status', (e: { personagem_id: number; status: string[] }) => (statusPorPersonagem.value[e.personagem_id] = e.status))
                 .listen('.combate', (e: { combate: Combate; ator: number }) => e.ator !== meuId && (combate.value = e.combate));
         abrir(conexao.echo.private(base));
         abrir(conexao.echo.private(`${base}.jogador.${meuId}`));
@@ -818,7 +834,7 @@ function alternarPorta(id: number) {
                 <CenaCanvas
                     ref="canvas"
                     :pagina="pagina"
-                    :objetos="objetos"
+                    :objetos="objetosDaCena"
                     :camada="camada"
                     :ferramenta="ferramenta"
                     :mestre="mestre"

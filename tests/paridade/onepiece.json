@@ -1,0 +1,530 @@
+[
+    {
+        "nome": "onepiece: ficha padrão",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "especie": "",
+            "estilo": "",
+            "profissao": "",
+            "fruta": "",
+            "antecedente": "",
+            "xp": {
+                "atual": 0
+            },
+            "inspiracao": false,
+            "recompensa": 0,
+            "belly": 0,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "sab": 10,
+                "pre": 10,
+                "von": 10
+            },
+            "salvaguardas": [],
+            "pericias": {
+                "atletismo": 0,
+                "acrobacia": 0,
+                "furtividade": 0,
+                "prestidigitacao": 0,
+                "historia": 0,
+                "investigacao": 0,
+                "medicina": 0,
+                "natureza": 0,
+                "sobrevivencia": 0,
+                "atuacao": 0,
+                "enganacao": 0,
+                "intimidacao": 0,
+                "persuasao": 0,
+                "provocacao": 0,
+                "haki": 0,
+                "intuicao": 0,
+                "percepcao": 0,
+                "sobrenatural": 0,
+                "sorte": 0
+            },
+            "deslocamento": "9 m",
+            "pv": {
+                "atual": 0,
+                "max": 0,
+                "temp": 0
+            },
+            "pp": {
+                "atual": 0,
+                "porNivel": 4
+            },
+            "dadosVida": {
+                "restantes": 1,
+                "tipo": "d8"
+            },
+            "exaustao": 0,
+            "sentidos": [],
+            "idiomas": [],
+            "resistencias": [],
+            "imunidades": [],
+            "vulnerabilidades": [],
+            "proficienciasArmas": [],
+            "proficienciasArmaduras": [],
+            "ferramentas": [],
+            "inventario": [],
+            "condicoes": [],
+            "caracteristicas": [],
+            "tecnicas": {
+                "atributo": "von",
+                "lista": []
+            },
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "sab": 0,
+                    "pre": 0,
+                    "von": 0
+                },
+                "pericias": {
+                    "atletismo": 0,
+                    "acrobacia": 0,
+                    "furtividade": 0,
+                    "prestidigitacao": 0,
+                    "historia": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "sobrevivencia": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "intimidacao": 0,
+                    "persuasao": 0,
+                    "provocacao": 0,
+                    "haki": 0,
+                    "intuicao": 0,
+                    "percepcao": 0,
+                    "sobrenatural": 0,
+                    "sorte": 0
+                }
+            },
+            "akuma": {
+                "tipo": "",
+                "despertada": false,
+                "lista": []
+            }
+        },
+        "esperado": {
+            "prof": 2,
+            "ca": 10,
+            "iniciativa": 0,
+            "pp.max": 4,
+            "carga.max": 150,
+            "xp.proximo": 300,
+            "pericia.haki": 0,
+            "dv.max": 1
+        }
+    },
+    {
+        "nome": "onepiece: nível 5, haki especialista e técnicas por Vontade",
+        "parcial": true,
+        "ficha": {
+            "nivel": 5,
+            "especie": "",
+            "estilo": "",
+            "profissao": "",
+            "fruta": "",
+            "antecedente": "",
+            "xp": {
+                "atual": 0
+            },
+            "inspiracao": false,
+            "recompensa": 0,
+            "belly": 0,
+            "atributos": {
+                "for": 10,
+                "des": 16,
+                "con": 10,
+                "sab": 10,
+                "pre": 10,
+                "von": 14
+            },
+            "salvaguardas": [
+                "von"
+            ],
+            "pericias": {
+                "atletismo": 0,
+                "acrobacia": 1,
+                "furtividade": 0,
+                "prestidigitacao": 0,
+                "historia": 0,
+                "investigacao": 0,
+                "medicina": 0,
+                "natureza": 0,
+                "sobrevivencia": 0,
+                "atuacao": 0,
+                "enganacao": 0,
+                "intimidacao": 0,
+                "persuasao": 0,
+                "provocacao": 0,
+                "haki": 2,
+                "intuicao": 0,
+                "percepcao": 0,
+                "sobrenatural": 0,
+                "sorte": 0
+            },
+            "deslocamento": "9 m",
+            "pv": {
+                "atual": 0,
+                "max": 0,
+                "temp": 0
+            },
+            "pp": {
+                "atual": 0,
+                "porNivel": 5
+            },
+            "dadosVida": {
+                "restantes": 1,
+                "tipo": "d8"
+            },
+            "exaustao": 0,
+            "sentidos": [],
+            "idiomas": [],
+            "resistencias": [],
+            "imunidades": [],
+            "vulnerabilidades": [],
+            "proficienciasArmas": [],
+            "proficienciasArmaduras": [],
+            "ferramentas": [],
+            "inventario": [],
+            "condicoes": [],
+            "caracteristicas": [],
+            "tecnicas": {
+                "atributo": "von",
+                "lista": []
+            },
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "sab": 0,
+                    "pre": 0,
+                    "von": 0
+                },
+                "pericias": {
+                    "atletismo": 0,
+                    "acrobacia": 0,
+                    "furtividade": 0,
+                    "prestidigitacao": 0,
+                    "historia": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "sobrevivencia": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "intimidacao": 0,
+                    "persuasao": 0,
+                    "provocacao": 0,
+                    "haki": 0,
+                    "intuicao": 0,
+                    "percepcao": 0,
+                    "sobrenatural": 0,
+                    "sorte": 0
+                }
+            },
+            "akuma": {
+                "tipo": "",
+                "despertada": false,
+                "lista": []
+            }
+        },
+        "esperado": {
+            "prof": 3,
+            "mod.des": 3,
+            "mod.von": 2,
+            "pericia.haki": 8,
+            "pericia.acrobacia": 6,
+            "pericia.sorte": 2,
+            "salv.von": 5,
+            "cd": 13,
+            "ataque": 5,
+            "iniciativa": 3,
+            "ca": 13,
+            "pp.max": 25,
+            "dv.max": 5
+        }
+    },
+    {
+        "nome": "onepiece: característica passiva soma pontos de poder",
+        "parcial": true,
+        "ficha": {
+            "nivel": 5,
+            "especie": "",
+            "estilo": "",
+            "profissao": "",
+            "fruta": "",
+            "antecedente": "",
+            "xp": {
+                "atual": 0
+            },
+            "inspiracao": false,
+            "recompensa": 0,
+            "belly": 0,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "sab": 10,
+                "pre": 10,
+                "von": 10
+            },
+            "salvaguardas": [],
+            "pericias": {
+                "atletismo": 0,
+                "acrobacia": 0,
+                "furtividade": 0,
+                "prestidigitacao": 0,
+                "historia": 0,
+                "investigacao": 0,
+                "medicina": 0,
+                "natureza": 0,
+                "sobrevivencia": 0,
+                "atuacao": 0,
+                "enganacao": 0,
+                "intimidacao": 0,
+                "persuasao": 0,
+                "provocacao": 0,
+                "haki": 0,
+                "intuicao": 0,
+                "percepcao": 0,
+                "sobrenatural": 0,
+                "sorte": 0
+            },
+            "deslocamento": "9 m",
+            "pv": {
+                "atual": 0,
+                "max": 0,
+                "temp": 0
+            },
+            "pp": {
+                "atual": 0,
+                "porNivel": 4
+            },
+            "dadosVida": {
+                "restantes": 1,
+                "tipo": "d8"
+            },
+            "exaustao": 0,
+            "sentidos": [],
+            "idiomas": [],
+            "resistencias": [],
+            "imunidades": [],
+            "vulnerabilidades": [],
+            "proficienciasArmas": [],
+            "proficienciasArmaduras": [],
+            "ferramentas": [],
+            "inventario": [],
+            "condicoes": [],
+            "caracteristicas": [
+                {
+                    "nome": "Reserva de Poder",
+                    "origem": "Haki",
+                    "tipo": "passiva",
+                    "efeitos": [
+                        {
+                            "alvo": "pp.max",
+                            "modo": "soma",
+                            "valor": 5
+                        }
+                    ]
+                }
+            ],
+            "tecnicas": {
+                "atributo": "von",
+                "lista": []
+            },
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "sab": 0,
+                    "pre": 0,
+                    "von": 0
+                },
+                "pericias": {
+                    "atletismo": 0,
+                    "acrobacia": 0,
+                    "furtividade": 0,
+                    "prestidigitacao": 0,
+                    "historia": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "sobrevivencia": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "intimidacao": 0,
+                    "persuasao": 0,
+                    "provocacao": 0,
+                    "haki": 0,
+                    "intuicao": 0,
+                    "percepcao": 0,
+                    "sobrenatural": 0,
+                    "sorte": 0
+                }
+            },
+            "akuma": {
+                "tipo": "",
+                "despertada": false,
+                "lista": []
+            }
+        },
+        "esperado": {
+            "pp.max": 25
+        }
+    },
+    {
+        "nome": "onepiece: perícia nova usa o atributo certo (Provocação por Presença)",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "especie": "",
+            "estilo": "",
+            "profissao": "",
+            "fruta": "",
+            "antecedente": "",
+            "xp": {
+                "atual": 0
+            },
+            "inspiracao": false,
+            "recompensa": 0,
+            "belly": 0,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "sab": 10,
+                "pre": 16,
+                "von": 10
+            },
+            "salvaguardas": [],
+            "pericias": {
+                "atletismo": 0,
+                "acrobacia": 0,
+                "furtividade": 0,
+                "prestidigitacao": 0,
+                "historia": 0,
+                "investigacao": 0,
+                "medicina": 0,
+                "natureza": 0,
+                "sobrevivencia": 0,
+                "atuacao": 0,
+                "enganacao": 0,
+                "intimidacao": 0,
+                "persuasao": 0,
+                "provocacao": 1,
+                "haki": 0,
+                "intuicao": 0,
+                "percepcao": 0,
+                "sobrenatural": 0,
+                "sorte": 0
+            },
+            "deslocamento": "9 m",
+            "pv": {
+                "atual": 0,
+                "max": 0,
+                "temp": 0
+            },
+            "pp": {
+                "atual": 0,
+                "porNivel": 4
+            },
+            "dadosVida": {
+                "restantes": 1,
+                "tipo": "d8"
+            },
+            "exaustao": 0,
+            "sentidos": [],
+            "idiomas": [],
+            "resistencias": [],
+            "imunidades": [],
+            "vulnerabilidades": [],
+            "proficienciasArmas": [],
+            "proficienciasArmaduras": [],
+            "ferramentas": [],
+            "inventario": [],
+            "condicoes": [],
+            "caracteristicas": [],
+            "tecnicas": {
+                "atributo": "von",
+                "lista": []
+            },
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "sab": 0,
+                    "pre": 0,
+                    "von": 0
+                },
+                "pericias": {
+                    "atletismo": 0,
+                    "acrobacia": 0,
+                    "furtividade": 0,
+                    "prestidigitacao": 0,
+                    "historia": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "sobrevivencia": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "intimidacao": 0,
+                    "persuasao": 0,
+                    "provocacao": 0,
+                    "haki": 0,
+                    "intuicao": 0,
+                    "percepcao": 0,
+                    "sobrenatural": 0,
+                    "sorte": 0
+                }
+            },
+            "akuma": {
+                "tipo": "",
+                "despertada": false,
+                "lista": []
+            }
+        },
+        "esperado": {
+            "pericia.provocacao": 5,
+            "passiva.provocacao": 15,
+            "pericia.intimidacao": 3
+        }
+    }
+]

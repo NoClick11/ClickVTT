@@ -40,6 +40,8 @@ export interface Personagem {
     id: number;
     nome: string;
     cor: string;
+    /** Ids dos efeitos (condições) ativos: públicos, viram ícones no token. */
+    status?: string[];
     jogadores: DonoPersonagem[];
     /** Dados da ficha (formato do sistema da mesa): só vêm para o mestre e para os jogadores do personagem. */
     ficha?: Record<string, unknown> | null;
