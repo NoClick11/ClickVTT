@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { dadosRolados, destaqueDado, type DadoRolado } from '../nucleo/rolagem';
 import type { Mensagem } from '../tipos-mesa';
 import DadoIcone from './DadoIcone.vue';
 
@@ -7,29 +8,29 @@ const props = defineProps<{ mensagem: Mensagem }>();
 const emit = defineEmits<{ fim: [] }>();
 
 const d = props.mensagem.dados!;
+/** Todos os dados da rolagem (inclusive os descartados), cada um com as suas faces. */
+const dados: DadoRolado[] = dadosRolados(d);
 const reduzir = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const raiz = ref<HTMLElement | null>(null);
 const dadosEl = ref<HTMLElement[]>([]);
-const mostrados = ref<(number | string)[]>(d.resultados.map(() => '?'));
+const mostrados = ref<(number | string)[]>(dados.map(() => '?'));
 const terminou = ref(false);
 const timers: ReturnType<typeof setTimeout | typeof setInterval>[] = [];
-
-const destaque = (v: number) => (d.faces === 20 && v === 20 ? 'critico' : d.faces === 20 && v === 1 ? 'falha' : null);
 
 onMounted(async () => {
     await nextTick();
     const largura = window.innerWidth;
     const altura = window.innerHeight;
-    const n = d.resultados.length;
+    const n = dados.length;
     const passo = 96;
 
     dadosEl.value.forEach((el, i) => {
         // Entra pela esquerda, quica pelo meio e para na linha central, levemente espalhado.
         const alvoX = (i - (n - 1) / 2) * passo;
-        const alvoY = (i % 2 === 0 ? -10 : 18);
+        const alvoY = i % 2 === 0 ? -10 : 18;
         const origemX = -(largura / 2) - 120;
         const origemY = -altura * 0.25 + i * 20;
-        const giro = (360 * (2 + (i % 3))) * (i % 2 === 0 ? 1 : -1);
+        const giro = 360 * (2 + (i % 3)) * (i % 2 === 0 ? 1 : -1);
         const tempo = reduzir ? 1 : 1150 + i * 90;
         el.animate(
             [
@@ -42,13 +43,15 @@ onMounted(async () => {
             { duration: tempo, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' },
         );
         // Enquanto rola, o número "embaralha"; ao parar, mostra o resultado real.
-        const faces = d.faces;
+        const faces = dados[i].faces;
         const giroNumeros = setInterval(() => (mostrados.value[i] = 1 + Math.floor(Math.random() * faces)), 70);
         timers.push(giroNumeros);
-        timers.push(setTimeout(() => {
-            clearInterval(giroNumeros);
-            mostrados.value[i] = d.resultados[i];
-        }, tempo * 0.92));
+        timers.push(
+            setTimeout(() => {
+                clearInterval(giroNumeros);
+                mostrados.value[i] = dados[i].valor;
+            }, tempo * 0.92),
+        );
     });
 
     const total = (reduzir ? 1 : 1150) + n * 90 + 200;
@@ -61,22 +64,31 @@ onBeforeUnmount(() => timers.forEach((t) => (clearTimeout(t as number), clearInt
 </script>
 
 <template>
-    <div ref="raiz" :data-mensagem-id="mensagem.id" class="pointer-events-none fixed inset-0 z-40 flex items-center justify-center" aria-hidden="true">
+    <div
+        ref="raiz"
+        :data-mensagem-id="mensagem.id"
+        class="pointer-events-none fixed inset-0 z-40 flex items-center justify-center"
+        aria-hidden="true"
+    >
         <div class="relative h-0 w-0">
             <div
-                v-for="(_, i) in d.resultados"
+                v-for="(_, i) in dados"
                 :key="i"
-                :ref="(el) => { if (el) dadosEl[i] = el as HTMLElement; }"
+                :ref="
+                    (el) => {
+                        if (el) dadosEl[i] = el as HTMLElement;
+                    }
+                "
                 class="absolute -left-10 -top-10 size-20 drop-shadow-[0_8px_10px_rgba(0,0,0,0.6)]"
                 style="opacity: 0"
             >
-                <DadoIcone :dado="d.dado" :valor="mostrados[i]" :destaque="terminou ? destaque(d.resultados[i]) : null" />
+                <DadoIcone
+                    :faces="dados[i].faces"
+                    :valor="mostrados[i]"
+                    :destaque="terminou ? destaqueDado(dados[i], d.sistema?.margem) : null"
+                    :class="terminou && dados[i].descartado ? 'opacity-35' : ''"
+                />
             </div>
-        </div>
-        <div v-if="terminou" class="absolute mt-44 rounded-full border border-ouro-500/40 bg-preto-950/90 px-4 py-1.5 text-sm text-ouro-100 shadow-lg">
-            <span :style="{ color: mensagem.autor?.cor }" class="font-semibold">{{ mensagem.autor?.nome ?? 'Alguém' }}</span>
-            rolou {{ mensagem.texto }}
-            <strong v-if="d.quantidade > 1" class="ml-1 text-ouro-300">= {{ d.total }}</strong>
         </div>
     </div>
 </template>
