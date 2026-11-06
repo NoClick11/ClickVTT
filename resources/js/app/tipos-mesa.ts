@@ -1,3 +1,7 @@
+import type { EfeitoBruto } from './nucleo/efeitos/efeitos';
+import type { DadosRolagem } from './nucleo/rolagem';
+
+/** Atalhos de dado do painel de rolagem; a rolagem em si aceita qualquer expressão (`2d20kh1+5`). */
 export type Dado = 'd4' | 'd6' | 'd8' | 'd10' | 'd12' | 'd20' | 'd100';
 export const DADOS: Dado[] = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100'];
 
@@ -12,7 +16,7 @@ export interface Mensagem {
     /** `id` = JOGADOR que enviou; nome/cor = do personagem quando falou como ele. */
     autor: { id: number; personagem_id: number | null; nome: string; cor: string } | null;
     texto: string | null;
-    dados: { dado: Dado; faces: number; quantidade: number; resultados: number[]; total: number } | null;
+    dados: DadosRolagem | null;
     criada_em: string | null;
 }
 
@@ -30,4 +34,27 @@ export interface Combate {
     rodada: number;
     atual: string | null;
     itens: ItemTurno[];
+}
+
+/** Item da mesa (só o mestre cria/edita). `dados` = o que só o sistema entende; `efeitos` = buffs do núcleo. */
+export interface ItemDto {
+    id: number;
+    nome: string;
+    descricao: string | null;
+    /** Peso de 1 unidade, em kg. */
+    peso: number;
+    equipavel: boolean;
+    requer_sintonia: boolean;
+    dados: Record<string, unknown> | null;
+    efeitos: EfeitoBruto[];
+}
+/** Campos para criar um item (o servidor valida e completa o resto). */
+export interface NovoItem {
+    nome: string;
+    descricao?: string | null;
+    peso: number;
+    equipavel: boolean;
+    requer_sintonia: boolean;
+    efeitos?: EfeitoBruto[];
+    dados?: Record<string, unknown> | null;
 }

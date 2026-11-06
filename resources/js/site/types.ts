@@ -41,4 +41,8 @@ export interface Personagem {
     nome: string;
     cor: string;
     jogadores: DonoPersonagem[];
+    /** Dados da ficha (formato do sistema da mesa): só vêm para o mestre e para os jogadores do personagem. */
+    ficha?: Record<string, unknown> | null;
+    /** Criação guiada em andamento (etapa atual), se houver. */
+    criacao?: { etapa: string; concluida: boolean } | null;
 }
