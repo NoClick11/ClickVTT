@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { Plus, X } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
+import { dadosValidos } from '../../nucleo/efeitos/efeitos';
 import { ATRIBUTOS, type DadosItemDnd5e } from './regras';
 
 /**
  * Editor dos `dados` de um item de D&D 5e: item comum, armadura (tipo + CA base, ou bônus do escudo) ou arma (dado de
- * dano, atributos do ataque e do dano, proficiência, bônus mágico e margem crítica). Recebe e emite os `dados`
- * (`null` = item comum).
+ * dano, atributos do ataque e do dano, proficiência, bônus de acerto e de dano, margem crítica e dados extras de dano).
+ * Recebe e emite os `dados` (`null` = item comum).
  */
 const props = defineProps<{ modelValue: Record<string, unknown> | null }>();
 const emit = defineEmits<{ 'update:modelValue': [Record<string, unknown> | null] }>();
@@ -26,7 +28,10 @@ const arma = ref({
     bonusAtaque: inicial.arma?.bonusAtaque ?? inicial.arma?.bonusMagico ?? 0,
     bonusDano: inicial.arma?.bonusDano ?? inicial.arma?.bonusMagico ?? 0,
     margemCritica: inicial.arma?.margemCritica ?? 20,
+    /** Dados extras só desta arma (ex.: +2d6 de fogo), até 3. */
+    danoExtra: (inicial.arma?.danoExtra ?? []).map((x) => ({ dados: x.dados, tipo: x.tipo ?? '' })),
 });
+const MAX_DANO_EXTRA = 3;
 
 const TIPOS_DE_ITEM: { id: Tipo; rotulo: string }[] = [
     { id: 'comum', rotulo: 'Comum' },
@@ -39,6 +44,12 @@ const TIPOS_ARMADURA = [
     { id: 'pesada', rotulo: 'Pesada', dica: 'CA = base, sem Destreza' },
     { id: 'escudo', rotulo: 'Escudo', dica: 'Soma o bônus à CA' },
 ] as const;
+
+/** Os dados extras preenchidos (linhas em branco não contam). */
+const extras = (lista: { dados: string; tipo: string }[]) =>
+    lista.map((x) => ({ dados: x.dados.trim().toLowerCase(), ...(x.tipo.trim() ? { tipo: x.tipo.trim() } : {}) })).filter((x) => x.dados !== '');
+const adicionarExtra = () => arma.value.danoExtra.push({ dados: '1d6', tipo: '' });
+const removerExtra = (i: number) => arma.value.danoExtra.splice(i, 1);
 
 function montar(): Record<string, unknown> | null {
     if (tipo.value === 'armadura') return { armadura: { tipo: armadura.value.tipo, base: Number(armadura.value.base) } };
@@ -55,6 +66,7 @@ function montar(): Record<string, unknown> | null {
                 bonusAtaque: Number(a.bonusAtaque) || 0,
                 bonusDano: Number(a.bonusDano) || 0,
                 margemCritica: Number(a.margemCritica),
+                ...(extras(a.danoExtra).length ? { danoExtra: extras(a.danoExtra) } : {}),
             },
         };
     }
@@ -66,6 +78,8 @@ watch([tipo, armadura, arma], () => emit('update:modelValue', montar()), { deep:
 const campo =
     'w-full rounded-md border border-preto-700 bg-preto-950 px-2.5 py-1.5 text-sm text-preto-100 focus-visible:border-ouro-400 focus-visible:outline-none';
 const rotulo = 'mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ouro-400';
+/** O mesmo campo sem a largura total: nas linhas de dano extra (dados + tipo + remover) quem define a largura é a própria linha. */
+const campoLinha = campo.replace('w-full ', '');
 </script>
 
 <template>
@@ -182,11 +196,58 @@ const rotulo = 'mb-1 block text-[11px] font-semibold uppercase tracking-wider te
             >
         </div>
 
+        <div v-if="tipo === 'arma'" class="grid gap-1.5" role="group" aria-label="Dano extra em dados">
+            <p :class="rotulo" class="mb-0" title="Dados somados ao dano desta arma (ex.: +2d6 de fogo); dobram no crítico">Dano extra em dados</p>
+            <ul v-if="arma.danoExtra.length" class="grid gap-1.5">
+                <li v-for="(x, i) in arma.danoExtra" :key="i" class="flex items-center gap-1.5">
+                    <input
+                        v-model="x.dados"
+                        type="text"
+                        maxlength="6"
+                        placeholder="2d6"
+                        spellcheck="false"
+                        autocomplete="off"
+                        :class="[
+                            campoLinha,
+                            'w-24 shrink-0 font-mono',
+                            dadosValidos(x.dados.trim().toLowerCase()) || x.dados.trim() === '' ? '' : 'border-red-400',
+                        ]"
+                        :aria-label="`Dados do dano extra ${i + 1}`"
+                    />
+                    <input
+                        v-model="x.tipo"
+                        type="text"
+                        maxlength="30"
+                        placeholder="Tipo do dano (fogo)"
+                        :class="campoLinha"
+                        class="min-w-0 flex-1"
+                        :aria-label="`Tipo do dano extra ${i + 1}`"
+                    />
+                    <button
+                        type="button"
+                        class="flex size-8 shrink-0 items-center justify-center rounded-md text-preto-400 hover:bg-red-500/15 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                        :aria-label="`Remover o dano extra ${i + 1}`"
+                        @click="removerExtra(i)"
+                    >
+                        <X class="size-4" />
+                    </button>
+                </li>
+            </ul>
+            <button
+                v-if="arma.danoExtra.length < MAX_DANO_EXTRA"
+                type="button"
+                class="flex w-fit items-center gap-1 rounded-md border border-ouro-500/40 px-2.5 py-1 text-xs text-ouro-200 hover:bg-ouro-500/10"
+                @click="adicionarExtra"
+            >
+                <Plus class="size-3.5" /> Dano extra
+            </button>
+        </div>
+
         <p v-if="tipo === 'comum'" class="text-xs text-preto-500">Sem regras próprias; só os efeitos abaixo (se houver) valem.</p>
         <p v-else-if="tipo === 'arma'" class="text-xs text-preto-500">
             Os bônus de acerto e de dano são valores simples (1, 2, 3...) somados ao modificador do atributo; use-os para armas +1, +2 e assim por
-            diante. O d20 do ataque, igual ou acima da margem crítica, faz o próximo dano rolar os dados em dobro (20 por padrão; 19 ou 18 em armas
-            específicas).
+            diante. O d20 do ataque, igual ou acima da margem crítica, é crítico (20 por padrão; 19 ou 18 em armas específicas): o botão de dano do
+            card no chat rola todos os dados em dobro, inclusive os extras.
         </p>
     </section>
 </template>

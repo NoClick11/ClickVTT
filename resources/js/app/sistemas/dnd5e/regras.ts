@@ -5,7 +5,17 @@
  *
  * Arquivo PURO (sem Vue): o Node o executa direto nos testes de paridade; só importa o motor de efeitos do núcleo.
  */
-import { aplicar, deFonte, rolagem, type Efeito, type EfeitoBruto, type Origem, type Rolagem } from '../../nucleo/efeitos/efeitos.ts';
+import {
+    aplicar,
+    casa,
+    dadosValidos,
+    deFonte,
+    rolagem,
+    type Efeito,
+    type EfeitoBruto,
+    type Origem,
+    type Rolagem,
+} from '../../nucleo/efeitos/efeitos.ts';
 import { condicaoPorId } from './condicoes.ts';
 
 export type AtributoId = 'for' | 'des' | 'con' | 'int' | 'sab' | 'car';
@@ -101,6 +111,8 @@ export interface DadosItemDnd5e {
         bonusDano?: number | null;
         /** Formato antigo: um só bônus para o acerto e o dano; vale quando os dois acima não existem. */
         bonusMagico?: number;
+        /** Dados extras DA ARMA (ex.: +2d6 de fogo), até 3; entram no dano e dobram no crítico. */
+        danoExtra?: { dados: string; tipo?: string | null }[];
         margemCritica?: number;
     };
 }
@@ -120,6 +132,12 @@ export interface Caracteristica {
     origem: string;
     tipo: 'ativa' | 'passiva';
     usos?: { atual: number; max: number };
+    /** Buffs da característica (os mesmos efeitos dos itens). A passiva sempre vale; a ativa, só com `ativa` ligada. */
+    efeitos?: EfeitoBruto[];
+    /** Interruptor das características ativas (ex.: Fúria ligada). A passiva ignora. */
+    ativa?: boolean;
+    /** Em que descanso os usos voltam (padrão: o longo). Qualquer descanso desliga os buffs ativos. */
+    descanso?: 'curto' | 'longo';
 }
 export interface Ferramenta {
     nome: string;
@@ -213,7 +231,10 @@ export function efeitosDoItem(item: ItemParaCalculo): EfeitoBruto[] {
     }
 }
 
-/** Efeitos ativos da ficha: itens (na ordem do inventário), condições (na ordem salva), depois os ajustes manuais (soma). */
+/**
+ * Efeitos ativos da ficha: itens (na ordem do inventário), características (passivas e ativas ligadas, na ordem salva),
+ * condições, depois os ajustes manuais (soma).
+ */
 export function efeitosAtivos(f: FichaDnd5e, itens: ItensPorId): Efeito[] {
     const efeitos: Efeito[] = [];
     for (const secao of f.inventario ?? []) {
@@ -222,6 +243,12 @@ export function efeitosAtivos(f: FichaDnd5e, itens: ItensPorId): Efeito[] {
             if (!item || !ativo(ref, item)) continue;
             efeitos.push(...deFonte(item.nome ?? 'Item', [...(item.efeitos ?? []), ...efeitosDoItem(item)]));
         }
+    }
+
+    // Características com buffs: a passiva sempre vale; a ativa, só ligada (ex.: Fúria, Aura de Proteção)
+    for (const c of f.caracteristicas ?? []) {
+        const vale = (c.tipo ?? 'passiva') === 'passiva' || c.ativa === true;
+        if (vale && c.efeitos?.length) efeitos.push(...deFonte(c.nome ?? 'Característica', c.efeitos));
     }
 
     // Condições ativas (ex.: Envenenado dá desvantagem em ataques e testes)
@@ -368,10 +395,26 @@ export function modoDaRolagem(efeitos: Efeito[], variavel: string): Rolagem {
     return alvo ? rolagem(alvo, efeitos) : null;
 }
 
+/**
+ * Todos os dados do dano de uma arma, em ordem: o da arma, os extras DA ARMA (`danoExtra`) e os extras dos buffs ativos
+ * (efeitos de modo `dados` em `dano.arma`: Ataque Furtivo, itens, características). Espelha `Regras::dadosDeDano`.
+ * Vazio se o item não é arma.
+ */
+export function dadosDeDano(f: FichaDnd5e, itens: ItensPorId, itemId: number): string[] {
+    const arma = (itens[itemId]?.dados as DadosItemDnd5e | null | undefined)?.arma;
+    if (!arma || typeof arma.dano !== 'string') return [];
+
+    const dados = [arma.dano];
+    for (const extra of arma.danoExtra ?? []) if (dadosValidos(extra.dados)) dados.push(extra.dados);
+    for (const e of efeitosAtivos(f, itens)) if (e.modo === 'dados' && casa(e.alvo, 'dano.arma') && dadosValidos(e.valor)) dados.push(e.valor);
+
+    return dados;
+}
+
 export interface ArmaAtiva {
     itemId: number;
     nome: string;
-    /** Dado de dano do item (ex.: `1d8`). */
+    /** Os dados do dano somados, com os extras (ex.: `1d8+2d6`); o bônus fixo vem em `danoBonus`. */
     dano: string;
     tipoDano: string | null;
     /** Bônus de ataque (já com proficiência, bônus mágico e efeitos). */
@@ -393,7 +436,7 @@ export function armasAtivas(f: FichaDnd5e, itens: ItensPorId, valores: Record<st
             armas.push({
                 itemId: ref.item_id,
                 nome: item.nome ?? 'Arma',
-                dano: arma.dano,
+                dano: dadosDeDano(f, itens, ref.item_id).join('+'),
                 tipoDano: arma.tipoDano ?? null,
                 ataque: valores[`arma.${ref.item_id}.ataque`],
                 danoBonus: valores[`arma.${ref.item_id}.dano`],
@@ -427,4 +470,58 @@ export function comItemEntregue(f: FichaDnd5e, itemId: number): FichaDnd5e['inve
     else inventario.push({ secao: 'Equipamento', itens: [nova] });
 
     return inventario;
+}
+
+export type TipoDescanso = 'curto' | 'longo';
+
+/**
+ * Liga ou desliga o buff de uma característica ativa. LIGAR gasta 1 uso (se a característica tem usos): sem usos
+ * restantes não liga (devolve null). Desligar não devolve o uso. Passiva não tem interruptor (null).
+ */
+export function comBuffAlternado(c: Caracteristica): Caracteristica | null {
+    if (c.tipo !== 'ativa') return null;
+    if (c.ativa) return { ...c, ativa: false };
+    if (c.usos && c.usos.max > 0) {
+        if (c.usos.atual <= 0) return null;
+
+        return { ...c, ativa: true, usos: { ...c.usos, atual: c.usos.atual - 1 } };
+    }
+
+    return { ...c, ativa: true };
+}
+
+/**
+ * Os campos a salvar ao terminar um descanso (vazio se nada muda).
+ * - Os dois: desligam os buffs ativos e restauram os usos das características (o curto, só as de `descanso: 'curto'`;
+ *   o longo, todas).
+ * - Longo: PV até o máximo EFETIVO (com itens e buffs; `pvMax`), metade dos dados de vida (mín. 1), -1 de exaustão,
+ *   testes contra a morte zerados e espaços de magia restaurados.
+ */
+export function camposDoDescanso(f: FichaDnd5e, tipo: TipoDescanso, pvMax: number = f.pv.max): Record<string, unknown> {
+    const campos: Record<string, unknown> = {};
+
+    const antes = f.caracteristicas ?? [];
+    const depois = antes.map((c) => {
+        const recarrega = c.usos !== undefined && (tipo === 'longo' || (c.descanso ?? 'longo') === 'curto');
+
+        return {
+            ...c,
+            ...(recarrega ? { usos: { ...c.usos!, atual: c.usos!.max } } : {}),
+            ...(c.tipo === 'ativa' && c.ativa ? { ativa: false } : {}),
+        };
+    });
+    if (JSON.stringify(antes) !== JSON.stringify(depois)) campos.caracteristicas = depois;
+
+    if (tipo === 'longo') {
+        Object.assign(campos, {
+            'pv.atual': pvMax,
+            'dadosVida.restantes': Math.min(f.nivel, f.dadosVida.restantes + Math.max(1, Math.floor(f.nivel / 2))),
+            exaustao: Math.max(0, f.exaustao - 1),
+            'morte.sucessos': 0,
+            'morte.falhas': 0,
+            'magias.espacos': f.magias.espacos.map((e) => ({ ...e, usados: 0 })),
+        });
+    }
+
+    return campos;
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { resumoEfeito } from '../../../../nucleo/efeitos/resumo';
+import { formatoDeResumo } from '../../alvos';
 import { CONDICOES, condicaoPorId } from '../../condicoes';
 import { estilos, useFicha } from '../../contexto';
 import type { FichaDnd5e } from '../../regras';
@@ -19,7 +20,7 @@ const detalhes = computed(() => ativas.value.map((id) => condicaoPorId(id)).filt
 /** Os efeitos ativos agrupados pela fonte (item, condição, ajuste manual), na ordem em que contam. */
 const porFonte = computed(() => {
     const grupos = new Map<string, string[]>();
-    for (const e of efeitos.value) grupos.set(e.fonte, [...(grupos.get(e.fonte) ?? []), resumoEfeito(e)]);
+    for (const e of efeitos.value) grupos.set(e.fonte, [...(grupos.get(e.fonte) ?? []), resumoEfeito(e, formatoDeResumo)]);
 
     return [...grupos].map(([fonte, resumos]) => ({ fonte, resumos }));
 });

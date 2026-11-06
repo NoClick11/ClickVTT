@@ -6,6 +6,7 @@
  * Arquivo PURO: o Node o executa direto nos testes de paridade.
  */
 import type { ModoEfeito } from '../../nucleo/efeitos/efeitos.ts';
+import type { FormatoResumo } from '../../nucleo/efeitos/resumo.ts';
 import { ATRIBUTOS, PERICIAS } from './regras.ts';
 
 export interface VariavelEfeitoDnd5e {
@@ -32,7 +33,8 @@ export const ALVOS_DE_EFEITO: AlvoEfeitoDnd5e[] = [
     { id: 'cd', rotulo: 'CD de magia', modos: NUMERICOS },
     { id: 'ataque', rotulo: 'Ataque de magia', modos: AMBOS },
     { id: 'ataque.arma', rotulo: 'Ataque com armas (todas)', modos: AMBOS },
-    { id: 'dano.arma', rotulo: 'Dano com armas (todas)', modos: NUMERICOS },
+    // `dados`: dano extra em dados (Ataque Furtivo 3d6), somado ao dano de cada arma e dobrado no crítico
+    { id: 'dano.arma', rotulo: 'Dano com armas (todas)', modos: [...NUMERICOS, 'dados'] },
     { id: 'atributos.*', rotulo: 'Todos os atributos', modos: NUMERICOS },
     ...ATRIBUTOS.map((a) => ({ id: `atributos.${a.id}`, rotulo: `Atributo: ${a.nome}`, modos: NUMERICOS })),
     { id: 'teste.*', rotulo: 'Testes de atributo (todos)', modos: ROLAGEM },
@@ -59,3 +61,16 @@ export function variaveisParaAlvo(alvo: string): VariavelEfeitoDnd5e[] {
         nivel,
     ];
 }
+
+/**
+ * Como o D&D escreve os efeitos nas etiquetas: o alvo pelo nome (`pericia.atletismo` → "Perícia: Atletismo") e as
+ * variáveis das fórmulas pela sigla (`@mod.con` → "mod. CON", `@prof` → "proficiência", `@nivel` → "nível").
+ */
+export const formatoDeResumo: FormatoResumo = {
+    alvo: (id) => ALVOS_DE_EFEITO.find((a) => a.id === id)?.rotulo ?? id,
+    valor: (formula) =>
+        formula
+            .replace(/@mod\.(for|des|con|int|sab|car)\b/gi, (_, a: string) => `mod. ${a.toUpperCase()}`)
+            .replace(/@prof\b/gi, 'proficiência')
+            .replace(/@nivel\b/gi, 'nível'),
+};

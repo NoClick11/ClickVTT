@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { resumoEfeito } from '../../../../nucleo/efeitos/resumo';
 import { clonar } from '../../../../nucleo/ficha/caminho';
 import CampoNumero from '../../../../nucleo/ui/CampoNumero.vue';
+import { formatoDeResumo } from '../../alvos';
 import { estilos, useFicha } from '../../contexto';
 import { MAX_SINTONIA, MOEDAS, type FichaDnd5e } from '../../regras';
 
@@ -172,7 +173,7 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
                                     :key="ei"
                                     class="rounded bg-preto-800 px-1.5 text-[10px] text-ouro-200"
                                     :class="ref.equipado || !itens[ref.item_id].equipavel ? '' : 'opacity-50'"
-                                    >{{ resumoEfeito(e) }}</span
+                                    >{{ resumoEfeito(e, formatoDeResumo) }}</span
                                 ></span
                             >
                         </span>

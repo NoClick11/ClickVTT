@@ -877,7 +877,7 @@ function alternarPorta(id: number) {
                         />
                     </template>
                     <template v-if="mestre" #itens>
-                        <PainelItens :itens="itensDaMesa" @editar="abrirEditorItem" />
+                        <PainelItens :itens="itensDaMesa" :formato="moduloSistema?.formatoDeResumo" @editar="abrirEditorItem" />
                     </template>
                 </BarraLateral>
 

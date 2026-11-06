@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
-import { Moon, Star } from 'lucide-vue-next';
+import { Coffee, Moon, Star } from 'lucide-vue-next';
 import { computed } from 'vue';
 import type { PersonagemFicha } from '../../../nucleo/sistemas/tipos';
 import CampoNumero from '../../../nucleo/ui/CampoNumero.vue';
 import CampoTexto from '../../../nucleo/ui/CampoTexto.vue';
 import { estilos, useFicha } from '../contexto';
-import type { FichaDnd5e } from '../regras';
+import { camposDoDescanso, type FichaDnd5e, type TipoDescanso } from '../regras';
 
 const props = defineProps<{ ficha: FichaDnd5e; personagem: PersonagemFicha }>();
 const emit = defineEmits<{ 'update:editar': [boolean] }>();
@@ -14,18 +14,13 @@ const { editar, calc, salvar } = useFicha();
 
 const xpPct = computed(() => Math.min(100, Math.round((props.ficha.xp.atual / calc.value['xp.proximo']) * 100)));
 
-/** Descanso longo: PV ao máximo, recupera metade dos dados de vida (mín. 1), -1 de exaustão, espaços de magia e testes contra a morte zerados. */
-function descansoLongo() {
-    const f = props.ficha;
-    const dvMax = calc.value['dv.max'];
-    salvar({
-        'pv.atual': f.pv.max,
-        'dadosVida.restantes': Math.min(dvMax, f.dadosVida.restantes + Math.max(1, Math.floor(f.nivel / 2))),
-        exaustao: Math.max(0, f.exaustao - 1),
-        'morte.sucessos': 0,
-        'morte.falhas': 0,
-        'magias.espacos': f.magias.espacos.map((e) => ({ ...e, usados: 0 })),
-    });
+/**
+ * Descansos (ver `camposDoDescanso`): os dois desligam os buffs ativos e restauram os usos das características (o curto, só
+ * as de descanso curto); o longo também restaura PV (até o máximo efetivo), dados de vida, espaços de magia e exaustão.
+ */
+function descansar(tipo: TipoDescanso) {
+    const campos = camposDoDescanso(props.ficha, tipo, calc.value['pv.max']);
+    if (Object.keys(campos).length) salvar(campos);
 }
 </script>
 
@@ -112,9 +107,18 @@ function descansoLongo() {
                     size="icon"
                     variant="outline"
                     class="size-9 border-preto-700 text-preto-300 hover:text-ouro-200"
-                    title="Descanso longo: PV ao máximo, recupera dados de vida, -1 de exaustão, restaura os espaços de magia"
+                    title="Descanso curto: desliga os buffs ativos e restaura os usos das características de descanso curto"
+                    aria-label="Descanso curto"
+                    @click="descansar('curto')"
+                    ><Coffee class="size-4"
+                /></Button>
+                <Button
+                    size="icon"
+                    variant="outline"
+                    class="size-9 border-preto-700 text-preto-300 hover:text-ouro-200"
+                    title="Descanso longo: PV ao máximo, dados de vida, -1 de exaustão, espaços de magia, usos das características; desliga os buffs ativos"
                     aria-label="Descanso longo"
-                    @click="descansoLongo"
+                    @click="descansar('longo')"
                     ><Moon class="size-4"
                 /></Button>
             </div>
