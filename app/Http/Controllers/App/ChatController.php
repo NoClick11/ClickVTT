@@ -3,13 +3,19 @@
 namespace App\Http\Controllers\App;
 
 use App\Http\Controllers\Controller;
+use App\Models\Jogador;
 use App\Models\Mensagem;
 use App\Models\Mesa;
+use App\Nucleo\Rolagem\Rolador;
+use App\Nucleo\Rolagem\RolagemInvalida;
+use App\Nucleo\Sistemas\RegistroSistemas;
+use App\Nucleo\Sistemas\Sistema;
 use App\Support\AcessoMesa;
 use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ChatController extends Controller
 {
@@ -30,35 +36,69 @@ class ChatController extends Controller
     }
 
     /**
-     * Rolagem decidida no SERVIDOR (ninguém escolhe o resultado).
+     * Rolagem decidida no SERVIDOR (ninguém escolhe o resultado). O cliente manda só a EXPRESSÃO
+     * (`1d20+5`, `2d20kh1`, `1d20+@mod.for`...) e um rótulo. As variáveis (`@...`) vêm da ficha SALVA do
+     * personagem que rola, calculadas pelo módulo do sistema: o cliente nunca informa valores.
      * Jogador: `todos` ou `mestre` (eu e o mestre). Mestre: `todos`, `mestre` (só ele) ou `secreto`
      * (jogadores só veem o aviso de que houve rolagem, sem números).
      */
-    public function rolar(Request $request, Mesa $mesa): JsonResponse
+    public function rolar(Request $request, Mesa $mesa, Rolador $rolador, RegistroSistemas $sistemas): JsonResponse
     {
         $acesso = AcessoMesa::exigir($request, $mesa);
         $permitidas = $acesso->ehMestre() ? ['todos', 'mestre', 'secreto'] : ['todos', 'mestre'];
         $dados = $request->validate([
-            'dado' => ['required', Rule::in(array_keys(Mensagem::DADOS))],
-            'quantidade' => ['required', 'integer', 'min:1', 'max:6'],
+            'expressao' => ['required', 'string', 'max:'.Rolador::MAX_EXPRESSAO],
+            'rotulo' => ['nullable', 'string', 'max:60'],
             'visibilidade' => ['required', Rule::in($permitidas)],
             'personagem_id' => ['nullable', 'integer', Rule::in($acesso->personagensPermitidos())], // personagem ativo
         ]);
 
-        $faces = Mensagem::DADOS[$dados['dado']];
-        $resultados = array_map(fn () => random_int(1, $faces), range(1, $dados['quantidade']));
-        $total = array_sum($resultados);
+        [$sistema, $variaveis, $itens] = $this->variaveis($mesa, $dados['personagem_id'] ?? null, $sistemas);
+        try {
+            $resultado = $rolador->rolar($dados['expressao'], $variaveis);
+        } catch (RolagemInvalida $e) {
+            throw ValidationException::withMessages(['expressao' => $e->getMessage()]);
+        }
+        // O sistema pode marcar a rolagem (ex.: ataque crítico); o núcleo só guarda e repassa.
+        $marcas = $sistema?->metadadosDaRolagem($resultado['termos'], $variaveis, $itens) ?? [];
 
         $mensagem = $mesa->mensagens()->create([
             'jogador_id' => $acesso->jogador->id,
             'personagem_id' => $dados['personagem_id'] ?? null,
             'tipo' => 'rolagem',
             'visibilidade' => $dados['visibilidade'],
-            'texto' => "{$dados['quantidade']}{$dados['dado']}",
-            'dados' => ['dado' => $dados['dado'], 'faces' => $faces, 'quantidade' => $dados['quantidade'], 'resultados' => $resultados, 'total' => $total],
+            'texto' => $resultado['expressao'],
+            'dados' => [
+                'expressao' => $resultado['expressao'],
+                'rotulo' => filled($dados['rotulo'] ?? null) ? trim($dados['rotulo']) : null,
+                'termos' => $resultado['termos'],
+                'total' => $resultado['total'],
+                ...($marcas ? ['sistema' => $marcas] : []),
+            ],
         ]);
 
         return $this->entregar($mesa, $mensagem, $acesso);
+    }
+
+    /**
+     * O módulo do sistema, as variáveis do personagem e os itens da ficha dele (sem personagem ou sem módulo:
+     * `[null, [], []]`).
+     *
+     * @return array{0: ?Sistema, 1: array<string, int|float>, 2: array<int, array>}
+     */
+    private function variaveis(Mesa $mesa, ?int $personagemId, RegistroSistemas $sistemas): array
+    {
+        $personagem = $personagemId ? $mesa->personagens()->find($personagemId) : null;
+        $sistema = $personagem ? $sistemas->resolver($mesa->sistema->slug) : null;
+
+        if (! $sistema) {
+            return [null, [], []];
+        }
+        $ficha = $personagem->ficha ?? $sistema->fichaPadrao();
+        $ids = $sistema->itensReferenciados($ficha);
+        $itens = $ids ? $mesa->itens()->whereIn('id', $ids)->get()->mapWithKeys(fn ($i) => [$i->id => $i->paraFront()])->all() : [];
+
+        return [$sistema, $sistema->variaveisDeRolagem($ficha, $itens), $itens];
     }
 
     /** Distribui a mensagem: cada canal recebe só o que pode ver. Quem enviou recebe a sua pela resposta. */
@@ -85,8 +125,8 @@ class ChatController extends Controller
         return response()->json($mensagem->para($acesso->jogador), 201);
     }
 
-    private function mestreFicticio(): \App\Models\Jogador
+    private function mestreFicticio(): Jogador
     {
-        return new \App\Models\Jogador(['papel' => 'mestre']);
+        return new Jogador(['papel' => 'mestre']);
     }
 }

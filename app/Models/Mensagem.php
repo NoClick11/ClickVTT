@@ -9,8 +9,6 @@ class Mensagem extends Model
 {
     protected $table = 'mensagens';
 
-    public const DADOS = ['d4' => 4, 'd6' => 6, 'd8' => 8, 'd10' => 10, 'd12' => 12, 'd20' => 20, 'd100' => 100];
-
     /** `jogador_id` = quem enviou (identidade, define a visibilidade); `personagem_id` = "falando como" (opcional). */
     protected $fillable = ['jogador_id', 'personagem_id', 'tipo', 'visibilidade', 'texto', 'dados'];
 
@@ -48,6 +46,29 @@ class Mensagem extends Model
     }
 
     /**
+     * Payload da rolagem no formato atual `{expressao, rotulo, termos[], total}`. Mensagens antigas
+     * (`{dado, faces, quantidade, resultados, total}`) são convertidas na leitura.
+     */
+    private function dadosDeRolagem(): ?array
+    {
+        $d = $this->dados;
+        if (! is_array($d) || isset($d['termos']) || ! isset($d['resultados'], $d['faces'])) {
+            return $d;
+        }
+        $expressao = ($d['quantidade'] > 1 ? $d['quantidade'] : '').($d['dado'] ?? 'd'.$d['faces']);
+
+        return [
+            'expressao' => $expressao,
+            'rotulo' => null,
+            'termos' => [[
+                'tipo' => 'dados', 'expressao' => $expressao, 'faces' => $d['faces'], 'resultados' => $d['resultados'],
+                'descartados' => [], 'subtotal' => $d['total'], 'sinal' => 1,
+            ]],
+            'total' => $d['total'],
+        ];
+    }
+
+    /**
      * Mensagem como o jogador `$quem` deve enxergar, ou null se não deve ver nada.
      * - todos: todos veem.
      * - mestre: só o mestre e o autor.
@@ -63,7 +84,7 @@ class Mensagem extends Model
             'visibilidade' => $this->visibilidade,
             'autor' => $this->autor(),
             'texto' => $this->texto,
-            'dados' => $this->dados,
+            'dados' => $this->dadosDeRolagem(),
             'criada_em' => $this->created_at?->toIso8601String(),
         ];
 

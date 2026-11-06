@@ -6,6 +6,9 @@ use App\Events\EventoMesa;
 use App\Models\Jogador;
 use App\Models\Sistema;
 use App\Models\User;
+use App\Nucleo\Rolagem\Rolador;
+use App\Nucleo\Sistemas\RegistroSistemas;
+use App\Sistemas\Dnd5e\FichaDnd5e;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -36,30 +39,284 @@ class ChatTest extends TestCase
 
     private function rolar($c, Jogador $quem, array $corpo)
     {
-        return $this->como($quem)->postJson(route('jogo.rolagens.store', $c->mesa->id), $corpo + ['dado' => 'd20', 'quantidade' => 1, 'visibilidade' => 'todos']);
+        return $this->como($quem)->postJson(route('jogo.rolagens.store', $c->mesa->id), $corpo + ['expressao' => '1d20', 'visibilidade' => 'todos']);
     }
 
     public function test_rolagem_e_sorteada_no_servidor_dentro_do_intervalo(): void
     {
         $c = $this->cenario();
-        foreach (['d4' => 4, 'd6' => 6, 'd8' => 8, 'd10' => 10, 'd12' => 12, 'd20' => 20, 'd100' => 100] as $dado => $faces) {
-            $r = $this->rolar($c, $c->ana, ['dado' => $dado, 'quantidade' => 6])->assertCreated()->json();
-            $this->assertCount(6, $r['dados']['resultados']);
-            foreach ($r['dados']['resultados'] as $v) {
+        foreach ([4, 6, 8, 10, 12, 20, 100] as $faces) {
+            $r = $this->rolar($c, $c->ana, ['expressao' => "6d{$faces}", 'rotulo' => 'Teste'])->assertCreated()->json();
+            $termo = $r['dados']['termos'][0];
+            $this->assertCount(6, $termo['resultados']);
+            foreach ($termo['resultados'] as $v) {
                 $this->assertGreaterThanOrEqual(1, $v);
                 $this->assertLessThanOrEqual($faces, $v);
             }
-            $this->assertSame(array_sum($r['dados']['resultados']), $r['dados']['total']);
+            $this->assertSame(array_sum($termo['resultados']), $r['dados']['total']);
+            $this->assertSame("6d{$faces}", $r['dados']['expressao']);
+            $this->assertSame('Teste', $r['dados']['rotulo']);
         }
     }
 
-    public function test_rejeita_dado_invalido_e_quantidade_fora_de_1_a_6(): void
+    public function test_rolagem_com_modificador_e_vantagem(): void
     {
         $c = $this->cenario();
-        $this->rolar($c, $c->ana, ['dado' => 'd7'])->assertStatus(422);
-        $this->rolar($c, $c->ana, ['quantidade' => 0])->assertStatus(422);
-        $this->rolar($c, $c->ana, ['quantidade' => 7])->assertStatus(422);
+        $r = $this->rolar($c, $c->ana, ['expressao' => '2d20kh1 + 5'])->assertCreated()->json();
+
+        $dados = $r['dados']['termos'][0];
+        $this->assertCount(1, $dados['descartados']);
+        $this->assertSame(max($dados['resultados']) + 5, $r['dados']['total']);
+        $this->assertSame('2d20kh1+5', $r['texto']);
+    }
+
+    public function test_rejeita_expressao_invalida_e_variavel_vinda_do_cliente(): void
+    {
+        $c = $this->cenario();
+        $this->rolar($c, $c->ana, ['expressao' => '1d7x'])->assertStatus(422)->assertJsonValidationErrors('expressao');
+        $this->rolar($c, $c->ana, ['expressao' => '201d6'])->assertStatus(422);
+        $this->rolar($c, $c->ana, ['expressao' => '1d20+@mod.for'])->assertStatus(422); // sem personagem não há variáveis
+        $this->rolar($c, $c->ana, ['expressao' => ''])->assertStatus(422);
         $this->rolar($c, $c->ana, ['visibilidade' => 'invalida'])->assertStatus(422);
+    }
+
+    public function test_variaveis_da_rolagem_vem_da_ficha_salva_no_servidor(): void
+    {
+        $c = $this->cenario();
+        $c->aria->forceFill(['ficha' => array_replace_recursive(FichaDnd5e::padrao(), [
+            'nivel' => 5, 'atributos' => ['for' => 16, 'sab' => 17], 'pericias' => ['percepcao' => 1],
+        ])])->save();
+
+        $r = $this->rolar($c, $c->ana, ['expressao' => '1d20+@mod.for+@pericia.percepcao+@prof', 'rotulo' => 'Teste', 'personagem_id' => $c->aria->id])->assertCreated()->json();
+
+        $variaveis = collect($r['dados']['termos'])->where('tipo', 'variavel')->mapWithKeys(fn ($t) => [$t['nome'] => $t['valor']])->all();
+        // FOR 16 = +3; Percepção = mod. SAB 17 (+3) + proficiência (nível 5 = +3); proficiência = +3
+        $this->assertSame(['mod.for' => 3, 'pericia.percepcao' => 6, 'prof' => 3], $variaveis);
+        $dado = $r['dados']['termos'][0]['resultados'][0];
+        $this->assertSame($dado + 12, $r['dados']['total']);
+    }
+
+    public function test_rolagem_usa_armadura_e_arma_dos_itens_equipados(): void
+    {
+        $c = $this->cenario();
+        $placas = $c->mesa->itens()->create(['nome' => 'Placas', 'peso' => 30, 'dados' => ['armadura' => ['tipo' => 'pesada', 'base' => 18]]]);
+        $espada = $c->mesa->itens()->create(['nome' => 'Espada Longa +1', 'peso' => 3, 'dados' => ['arma' => ['dano' => '1d8', 'atributo' => 'for', 'proficiente' => true, 'bonusMagico' => 1]]]);
+        $anel = $c->mesa->itens()->create(['nome' => 'Anel', 'peso' => 0, 'requer_sintonia' => true, 'efeitos' => [['alvo' => 'ca', 'modo' => 'soma', 'valor' => 1]]]);
+        $ref = fn ($item, $equipado, $sint = false) => ['item_id' => $item->id, 'qtd' => 1, 'equipado' => $equipado, 'sintonizado' => $sint];
+        $c->aria->forceFill(['ficha' => array_replace_recursive(FichaDnd5e::padrao(), [
+            'nivel' => 5, 'atributos' => ['for' => 16, 'des' => 8],
+            'inventario' => [['secao' => 'Equipamento', 'itens' => [$ref($placas, true), $ref($espada, true), $ref($anel, true, false)]]],
+        ])])->save();
+
+        $r = $this->rolar($c, $c->ana, ['expressao' => '1d20+@arma.'.$espada->id.'.ataque+@ca', 'personagem_id' => $c->aria->id])->assertCreated()->json();
+        $variaveis = collect($r['dados']['termos'])->where('tipo', 'variavel')->mapWithKeys(fn ($t) => [$t['nome'] => $t['valor']])->all();
+
+        // ataque = FOR +3, proficiência +3, +1 mágico = 7; CA = armadura pesada 18 (ignora DES 8); o anel sem sintonia não conta
+        $this->assertSame(['arma.'.$espada->id.'.ataque' => 7, 'ca' => 18], $variaveis);
+
+        $r = $this->rolar($c, $c->ana, ['expressao' => '1d8+@arma.'.$espada->id.'.dano', 'personagem_id' => $c->aria->id])->assertCreated()->json();
+        $this->assertSame(4, $r['dados']['termos'][1]['valor']); // FOR +3, +1 mágico
+
+        // Crítico: os dados do item dobram (2d8) e o modificador entra uma vez só.
+        $r = $this->rolar($c, $c->ana, ['expressao' => '2d8+@arma.'.$espada->id.'.dano', 'personagem_id' => $c->aria->id])->assertCreated()->json();
+        $this->assertCount(2, $r['dados']['termos'][0]['resultados']);
+        $this->assertSame(array_sum($r['dados']['termos'][0]['resultados']) + 4, $r['dados']['total']);
+
+        // O maior dano que um item aceita (50 dados), dobrado, cabe no limite do rolador.
+        $this->rolar($c, $c->ana, ['expressao' => '100d4+@arma.'.$espada->id.'.dano', 'personagem_id' => $c->aria->id])->assertCreated();
+    }
+
+    /** Cenário com uma arma equipada de margem crítica `$margem`; o sorteio devolve os valores da fila (d20 fixo). */
+    private function ataqueComArma(int $margem, array $sorteios, string $expressao = '1d20+@arma.%d.ataque', array $ficha = []): array
+    {
+        $c = $this->cenario();
+        $espada = $c->mesa->itens()->create(['nome' => 'Espada', 'peso' => 3, 'dados' => ['arma' => ['dano' => '1d8', 'atributo' => 'for', 'proficiente' => true, 'margemCritica' => $margem]]]);
+        $c->aria->forceFill(['ficha' => array_replace_recursive(FichaDnd5e::padrao(), $ficha, ['inventario' => [['secao' => 'A', 'itens' => [['item_id' => $espada->id, 'qtd' => 1, 'equipado' => true, 'sintonizado' => false]]]]])])->save();
+        $this->app->instance(Rolador::class, new Rolador(function (int $faces) use (&$sorteios) {
+            return min($faces, array_shift($sorteios) ?? 1);
+        }));
+
+        return $this->rolar($c, $c->ana, ['expressao' => sprintf($expressao, $espada->id), 'personagem_id' => $c->aria->id])->assertCreated()->json('dados') + ['arma_id' => $espada->id, 'c' => $c];
+    }
+
+    /** As marcas do ataque sem as ações do card (que têm teste próprio). */
+    private function marcas(array $r): array
+    {
+        return array_diff_key($r['sistema'], ['acoes' => 1]);
+    }
+
+    public function test_d20_puro_na_margem_da_arma_e_critico(): void
+    {
+        $r = $this->ataqueComArma(19, [19]);
+        $this->assertSame(['arma' => $r['arma_id'], 'margem' => 19, 'destaque' => 'critico'], $this->marcas($r));
+
+        $r = $this->ataqueComArma(19, [20]);
+        $this->assertSame('critico', $r['sistema']['destaque']);
+
+        $r = $this->ataqueComArma(19, [18]);
+        $this->assertSame(['arma' => $r['arma_id'], 'margem' => 19], $this->marcas($r)); // ataque com arma, sem crítico
+
+        $r = $this->ataqueComArma(18, [18]);
+        $this->assertSame('critico', $r['sistema']['destaque']);
+    }
+
+    public function test_ataque_oferece_o_dano_no_card_e_o_critico_dobra_os_dados(): void
+    {
+        $ficha = ['atributos' => ['for' => 16]]; // FOR 16 = +3 de dano
+
+        $normal = $this->ataqueComArma(20, [10], ficha: $ficha);
+        $arma = $normal['arma_id'];
+        $this->assertSame([[
+            'id' => 'dano', 'rotulo' => 'Dano', 'resumo' => '1d8+3', 'expressao' => "1d8+@arma.{$arma}.dano", 'rotuloRolagem' => 'Espada',
+        ]], $normal['sistema']['acoes']);
+
+        // Crítico: "Dano crítico" (dados dobrados, em destaque) primeiro, e o dano normal ao lado.
+        $critico = $this->ataqueComArma(20, [20], ficha: $ficha);
+        $arma = $critico['arma_id'];
+        $this->assertSame(['dano-critico', 'dano'], array_column($critico['sistema']['acoes'], 'id'));
+        $this->assertSame([
+            'id' => 'dano-critico', 'rotulo' => 'Dano crítico', 'resumo' => '2d8+3', 'expressao' => "2d8+@arma.{$arma}.dano",
+            'rotuloRolagem' => 'Espada', 'destaque' => 'critico',
+        ], $critico['sistema']['acoes'][0]);
+        $this->assertSame(['Dano normal', '1d8+3'], [$critico['sistema']['acoes'][1]['rotulo'], $critico['sistema']['acoes'][1]['resumo']]);
+
+        // Falha crítica (1 natural) erra sempre: sem botão de dano.
+        $this->assertArrayNotHasKey('acoes', $this->ataqueComArma(20, [1], ficha: $ficha)['sistema']);
+    }
+
+    public function test_resumo_do_dano_sem_bonus_e_com_bonus_negativo(): void
+    {
+        $zero = $this->ataqueComArma(20, [10]); // FOR 10 = +0
+        $this->assertSame('1d8', $zero['sistema']['acoes'][0]['resumo']);
+
+        $negativo = $this->ataqueComArma(20, [10], ficha: ['atributos' => ['for' => 6]]); // FOR 6 = -2
+        $this->assertSame('1d8-2', $negativo['sistema']['acoes'][0]['resumo']);
+    }
+
+    public function test_acao_do_card_rola_o_dano_como_uma_rolagem_comum(): void
+    {
+        $r = $this->ataqueComArma(20, [20], ficha: ['atributos' => ['for' => 16]]);
+        $c = $r['c'];
+        $acao = $r['sistema']['acoes'][0]; // dano crítico
+        $this->app->instance(Rolador::class, new Rolador(fn (int $faces) => 4));
+
+        $dano = $this->rolar($c, $c->ana, ['expressao' => $acao['expressao'], 'rotulo' => $acao['rotuloRolagem'], 'personagem_id' => $c->aria->id])->assertCreated()->json('dados');
+
+        $this->assertSame('Espada', $dano['rotulo']); // só o nome do item: os dados e a fórmula dizem que é dano
+        $this->assertCount(2, $dano['termos'][0]['resultados']); // 2d8
+        $this->assertSame(4 + 4 + 3, $dano['total']);            // dois dados de 4 e o modificador +3 uma vez só
+        $this->assertArrayNotHasKey('sistema', $dano);           // o dano não é um ataque: sem novas ações
+    }
+
+    public function test_margem_padrao_e_20_e_o_1_e_falha(): void
+    {
+        $this->assertArrayNotHasKey('destaque', $this->ataqueComArma(20, [19])['sistema']);
+        $this->assertSame('critico', $this->ataqueComArma(20, [20])['sistema']['destaque']);
+        $this->assertSame('falha', $this->ataqueComArma(20, [1])['sistema']['destaque']);
+    }
+
+    public function test_vantagem_decide_o_critico_pelo_dado_mantido(): void
+    {
+        // 2d20kh1: sai 4 e 19; o 19 fica → crítico (margem 19). 2d20kl1: fica o 4 → não é.
+        $this->assertSame('critico', $this->ataqueComArma(19, [4, 19], '2d20kh1+@arma.%d.ataque')['sistema']['destaque']);
+        $this->assertArrayNotHasKey('destaque', $this->ataqueComArma(19, [4, 19], '2d20kl1+@arma.%d.ataque')['sistema']);
+    }
+
+    public function test_so_ataque_com_arma_recebe_marca_do_sistema(): void
+    {
+        $c = $this->cenario();
+        $c->aria->forceFill(['ficha' => FichaDnd5e::padrao()])->save();
+        $this->app->instance(Rolador::class, new Rolador(fn (int $faces) => $faces));
+
+        $r = $this->rolar($c, $c->ana, ['expressao' => '1d20+@pericia.percepcao', 'personagem_id' => $c->aria->id])->assertCreated()->json('dados');
+        $this->assertArrayNotHasKey('sistema', $r); // natural 20 de perícia não é "crítico de arma"
+        $this->assertArrayNotHasKey('sistema', $this->rolar($c, $c->ana, ['expressao' => '1d20'])->assertCreated()->json('dados'));
+    }
+
+    public function test_ataque_com_arma_de_sabedoria_usa_o_modificador_dela(): void
+    {
+        $c = $this->cenario();
+        $cajado = $c->mesa->itens()->create(['nome' => 'Cajado de Combate', 'peso' => 2, 'dados' => ['arma' => ['dano' => '1d6', 'atributo' => 'sab', 'proficiente' => true]]]);
+        $c->aria->forceFill(['ficha' => array_replace_recursive(FichaDnd5e::padrao(), [
+            'nivel' => 5, 'atributos' => ['for' => 8, 'des' => 8, 'sab' => 18],
+            'inventario' => [['secao' => 'A', 'itens' => [['item_id' => $cajado->id, 'qtd' => 1, 'equipado' => true, 'sintonizado' => false]]]],
+        ])])->save();
+
+        $r = $this->rolar($c, $c->ana, ['expressao' => '1d20+@arma.'.$cajado->id.'.ataque+@arma.'.$cajado->id.'.dano', 'personagem_id' => $c->aria->id])->assertCreated()->json();
+        $v = collect($r['dados']['termos'])->where('tipo', 'variavel')->mapWithKeys(fn ($t) => [$t['nome'] => $t['valor']])->all();
+
+        // SAB 18 = +4; proficiência nível 5 = +3. Força e Destreza (-1) não entram.
+        $this->assertSame(['arma.'.$cajado->id.'.ataque' => 7, 'arma.'.$cajado->id.'.dano' => 4], $v);
+    }
+
+    public function test_ataque_e_dano_da_arma_usam_atributos_diferentes(): void
+    {
+        $c = $this->cenario();
+        $arma = fn (string $nome, array $dados) => $c->mesa->itens()->create(['nome' => $nome, 'peso' => 1, 'dados' => ['arma' => $dados + ['dano' => '1d6', 'proficiente' => true]]]);
+        $misto = $arma('Mista', ['atributo' => 'car', 'atributoDano' => 'for']);
+        $secundaria = $arma('Secundária', ['atributo' => 'for', 'atributoDano' => 'nenhum', 'bonusMagico' => 1]);
+        $igual = $arma('Igual', ['atributo' => 'sab']);
+        $ref = fn ($item) => ['item_id' => $item->id, 'qtd' => 1, 'equipado' => true, 'sintonizado' => false];
+        $c->aria->forceFill(['ficha' => array_replace_recursive(FichaDnd5e::padrao(), [
+            'nivel' => 5, 'atributos' => ['for' => 16, 'car' => 14, 'sab' => 18],
+            'inventario' => [['secao' => 'A', 'itens' => [$ref($misto), $ref($secundaria), $ref($igual)]]],
+        ])])->save();
+
+        $variaveis = app(RegistroSistemas::class)->resolver('dnd-5e')->variaveisDeRolagem($c->aria->ficha, collect([$misto, $secundaria, $igual])->mapWithKeys(fn ($i) => [$i->id => $i->paraFront()])->all());
+
+        // nível 5: proficiência +3. FOR 16 = +3, CAR 14 = +2, SAB 18 = +4
+        $this->assertSame([5, 3], [$variaveis["arma.{$misto->id}.ataque"], $variaveis["arma.{$misto->id}.dano"]]);           // bate com Carisma (+2+3), dano com Força (+3)
+        $this->assertSame([7, 1], [$variaveis["arma.{$secundaria->id}.ataque"], $variaveis["arma.{$secundaria->id}.dano"]]); // dano sem modificador: só o +1 mágico
+        $this->assertSame([7, 4], [$variaveis["arma.{$igual->id}.ataque"], $variaveis["arma.{$igual->id}.dano"]]);            // sem atributoDano: o mesmo do ataque
+    }
+
+    public function test_bonus_de_acerto_e_de_dano_da_arma_somam_separados(): void
+    {
+        $c = $this->cenario();
+        $arma = fn (string $nome, array $dados) => $c->mesa->itens()->create(['nome' => $nome, 'peso' => 1, 'dados' => ['arma' => $dados + ['dano' => '1d8', 'atributo' => 'for', 'proficiente' => false]]]);
+        $separados = $arma('Separados', ['bonusAtaque' => 2, 'bonusDano' => 1]);
+        $antiga = $arma('Antiga', ['bonusMagico' => 3]);
+        $ref = fn ($item) => ['item_id' => $item->id, 'qtd' => 1, 'equipado' => true, 'sintonizado' => false];
+        $c->aria->forceFill(['ficha' => array_replace_recursive(FichaDnd5e::padrao(), [
+            'atributos' => ['for' => 16], 'inventario' => [['secao' => 'A', 'itens' => [$ref($separados), $ref($antiga)]]],
+        ])])->save();
+
+        $v = app(RegistroSistemas::class)->resolver('dnd-5e')->variaveisDeRolagem($c->aria->ficha, collect([$separados, $antiga])->mapWithKeys(fn ($i) => [$i->id => $i->paraFront()])->all());
+
+        // FOR 16 = +3, sem proficiência
+        $this->assertSame([5, 4], [$v["arma.{$separados->id}.ataque"], $v["arma.{$separados->id}.dano"]]); // +2 no acerto, +1 no dano
+        $this->assertSame([6, 6], [$v["arma.{$antiga->id}.ataque"], $v["arma.{$antiga->id}.dano"]]);       // formato antigo: +3 nos dois
+    }
+
+    public function test_arma_nao_equipada_nao_gera_variavel(): void
+    {
+        $c = $this->cenario();
+        $espada = $c->mesa->itens()->create(['nome' => 'Espada', 'peso' => 3, 'dados' => ['arma' => ['dano' => '1d8', 'atributo' => 'for']]]);
+        $c->aria->forceFill(['ficha' => array_replace(FichaDnd5e::padrao(), ['inventario' => [['secao' => 'A', 'itens' => [['item_id' => $espada->id, 'qtd' => 1, 'equipado' => false, 'sintonizado' => false]]]]])])->save();
+
+        $this->rolar($c, $c->ana, ['expressao' => '1d20+@arma.'.$espada->id.'.ataque', 'personagem_id' => $c->aria->id])->assertStatus(422)->assertJsonValidationErrors('expressao');
+    }
+
+    public function test_variavel_inexistente_e_personagem_alheio_sao_rejeitados(): void
+    {
+        $c = $this->cenario();
+        $this->rolar($c, $c->ana, ['expressao' => '1d20+@xyz', 'personagem_id' => $c->aria->id])->assertStatus(422)->assertJsonValidationErrors('expressao');
+        // Bia não controla a Aria: não rola como ela (nem usa a ficha dela).
+        $this->rolar($c, $c->bia, ['expressao' => '1d20+@mod.for', 'personagem_id' => $c->aria->id])->assertStatus(422)->assertJsonValidationErrors('personagem_id');
+    }
+
+    public function test_mensagem_antiga_de_rolagem_e_lida_no_formato_novo(): void
+    {
+        $c = $this->cenario();
+        $c->mesa->mensagens()->create([
+            'jogador_id' => $c->ana->id, 'tipo' => 'rolagem', 'visibilidade' => 'todos', 'texto' => '2d6',
+            'dados' => ['dado' => 'd6', 'faces' => 6, 'quantidade' => 2, 'resultados' => [3, 4], 'total' => 7],
+        ]);
+
+        $m = $this->como($c->ana)->get(route('jogo', [$c->mesa->slug, $c->ana->id]))->viewData('page')['props']['mensagens'][0];
+        $this->assertSame('2d6', $m['dados']['expressao']);
+        $this->assertSame([3, 4], $m['dados']['termos'][0]['resultados']);
+        $this->assertSame(7, $m['dados']['total']);
     }
 
     public function test_jogador_nao_pode_rolar_em_segredo(): void
@@ -90,12 +347,12 @@ class ChatTest extends TestCase
     {
         Event::fake([EventoMesa::class]);
         $c = $this->cenario();
-        $this->rolar($c, $c->mestre, ['visibilidade' => 'secreto', 'quantidade' => 3])->assertCreated();
+        $this->rolar($c, $c->mestre, ['visibilidade' => 'secreto', 'expressao' => '3d6'])->assertCreated();
 
         Event::assertDispatched(EventoMesa::class, function ($e) {
             return $e->canais === ['mesa'] && $e->payload['mensagem']['dados'] === null && $e->payload['mensagem']['visibilidade'] === 'secreto_oculto';
         });
-        Event::assertDispatched(EventoMesa::class, fn ($e) => $e->canais === ['mestre'] && count($e->payload['mensagem']['dados']['resultados']) === 3);
+        Event::assertDispatched(EventoMesa::class, fn ($e) => $e->canais === ['mestre'] && count($e->payload['mensagem']['dados']['termos'][0]['resultados']) === 3);
     }
 
     public function test_historico_respeita_a_visibilidade_de_cada_um(): void
