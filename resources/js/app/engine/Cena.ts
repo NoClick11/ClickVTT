@@ -43,7 +43,10 @@ export class Cena {
     private selecaoG = new Graphics();
     private reguaG = new Graphics();
     private desenhoG = new Graphics();
-    private reguaTexto = new Text({ text: '', style: { fontFamily: 'sans-serif', fontSize: 14, fill: 0xfaf0cf, fontWeight: '600', stroke: { color: 0x0d0a12, width: 4 } } });
+    private reguaTexto = new Text({
+        text: '',
+        style: { fontFamily: 'sans-serif', fontSize: 14, fill: 0xfaf0cf, fontWeight: '600', stroke: { color: 0x0d0a12, width: 4 } },
+    });
 
     private visuais = new Map<number, ObjetoVisual>();
     private pagina: PaginaDto | null = null;
@@ -54,6 +57,8 @@ export class Cena {
     private modo: Modo = 'nenhum';
     private espaco = false;
     private inicioTela = { x: 0, y: 0 };
+    /** Onde o botão foi apertado (não muda durante o arrasto): distingue clique de arrasto no botão direito. */
+    private pressTela = { x: 0, y: 0 };
     private inicioMundo = { x: 0, y: 0 };
     private inicioObjeto: CamposGeometria = {};
     private alca: AlcaRedimensionar | null = null;
@@ -213,6 +218,11 @@ export class Cena {
     }
 
     /** Centro da área visível em coordenadas do mundo (onde colocar novos objetos). */
+    /** Ponto do mundo sob uma posição da tela, em pixels relativos ao canvas. */
+    pontoDoMundo(sx: number, sy: number): { x: number; y: number } {
+        return this.paraMundo(sx, sy);
+    }
+
     centroDaVista(): { x: number; y: number } {
         return this.paraMundo(this.app.screen.width / 2, this.app.screen.height / 2);
     }
@@ -299,6 +309,18 @@ export class Cena {
         return (v.dto.tipo === 'traco' || v.dto.tipo === 'texto') && v.dto.jogador_id !== null && v.dto.jogador_id === this.opcoes.jogadorId;
     }
 
+    /** Objeto sob o ponto em QUALQUER camada (menos a iluminação); o de cima vence. Só o mestre mexe fora da camada ativa. */
+    private objetoDeQualquerCamadaEm(x: number, y: number): ObjetoVisual | null {
+        const tol = 10 / this.mundo.scale.x;
+        const ordem = (v: ObjetoVisual) => CAMADAS.findIndex((c) => c.id === v.dto.camada);
+        const candidatos = [...this.visuais.values()].filter(
+            (v) => v.dto.camada !== 'iluminacao' && (this.opcoes.mestre || this.podeInteragir(v)) && v.acerta(x, y, tol),
+        );
+        candidatos.sort((a, b) => ordem(b) - ordem(a) || b.dto.z - a.dto.z || b.dto.id - a.dto.id);
+
+        return candidatos[0] ?? null;
+    }
+
     private objetoEm(x: number, y: number): ObjetoVisual | null {
         const tol = 10 / this.mundo.scale.x;
         const candidatos = [...this.visuais.values()].filter((v) => this.podeInteragir(v) && v.acerta(x, y, tol));
@@ -322,13 +344,17 @@ export class Cena {
         g.rect(x, y, largura, altura).stroke({ color: 0xd4a843, width: 1.5, alpha: 0.95, pixelLine: true });
         const guia = this.alvoEncaixe;
         if (guia && this.modo === 'redimensionar') {
-            g.rect(guia.x!, guia.y!, guia.largura!, guia.altura!).fill({ color: 0xd4a843, alpha: 0.12 }).stroke({ color: 0xf4e0a0, width: 1.5, alpha: 0.9, pixelLine: true });
+            g.rect(guia.x!, guia.y!, guia.largura!, guia.altura!)
+                .fill({ color: 0xd4a843, alpha: 0.12 })
+                .stroke({ color: 0xf4e0a0, width: 1.5, alpha: 0.9, pixelLine: true });
         }
         if (!this.opcoes.mestre || v.dto.tipo === 'texto') return;
         const s = TAMANHO_ALCA / this.mundo.scale.x;
         for (const a of this.alcasVisiveis(largura, altura)) {
             const p = this.posicaoAlca(a, x, y, largura, altura);
-            g.rect(p.x - s / 2, p.y - s / 2, s, s).fill(0x0d0a12).stroke({ color: 0xd4a843, width: 1.5, pixelLine: true });
+            g.rect(p.x - s / 2, p.y - s / 2, s, s)
+                .fill(0x0d0a12)
+                .stroke({ color: 0xd4a843, width: 1.5, pixelLine: true });
         }
     }
 
@@ -429,7 +455,12 @@ export class Cena {
 
     private ligarEventos(): void {
         const canvas = this.app.canvas;
-        const ouvir = <K extends keyof HTMLElementEventMap>(alvo: HTMLElement, tipo: K, fn: (e: HTMLElementEventMap[K]) => void, opt?: AddEventListenerOptions) => {
+        const ouvir = <K extends keyof HTMLElementEventMap>(
+            alvo: HTMLElement,
+            tipo: K,
+            fn: (e: HTMLElementEventMap[K]) => void,
+            opt?: AddEventListenerOptions,
+        ) => {
             alvo.addEventListener(tipo, fn as EventListener, opt);
             this.removerListeners.push(() => alvo.removeEventListener(tipo, fn as EventListener));
         };
@@ -487,6 +518,7 @@ export class Cena {
         const tela = this.posTela(e);
         const p = this.paraMundo(tela.x, tela.y);
         this.inicioTela = tela;
+        this.pressTela = tela;
         this.inicioMundo = p;
         this.iniciou = false;
         this.limparRegua();
@@ -563,7 +595,11 @@ export class Cena {
         }
         if (this.modo === 'desenhar') {
             const fim = { x: this.snap(p.x), y: this.snap(p.y) };
-            this.desenhoG.clear().moveTo(this.desenhoInicio.x, this.desenhoInicio.y).lineTo(fim.x, fim.y).stroke({ color: 0xf4e0a0, width: 8, alpha: 0.6, cap: 'round' });
+            this.desenhoG
+                .clear()
+                .moveTo(this.desenhoInicio.x, this.desenhoInicio.y)
+                .lineTo(fim.x, fim.y)
+                .stroke({ color: 0xf4e0a0, width: 8, alpha: 0.6, cap: 'round' });
             return;
         }
         if (this.modo === 'regua') {
@@ -600,6 +636,15 @@ export class Cena {
 
     private aoSoltar(e: PointerEvent): void {
         if (this.app.canvas.hasPointerCapture(e.pointerId)) this.app.canvas.releasePointerCapture(e.pointerId);
+        // Botão direito sem arrastar sobre um objeto: menu (mover entre camadas). Arrastar continua movendo a vista.
+        if (e.type === 'pointerup' && e.button === 2 && this.modo === 'pan' && this.opcoes.mestre) {
+            const tela = this.posTela(e);
+            if (Math.hypot(tela.x - this.pressTela.x, tela.y - this.pressTela.y) < 4) {
+                const p = this.paraMundo(tela.x, tela.y);
+                const alvo = this.objetoDeQualquerCamadaEm(p.x, p.y);
+                if (alvo) this.opcoes.eventos.menuObjeto(alvo.dto.id, { x: e.clientX, y: e.clientY });
+            }
+        }
         if (this.modo === 'pintar') {
             this.desenhoG.clear();
             const pts = this.tracoAtual;
@@ -610,7 +655,8 @@ export class Cena {
             const [minX, minY] = [Math.min(...xs), Math.min(...ys)];
             const relativos = pts.map((v, i) => Math.round((v - (i % 2 === 0 ? minX : minY)) * 10) / 10);
             this.opcoes.eventos.criarTraco({
-                x: minX, y: minY,
+                x: minX,
+                y: minY,
                 largura: Math.max(1, Math.max(...xs) - minX),
                 altura: Math.max(1, Math.max(...ys) - minY),
                 pontos: relativos,
@@ -680,7 +726,13 @@ export class Cena {
     private atualizarCursor(forcado?: string): void {
         if (!this.pronto) return;
         const emPan = this.espaco || this.ferramenta === 'mover';
-        const padrao = ['regua', 'luz', 'parede', 'porta', 'janela', 'pintar'].includes(this.ferramenta) ? 'crosshair' : this.ferramenta === 'texto' ? 'text' : emPan ? 'grab' : 'default';
+        const padrao = ['regua', 'luz', 'parede', 'porta', 'janela', 'pintar'].includes(this.ferramenta)
+            ? 'crosshair'
+            : this.ferramenta === 'texto'
+              ? 'text'
+              : emPan
+                ? 'grab'
+                : 'default';
         this.app.canvas.style.cursor = forcado ?? padrao;
     }
 }

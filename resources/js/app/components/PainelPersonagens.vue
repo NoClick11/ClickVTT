@@ -3,6 +3,14 @@ import { Button } from '@/components/ui/button';
 import type { Jogador, Personagem } from '@/site/types';
 import { Crosshair, Crown, Plus, Users } from 'lucide-vue-next';
 import type { PaginaDto } from '../engine/tipos';
+import { MIME_PERSONAGEM } from '../nucleo/itens/arrastar';
+
+const arrastar = (e: DragEvent, id: number) => {
+    if (!e.dataTransfer) return;
+    e.dataTransfer.setData(MIME_PERSONAGEM, String(id));
+    e.dataTransfer.setData('text/plain', '');
+    e.dataTransfer.effectAllowed = 'copy';
+};
 
 defineProps<{
     personagens: Personagem[];
@@ -40,6 +48,9 @@ defineEmits<{ abrir: [personagemId: number]; focar: [personagemId: number]; atri
                     v-for="p in personagens"
                     :key="p.id"
                     class="flex items-center gap-1 rounded-md border bg-preto-900/70 pr-1.5 transition"
+                    :draggable="mestre"
+                    :title="mestre ? 'Arraste para o mapa para criar o token' : undefined"
+                    @dragstart="mestre && arrastar($event, p.id)"
                     :class="ativoId === p.id ? 'border-ouro-400' : 'border-transparent hover:border-preto-700'"
                 >
                     <!-- Clicar no personagem abre a ficha e, se for seu, o torna o personagem ativo -->

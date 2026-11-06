@@ -10,3 +10,12 @@ export const itemSolto = (e: DragEvent): number | null => {
 
     return Number.isInteger(id) && id > 0 ? id : null;
 };
+
+/** Arrastar um personagem do painel Personagens para o mapa (cria o token dele onde soltar). */
+export const MIME_PERSONAGEM = 'application/x-clickvtt-personagem';
+export const arrastandoPersonagem = (e: DragEvent): boolean => Array.from(e.dataTransfer?.types ?? []).includes(MIME_PERSONAGEM);
+export const personagemSolto = (e: DragEvent): number | null => {
+    const id = Number(e.dataTransfer?.getData(MIME_PERSONAGEM));
+
+    return Number.isInteger(id) && id > 0 ? id : null;
+};

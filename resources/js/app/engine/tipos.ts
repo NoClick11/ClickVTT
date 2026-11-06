@@ -79,4 +79,6 @@ export interface CenaEventos {
     criarParede: (pontos: [number, number, number, number], tipo: TipoParede) => void;
     /** Clique numa porta (ferramenta selecionar, mestre ou jogador) alterna aberta/fechada. */
     alternarPorta: (id: number) => void;
+    /** Botão direito (sem arrastar) sobre um objeto, em qualquer camada: posição na tela (client) para abrir o menu. */
+    menuObjeto: (id: number, tela: { x: number; y: number }) => void;
 }

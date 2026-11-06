@@ -24,6 +24,7 @@ const emit = defineEmits<{
     criarTexto: [x: number, y: number, tela: { x: number; y: number }];
     criarParede: [pontos: [number, number, number, number], tipo: TipoParede];
     alternarPorta: [id: number];
+    menuObjeto: [id: number, tela: { x: number; y: number }];
 }>();
 
 const host = ref<HTMLDivElement | null>(null);
@@ -44,6 +45,7 @@ onMounted(async () => {
             criarTexto: (x, y, tela) => emit('criarTexto', x, y, tela),
             criarParede: (pontos, tipo) => emit('criarParede', pontos, tipo),
             alternarPorta: (id) => emit('alternarPorta', id),
+            menuObjeto: (id, tela) => emit('menuObjeto', id, tela),
         },
     });
     await nova.iniciar(host.value!);
@@ -66,18 +68,49 @@ onBeforeUnmount(() => {
     cena = null;
 });
 
-watch(() => props.pagina, (p) => cena?.setPagina(p), { deep: true });
-watch(() => props.objetos, (o) => cena?.setObjetos(o), { deep: true });
-watch(() => props.camada, (c) => cena?.setCamadaAtiva(c));
-watch(() => props.ferramenta, (f) => cena?.setFerramenta(f));
-watch(() => props.personagensPermitidos, (ids) => cena?.setPersonagensPermitidos(ids), { deep: true });
-watch(() => props.margemDireita, (m) => cena?.setMargemDireita(m));
-watch(() => props.estilo, (e) => cena?.setEstilo(e), { deep: true });
+watch(
+    () => props.pagina,
+    (p) => cena?.setPagina(p),
+    { deep: true },
+);
+watch(
+    () => props.objetos,
+    (o) => cena?.setObjetos(o),
+    { deep: true },
+);
+watch(
+    () => props.camada,
+    (c) => cena?.setCamadaAtiva(c),
+);
+watch(
+    () => props.ferramenta,
+    (f) => cena?.setFerramenta(f),
+);
+watch(
+    () => props.personagensPermitidos,
+    (ids) => cena?.setPersonagensPermitidos(ids),
+    { deep: true },
+);
+watch(
+    () => props.margemDireita,
+    (m) => cena?.setMargemDireita(m),
+);
+watch(
+    () => props.estilo,
+    (e) => cena?.setEstilo(e),
+    { deep: true },
+);
 
 defineExpose({
     ajustar: () => cena?.ajustarVista(),
     zoomPor: (f: number) => cena?.zoomPor(f),
     centro: () => cena?.centroDaVista() ?? { x: 0, y: 0 },
+    /** Ponto do mundo sob uma posição da tela (clientX/clientY). */
+    pontoDoMundo: (cx: number, cy: number) => {
+        const r = host.value?.getBoundingClientRect();
+
+        return cena?.pontoDoMundo(cx - (r?.left ?? 0), cy - (r?.top ?? 0)) ?? { x: 0, y: 0 };
+    },
     selecionar: (id: number | null) => cena?.selecionar(id),
     focar: (id: number, selecionar = false) => cena?.focar(id, selecionar),
 });

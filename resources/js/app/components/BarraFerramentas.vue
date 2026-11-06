@@ -1,11 +1,24 @@
 <script setup lang="ts">
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { AppWindow, BrickWall, Dices, DoorClosed, Hand, ImagePlus, Lightbulb, ListOrdered, MousePointer2, Paintbrush, Ruler, Settings2, Type, UserPlus } from 'lucide-vue-next';
+import {
+    AppWindow,
+    BrickWall,
+    Dices,
+    DoorClosed,
+    Hand,
+    Lightbulb,
+    ListOrdered,
+    MousePointer2,
+    Paintbrush,
+    Ruler,
+    Settings2,
+    Type,
+} from 'lucide-vue-next';
 import type { Component } from 'vue';
 import type { Ferramenta } from '../engine/tipos';
 
 defineProps<{ ferramenta: Ferramenta; mestre: boolean; camadaIluminacao: boolean; dados: boolean; turnos: boolean }>();
-defineEmits<{ ferramenta: [Ferramenta]; enviarMapa: []; novoToken: []; configurar: []; dados: []; turnos: [] }>();
+defineEmits<{ ferramenta: [Ferramenta]; configurar: []; dados: []; turnos: [] }>();
 
 interface Item {
     id: Ferramenta;
@@ -25,12 +38,16 @@ const ferramentas: Item[] = [
     { id: 'porta', rotulo: 'Porta', icone: DoorClosed, mestre: true, iluminacao: true },
     { id: 'janela', rotulo: 'Janela', icone: AppWindow, mestre: true, iluminacao: true },
 ];
-const botao = 'flex size-10 items-center justify-center rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400';
+const botao =
+    'flex size-10 items-center justify-center rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400';
 </script>
 
 <template>
     <TooltipProvider :delay-duration="200">
-        <nav class="pointer-events-auto absolute left-3 top-16 z-10 flex flex-col gap-1 rounded-lg border border-ouro-500/20 bg-preto-950/90 p-1.5 backdrop-blur" aria-label="Ferramentas">
+        <nav
+            class="pointer-events-auto absolute left-3 top-16 z-10 flex flex-col gap-1 rounded-lg border border-ouro-500/20 bg-preto-950/90 p-1.5 backdrop-blur"
+            aria-label="Ferramentas"
+        >
             <template v-for="f in ferramentas" :key="f.id">
                 <Tooltip v-if="(!f.mestre || mestre) && (!f.iluminacao || camadaIluminacao)">
                     <TooltipTrigger as-child>
@@ -50,13 +67,29 @@ const botao = 'flex size-10 items-center justify-center rounded-md transition fo
             <div class="my-1 h-px bg-ouro-500/20" />
             <Tooltip>
                 <TooltipTrigger as-child>
-                    <button type="button" :class="[botao, dados ? 'bg-ouro-500 text-preto-950' : 'text-preto-200 hover:bg-preto-800']" aria-label="Rolar dados" :aria-pressed="dados" @click="$emit('dados')"><Dices class="size-5" /></button>
+                    <button
+                        type="button"
+                        :class="[botao, dados ? 'bg-ouro-500 text-preto-950' : 'text-preto-200 hover:bg-preto-800']"
+                        aria-label="Rolar dados"
+                        :aria-pressed="dados"
+                        @click="$emit('dados')"
+                    >
+                        <Dices class="size-5" />
+                    </button>
                 </TooltipTrigger>
                 <TooltipContent side="right">Rolar dados</TooltipContent>
             </Tooltip>
             <Tooltip v-if="mestre">
                 <TooltipTrigger as-child>
-                    <button type="button" :class="[botao, turnos ? 'bg-ouro-500 text-preto-950' : 'text-preto-200 hover:bg-preto-800']" aria-label="Turnos" :aria-pressed="turnos" @click="$emit('turnos')"><ListOrdered class="size-5" /></button>
+                    <button
+                        type="button"
+                        :class="[botao, turnos ? 'bg-ouro-500 text-preto-950' : 'text-preto-200 hover:bg-preto-800']"
+                        aria-label="Turnos"
+                        :aria-pressed="turnos"
+                        @click="$emit('turnos')"
+                    >
+                        <ListOrdered class="size-5" />
+                    </button>
                 </TooltipTrigger>
                 <TooltipContent side="right">Turnos</TooltipContent>
             </Tooltip>
@@ -64,19 +97,14 @@ const botao = 'flex size-10 items-center justify-center rounded-md transition fo
                 <div class="my-1 h-px bg-ouro-500/20" />
                 <Tooltip>
                     <TooltipTrigger as-child>
-                        <button type="button" :class="[botao, 'text-preto-200 hover:bg-preto-800']" aria-label="Enviar mapa" @click="$emit('enviarMapa')"><ImagePlus class="size-5" /></button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">Enviar mapa (imagem, GIF ou vídeo)</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                    <TooltipTrigger as-child>
-                        <button type="button" :class="[botao, 'text-preto-200 hover:bg-preto-800']" aria-label="Novo token" @click="$emit('novoToken')"><UserPlus class="size-5" /></button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">Novo token</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                    <TooltipTrigger as-child>
-                        <button type="button" :class="[botao, 'text-preto-200 hover:bg-preto-800']" aria-label="Configurações da página" @click="$emit('configurar')"><Settings2 class="size-5" /></button>
+                        <button
+                            type="button"
+                            :class="[botao, 'text-preto-200 hover:bg-preto-800']"
+                            aria-label="Configurações da página"
+                            @click="$emit('configurar')"
+                        >
+                            <Settings2 class="size-5" />
+                        </button>
                     </TooltipTrigger>
                     <TooltipContent side="right">Configurações da página</TooltipContent>
                 </Tooltip>

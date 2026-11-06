@@ -13,9 +13,9 @@ import ConfigPaginaDialog from '../components/ConfigPaginaDialog.vue';
 import ControlesZoom from '../components/ControlesZoom.vue';
 import DadosAnimacao from '../components/DadosAnimacao.vue';
 import Inspetor from '../components/Inspetor.vue';
+import MenuObjeto from '../components/MenuObjeto.vue';
 import MenuPaginas from '../components/MenuPaginas.vue';
 import NovoPersonagemDialog from '../components/NovoPersonagemDialog.vue';
-import NovoTokenDialog from '../components/NovoTokenDialog.vue';
 import OpcoesFerramenta from '../components/OpcoesFerramenta.vue';
 import PainelChat from '../components/PainelChat.vue';
 import PainelDados from '../components/PainelDados.vue';
@@ -33,7 +33,7 @@ import {
     type TipoParede,
 } from '../engine/tipos';
 import { definirCaminho } from '../nucleo/ficha/caminho';
-import { arrastandoItem, itemSolto } from '../nucleo/itens/arrastar';
+import { arrastandoItem, arrastandoPersonagem, itemSolto, personagemSolto } from '../nucleo/itens/arrastar';
 import EditorItemDialog from '../nucleo/itens/EditorItemDialog.vue';
 import PainelItens from '../nucleo/itens/PainelItens.vue';
 import type { AcaoDaRolagem } from '../nucleo/rolagem';
@@ -83,13 +83,11 @@ const selecionadoId = ref<number | null>(null);
 const escala = ref(1);
 const erro = ref<string | null>(null);
 const canvas = ref<InstanceType<typeof CenaCanvas> | null>(null);
-const inputMapa = ref<HTMLInputElement | null>(null);
 
 const menuAberto = ref(false);
 const configAberta = ref(false);
 const configPagina = ref<PaginaDto | null>(null);
 const configErro = ref<string | undefined>();
-const tokenAberto = ref(false);
 const painelDados = ref(false);
 const painelTurnos = ref(false);
 const estilo = ref<EstiloPintura>({ cor: '#ef4444', espessura: 4, tamanho: 28 });
@@ -180,7 +178,6 @@ watch(
 );
 
 const selecionado = computed(() => objetos.value.find((o) => o.id === selecionadoId.value) ?? null);
-const camadaNome = computed(() => CAMADAS.find((c) => c.id === (['jogadores', 'mestre'].includes(camada.value) ? camada.value : 'jogadores'))!.nome);
 
 // --- utilidades ----------------------------------------------------------------
 
@@ -233,16 +230,31 @@ function centroEmQuadrados(): { x: number; y: number; t: number } {
     return { x: Math.floor(c.x / t) * t, y: Math.floor(c.y / t) * t, t };
 }
 
-async function enviarMapa(e: Event) {
-    const alvo = e.target as HTMLInputElement;
-    const arquivo = alvo.files?.[0];
-    alvo.value = '';
+// Botão direito sobre um objeto: menu para movê-lo entre camadas (só o mestre).
+const menuObjeto = ref<{ id: number; x: number; y: number } | null>(null);
+const abrirMenuObjeto = (id: number, tela: { x: number; y: number }) => (menuObjeto.value = { id, ...tela });
+const objetoDoMenu = computed(() => objetos.value.find((o) => o.id === menuObjeto.value?.id) ?? null);
+function moverParaCamada(nova: Camada) {
+    const o = objetoDoMenu.value;
+    menuObjeto.value = null;
+    if (!o || o.camada === nova) return;
+    o.camada = nova;
+    api.atualizarObjeto(o.id, { camada: nova }).catch(falhou);
+    const nome = CAMADAS.find((c) => c.id === nova)?.nome;
+    avisar(`${o.nome || 'Objeto'} movido para a camada ${nome}.`);
+}
+
+/** Camada onde cai o que o mestre arrasta para o mapa: a que está aberta (a iluminação só aceita luzes e paredes). */
+const camadaDeDestino = (): Camada => (camada.value === 'iluminacao' ? 'jogadores' : camada.value);
+
+/** Imagem, GIF ou vídeo arrastado do computador para o mapa: vira o mapa da página (como no Roll20 e no Foundry). */
+async function enviarMapa(arquivo: File | undefined) {
     if (!arquivo || !props.pagina) return;
     try {
         const { largura, altura } = await medirArquivo(arquivo);
         const larguraPagina = props.pagina.colunas * props.pagina.tamanho_quadrado;
         const dados = new FormData();
-        dados.append('camada', 'mapa');
+        dados.append('camada', camadaDeDestino());
         dados.append('tipo', 'imagem');
         dados.append('nome', arquivo.name.replace(/\.[^.]+$/, ''));
         dados.append('x', '0');
@@ -251,17 +263,24 @@ async function enviarMapa(e: Event) {
         dados.append('altura', String(Math.round((larguraPagina * altura) / largura)));
         dados.append('arquivo', arquivo);
         objetos.value.push(await api.criarObjeto(props.pagina.id, dados));
-        avisar('Mapa enviado. Mude para a camada Mapa para movê-lo ou redimensioná-lo.');
+        avisar(`Imagem adicionada na camada ${CAMADAS.find((c) => c.id === camadaDeDestino())?.nome}. Botão direito nela para trocar de camada.`);
     } catch (err) {
         avisar(mensagemDe(err));
     }
 }
 
-async function criarToken(d: { nome: string; personagem_id: number | null; cor: string; tamanho: number; arquivo: File | null }) {
+async function criarToken(
+    d: { nome: string; personagem_id: number | null; cor: string; tamanho: number; arquivo: File | null },
+    ponto?: { x: number; y: number },
+) {
     if (!props.pagina) return;
-    const { x, y, t } = centroEmQuadrados();
+    const centro = centroEmQuadrados();
+    const t = centro.t;
+    // Solto no mapa: o token cai no quadrado sob o cursor; senão, no centro da vista.
+    const x = ponto ? Math.floor(ponto.x / t) * t : centro.x;
+    const y = ponto ? Math.floor(ponto.y / t) * t : centro.y;
     const lado = d.tamanho * t;
-    const alvoCamada: Camada = camada.value === 'mestre' ? 'mestre' : 'jogadores';
+    const alvoCamada: Camada = camadaDeDestino();
     const base = { camada: alvoCamada, tipo: 'token', nome: d.nome, x, y, largura: lado, altura: lado };
     try {
         let corpo: object | FormData;
@@ -279,6 +298,32 @@ async function criarToken(d: { nome: string; personagem_id: number | null; cor: 
     } catch (err) {
         avisar(mensagemDe(err));
     }
+}
+
+/** Personagem arrastado do painel para o mapa: cria o token dele onde soltou (um token por personagem na página). */
+const arrastandoArquivo = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files');
+function personagemSobreMapa(e: DragEvent) {
+    if (!props.mestre || !props.pagina || !(arrastandoPersonagem(e) || arrastandoArquivo(e))) return;
+    e.preventDefault(); // sem isto o navegador não deixa soltar
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+}
+async function soltarNoMapa(e: DragEvent) {
+    if (!props.mestre || !props.pagina) return;
+    if (arrastandoArquivo(e)) {
+        e.preventDefault();
+
+        return enviarMapa(e.dataTransfer?.files[0]);
+    }
+    if (!arrastandoPersonagem(e)) return;
+    e.preventDefault();
+    const p = props.personagens.find((x) => x.id === personagemSolto(e));
+    if (!p) return;
+    if (comToken.value.includes(p.id)) {
+        focarPersonagem(p.id);
+
+        return avisar(`${p.nome} já tem token nesta página.`);
+    }
+    await criarToken({ nome: p.nome, personagem_id: p.id, cor: p.cor, tamanho: 1, arquivo: null }, canvas.value?.pontoDoMundo(e.clientX, e.clientY));
 }
 
 // --- páginas e menu ----------------------------------------------------------------
@@ -478,10 +523,15 @@ watch(
     { deep: true },
 );
 
+/** Argumentos do evento `rolar` da ficha: expressão, nome e, opcional, quem recebe o total sorteado. */
+type RolagemDaFicha = [expressao: string, rotulo: string, aoRolar?: (total: number) => void];
+
 /** Rolagem vinda da ficha: as `@variáveis` são resolvidas no servidor pela ficha salva do personagem. */
-async function rolarDaFicha(personagemId: number, expressao: string, rotulo: string) {
+async function rolarDaFicha(personagemId: number, ...[expressao, rotulo, aoRolar]: RolagemDaFicha) {
     try {
-        aoNovaMensagem(await api.rolar(expressao, 'todos', personagemId, rotulo));
+        const m = await api.rolar(expressao, 'todos', personagemId, rotulo);
+        aoNovaMensagem(m);
+        if (m.dados) aoRolar?.(m.dados.total);
     } catch (e) {
         avisar(mensagemDe(e));
     }
@@ -764,26 +814,29 @@ function alternarPorta(id: number) {
     <Head :title="mesa.nome" />
     <div class="fixed inset-0 overflow-hidden bg-preto-950 text-preto-100">
         <template v-if="pagina">
-            <CenaCanvas
-                ref="canvas"
-                :pagina="pagina"
-                :objetos="objetos"
-                :camada="camada"
-                :ferramenta="ferramenta"
-                :mestre="mestre"
-                :jogador-id="jogador.id"
-                :personagens-permitidos="meusPersonagens"
-                :estilo="estilo"
-                :margem-direita="margemDireita"
-                @criar-traco="criarTraco"
-                @criar-texto="pedirTexto"
-                @selecionar="selecionadoId = $event"
-                @alterar="aoAlterar"
-                @zoom="escala = $event"
-                @criar-luz="criarLuz"
-                @criar-parede="criarParede"
-                @alternar-porta="alternarPorta"
-            />
+            <div class="absolute inset-0" @dragover="personagemSobreMapa" @drop="soltarNoMapa">
+                <CenaCanvas
+                    ref="canvas"
+                    :pagina="pagina"
+                    :objetos="objetos"
+                    :camada="camada"
+                    :ferramenta="ferramenta"
+                    :mestre="mestre"
+                    :jogador-id="jogador.id"
+                    :personagens-permitidos="meusPersonagens"
+                    :estilo="estilo"
+                    :margem-direita="margemDireita"
+                    @criar-traco="criarTraco"
+                    @criar-texto="pedirTexto"
+                    @selecionar="selecionadoId = $event"
+                    @alterar="aoAlterar"
+                    @zoom="escala = $event"
+                    @criar-luz="criarLuz"
+                    @criar-parede="criarParede"
+                    @alternar-porta="alternarPorta"
+                    @menu-objeto="abrirMenuObjeto"
+                />
+            </div>
         </template>
         <div v-else class="flex h-full items-center justify-center text-center text-preto-300">
             <p>Aguardando o mestre abrir uma página para você…</p>
@@ -810,8 +863,6 @@ function alternarPorta(id: number) {
                     @ferramenta="ferramenta = $event"
                     @dados="((painelDados = !painelDados), (painelTurnos = false))"
                     @turnos="((painelTurnos = !painelTurnos), (painelDados = false))"
-                    @enviar-mapa="inputMapa?.click()"
-                    @novo-token="tokenAberto = true"
                     @configurar="configurar(pagina.id)"
                 />
                 <SeletorCamada v-if="mestre" :camada="camada" @camada="(c) => ((camada = c), (ferramenta = 'selecionar'))" />
@@ -945,21 +996,21 @@ function alternarPorta(id: number) {
                 :mestre="mestre"
                 @editor-item="abrirEditorItem"
                 @salvar="(campos: Record<string, unknown>) => salvarFicha(f.id, campos)"
-                @rolar="(expressao: string, rotulo: string) => rolarDaFicha(f.id, expressao, rotulo)"
+                @rolar="(...a: RolagemDaFicha) => rolarDaFicha(f.id, ...a)"
             />
             <FichaPrivada v-else :personagem="f.personagem!" />
         </JanelaFlutuante>
 
-        <DadosAnimacao v-if="animacaoAtual" :key="animacaoAtual.id" :mensagem="animacaoAtual" @fim="animacaoAtual = null" />
-
-        <input
-            ref="inputMapa"
-            type="file"
-            class="sr-only"
-            tabindex="-1"
-            accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4"
-            @change="enviarMapa"
+        <MenuObjeto
+            v-if="menuObjeto && objetoDoMenu"
+            :objeto="objetoDoMenu"
+            :x="menuObjeto.x"
+            :y="menuObjeto.y"
+            @mover="moverParaCamada"
+            @fechar="menuObjeto = null"
         />
+
+        <DadosAnimacao v-if="animacaoAtual" :key="animacaoAtual.id" :mensagem="animacaoAtual" @fim="animacaoAtual = null" />
 
         <template v-if="mestre">
             <MenuPaginas
@@ -992,7 +1043,6 @@ function alternarPorta(id: number) {
                 :excluir="excluirItem"
                 @salvo="aoSalvarItemOk"
             />
-            <NovoTokenDialog v-model:open="tokenAberto" :personagens="personagens" :camada-nome="camadaNome" @criar="criarToken" />
         </template>
     </div>
 </template>
