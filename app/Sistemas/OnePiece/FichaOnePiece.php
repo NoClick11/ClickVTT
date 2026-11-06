@@ -50,7 +50,7 @@ final class FichaOnePiece
         return [
             // numéricos (soma, base, mín., máx.)
             'ca', 'iniciativa', 'cd', 'ataque', 'ataque.arma', 'dano.arma', 'carga.max', 'pv.max',
-            'salv.*', 'pericia.*', 'atributos.*', 'pp.max',
+            'salv.*', 'pericia.*', 'atributos.*', 'pp.max', 'dano.tecnica',
             // só para vantagem/desvantagem: testes de atributo e de ferramenta (os demais alvos de rolagem são os de cima)
             'teste.*', 'ferramenta.*', ...array_map(fn ($a) => "teste.{$a}", self::ATRIBUTOS),
             ...array_map(fn ($a) => "salv.{$a}", self::ATRIBUTOS),
@@ -67,6 +67,9 @@ final class FichaOnePiece
             'nivel' => 1, 'especie' => '', 'estilo' => '', 'profissao' => '', 'fruta' => '', 'antecedente' => '',
             'xp' => ['atual' => 0],
             'inspiracao' => false,
+            'tamanho' => 'Médio',
+            'movimento' => ['normal' => 9, 'nado' => 0, 'escalada' => 0, 'voo' => 0],
+            'ancestralidade' => '',
             'recompensa' => 0,
             'belly' => 0,
             'atributos' => $porChave(self::ATRIBUTOS, 10),
@@ -108,6 +111,11 @@ final class FichaOnePiece
         $r['nivel'] = $inteiro(1, 20);
         $r['xp.atual'] = $inteiro(0, 10_000_000);
         $r['inspiracao'] = ['boolean:strict'];
+        $r['tamanho'] = ['string', 'max:40'];
+        foreach (['normal', 'nado', 'escalada', 'voo'] as $m) {
+            $r["movimento.{$m}"] = ['numeric', 'between:0,999'];
+        }
+        $r['ancestralidade'] = ['string', 'max:2000'];
         $r['recompensa'] = $inteiro(0, 1_000_000_000_000);
         $r['belly'] = $inteiro(0, 1_000_000_000_000);
         foreach (self::ATRIBUTOS as $a) {
@@ -166,6 +174,11 @@ final class FichaOnePiece
         $r['caracteristicas.*.usos.max'] = $inteiro(0, 999);
         // Máximo igual ao bônus de proficiência (o front recalcula).
         $r['caracteristicas.*.usos.porProf'] = ['nullable', 'boolean'];
+        // Máximo igual ao nível do personagem (Heat, Electro...).
+        $r['caracteristicas.*.usos.porNivel'] = ['nullable', 'boolean'];
+        $r['caracteristicas.*.descricao'] = ['nullable', 'string', 'max:4000'];
+        // Quem criou: o assistente de criação marca `especie`/`variacao` para refazer o passo sem duplicar.
+        $r['caracteristicas.*.builder'] = ['nullable', 'string', Rule::in(['especie', 'variacao'])];
         // Buffs de estilo de luta, fruta ou haki: uma característica também carrega efeitos (os mesmos dos itens). A passiva sempre vale; a ativa
         // vale enquanto `ativa` estiver ligada (o interruptor da ficha).
         $r['caracteristicas.*.ativa'] = ['boolean:strict'];

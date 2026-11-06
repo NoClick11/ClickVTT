@@ -128,7 +128,7 @@ class FichaTest extends TestCase
         $etapa = ['classe' => 'Clérigo', 'nivel' => 1, 'atributos.sab' => 17, 'atributos.con' => 15];
 
         $r = $this->salvar($c, $c->ana, $etapa, ['criacao' => ['etapa' => 'atributos', 'concluida' => false]])->assertOk()->json();
-        $this->assertSame(['etapa' => 'atributos', 'concluida' => false], $r['criacao']);
+        $this->assertSame(['etapa' => 'atributos', 'concluida' => false, 'dados' => []], $r['criacao']);
         $p = $c->aria->fresh();
         $this->assertSame(17, $p->ficha['atributos']['sab']);
         $this->assertSame('Clérigo', $p->ficha['classe']);
@@ -189,9 +189,67 @@ class FichaTest extends TestCase
         $this->assertNull($p['criacao']);
     }
 
-    public function test_sistema_sem_modulo_nao_tem_ficha(): void
+    public function test_criacao_guiada_salva_etapa_e_escolhas_sem_campos(): void
     {
         $c = $this->cenario('one-piece');
+        $dados = ['escolhas' => ['modo' => 'unica', 'especies' => ['mink']]];
+
+        $r = $this->como($c->ana)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->aria->id]), ['criacao' => ['etapa' => 'escolhas', 'concluida' => false, 'dados' => $dados]])->assertOk()->json();
+
+        $this->assertSame('escolhas', $r['criacao']['etapa']);
+        $this->assertSame($dados, $r['criacao']['dados']);
+        $this->assertNull($c->aria->fresh()->ficha); // sem campos, a ficha não é tocada
+        $this->assertSame(0, $r['ficha']['pp']['atual']); // mas a resposta traz a ficha padrão completa
+    }
+
+    public function test_atributos_rolados_saem_do_servidor_uma_vez_so_e_nao_mudam_por_fora(): void
+    {
+        $c = $this->cenario('one-piece');
+        $rota = route('jogo.personagens.atributos-rolados', [$c->mesa->id, $c->aria->id]);
+
+        $a = $this->como($c->ana)->postJson($rota)->assertOk()->json('rolados');
+        $this->assertCount(6, $a);
+        foreach ($a as $v) {
+            $this->assertGreaterThanOrEqual(3, $v);
+            $this->assertLessThanOrEqual(18, $v);
+        }
+        $this->assertSame($a, $this->como($c->ana)->postJson($rota)->json('rolados')); // rolar de novo devolve os mesmos
+
+        // Tentar sobrescrever os valores pelas escolhas não funciona: o servidor os mantém.
+        $this->como($c->ana)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->aria->id]), ['criacao' => ['etapa' => 'atributos', 'concluida' => false, 'dados' => ['rolados' => [18, 18, 18, 18, 18, 18], 'x' => 1]]])->assertOk();
+        $this->assertSame($a, $c->aria->fresh()->criacao['dados']['rolados']);
+        $this->assertSame(1, $c->aria->fresh()->criacao['dados']['x']);
+
+        $this->como($c->bia)->postJson($rota)->assertForbidden(); // quem não controla o personagem não rola por ele
+    }
+
+    public function test_one_piece_salva_o_lote_do_assistente(): void
+    {
+        $c = $this->cenario('one-piece');
+        $campos = [
+            'especie' => 'Lunariano', 'estilo' => 'Espadachim', 'tamanho' => 'Médio',
+            'movimento.normal' => 9, 'movimento.nado' => 3, 'movimento.escalada' => 0, 'movimento.voo' => 0, 'deslocamento' => '9 m · nado 3 m',
+            'atributos.for' => 16, 'pericias.haki' => 1, 'salvaguardas' => ['for'], 'resistencias' => ['Fogo'],
+            'pv.max' => 29, 'pv.atual' => 29, 'dadosVida.tipo' => 'd12',
+            'caracteristicas' => [[
+                'nome' => 'Heat', 'origem' => 'Lunarianos', 'tipo' => 'ativa', 'descricao' => 'Texto', 'builder' => 'especie', 'ativa' => false,
+                'usos' => ['atual' => 1, 'max' => 1, 'porNivel' => true], 'descanso' => 'longo',
+                'efeitos' => [['alvo' => 'dano.tecnica', 'modo' => 'dados', 'valor' => '1d10']],
+            ]],
+        ];
+
+        $r = $this->salvar($c, $c->ana, $campos, ['criacao' => ['etapa' => 'resumo', 'concluida' => true, 'dados' => []]])->assertOk()->json();
+
+        $this->assertSame(29, $r['ficha']['pv']['max']);
+        $this->assertSame('Heat', $r['ficha']['caracteristicas'][0]['nome']);
+        $this->assertTrue($r['criacao']['concluida']);
+        $this->salvar($c, $c->ana, ['movimento.normal' => 1000])->assertStatus(422);
+    }
+
+    public function test_sistema_sem_modulo_nao_tem_ficha(): void
+    {
+        Sistema::query()->forceCreate(['slug' => 'sem-modulo', 'nome' => 'Sem Módulo', 'icone' => 'dice', 'ativo' => true]);
+        $c = $this->cenario('sem-modulo');
         $this->salvar($c, $c->mestre, ['classe' => 'X'])->assertStatus(422)->assertJsonValidationErrors('campos');
     }
 

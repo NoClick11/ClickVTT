@@ -12,4 +12,5 @@ export const modulo: ModuloSistema = {
     formatoDeResumo,
     entregarItem: (ficha, itemId) => ({ inventario: comItemEntregue(ficha as unknown as FichaOnePiece, itemId) }),
     EditorDadosItem: defineAsyncComponent(() => import('./EditorDadosItem.vue')),
+    Construtor: defineAsyncComponent(() => import('./construtor/ConstrutorFicha.vue')),
 };

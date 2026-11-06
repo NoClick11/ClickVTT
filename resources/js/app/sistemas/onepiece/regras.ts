@@ -128,7 +128,11 @@ export interface Caracteristica {
     origem: string;
     tipo: 'ativa' | 'passiva';
     /** `porProf`: o máximo acompanha o bônus de proficiência (ver `usosMax`); `max` guarda o último valor calculado. */
-    usos?: { atual: number; max: number; porProf?: boolean };
+    usos?: { atual: number; max: number; porProf?: boolean; porNivel?: boolean };
+    /** Texto da característica (regras, restrições). */
+    descricao?: string;
+    /** Quem criou: o assistente de criação marca `especie`/`variacao`, para refazer o passo sem duplicar. */
+    builder?: 'especie' | 'variacao';
     /** Buffs da característica (os mesmos efeitos dos itens). A passiva sempre vale; a ativa, só com `ativa` ligada. */
     efeitos?: EfeitoBruto[];
     /** Interruptor das características ativas (ex.: Fúria ligada). A passiva ignora. */
@@ -188,6 +192,12 @@ export interface FichaOnePiece {
     antecedente: string;
     xp: { atual: number };
     inspiracao: boolean;
+    /** Categoria de tamanho (Miúdo, Pequeno, Médio, Grande, Enorme). */
+    tamanho: string;
+    /** Deslocamentos em metros (0 = não tem). `deslocamento` é o texto mostrado. */
+    movimento: { normal: number; nado: number; escalada: number; voo: number };
+    /** Traços de Ancestralidade (Zoan) em texto livre, até o catálogo existir. */
+    ancestralidade: string;
     /** Recompensa pela cabeça do personagem, em Belly. */
     recompensa: number;
     /** Dinheiro, em Belly. */
@@ -303,7 +313,7 @@ export interface Analise {
  * `@arma.7.ataque`...), junto das origens dos bônus. Fases: (1) atributos efetivos; (2) valores-base; (3) efeitos
  * sobre os valores-base (fórmulas veem a fase 2). Chaves: nivel, prof, atributos.<atr> (efetivo), mod.<atr>, salv.<atr>,
  * pericia.<id>, passiva.<id>, ferramenta.<i>, iniciativa, ca, cd, ataque, ataque.arma, dano.arma, pv.max, carga.atual,
- * carga.max, pp.max, xp.proximo, dv.max e, por arma ativa, arma.<item_id>.ataque / .dano / .margem.
+ * carga.max, pp.max, xp.proximo, dv.max, treinamento.pontos e, por arma ativa, arma.<item_id>.ataque / .dano / .margem.
  * Tolerante a chaves ausentes (ficha salva antes de um campo existir): usa 0.
  */
 export function analisar(f: FichaOnePiece, itens: ItensPorId = {}): Analise {
@@ -331,6 +341,8 @@ export function analisar(f: FichaOnePiece, itens: ItensPorId = {}): Analise {
     // Fase 2: valores-base
     const base: Record<string, number> = {};
     for (const { id } of ATRIBUTOS) base[`salv.${id}`] = mod[id] + (f.salvaguardas.includes(id) ? prof : 0);
+    // Teste de atributo: o modificador (os efeitos somam bônus, ex.: Força Colossal; o botão do atributo rola `@teste.<atr>`)
+    for (const { id } of ATRIBUTOS) base[`teste.${id}`] = mod[id];
     for (const p of PERICIAS) base[`pericia.${p.id}`] = mod[p.atributo] + (f.pericias[p.id] ?? 0) * prof;
     const conjuracao = mod[f.tecnicas.atributo];
     base.iniciativa = mod.des;
@@ -372,6 +384,7 @@ export function analisar(f: FichaOnePiece, itens: ItensPorId = {}): Analise {
     r['carga.atual'] = Math.round(peso * 100) / 100;
     r['xp.proximo'] = XP_PROXIMO[Math.min(Math.max(nivel, 1), 20)];
     r['dv.max'] = nivel;
+    r['treinamento.pontos'] = Math.max(0, mod.sab); // Traços Culturais: pontos de treinamento = mod. SAB positivo
 
     return { valores: r, origens, efeitos };
 }
@@ -424,6 +437,11 @@ export function dadosDeDano(f: FichaOnePiece, itens: ItensPorId, itemId: number)
     for (const e of efeitosAtivos(f, itens)) if (e.modo === 'dados' && casa(e.alvo, 'dano.arma') && dadosValidos(e.valor)) dados.push(e.valor);
 
     return dados;
+}
+
+/** Dados extras que os efeitos ativos somam ao dano das técnicas (ex.: o 1d10 de Heat/Electro): efeitos `dados` em `dano.tecnica`. */
+export function dadosExtrasDeTecnica(efeitos: Efeito[]): string[] {
+    return efeitos.filter((e) => e.modo === 'dados' && casa(e.alvo, 'dano.tecnica') && dadosValidos(e.valor)).map((e) => e.valor as string);
 }
 
 export interface ArmaAtiva {
@@ -494,8 +512,10 @@ export function bonusProficiencia(f: FichaOnePiece): number {
     return 2 + Math.floor((Number(f.nivel) - 1) / 4) + (f.ajustes?.proficiencia ?? 0);
 }
 
-/** Máximo de usos de uma característica: fixo, ou igual ao bônus de proficiência (`usos.porProf`). */
-export function usosMax(c: Caracteristica, prof: number): number {
+/** Máximo de usos de uma característica: fixo, igual ao bônus de proficiência (`usos.porProf`) ou ao nível (`usos.porNivel`). */
+export function usosMax(c: Caracteristica, prof: number, nivel = 0): number {
+    if (c.usos?.porNivel) return Math.max(0, nivel);
+
     return c.usos?.porProf ? Math.max(0, prof) : (c.usos?.max ?? 0);
 }
 
@@ -503,10 +523,10 @@ export function usosMax(c: Caracteristica, prof: number): number {
  * Liga ou desliga o buff de uma característica ativa. LIGAR gasta 1 uso (se a característica tem usos): sem usos
  * restantes não liga (devolve null). Desligar não devolve o uso. Passiva não tem interruptor (null).
  */
-export function comBuffAlternado(c: Caracteristica, prof = 2): Caracteristica | null {
+export function comBuffAlternado(c: Caracteristica, prof = 2, nivel = 0): Caracteristica | null {
     if (c.tipo !== 'ativa') return null;
     if (c.ativa) return { ...c, ativa: false };
-    if (c.usos && usosMax(c, prof) > 0) {
+    if (c.usos && usosMax(c, prof, nivel) > 0) {
         if (c.usos.atual <= 0) return null;
 
         return { ...c, ativa: true, usos: { ...c.usos, atual: c.usos.atual - 1 } };
@@ -557,7 +577,7 @@ export function camposDoDescanso(
 
         return {
             ...c,
-            ...(recarrega ? { usos: { ...c.usos!, max: usosMax(c, prof), atual: usosMax(c, prof) } } : {}),
+            ...(recarrega ? { usos: { ...c.usos!, max: usosMax(c, prof, f.nivel), atual: usosMax(c, prof, f.nivel) } } : {}),
             ...(c.tipo === 'ativa' && c.ativa ? { ativa: false } : {}),
         };
     });

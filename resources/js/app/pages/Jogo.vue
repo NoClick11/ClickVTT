@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Jogador, Personagem } from '@/site/types';
+import type { Criacao, Jogador, Personagem } from '@/site/types';
 import { Head, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { apiMesa, ErroApi, medirArquivo } from '../api';
@@ -584,8 +584,37 @@ const novoPersonagemAberto = ref(false);
 const criarPersonagem = (dados: { nome: string; cor: string; jogadores: number[] }) => api.criarPersonagem(dados);
 /** Depois de criar: recarrega a lista (e o que depende dela) e já abre a ficha do novo personagem. */
 function aoCriarPersonagem(personagem: Personagem) {
-    router.reload({ only: ['personagens', 'meusPersonagens', 'itens'], onSuccess: () => abrirPersonagem(personagem.id) });
+    router.reload({
+        only: ['personagens', 'meusPersonagens', 'itens'],
+        onSuccess: () => {
+            abrirPersonagem(personagem.id);
+            if (moduloSistema?.Construtor) construtorId.value = personagem.id; // sistema com assistente: começa por ele
+        },
+    });
 }
+
+// --- assistente de criação (sistemas com `Construtor`) -----------------------------------------------------------
+// O progresso da criação (etapa e escolhas) fica salvo no servidor, por personagem, para retomar depois.
+const criacoes = ref<Record<number, Criacao | null>>({});
+function sincronizarCriacoes() {
+    criacoes.value = Object.fromEntries(props.personagens.map((p) => [p.id, p.criacao ?? null]));
+}
+sincronizarCriacoes();
+watch(() => props.personagens, sincronizarCriacoes, { deep: true });
+const construtorId = ref<number | null>(null);
+const construtorPersonagem = computed(() => props.personagens.find((p) => p.id === construtorId.value) ?? null);
+/** Salva a etapa/escolhas (e, ao concluir, os campos da ficha) e aplica o resultado na tela. */
+async function salvarCriacao(personagemId: number, campos: Record<string, unknown>, criacao: Criacao) {
+    const resp = await api.salvarFicha(personagemId, campos, criacao);
+    criacoes.value[personagemId] = resp.criacao;
+    if (Object.keys(campos).length) fichas.value[personagemId] = copia(resp.ficha);
+}
+const rolarAtributosDaCriacao = (personagemId: number) => async () => {
+    const r = await api.rolarAtributos(personagemId);
+    criacoes.value[personagemId] = { ...(criacoes.value[personagemId] ?? { etapa: 'atributos', concluida: false }), dados: { ...criacoes.value[personagemId]?.dados, rolados: r.rolados } };
+
+    return r.rolados;
+};
 
 const atribuindo = ref<Personagem | null>(null);
 const atribuicaoAberta = ref(false);
@@ -1011,11 +1040,24 @@ function alternarPorta(id: number) {
                 :itens="itensDaMesa"
                 :mestre="mestre"
                 @editor-item="abrirEditorItem"
+                @construtor="construtorId = f.id"
                 @salvar="(campos: Record<string, unknown>) => salvarFicha(f.id, campos)"
                 @rolar="(...a: RolagemDaFicha) => rolarDaFicha(f.id, ...a)"
             />
             <FichaPrivada v-else :personagem="f.personagem!" />
         </JanelaFlutuante>
+
+        <component
+            :is="moduloSistema.Construtor"
+            v-if="moduloSistema?.Construtor && construtorPersonagem && fichas[construtorPersonagem.id]"
+            :open="true"
+            :personagem="construtorPersonagem"
+            :ficha="fichas[construtorPersonagem.id]"
+            :criacao="criacoes[construtorPersonagem.id] ?? null"
+            :salvar="(campos: Record<string, unknown>, criacao: Criacao) => salvarCriacao(construtorPersonagem!.id, campos, criacao)"
+            :rolar-atributos="rolarAtributosDaCriacao(construtorPersonagem.id)"
+            @update:open="construtorId = null"
+        />
 
         <MenuObjeto
             v-if="menuObjeto && objetoDoMenu"

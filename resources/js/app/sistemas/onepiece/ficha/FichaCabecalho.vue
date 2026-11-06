@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
-import { Coffee, Moon, Star } from 'lucide-vue-next';
+import { Coffee, Moon, Star, WandSparkles } from 'lucide-vue-next';
 import { computed } from 'vue';
 import type { PersonagemFicha } from '../../../nucleo/sistemas/tipos';
 import CampoNumero from '../../../nucleo/ui/CampoNumero.vue';
@@ -9,7 +9,7 @@ import { estilos, useFicha } from '../contexto';
 import { camposDoDescanso, type FichaOnePiece, type TipoDescanso } from '../regras';
 
 const props = defineProps<{ ficha: FichaOnePiece; personagem: PersonagemFicha }>();
-const emit = defineEmits<{ 'update:editar': [boolean] }>();
+const emit = defineEmits<{ 'update:editar': [boolean]; construtor: [] }>();
 const { editar, calc, salvar } = useFicha();
 
 const xpPct = computed(() => Math.min(100, Math.round((props.ficha.xp.atual / calc.value['xp.proximo']) * 100)));
@@ -103,6 +103,15 @@ function descansar(tipo: TipoDescanso) {
                 >
                     <Star class="size-4" :class="ficha.inspiracao ? 'fill-current' : ''" />
                 </button>
+                <Button
+                    size="icon"
+                    variant="outline"
+                    class="size-9 border-preto-700 text-preto-300 hover:text-ouro-200"
+                    title="Construtor: escolha espécie, variante e atributos e a ficha é preenchida"
+                    aria-label="Construtor de personagem"
+                    @click="emit('construtor')"
+                    ><WandSparkles class="size-4"
+                /></Button>
                 <Button
                     size="icon"
                     variant="outline"

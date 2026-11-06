@@ -25,6 +25,8 @@ const emit = defineEmits<{
     salvar: [campos: Record<string, unknown>];
     rolar: [expressao: string, rotulo: string, aoRolar?: (total: number) => void];
     editorItem: Parameters<AbrirEditorItem>;
+    /** O jogador quer abrir o assistente de criação. */
+    construtor: [];
 }>();
 
 const editar = ref(false);
@@ -77,7 +79,7 @@ const conteudo: Record<AbaId, Component> = {
 
 <template>
     <div class="flex h-full min-h-0 flex-col text-preto-100">
-        <FichaCabecalho :ficha="ficha" :personagem="personagem" @update:editar="editar = $event" />
+        <FichaCabecalho :ficha="ficha" :personagem="personagem" @update:editar="editar = $event" @construtor="emit('construtor')" />
         <div class="flex min-h-0 flex-1">
             <FichaLateral :ficha="ficha" :personagem="personagem" />
             <div class="flex min-w-0 flex-1 flex-col">

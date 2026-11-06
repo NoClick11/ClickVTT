@@ -32,8 +32,15 @@ class SistemaTest extends TestCase
         $this->assertSame(['slug' => 'dnd-5e', 'nome' => 'D&D 5e', 'modulo' => true], $this->sistemaDaMesa('dnd-5e'));
     }
 
+    public function test_one_piece_tem_modulo(): void
+    {
+        $this->assertSame(['slug' => 'one-piece', 'nome' => 'One Piece', 'modulo' => true], $this->sistemaDaMesa('one-piece'));
+    }
+
     public function test_sistema_sem_modulo_e_sinalizado(): void
     {
-        $this->assertSame(['slug' => 'one-piece', 'nome' => 'One Piece', 'modulo' => false], $this->sistemaDaMesa('one-piece'));
+        Sistema::query()->forceCreate(['slug' => 'sem-modulo', 'nome' => 'Sem Módulo', 'icone' => 'dice', 'ativo' => true]);
+
+        $this->assertSame(['slug' => 'sem-modulo', 'nome' => 'Sem Módulo', 'modulo' => false], $this->sistemaDaMesa('sem-modulo'));
     }
 }

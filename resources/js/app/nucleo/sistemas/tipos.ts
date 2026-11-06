@@ -68,4 +68,10 @@ export interface ModuloSistema {
      * ou `null`) e emite `update:modelValue` com os novos dados (`null` = item comum).
      */
     EditorDadosItem?: Component;
+    /**
+     * Assistente de criação do personagem (opcional). Recebe `open`, `personagem`, `ficha`, `criacao`, e as funções
+     * `salvar(campos, criacao)` e `rolarAtributos()`; emite `update:open` e `concluido`. A ficha avisa que o jogador quer
+     * abrir o assistente emitindo `construtor`.
+     */
+    Construtor?: Component;
 }

@@ -117,7 +117,7 @@ final class Regras
      * Valores derivados da ficha, em mapa plano (também são as variáveis de rolagem: `@mod.for`, `@pericia.percepcao`,
      * `@arma.7.ataque`...). Chaves: nivel, prof, atributos.<atr> (efetivo), mod.<atr>, salv.<atr>, pericia.<id>,
      * passiva.<id>, ferramenta.<i>, iniciativa, ca, cd, ataque, ataque.arma, dano.arma, pv.max, carga.atual, carga.max,
-     * pp.max, xp.proximo, dv.max e, por arma ativa, arma.<item_id>.ataque / .dano / .margem.
+     * pp.max, xp.proximo, dv.max, treinamento.pontos e, por arma ativa, arma.<item_id>.ataque / .dano / .margem.
      * Tolerante a chaves ausentes (ficha salva antes de um campo existir): usa 0.
      *
      * @param  array<int, array>  $itens  itens da mesa por id (`Item::paraFront()`)
@@ -142,6 +142,10 @@ final class Regras
         $base = [];
         foreach (FichaOnePiece::ATRIBUTOS as $a) {
             $base["salv.{$a}"] = $mod[$a] + (in_array($a, $f['salvaguardas'], true) ? $prof : 0);
+        }
+        // Teste de atributo: o modificador; os efeitos somam bônus e o botão do atributo rola `@teste.<atr>`.
+        foreach (FichaOnePiece::ATRIBUTOS as $a) {
+            $base["teste.{$a}"] = $mod[$a];
         }
         foreach (FichaOnePiece::PERICIAS as $p => $atributo) {
             $base["pericia.{$p}"] = $mod[$atributo] + ($f['pericias'][$p] ?? 0) * $prof;
@@ -201,6 +205,7 @@ final class Regras
             'carga.atual' => round($peso, 2),
             'xp.proximo' => self::XP_PROXIMO[min(max($nivel, 1), 20)],
             'dv.max' => $nivel,
+            'treinamento.pontos' => max(0, $mod['sab']), // Traços Culturais: pontos de treinamento = mod. SAB positivo
         ];
     }
 

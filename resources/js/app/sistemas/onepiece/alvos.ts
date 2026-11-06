@@ -36,10 +36,12 @@ export const ALVOS_DE_EFEITO: AlvoEfeitoOnePiece[] = [
     { id: 'ataque.arma', rotulo: 'Ataque com armas (todas)', modos: AMBOS },
     // `dados`: dano extra em dados (Ataque Furtivo 3d6), somado ao dano de cada arma e dobrado no crítico
     { id: 'dano.arma', rotulo: 'Dano com armas (todas)', modos: [...NUMERICOS, 'dados'] },
+    // `dados`: dano extra em dados somado à rolagem de cada técnica (Heat, Electro)
+    { id: 'dano.tecnica', rotulo: 'Dano das técnicas', modos: ['dados'] },
     { id: 'atributos.*', rotulo: 'Todos os atributos', modos: NUMERICOS },
     ...ATRIBUTOS.map((a) => ({ id: `atributos.${a.id}`, rotulo: `Atributo: ${a.nome}`, modos: NUMERICOS })),
-    { id: 'teste.*', rotulo: 'Testes de atributo (todos)', modos: ROLAGEM },
-    ...ATRIBUTOS.map((a) => ({ id: `teste.${a.id}`, rotulo: `Teste de ${a.nome}`, modos: ROLAGEM })),
+    { id: 'teste.*', rotulo: 'Testes de atributo (todos)', modos: AMBOS },
+    ...ATRIBUTOS.map((a) => ({ id: `teste.${a.id}`, rotulo: `Teste de ${a.nome}`, modos: AMBOS })),
     { id: 'salv.*', rotulo: 'Salvaguardas (todas)', modos: AMBOS },
     ...ATRIBUTOS.map((a) => ({ id: `salv.${a.id}`, rotulo: `Salvaguarda de ${a.nome}`, modos: AMBOS })),
     { id: 'pericia.*', rotulo: 'Perícias (todas)', modos: AMBOS },

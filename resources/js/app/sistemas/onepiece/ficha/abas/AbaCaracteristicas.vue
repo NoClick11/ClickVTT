@@ -29,11 +29,11 @@ const usar = (i: number, atual: number, n: number) => mudar((l) => (l[i].usos!.a
  * uso, se ela tem usos; sem usos restantes não liga (ver `comBuffAlternado`).
  */
 function alternar(i: number) {
-    const nova = comBuffAlternado(props.ficha.caracteristicas[i], calc.value.prof);
+    const nova = comBuffAlternado(props.ficha.caracteristicas[i], calc.value.prof, calc.value.nivel);
     if (nova) mudar((l) => (l[i] = nova));
 }
 /** Máximo de usos agora (fixo ou igual ao bônus de proficiência). */
-const maxUsos = (c: Caracteristica) => usosMax(c, calc.value.prof);
+const maxUsos = (c: Caracteristica) => usosMax(c, calc.value.prof, calc.value.nivel);
 const gastaUso = (c: Caracteristica) => !c.ativa && !!c.usos && maxUsos(c) > 0;
 const semUsos = (c: Caracteristica) => gastaUso(c) && c.usos!.atual <= 0;
 /** Os efeitos de uma ativa desligada não contam: aparecem apagados. */
@@ -108,7 +108,7 @@ function aoSalvar(c: Caracteristica) {
                         <span
                             v-if="c.usos"
                             class="shrink-0 text-[10px] uppercase text-preto-500"
-                            :title="`Os usos voltam no descanso ${c.descanso === 'curto' ? 'curto (e no longo)' : 'longo'}${c.usos.porProf ? ' · usos = bônus de proficiência' : ''}`"
+                            :title="`Os usos voltam no descanso ${c.descanso === 'curto' ? 'curto (e no longo)' : 'longo'}${c.usos.porProf ? ' · usos = bônus de proficiência' : ''}${c.usos.porNivel ? ' · usos = nível' : ''}`"
                             >↻ {{ c.descanso === 'curto' ? 'curto' : 'longo' }}</span
                         >
                         <span v-if="c.usos" class="flex shrink-0 gap-1" role="group" :aria-label="`${c.usos.atual} de ${maxUsos(c)} usos`"
@@ -142,6 +142,7 @@ function aoSalvar(c: Caracteristica) {
                             </button>
                         </template>
                     </div>
+                    <p v-if="c.descricao" class="mt-1.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-preto-300">{{ c.descricao }}</p>
                     <p v-if="c.efeitos?.length" class="mt-1.5 flex flex-wrap gap-1" :class="conta(c) ? '' : 'opacity-40'">
                         <span v-for="(e, n) in c.efeitos" :key="n" class="rounded bg-preto-800 px-1.5 py-0.5 text-[11px] text-ouro-200">{{
                             resumoEfeito(e, formatoDeResumo)

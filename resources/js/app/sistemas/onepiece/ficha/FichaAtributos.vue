@@ -17,15 +17,15 @@ const { editar, calc, salvar, d20, modoDe } = useFicha();
             :key="a.id"
             :rotulo="`teste de ${a.nome}`"
             :ativa="!editar"
-            :modo="modoDe(`mod.${a.id}`)"
+            :modo="modoDe(`teste.${a.id}`)"
             class="relative flex flex-col items-center rounded-lg border border-preto-700 bg-preto-950 px-1 pb-4 pt-2 text-center"
-            @rolar="d20($event, `mod.${a.id}`, `Teste de ${a.nome}`)"
+            @rolar="d20($event, `teste.${a.id}`, `Teste de ${a.nome}`)"
         >
             <span class="text-[10px] font-semibold uppercase tracking-wider text-ouro-400" :title="a.nome">{{ a.sigla }}</span>
-            <span class="font-serif text-2xl font-bold leading-none text-ouro-50">{{ comSinal(calc[`mod.${a.id}`]) }}</span>
+            <span class="font-serif text-2xl font-bold leading-none text-ouro-50">{{ comSinal(calc[`teste.${a.id}`]) }}</span>
             <IndicadorD20
                 v-if="!editar"
-                :modo="modoDe(`mod.${a.id}`)"
+                :modo="modoDe(`teste.${a.id}`)"
                 class="absolute right-1 top-1 size-5 opacity-40 transition group-hover:scale-110 group-hover:opacity-100"
             />
             <!-- valor do atributo, em "pílula" na base do cartão: editável no modo Editar; no Jogar só mostra o valor efetivo -->

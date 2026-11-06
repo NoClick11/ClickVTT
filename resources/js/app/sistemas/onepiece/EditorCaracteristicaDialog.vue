@@ -22,6 +22,8 @@ const origem = ref('');
 const tipo = ref<Caracteristica['tipo']>('passiva');
 const usos = ref(0);
 const usosPorProf = ref(false);
+const usosPorNivel = ref(false);
+const descricao = ref('');
 const descanso = ref<'curto' | 'longo'>('longo');
 const efeitos = ref<EfeitoBruto[]>([]);
 const erro = ref('');
@@ -35,6 +37,8 @@ watch(
         tipo.value = c?.tipo ?? 'passiva';
         usos.value = c?.usos?.max ?? 0;
         usosPorProf.value = c?.usos?.porProf ?? false;
+        usosPorNivel.value = c?.usos?.porNivel ?? false;
+        descricao.value = c?.descricao ?? '';
         descanso.value = c?.descanso ?? 'longo';
         efeitos.value = clonar(c?.efeitos ?? []);
         erro.value = '';
@@ -46,7 +50,10 @@ function enviar() {
     erro.value = '';
     if (!nome.value.trim()) return (erro.value = 'Dê um nome à característica.');
     // Por proficiência o máximo é o bônus (a ficha recalcula); aqui guarda o mínimo para o `usos` existir.
-    const max = usosPorProf.value ? Math.max(1, Math.floor(Number(usos.value) || 0)) : Math.max(0, Math.min(20, Math.floor(Number(usos.value) || 0)));
+    const max =
+        usosPorProf.value || usosPorNivel.value
+            ? Math.max(1, Math.floor(Number(usos.value) || 0))
+            : Math.max(0, Math.min(20, Math.floor(Number(usos.value) || 0)));
     const erroEfeitos = erroDosEfeitos(efeitos.value, variaveisParaAlvo);
     if (erroEfeitos) return (erro.value = erroEfeitos);
 
@@ -55,9 +62,17 @@ function enviar() {
         nome: nome.value.trim(),
         origem: origem.value.trim() || '—',
         tipo: tipo.value,
+        ...(descricao.value.trim() ? { descricao: descricao.value.trim() } : {}),
+        // Característica do assistente de criação continua marcada ao editar
+        ...(anterior?.builder ? { builder: anterior.builder } : {}),
         ...(max > 0
             ? {
-                  usos: { atual: Math.min(anterior?.usos?.atual ?? max, max), max, ...(usosPorProf.value ? { porProf: true } : {}) },
+                  usos: {
+                      atual: Math.min(anterior?.usos?.atual ?? max, max),
+                      max,
+                      ...(usosPorProf.value ? { porProf: true } : {}),
+                      ...(usosPorNivel.value ? { porNivel: true } : {}),
+                  },
                   descanso: descanso.value,
               }
             : {}),
@@ -146,7 +161,7 @@ const rotulo = 'mb-1 block text-[11px] font-semibold uppercase tracking-wider te
                 </fieldset>
 
                 <div class="flex flex-wrap items-end gap-3">
-                    <label v-if="!usosPorProf" class="grid max-w-48 gap-1"
+                    <label v-if="!usosPorProf && !usosPorNivel" class="grid max-w-48 gap-1"
                         ><span :class="rotulo">Usos por descanso</span
                         ><input
                             v-model.number="usos"
@@ -159,9 +174,13 @@ const rotulo = 'mb-1 block text-[11px] font-semibold uppercase tracking-wider te
                             title="0 = sem controle de usos"
                     /></label>
                     <label class="flex items-center gap-2 pb-1.5 text-sm text-preto-200"
-                        ><input v-model="usosPorProf" type="checkbox" class="size-4 accent-ouro-500" /> Usos = bônus de proficiência</label
+                        ><input v-model="usosPorProf" type="checkbox" class="size-4 accent-ouro-500" :disabled="usosPorNivel" /> Usos = bônus de
+                        proficiência</label
                     >
-                    <label v-if="usos > 0 || usosPorProf" class="grid gap-1"
+                    <label class="flex items-center gap-2 pb-1.5 text-sm text-preto-200"
+                        ><input v-model="usosPorNivel" type="checkbox" class="size-4 accent-ouro-500" :disabled="usosPorProf" /> Usos = nível</label
+                    >
+                    <label v-if="usos > 0 || usosPorProf || usosPorNivel" class="grid gap-1"
                         ><span :class="rotulo">Os usos voltam no</span
                         ><select v-model="descanso" :class="campo" aria-label="Descanso em que os usos voltam">
                             <option value="longo">Só no descanso longo</option>
@@ -169,6 +188,19 @@ const rotulo = 'mb-1 block text-[11px] font-semibold uppercase tracking-wider te
                         </select></label
                     >
                 </div>
+
+                <label class="grid gap-1"
+                    ><span :class="rotulo">Descrição</span
+                    ><textarea
+                        v-model="descricao"
+                        rows="3"
+                        maxlength="4000"
+                        :class="campo"
+                        aria-label="Descrição da característica"
+                        class="resize-none"
+                        placeholder="O que a característica faz, restrições..."
+                    />
+                </label>
 
                 <section aria-label="Efeitos">
                     <h3 :class="rotulo">Efeitos (buffs)</h3>

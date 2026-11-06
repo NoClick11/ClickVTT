@@ -36,6 +36,13 @@ export interface Jogador {
 export type DonoPersonagem = Pick<Jogador, 'id' | 'nome' | 'cor'>;
 
 /** Ficha (PC ou NPC). Pode ter vários jogadores; um jogador pode ter vários personagens. */
+/** Criação guiada do personagem: etapa atual, se terminou e as escolhas do assistente (formato do sistema). */
+export interface Criacao {
+    etapa: string;
+    concluida: boolean;
+    dados?: Record<string, unknown>;
+}
+
 export interface Personagem {
     id: number;
     nome: string;
@@ -46,5 +53,5 @@ export interface Personagem {
     /** Dados da ficha (formato do sistema da mesa): só vêm para o mestre e para os jogadores do personagem. */
     ficha?: Record<string, unknown> | null;
     /** Criação guiada em andamento (etapa atual), se houver. */
-    criacao?: { etapa: string; concluida: boolean } | null;
+    criacao?: Criacao | null;
 }

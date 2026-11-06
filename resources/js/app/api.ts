@@ -1,4 +1,4 @@
-import type { Personagem } from '@/site/types';
+import type { Criacao, Personagem } from '@/site/types';
 import type { ObjetoDto, PaginaDto } from './engine/tipos';
 import type { Combate, ItemDto, Mensagem, NovoItem, VisibilidadeRolagem } from './tipos-mesa';
 
@@ -73,13 +73,16 @@ export function apiMesa(mesaId: number, atorId: number) {
         rolar: (expressao: string, visibilidade: VisibilidadeRolagem, personagemId: number | null, rotulo?: string) =>
             requisitar<Mensagem>(atorId, 'POST', r('jogo.rolagens.store'), { expressao, rotulo, visibilidade, personagem_id: personagemId }),
         /** Salva campos da ficha: 1 campo = edição pontual; vários = etapa da criação guiada (aplicados juntos). */
-        salvarFicha: (personagemId: number, campos: Record<string, unknown>, criacao?: { etapa: string; concluida: boolean } | null) =>
-            requisitar<{ ficha: Record<string, unknown>; criacao: { etapa: string; concluida: boolean } | null }>(
+        salvarFicha: (personagemId: number, campos: Record<string, unknown>, criacao?: Criacao | null) =>
+            requisitar<{ ficha: Record<string, unknown>; criacao: Criacao | null }>(
                 atorId,
                 'PATCH',
                 r('jogo.personagens.ficha', personagemId),
                 criacao === undefined ? { campos } : { campos, criacao },
             ),
+        /** Rola (no servidor) os 6 valores de atributo da criação: 4d6 descartando o menor. Uma vez só: depois devolve os mesmos. */
+        rolarAtributos: (personagemId: number) =>
+            requisitar<{ rolados: number[] }>(atorId, 'POST', r('jogo.personagens.atributos-rolados', personagemId), {}),
         /** Só o mestre. */
         criarItem: (item: NovoItem) => requisitar<ItemDto>(atorId, 'POST', r('jogo.itens.store'), item),
         atualizarItem: (id: number, item: NovoItem) => requisitar<ItemDto>(atorId, 'PATCH', r('jogo.itens.update', id), item),

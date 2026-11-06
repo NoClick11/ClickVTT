@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Item;
 use App\Models\Mesa;
 use App\Models\Personagem;
+use App\Nucleo\Rolagem\Rolador;
 use App\Nucleo\Sistemas\FichaCampos;
 use App\Nucleo\Sistemas\RegistroSistemas;
 use App\Support\AcessoMesa;
@@ -32,22 +33,27 @@ class FichaController extends Controller
             ?? throw ValidationException::withMessages(['campos' => "O sistema {$mesa->sistema->nome} ainda não tem ficha."]);
 
         $request->validate([
-            'campos' => ['required', 'array'],
+            // Só a criação guiada pode vir sem campos (salvar a etapa e as escolhas do assistente).
+            'campos' => ['required_without:criacao', 'nullable', 'array'],
             'criacao' => ['nullable', 'array'],
             'criacao.etapa' => ['required_with:criacao', 'string', 'max:40'],
             'criacao.concluida' => ['boolean'],
+            // Escolhas do assistente de criação (para retomar de onde parou): objeto pequeno, validado só no tamanho.
+            'criacao.dados' => ['nullable', 'array'],
         ]);
-        $campos = $request->input('campos');
+        $campos = $request->input('campos') ?? [];
         $criacao = $request->has('criacao') ? $request->input('criacao') : false;
 
         // Trava a linha: duas edições simultâneas de campos diferentes não se sobrescrevem.
         $atual = DB::transaction(function () use ($personagem, $sistema, $fichas, $campos, $criacao, $acesso, $mesa) {
             $p = Personagem::query()->whereKey($personagem->id)->lockForUpdate()->firstOrFail();
-            $nova = $fichas->aplicar($sistema, $p->ficha, $campos);
-            $this->conferirItensNovos($mesa, $sistema->itensReferenciados($p->ficha ?? $sistema->fichaPadrao()), $sistema->itensReferenciados($nova), $acesso->ehMestre());
-            $p->ficha = $nova;
+            if ($campos !== []) {
+                $nova = $fichas->aplicar($sistema, $p->ficha, $campos);
+                $this->conferirItensNovos($mesa, $sistema->itensReferenciados($p->ficha ?? $sistema->fichaPadrao()), $sistema->itensReferenciados($nova), $acesso->ehMestre());
+                $p->ficha = $nova;
+            }
             if ($criacao !== false) {
-                $p->criacao = $criacao === null ? null : ['etapa' => $criacao['etapa'], 'concluida' => (bool) ($criacao['concluida'] ?? false)];
+                $p->criacao = $criacao === null ? null : $this->criacaoNova($p->criacao, $criacao);
             }
             $p->save();
 
@@ -65,7 +71,57 @@ class FichaController extends Controller
             Transmitir::enviar($mesa, 'status', ['personagem_id' => $atual->id, 'status' => array_values($atual->ficha['condicoes'] ?? [])], ['mesa']);
         }
 
-        return response()->json(['ficha' => $atual->ficha, 'criacao' => $atual->criacao]);
+        return response()->json(['ficha' => $atual->ficha ?? $sistema->fichaPadrao(), 'criacao' => $atual->criacao]);
+    }
+
+    /**
+     * Estado da criação guiada: etapa, se terminou e as escolhas do assistente (`dados`). Os valores rolados dos atributos
+     * (`dados.rolados`) só o servidor define: nunca mudam por aqui, para ninguém repetir a rolagem até gostar.
+     *
+     * @param  array<string, mixed>|null  $atual
+     * @param  array<string, mixed>  $novo
+     * @return array<string, mixed>
+     */
+    private function criacaoNova(?array $atual, array $novo): array
+    {
+        $dados = $novo['dados'] ?? ($atual['dados'] ?? []);
+        if (strlen((string) json_encode($dados)) > 20_000) {
+            throw ValidationException::withMessages(['criacao.dados' => 'Escolhas grandes demais.']);
+        }
+        unset($dados['rolados']);
+        if (isset($atual['dados']['rolados'])) {
+            $dados['rolados'] = $atual['dados']['rolados'];
+        }
+
+        return ['etapa' => $novo['etapa'], 'concluida' => (bool) ($novo['concluida'] ?? false), 'dados' => $dados];
+    }
+
+    /**
+     * Rola os 6 valores de atributo da criação (4d6 descartando o menor, no servidor) e os guarda em `criacao.dados.rolados`.
+     * É uma vez só: com valores já rolados devolve os mesmos.
+     */
+    public function rolarAtributos(Request $request, Mesa $mesa, Personagem $personagem, ?Rolador $rolador = null): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+        abort_unless($personagem->mesa_id === $mesa->id, 404);
+        abort_unless($acesso->podeControlar($personagem->id), 403, 'Esta ficha não é sua.');
+
+        $rolados = DB::transaction(function () use ($personagem, $rolador) {
+            $p = Personagem::query()->whereKey($personagem->id)->lockForUpdate()->firstOrFail();
+            $criacao = $p->criacao ?? ['etapa' => 'atributos', 'concluida' => false, 'dados' => []];
+            if (isset($criacao['dados']['rolados'])) {
+                return $criacao['dados']['rolados'];
+            }
+            $rolador ??= new Rolador;
+            $valores = array_map(fn () => $rolador->rolar('4d6kh3')['total'], range(1, 6));
+            $criacao['dados'] = [...($criacao['dados'] ?? []), 'rolados' => $valores];
+            $p->criacao = $criacao;
+            $p->save();
+
+            return $valores;
+        });
+
+        return response()->json(['rolados' => $rolados]);
     }
 
     /**

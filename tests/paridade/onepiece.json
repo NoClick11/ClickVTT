@@ -526,5 +526,572 @@
             "passiva.provocacao": 15,
             "pericia.intimidacao": 3
         }
+    },
+    {
+        "nome": "onepiece: Força Colossal dobra a proficiência em salvaguarda e teste de FOR",
+        "parcial": true,
+        "ficha": {
+            "nivel": 5,
+            "especie": "",
+            "estilo": "",
+            "profissao": "",
+            "fruta": "",
+            "antecedente": "",
+            "xp": {
+                "atual": 0
+            },
+            "inspiracao": false,
+            "tamanho": "Médio",
+            "movimento": {
+                "normal": 9,
+                "nado": 0,
+                "escalada": 0,
+                "voo": 0
+            },
+            "ancestralidade": "",
+            "recompensa": 0,
+            "belly": 0,
+            "atributos": {
+                "for": 16,
+                "des": 10,
+                "con": 10,
+                "sab": 10,
+                "pre": 10,
+                "von": 10
+            },
+            "salvaguardas": [
+                "for"
+            ],
+            "pericias": {
+                "atletismo": 0,
+                "acrobacia": 0,
+                "furtividade": 0,
+                "prestidigitacao": 0,
+                "historia": 0,
+                "investigacao": 0,
+                "medicina": 0,
+                "natureza": 0,
+                "sobrevivencia": 0,
+                "atuacao": 0,
+                "enganacao": 0,
+                "intimidacao": 0,
+                "persuasao": 0,
+                "provocacao": 0,
+                "haki": 0,
+                "intuicao": 0,
+                "percepcao": 0,
+                "sobrenatural": 0,
+                "sorte": 0
+            },
+            "deslocamento": "9 m",
+            "pv": {
+                "atual": 0,
+                "max": 0,
+                "temp": 0
+            },
+            "pp": {
+                "atual": 0,
+                "porNivel": 4
+            },
+            "dadosVida": {
+                "restantes": 1,
+                "tipo": "d8"
+            },
+            "exaustao": 0,
+            "sentidos": [],
+            "idiomas": [],
+            "resistencias": [],
+            "imunidades": [],
+            "vulnerabilidades": [],
+            "proficienciasArmas": [],
+            "proficienciasArmaduras": [],
+            "ferramentas": [],
+            "inventario": [],
+            "condicoes": [],
+            "caracteristicas": [
+                {
+                    "nome": "Força Colossal",
+                    "origem": "Gigantes",
+                    "tipo": "passiva",
+                    "efeitos": [
+                        {
+                            "alvo": "salv.for",
+                            "modo": "soma",
+                            "valor": "@prof"
+                        },
+                        {
+                            "alvo": "teste.for",
+                            "modo": "soma",
+                            "valor": "@prof*2"
+                        }
+                    ]
+                }
+            ],
+            "tecnicas": {
+                "atributo": "von",
+                "lista": []
+            },
+            "akuma": {
+                "tipo": "",
+                "despertada": false,
+                "lista": []
+            },
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "sab": 0,
+                    "pre": 0,
+                    "von": 0
+                },
+                "pericias": {
+                    "atletismo": 0,
+                    "acrobacia": 0,
+                    "furtividade": 0,
+                    "prestidigitacao": 0,
+                    "historia": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "sobrevivencia": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "intimidacao": 0,
+                    "persuasao": 0,
+                    "provocacao": 0,
+                    "haki": 0,
+                    "intuicao": 0,
+                    "percepcao": 0,
+                    "sobrenatural": 0,
+                    "sorte": 0
+                }
+            }
+        },
+        "esperado": {
+            "salv.for": 9,
+            "teste.for": 9,
+            "teste.des": 0
+        }
+    },
+    {
+        "nome": "onepiece: Força Superior soma metade da proficiência (para baixo)",
+        "parcial": true,
+        "ficha": {
+            "nivel": 5,
+            "especie": "",
+            "estilo": "",
+            "profissao": "",
+            "fruta": "",
+            "antecedente": "",
+            "xp": {
+                "atual": 0
+            },
+            "inspiracao": false,
+            "tamanho": "Médio",
+            "movimento": {
+                "normal": 9,
+                "nado": 0,
+                "escalada": 0,
+                "voo": 0
+            },
+            "ancestralidade": "",
+            "recompensa": 0,
+            "belly": 0,
+            "atributos": {
+                "for": 16,
+                "des": 10,
+                "con": 10,
+                "sab": 10,
+                "pre": 10,
+                "von": 10
+            },
+            "salvaguardas": [
+                "for"
+            ],
+            "pericias": {
+                "atletismo": 0,
+                "acrobacia": 0,
+                "furtividade": 0,
+                "prestidigitacao": 0,
+                "historia": 0,
+                "investigacao": 0,
+                "medicina": 0,
+                "natureza": 0,
+                "sobrevivencia": 0,
+                "atuacao": 0,
+                "enganacao": 0,
+                "intimidacao": 0,
+                "persuasao": 0,
+                "provocacao": 0,
+                "haki": 0,
+                "intuicao": 0,
+                "percepcao": 0,
+                "sobrenatural": 0,
+                "sorte": 0
+            },
+            "deslocamento": "9 m",
+            "pv": {
+                "atual": 0,
+                "max": 0,
+                "temp": 0
+            },
+            "pp": {
+                "atual": 0,
+                "porNivel": 4
+            },
+            "dadosVida": {
+                "restantes": 1,
+                "tipo": "d8"
+            },
+            "exaustao": 0,
+            "sentidos": [],
+            "idiomas": [],
+            "resistencias": [],
+            "imunidades": [],
+            "vulnerabilidades": [],
+            "proficienciasArmas": [],
+            "proficienciasArmaduras": [],
+            "ferramentas": [],
+            "inventario": [],
+            "condicoes": [],
+            "caracteristicas": [
+                {
+                    "nome": "Força Superior",
+                    "origem": "Povo do Mar",
+                    "tipo": "passiva",
+                    "efeitos": [
+                        {
+                            "alvo": "salv.for",
+                            "modo": "soma",
+                            "valor": "floor(@prof/2)"
+                        },
+                        {
+                            "alvo": "teste.for",
+                            "modo": "soma",
+                            "valor": "@prof+floor(@prof/2)"
+                        }
+                    ]
+                }
+            ],
+            "tecnicas": {
+                "atributo": "von",
+                "lista": []
+            },
+            "akuma": {
+                "tipo": "",
+                "despertada": false,
+                "lista": []
+            },
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "sab": 0,
+                    "pre": 0,
+                    "von": 0
+                },
+                "pericias": {
+                    "atletismo": 0,
+                    "acrobacia": 0,
+                    "furtividade": 0,
+                    "prestidigitacao": 0,
+                    "historia": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "sobrevivencia": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "intimidacao": 0,
+                    "persuasao": 0,
+                    "provocacao": 0,
+                    "haki": 0,
+                    "intuicao": 0,
+                    "percepcao": 0,
+                    "sobrenatural": 0,
+                    "sorte": 0
+                }
+            }
+        },
+        "esperado": {
+            "salv.for": 7,
+            "teste.for": 7
+        }
+    },
+    {
+        "nome": "onepiece: pontos de treinamento = mod. SAB positivo",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "especie": "",
+            "estilo": "",
+            "profissao": "",
+            "fruta": "",
+            "antecedente": "",
+            "xp": {
+                "atual": 0
+            },
+            "inspiracao": false,
+            "tamanho": "Médio",
+            "movimento": {
+                "normal": 9,
+                "nado": 0,
+                "escalada": 0,
+                "voo": 0
+            },
+            "ancestralidade": "",
+            "recompensa": 0,
+            "belly": 0,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "sab": 14,
+                "pre": 10,
+                "von": 10
+            },
+            "salvaguardas": [],
+            "pericias": {
+                "atletismo": 0,
+                "acrobacia": 0,
+                "furtividade": 0,
+                "prestidigitacao": 0,
+                "historia": 0,
+                "investigacao": 0,
+                "medicina": 0,
+                "natureza": 0,
+                "sobrevivencia": 0,
+                "atuacao": 0,
+                "enganacao": 0,
+                "intimidacao": 0,
+                "persuasao": 0,
+                "provocacao": 0,
+                "haki": 0,
+                "intuicao": 0,
+                "percepcao": 0,
+                "sobrenatural": 0,
+                "sorte": 0
+            },
+            "deslocamento": "9 m",
+            "pv": {
+                "atual": 0,
+                "max": 0,
+                "temp": 0
+            },
+            "pp": {
+                "atual": 0,
+                "porNivel": 4
+            },
+            "dadosVida": {
+                "restantes": 1,
+                "tipo": "d8"
+            },
+            "exaustao": 0,
+            "sentidos": [],
+            "idiomas": [],
+            "resistencias": [],
+            "imunidades": [],
+            "vulnerabilidades": [],
+            "proficienciasArmas": [],
+            "proficienciasArmaduras": [],
+            "ferramentas": [],
+            "inventario": [],
+            "condicoes": [],
+            "caracteristicas": [],
+            "tecnicas": {
+                "atributo": "von",
+                "lista": []
+            },
+            "akuma": {
+                "tipo": "",
+                "despertada": false,
+                "lista": []
+            },
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "sab": 0,
+                    "pre": 0,
+                    "von": 0
+                },
+                "pericias": {
+                    "atletismo": 0,
+                    "acrobacia": 0,
+                    "furtividade": 0,
+                    "prestidigitacao": 0,
+                    "historia": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "sobrevivencia": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "intimidacao": 0,
+                    "persuasao": 0,
+                    "provocacao": 0,
+                    "haki": 0,
+                    "intuicao": 0,
+                    "percepcao": 0,
+                    "sobrenatural": 0,
+                    "sorte": 0
+                }
+            }
+        },
+        "esperado": {
+            "treinamento.pontos": 2
+        }
+    },
+    {
+        "nome": "onepiece: pontos de treinamento nunca são negativos",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "especie": "",
+            "estilo": "",
+            "profissao": "",
+            "fruta": "",
+            "antecedente": "",
+            "xp": {
+                "atual": 0
+            },
+            "inspiracao": false,
+            "tamanho": "Médio",
+            "movimento": {
+                "normal": 9,
+                "nado": 0,
+                "escalada": 0,
+                "voo": 0
+            },
+            "ancestralidade": "",
+            "recompensa": 0,
+            "belly": 0,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "sab": 8,
+                "pre": 10,
+                "von": 10
+            },
+            "salvaguardas": [],
+            "pericias": {
+                "atletismo": 0,
+                "acrobacia": 0,
+                "furtividade": 0,
+                "prestidigitacao": 0,
+                "historia": 0,
+                "investigacao": 0,
+                "medicina": 0,
+                "natureza": 0,
+                "sobrevivencia": 0,
+                "atuacao": 0,
+                "enganacao": 0,
+                "intimidacao": 0,
+                "persuasao": 0,
+                "provocacao": 0,
+                "haki": 0,
+                "intuicao": 0,
+                "percepcao": 0,
+                "sobrenatural": 0,
+                "sorte": 0
+            },
+            "deslocamento": "9 m",
+            "pv": {
+                "atual": 0,
+                "max": 0,
+                "temp": 0
+            },
+            "pp": {
+                "atual": 0,
+                "porNivel": 4
+            },
+            "dadosVida": {
+                "restantes": 1,
+                "tipo": "d8"
+            },
+            "exaustao": 0,
+            "sentidos": [],
+            "idiomas": [],
+            "resistencias": [],
+            "imunidades": [],
+            "vulnerabilidades": [],
+            "proficienciasArmas": [],
+            "proficienciasArmaduras": [],
+            "ferramentas": [],
+            "inventario": [],
+            "condicoes": [],
+            "caracteristicas": [],
+            "tecnicas": {
+                "atributo": "von",
+                "lista": []
+            },
+            "akuma": {
+                "tipo": "",
+                "despertada": false,
+                "lista": []
+            },
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "sab": 0,
+                    "pre": 0,
+                    "von": 0
+                },
+                "pericias": {
+                    "atletismo": 0,
+                    "acrobacia": 0,
+                    "furtividade": 0,
+                    "prestidigitacao": 0,
+                    "historia": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "sobrevivencia": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "intimidacao": 0,
+                    "persuasao": 0,
+                    "provocacao": 0,
+                    "haki": 0,
+                    "intuicao": 0,
+                    "percepcao": 0,
+                    "sobrenatural": 0,
+                    "sorte": 0
+                }
+            }
+        },
+        "esperado": {
+            "treinamento.pontos": 0
+        }
     }
 ]

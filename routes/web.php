@@ -48,6 +48,8 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::post('paginas/{pagina}/jogadores/{jogador}', [PaginaController::class, 'moverJogador'])->name('paginas.jogador');
     Route::patch('personagens/{personagem}/ficha', [FichaController::class, 'atualizar'])
         ->middleware('throttle:120,1')->name('personagens.ficha');
+    Route::post('personagens/{personagem}/criacao/atributos-rolados', [FichaController::class, 'rolarAtributos'])
+        ->middleware('throttle:20,1')->name('personagens.atributos-rolados');
     Route::post('personagens', [PersonagemDoJogoController::class, 'criar'])->middleware('throttle:30,1')->name('personagens.store');
     Route::put('personagens/{personagem}/jogadores', [PersonagemDoJogoController::class, 'atribuir'])->name('personagens.atribuir');
     Route::post('itens', [ItemController::class, 'store'])->middleware('throttle:60,1')->name('itens.store');

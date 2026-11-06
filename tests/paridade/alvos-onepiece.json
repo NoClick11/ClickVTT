@@ -12,6 +12,7 @@
     "carga.max",
     "cd",
     "dano.arma",
+    "dano.tecnica",
     "ferramenta.*",
     "iniciativa",
     "pericia.*",
