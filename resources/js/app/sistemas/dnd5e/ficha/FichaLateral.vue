@@ -21,6 +21,12 @@ const dvPct = computed(() => (calc.value['dv.max'] > 0 ? (props.ficha.dadosVida.
 /** Clicar na bolinha N marca até N; clicar de novo na última marcada desmarca. */
 const marcar = (campo: string, atual: number, i: number) => salvar({ [campo]: atual === i ? i - 1 : i });
 const titulo = estilos.rotulo;
+/** O deslocamento é texto livre: a fonte diminui com o tamanho para não cortar ("9 m" grande, "12 m, voo 18 m" menor). */
+const tamanhoDeslocamento = computed(() => {
+    const n = props.ficha.deslocamento.length;
+
+    return n <= 5 ? 'text-lg' : n <= 9 ? 'text-sm' : 'text-xs';
+});
 const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) => condicaoPorId(id)).filter((c) => c !== undefined));
 </script>
 
@@ -120,7 +126,8 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
         </ul>
 
         <!-- iniciativa, deslocamento, proficiência -->
-        <div class="grid grid-cols-3 gap-1.5 text-center">
+        <!-- a coluna do meio (deslocamento) é mais larga: o texto é livre ("9 m", "9 m, voo 18 m") -->
+        <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)] gap-1.5 text-center">
             <!-- a caixa inteira rola a iniciativa (Shift = vantagem, Ctrl = desvantagem) -->
             <AreaRolavel
                 rotulo="iniciativa"
@@ -137,14 +144,26 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
             </AreaRolavel>
             <div class="rounded-md border border-preto-700 bg-preto-950 p-1.5">
                 <p :class="titulo">Desl.</p>
+                <!-- Editar: campo com borda (como os outros editáveis) para ficar claro que dá para mudar.
+                     Jogar: só leitura, em texto que quebra em até duas linhas (um campo de texto cortaria o fim). -->
                 <CampoTexto
+                    v-if="editar"
                     :model-value="ficha.deslocamento"
                     :maximo="80"
-                    :somente-leitura="!editar"
                     aria-label="Deslocamento"
-                    class="w-full bg-transparent text-center font-serif text-lg font-semibold text-ouro-100 read-only:cursor-default focus-visible:outline-none"
+                    title="Deslocamento: escreva como quiser (ex.: 9 m, 12 m, voo 18 m)"
+                    class="w-full rounded border border-preto-600 bg-preto-900 text-center font-serif font-semibold text-ouro-100 hover:border-ouro-500/60 focus-visible:border-ouro-400 focus-visible:outline-none"
+                    :class="tamanhoDeslocamento"
                     @salvar="salvar({ deslocamento: $event })"
                 />
+                <span
+                    v-else
+                    class="line-clamp-2 break-words text-center font-serif font-semibold leading-tight text-ouro-100"
+                    :class="tamanhoDeslocamento"
+                    :title="ficha.deslocamento"
+                    aria-label="Deslocamento"
+                    >{{ ficha.deslocamento || '—' }}</span
+                >
             </div>
             <div class="rounded-md border border-preto-700 bg-preto-950 p-1.5">
                 <p :class="titulo">Prof.</p>
