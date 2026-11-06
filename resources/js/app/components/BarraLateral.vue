@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { ChevronsRight, MessageSquare, Users } from 'lucide-vue-next';
-import type { Component } from 'vue';
+import { ChevronsRight, MessageSquare, Package, Users } from 'lucide-vue-next';
+import { computed, type Component } from 'vue';
 
-export type AbaLateral = 'chat' | 'personagens';
+export type AbaLateral = 'chat' | 'personagens' | 'itens';
 
-defineProps<{ aba: AbaLateral; aberta: boolean; naoLidas: number }>();
+const props = defineProps<{ aba: AbaLateral; aberta: boolean; naoLidas: number; mestre?: boolean }>();
 const emit = defineEmits<{ 'update:aba': [AbaLateral]; 'update:aberta': [boolean] }>();
 
-const abas: { id: AbaLateral; rotulo: string; icone: Component }[] = [
+const abas = computed<{ id: AbaLateral; rotulo: string; icone: Component }[]>(() => [
     { id: 'chat', rotulo: 'Chat', icone: MessageSquare },
     { id: 'personagens', rotulo: 'Personagens', icone: Users },
-];
+    // Os itens (e seus efeitos) são do mestre: só ele vê e edita o catálogo.
+    ...(props.mestre ? [{ id: 'itens' as const, rotulo: 'Itens', icone: Package }] : []),
+]);
 </script>
 
 <template>
@@ -20,7 +22,12 @@ const abas: { id: AbaLateral; rotulo: string; icone: Component }[] = [
         :class="aberta ? 'bottom-0 w-[min(20rem,85vw)] shadow-2xl' : 'rounded-bl-lg border-b'"
         aria-label="Barra lateral"
     >
-        <nav class="flex h-11 shrink-0 items-center gap-1 px-1.5" :class="aberta ? 'border-b border-preto-800' : ''" role="tablist" aria-label="Abas da barra lateral">
+        <nav
+            class="flex h-11 shrink-0 items-center gap-1 px-1.5"
+            :class="aberta ? 'border-b border-preto-800' : ''"
+            role="tablist"
+            aria-label="Abas da barra lateral"
+        >
             <button
                 v-for="a in abas"
                 :key="a.id"
@@ -36,7 +43,11 @@ const abas: { id: AbaLateral; rotulo: string; icone: Component }[] = [
                 @click="aberta && aba === a.id ? emit('update:aberta', false) : (emit('update:aba', a.id), emit('update:aberta', true))"
             >
                 <component :is="a.icone" class="size-5" />
-                <span v-if="a.id === 'chat' && naoLidas" class="absolute -right-1 -top-1 min-w-4 rounded-full bg-ouro-500 px-1 text-center text-[10px] font-semibold leading-4 text-preto-950 ring-2 ring-preto-950">{{ naoLidas > 99 ? '99+' : naoLidas }}</span>
+                <span
+                    v-if="a.id === 'chat' && naoLidas"
+                    class="absolute -right-1 -top-1 min-w-4 rounded-full bg-ouro-500 px-1 text-center text-[10px] font-semibold leading-4 text-preto-950 ring-2 ring-preto-950"
+                    >{{ naoLidas > 99 ? '99+' : naoLidas }}</span
+                >
             </button>
             <button
                 v-if="aberta"
@@ -51,8 +62,28 @@ const abas: { id: AbaLateral; rotulo: string; icone: Component }[] = [
         </nav>
 
         <div v-show="aberta" class="flex min-h-0 flex-1 flex-col">
-            <section v-show="aba === 'chat'" class="flex min-h-0 flex-1 flex-col" role="tabpanel" id="painel-chat" aria-labelledby="aba-chat"><slot name="chat" /></section>
-            <section v-show="aba === 'personagens'" class="flex min-h-0 flex-1 flex-col" role="tabpanel" id="painel-personagens" aria-labelledby="aba-personagens"><slot name="personagens" /></section>
+            <section v-show="aba === 'chat'" class="flex min-h-0 flex-1 flex-col" role="tabpanel" id="painel-chat" aria-labelledby="aba-chat">
+                <slot name="chat" />
+            </section>
+            <section
+                v-show="aba === 'personagens'"
+                class="flex min-h-0 flex-1 flex-col"
+                role="tabpanel"
+                id="painel-personagens"
+                aria-labelledby="aba-personagens"
+            >
+                <slot name="personagens" />
+            </section>
+            <section
+                v-if="mestre"
+                v-show="aba === 'itens'"
+                class="flex min-h-0 flex-1 flex-col"
+                role="tabpanel"
+                id="painel-itens"
+                aria-labelledby="aba-itens"
+            >
+                <slot name="itens" />
+            </section>
         </div>
     </aside>
 </template>

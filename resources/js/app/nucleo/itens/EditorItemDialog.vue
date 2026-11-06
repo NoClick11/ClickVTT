@@ -1,0 +1,187 @@
+<script setup lang="ts">
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ref, watch } from 'vue';
+import type { ItemDto, NovoItem } from '../../tipos-mesa';
+import EditorEfeitos from '../efeitos/EditorEfeitos.vue';
+import type { EfeitoBruto } from '../efeitos/efeitos';
+import { sintaxeValida } from '../efeitos/formula';
+import { clonar } from '../ficha/caminho';
+import type { ModuloSistema } from '../sistemas/tipos';
+
+/**
+ * Editor de item do mestre (criar e editar). Genérico: nome, peso, descrição, equipável, sintonia e a lista de
+ * efeitos são do núcleo; o que só o sistema entende (armadura, arma...) vem do `EditorDadosItem` do módulo.
+ * Quem salva e exclui é a mesa (as funções recebidas): o diálogo só mostra o erro, se houver.
+ */
+const props = defineProps<{
+    open: boolean;
+    /** O item a editar; `null` = novo. */
+    item: ItemDto | null;
+    modulo: ModuloSistema | null;
+    salvar: (campos: NovoItem, id: number | null) => Promise<ItemDto>;
+    excluir: (id: number) => Promise<void>;
+}>();
+const emit = defineEmits<{ 'update:open': [boolean]; salvo: [ItemDto] }>();
+
+const nome = ref('');
+const descricao = ref('');
+const peso = ref(0);
+const equipavel = ref(true);
+const sintonia = ref(false);
+const efeitos = ref<EfeitoBruto[]>([]);
+const dados = ref<Record<string, unknown> | null>(null);
+const erro = ref('');
+const ocupado = ref(false);
+const confirmandoExclusao = ref(false);
+
+watch(
+    () => [props.open, props.item] as const,
+    ([aberto, item]) => {
+        if (!aberto) return;
+        nome.value = item?.nome ?? '';
+        descricao.value = item?.descricao ?? '';
+        peso.value = item?.peso ?? 0;
+        equipavel.value = item?.equipavel ?? true;
+        sintonia.value = item?.requer_sintonia ?? false;
+        efeitos.value = clonar(item?.efeitos ?? []);
+        dados.value = clonar(item?.dados ?? null);
+        erro.value = '';
+        ocupado.value = false;
+        confirmandoExclusao.value = false;
+    },
+    { immediate: true },
+);
+
+const efeitoValido = (e: EfeitoBruto) =>
+    e.modo === 'vantagem' ||
+    e.modo === 'desvantagem' ||
+    (e.valor !== undefined && e.valor !== null && e.valor !== '' && (typeof e.valor === 'number' || sintaxeValida(e.valor)));
+/** A fórmula usa só valores que existem neste alvo? (Senão o efeito seria ignorado em silêncio.) */
+function usaApenasVariaveisDoAlvo(e: EfeitoBruto): boolean {
+    const oferecidas = props.modulo?.variaveisDeEfeito;
+    if (!oferecidas || typeof e.valor !== 'string') return true;
+    const ids = new Set(oferecidas(e.alvo).map((v) => v.id));
+
+    return [...e.valor.toLowerCase().matchAll(/@([a-z0-9_.]+)/g)].every((m) => ids.has(m[1]));
+}
+
+async function enviar() {
+    erro.value = '';
+    if (!nome.value.trim()) return (erro.value = 'Dê um nome ao item.');
+    if (!(peso.value >= 0)) return (erro.value = 'O peso não pode ser negativo.');
+    if (!efeitos.value.every(efeitoValido)) return (erro.value = 'Algum efeito tem valor ou fórmula inválidos.');
+    if (!efeitos.value.every(usaApenasVariaveisDoAlvo))
+        return (erro.value = 'Alguma fórmula usa um valor que não existe no alvo do efeito (nos atributos só vale o nível).');
+
+    ocupado.value = true;
+    try {
+        const salvo = await props.salvar(
+            {
+                nome: nome.value.trim(),
+                descricao: descricao.value.trim() || null,
+                peso: Number(peso.value),
+                equipavel: equipavel.value,
+                requer_sintonia: sintonia.value,
+                efeitos: efeitos.value,
+                dados: dados.value,
+            },
+            props.item?.id ?? null,
+        );
+        emit('salvo', salvo);
+        emit('update:open', false);
+    } catch (e) {
+        erro.value = e instanceof Error ? e.message : 'Não foi possível salvar.';
+    } finally {
+        ocupado.value = false;
+    }
+}
+
+async function remover() {
+    if (!props.item) return;
+    if (!confirmandoExclusao.value) return (confirmandoExclusao.value = true);
+    ocupado.value = true;
+    try {
+        await props.excluir(props.item.id);
+        emit('update:open', false);
+    } catch (e) {
+        erro.value = e instanceof Error ? e.message : 'Não foi possível excluir.';
+    } finally {
+        ocupado.value = false;
+    }
+}
+const campo =
+    'w-full rounded-md border border-preto-700 bg-preto-950 px-2.5 py-1.5 text-sm text-preto-100 focus-visible:border-ouro-400 focus-visible:outline-none';
+const rotulo = 'mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ouro-400';
+</script>
+
+<template>
+    <Dialog :open="open" @update:open="emit('update:open', $event)">
+        <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+            <DialogHeader>
+                <DialogTitle class="font-serif text-xl">{{ item ? 'Editar item' : 'Novo item' }}</DialogTitle>
+                <DialogDescription
+                    >Os efeitos valem enquanto o item estiver equipado (e sintonizado, se exigir). Quem tem o item no inventário ganha os bônus na
+                    hora.</DialogDescription
+                >
+            </DialogHeader>
+
+            <form class="grid gap-3" @submit.prevent="enviar">
+                <div class="grid gap-3 sm:grid-cols-[1fr_8rem]">
+                    <label
+                        ><span :class="rotulo">Nome</span
+                        ><input v-model="nome" type="text" maxlength="120" required :class="campo" aria-label="Nome do item"
+                    /></label>
+                    <label
+                        ><span :class="rotulo">Peso (kg)</span
+                        ><input v-model.number="peso" type="number" min="0" step="0.05" :class="campo" aria-label="Peso de uma unidade, em quilos"
+                    /></label>
+                </div>
+                <label
+                    ><span :class="rotulo">Descrição</span
+                    ><textarea v-model="descricao" maxlength="2000" rows="2" :class="campo" aria-label="Descrição do item" />
+                </label>
+
+                <div class="flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
+                    <label class="flex items-center gap-2"
+                        ><input v-model="equipavel" type="checkbox" class="size-4 accent-ouro-500" /> Equipável
+                        <span class="text-xs text-preto-400">(os efeitos só valem equipado)</span></label
+                    >
+                    <label class="flex items-center gap-2"
+                        ><input v-model="sintonia" type="checkbox" class="size-4 accent-ouro-500" /> Exige sintonia
+                        <span class="text-xs text-preto-400">(no máximo 3 por personagem)</span></label
+                    >
+                </div>
+
+                <component :is="modulo.EditorDadosItem" v-if="modulo?.EditorDadosItem" v-model="dados" />
+
+                <section aria-label="Efeitos">
+                    <h3 :class="rotulo">Efeitos</h3>
+                    <EditorEfeitos v-model="efeitos" :alvos="modulo?.alvosDeEfeito ?? []" :variaveis="modulo?.variaveisDeEfeito" />
+                </section>
+
+                <p v-if="erro" role="alert" class="rounded-md border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm text-red-200">{{ erro }}</p>
+
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <Button
+                        v-if="item"
+                        type="button"
+                        variant="ghost"
+                        class="text-red-300 hover:bg-red-500/15 hover:text-red-200"
+                        :disabled="ocupado"
+                        @click="remover"
+                    >
+                        {{ confirmandoExclusao ? 'Confirmar exclusão (tira o item de todos os inventários)' : 'Excluir item' }}
+                    </Button>
+                    <span v-else />
+                    <div class="flex gap-2">
+                        <Button type="button" variant="ghost" @click="emit('update:open', false)">Cancelar</Button>
+                        <Button type="submit" class="bg-ouro-500 text-preto-950 hover:bg-ouro-400" :disabled="ocupado">{{
+                            item ? 'Salvar' : 'Criar'
+                        }}</Button>
+                    </div>
+                </div>
+            </form>
+        </DialogContent>
+    </Dialog>
+</template>

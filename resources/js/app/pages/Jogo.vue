@@ -1,31 +1,49 @@
 <script setup lang="ts">
+import type { Jogador, Personagem } from '@/site/types';
 import { Head, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import type { Jogador, Personagem } from '@/site/types';
 import { apiMesa, ErroApi, medirArquivo } from '../api';
-import { conectar, type Conexao } from '../realtime';
-import type { Combate, Dado, Mensagem, VisibilidadeRolagem } from '../tipos-mesa';
+import AtribuirJogadoresDialog from '../components/AtribuirJogadoresDialog.vue';
 import BarraFerramentas from '../components/BarraFerramentas.vue';
+import BarraLateral, { type AbaLateral } from '../components/BarraLateral.vue';
 import BarraSuperior from '../components/BarraSuperior.vue';
+import BarraTurnos from '../components/BarraTurnos.vue';
 import CenaCanvas from '../components/CenaCanvas.vue';
 import ConfigPaginaDialog from '../components/ConfigPaginaDialog.vue';
-import BarraTurnos from '../components/BarraTurnos.vue';
 import ControlesZoom from '../components/ControlesZoom.vue';
 import DadosAnimacao from '../components/DadosAnimacao.vue';
-import OpcoesFerramenta from '../components/OpcoesFerramenta.vue';
-import BarraLateral, { type AbaLateral } from '../components/BarraLateral.vue';
-import PainelChat from '../components/PainelChat.vue';
-import FichaDnd5e from '../ficha/FichaDnd5e.vue';
-import JanelaFlutuante from '../ficha/JanelaFlutuante.vue';
-import AtribuirJogadoresDialog from '../components/AtribuirJogadoresDialog.vue';
-import PainelPersonagens from '../components/PainelPersonagens.vue';
-import PainelDados from '../components/PainelDados.vue';
-import PainelTurnos from '../components/PainelTurnos.vue';
 import Inspetor from '../components/Inspetor.vue';
 import MenuPaginas from '../components/MenuPaginas.vue';
+import NovoPersonagemDialog from '../components/NovoPersonagemDialog.vue';
 import NovoTokenDialog from '../components/NovoTokenDialog.vue';
+import OpcoesFerramenta from '../components/OpcoesFerramenta.vue';
+import PainelChat from '../components/PainelChat.vue';
+import PainelDados from '../components/PainelDados.vue';
+import PainelPersonagens from '../components/PainelPersonagens.vue';
+import PainelTurnos from '../components/PainelTurnos.vue';
 import SeletorCamada from '../components/SeletorCamada.vue';
-import { CAMADAS, type Camada, type CamposGeometria, type EstiloPintura, type Ferramenta, type ObjetoDto, type PaginaDto, type TipoParede } from '../engine/tipos';
+import {
+    CAMADAS,
+    type Camada,
+    type CamposGeometria,
+    type EstiloPintura,
+    type Ferramenta,
+    type ObjetoDto,
+    type PaginaDto,
+    type TipoParede,
+} from '../engine/tipos';
+import { definirCaminho } from '../nucleo/ficha/caminho';
+import { arrastandoItem, itemSolto } from '../nucleo/itens/arrastar';
+import EditorItemDialog from '../nucleo/itens/EditorItemDialog.vue';
+import PainelItens from '../nucleo/itens/PainelItens.vue';
+import type { AcaoDaRolagem } from '../nucleo/rolagem';
+import FichaNaoImplementada from '../nucleo/sistemas/FichaNaoImplementada.vue';
+import FichaPrivada from '../nucleo/sistemas/FichaPrivada.vue';
+import { moduloDoSistema } from '../nucleo/sistemas/registro';
+import type { AbrirEditorItem } from '../nucleo/sistemas/tipos';
+import JanelaFlutuante from '../nucleo/ui/JanelaFlutuante.vue';
+import { conectar, type Conexao } from '../realtime';
+import type { Combate, ItemDto, Mensagem, NovoItem, VisibilidadeRolagem } from '../tipos-mesa';
 
 interface Pasta {
     id: number;
@@ -34,6 +52,8 @@ interface Pasta {
 }
 const props = defineProps<{
     mesa: { id: number; slug: string; nome: string; capa: string | null };
+    /** Sistema da mesa: o módulo (ficha, regras) é resolvido pelo slug. */
+    sistema: { slug: string; nome: string; modulo: boolean };
     jogador: Jogador;
     mestre: boolean;
     pagina: PaginaDto | null;
@@ -44,6 +64,8 @@ const props = defineProps<{
     personagens: Personagem[];
     /** ids dos personagens que ESTE jogador controla (o mestre controla todos) */
     meusPersonagens: number[];
+    /** Itens da mesa: o mestre recebe todos; o jogador, só os das fichas que controla. */
+    itens: ItemDto[];
     combate: Combate;
     mensagens: Mensagem[];
     sairUrl: string;
@@ -112,9 +134,15 @@ function gravarLocal(chave: string, valor: string) {
         /* ignora */
     }
 }
-const abaLateral = ref<AbaLateral>(lerLocal('clickvtt.abaLateral', 'chat') === 'personagens' ? 'personagens' : 'chat');
+const abaLateral = ref<AbaLateral>(abaSalva());
 const lateralAberta = ref(lerLocal('clickvtt.lateralAberta', '1') !== '0');
 const naoLidas = ref(0);
+// A aba Itens é só do mestre: a de um jogador nunca cai nela.
+function abaSalva(): AbaLateral {
+    const salva = lerLocal('clickvtt.abaLateral', 'chat');
+
+    return salva === 'personagens' || (salva === 'itens' && props.mestre) ? salva : 'chat';
+}
 watch(abaLateral, (v) => gravarLocal('clickvtt.abaLateral', v));
 watch(lateralAberta, (v) => gravarLocal('clickvtt.lateralAberta', v ? '1' : '0'));
 // Mensagens que chegam com o chat fora de vista contam como não lidas.
@@ -142,8 +170,14 @@ function focarPersonagem(personagemId: number) {
     if (token) canvas.value?.focar(token.id, props.mestre && camada.value === 'jogadores');
 }
 
-watch(() => props.objetos, (novos) => (objetos.value = copia(novos)));
-watch(() => props.combate, (c) => (combate.value = copia(c)));
+watch(
+    () => props.objetos,
+    (novos) => (objetos.value = copia(novos)),
+);
+watch(
+    () => props.combate,
+    (c) => (combate.value = copia(c)),
+);
 
 const selecionado = computed(() => objetos.value.find((o) => o.id === selecionadoId.value) ?? null);
 const camadaNome = computed(() => CAMADAS.find((c) => c.id === (['jogadores', 'mestre'].includes(camada.value) ? camada.value : 'jogadores'))!.nome);
@@ -257,7 +291,9 @@ function abrirPagina(id: number) {
 }
 
 const acao = (fn: () => Promise<unknown>, recarga: string[]) => () =>
-    fn().then(() => recarregar(recarga)).catch((e) => avisar(mensagemDe(e)));
+    fn()
+        .then(() => recarregar(recarga))
+        .catch((e) => avisar(mensagemDe(e)));
 
 async function novaPagina(pastaId: number | null) {
     try {
@@ -307,7 +343,14 @@ async function reordenar(id: number, direcao: -1 | 1) {
     // Troca as ordens; se iguais, desempata deslocando a página movida.
     const ordemAtual = atual.ordem === vizinha.ordem ? vizinha.ordem + direcao : vizinha.ordem;
     const ordemVizinha = atual.ordem === vizinha.ordem ? vizinha.ordem : atual.ordem;
-    await acao(() => Promise.all([api.atualizarPagina(atual.id, { ordem: Math.max(0, ordemAtual) }), api.atualizarPagina(vizinha.id, { ordem: Math.max(0, ordemVizinha) })]), ['paginas'])();
+    await acao(
+        () =>
+            Promise.all([
+                api.atualizarPagina(atual.id, { ordem: Math.max(0, ordemAtual) }),
+                api.atualizarPagina(vizinha.id, { ordem: Math.max(0, ordemVizinha) }),
+            ]),
+        ['paginas'],
+    )();
 }
 
 const moverJogador = (paginaId: number, jogadorId: number) => acao(() => api.moverJogador(paginaId, jogadorId), ['jogadores'])();
@@ -340,8 +383,12 @@ interface FichaAberta {
     x: number;
     y: number;
 }
+/** Módulo do sistema da mesa (null = sistema sem módulo: a ficha mostra um aviso, nunca a de outro sistema). */
+const moduloSistema = moduloDoSistema(props.sistema.slug);
 const fichasAbertas = ref<FichaAberta[]>([]);
-const personagensAbertos = computed(() => fichasAbertas.value.map((f, i) => ({ ...f, z: 30 + i, personagem: props.personagens.find((p) => p.id === f.id) })).filter((f) => f.personagem));
+const personagensAbertos = computed(() =>
+    fichasAbertas.value.map((f, i) => ({ ...f, z: 30 + i, personagem: props.personagens.find((p) => p.id === f.id) })).filter((f) => f.personagem),
+);
 const tamanhoFicha = () => ({ largura: Math.min(940, window.innerWidth - 32), altura: Math.min(700, window.innerHeight - 76) });
 function focarFicha(id: number) {
     const i = fichasAbertas.value.findIndex((f) => f.id === id);
@@ -356,6 +403,123 @@ function abrirPersonagem(id: number) {
     if (fichasAbertas.value.some((f) => f.id === id)) return focarFicha(id);
     const desloca = (fichasAbertas.value.length % 6) * 28;
     fichasAbertas.value.push({ id, x: 90 + desloca, y: 64 + desloca });
+}
+
+// --- dados das fichas ----------------------------------------------------------
+// O servidor só envia a ficha a quem controla o personagem (mestre e donos). Aqui fica uma cópia local:
+// edições são aplicadas na hora (otimista), enviadas campo a campo e, se falharem, a tela volta ao estado do servidor.
+const fichas = ref<Record<number, Record<string, unknown>>>({});
+function sincronizarFichas() {
+    const novas: Record<number, Record<string, unknown>> = {};
+    for (const p of props.personagens) if (p.ficha) novas[p.id] = copia(p.ficha);
+    fichas.value = novas;
+}
+sincronizarFichas();
+watch(() => props.personagens, sincronizarFichas, { deep: true });
+
+/** Um envio por vez por personagem, na ordem das edições (respostas fora de ordem não desfazem nada). */
+const filasFicha = new Map<number, Promise<void>>();
+function salvarFicha(personagemId: number, campos: Record<string, unknown>) {
+    const ficha = fichas.value[personagemId];
+    if (!ficha) return;
+    for (const [caminho, valor] of Object.entries(campos)) definirCaminho(ficha, caminho, copia(valor));
+    const fila = (filasFicha.get(personagemId) ?? Promise.resolve())
+        .then(() => api.salvarFicha(personagemId, campos))
+        .then(() => undefined)
+        .catch((e) => {
+            avisar(mensagemDe(e));
+            recarregar(['personagens']);
+        });
+    filasFicha.set(personagemId, fila);
+}
+/** Outro participante (ou outra aba) alterou a ficha: aplica os mesmos campos. */
+function aoMudarFicha(e: { personagem_id: number; campos: Record<string, unknown>; ator: number }) {
+    const ficha = fichas.value[e.personagem_id];
+    if (e.ator === props.jogador.id || !ficha) return;
+    for (const [caminho, valor] of Object.entries(e.campos)) definirCaminho(ficha, caminho, copia(valor));
+}
+// --- itens da mesa -------------------------------------------------------------
+// Um item salvo agora vale aqui até a recarga do servidor trazê-lo (evita piscar "item removido" ou o valor antigo).
+const itensSalvos = ref<ItemDto[]>([]);
+const itensDaMesa = computed(() => [
+    ...props.itens.map((i) => itensSalvos.value.find((s) => s.id === i.id) ?? i),
+    ...itensSalvos.value.filter((s) => !props.itens.some((i) => i.id === s.id)),
+]);
+
+// Editor do mestre (diálogo único; abre pela aba Itens ou pelo inventário de uma ficha).
+const editorAberto = ref(false);
+const itemEditando = ref<ItemDto | null>(null);
+let aoSalvarItem: ((item: ItemDto) => void) | undefined;
+const abrirEditorItem: AbrirEditorItem = (itemId, aoSalvar) => {
+    if (!props.mestre) return;
+    itemEditando.value = itemId === null ? null : (itensDaMesa.value.find((i) => i.id === itemId) ?? null);
+    aoSalvarItem = aoSalvar;
+    editorAberto.value = true;
+};
+async function salvarItem(campos: NovoItem, id: number | null): Promise<ItemDto> {
+    const item = id === null ? await api.criarItem(campos) : await api.atualizarItem(id, campos);
+    itensSalvos.value = [...itensSalvos.value.filter((s) => s.id !== item.id), item];
+    recarregar(['itens']);
+
+    return item;
+}
+async function excluirItem(id: number) {
+    await api.excluirItem(id);
+    itensSalvos.value = itensSalvos.value.filter((s) => s.id !== id);
+    recarregar(['itens', 'personagens']); // o item sai do inventário de todos
+}
+function aoSalvarItemOk(item: ItemDto) {
+    aoSalvarItem?.(item);
+    aoSalvarItem = undefined;
+}
+watch(
+    () => props.itens,
+    () => (itensSalvos.value = itensSalvos.value.filter((s) => !props.itens.some((i) => i.id === s.id && JSON.stringify(i) === JSON.stringify(s)))),
+    { deep: true },
+);
+
+/** Rolagem vinda da ficha: as `@variáveis` são resolvidas no servidor pela ficha salva do personagem. */
+async function rolarDaFicha(personagemId: number, expressao: string, rotulo: string) {
+    try {
+        aoNovaMensagem(await api.rolar(expressao, 'todos', personagemId, rotulo));
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+
+// Arrastar um item da aba Itens para a janela de uma ficha entrega o item ao personagem (só o mestre; o formato do
+// inventário é do módulo do sistema).
+const fichaSobre = ref<number | null>(null);
+const aceitaItem = (e: DragEvent, personagemId: number) =>
+    props.mestre && !!moduloSistema?.entregarItem && !!fichas.value[personagemId] && arrastandoItem(e);
+function itemSobreFicha(e: DragEvent, personagemId: number) {
+    if (!aceitaItem(e, personagemId)) return;
+    e.preventDefault(); // sem isto o navegador não deixa soltar
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    fichaSobre.value = personagemId;
+}
+function itemSaiuDaFicha(e: DragEvent, personagemId: number) {
+    // `dragleave` também dispara ao passar por elementos filhos: só limpa quando saiu da janela de verdade.
+    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node | null) && fichaSobre.value === personagemId) fichaSobre.value = null;
+}
+function soltarItemNaFicha(e: DragEvent, personagemId: number) {
+    fichaSobre.value = null;
+    if (!aceitaItem(e, personagemId)) return;
+    e.preventDefault();
+    const itemId = itemSolto(e);
+    const item = itensDaMesa.value.find((i) => i.id === itemId);
+    const campos = itemId && moduloSistema?.entregarItem?.(fichas.value[personagemId], itemId);
+    if (!item || !campos) return avisar('Não foi possível entregar esse item.');
+    salvarFicha(personagemId, campos);
+    avisar(`${item.nome} entregue a ${props.personagens.find((p) => p.id === personagemId)?.nome ?? 'personagem'}.`);
+}
+
+// --- criar personagem (mestre) ------------------------------------------------
+const novoPersonagemAberto = ref(false);
+const criarPersonagem = (dados: { nome: string; cor: string; jogadores: number[] }) => api.criarPersonagem(dados);
+/** Depois de criar: recarrega a lista (e o que depende dela) e já abre a ficha do novo personagem. */
+function aoCriarPersonagem(personagem: Personagem) {
+    router.reload({ only: ['personagens', 'meusPersonagens', 'itens'], onSuccess: () => abrirPersonagem(personagem.id) });
 }
 
 const atribuindo = ref<Personagem | null>(null);
@@ -384,8 +548,19 @@ async function criarTraco(t: { x: number; y: number; largura: number; altura: nu
     try {
         objetos.value.push(
             await api.criarObjeto(props.pagina.id, {
-                camada: camadaDeDesenho(), tipo: 'traco', x: t.x, y: t.y, largura: t.largura, altura: t.altura,
-                dados: { pontos: t.pontos, cor: estilo.value.cor, espessura: estilo.value.espessura, largura_original: t.largura, altura_original: t.altura },
+                camada: camadaDeDesenho(),
+                tipo: 'traco',
+                x: t.x,
+                y: t.y,
+                largura: t.largura,
+                altura: t.altura,
+                dados: {
+                    pontos: t.pontos,
+                    cor: estilo.value.cor,
+                    espessura: estilo.value.espessura,
+                    largura_original: t.largura,
+                    altura_original: t.altura,
+                },
             }),
         );
     } catch (e) {
@@ -405,8 +580,12 @@ async function confirmarTexto() {
     try {
         objetos.value.push(
             await api.criarObjeto(props.pagina.id, {
-                camada: camadaDeDesenho(), tipo: 'texto', x: t.x, y: t.y,
-                largura: Math.max(10, t.valor.length * tamanho * 0.6), altura: tamanho * 1.3,
+                camada: camadaDeDesenho(),
+                tipo: 'texto',
+                x: t.x,
+                y: t.y,
+                largura: Math.max(10, t.valor.length * tamanho * 0.6),
+                altura: tamanho * 1.3,
                 dados: { texto: t.valor.trim(), cor: estilo.value.cor, tamanho },
             }),
         );
@@ -436,9 +615,19 @@ function aoNovaMensagem(m: Mensagem, substitui = false) {
 }
 
 /** Sem trava no botão: cada clique rola. As respostas entram no chat na hora; a animação mostra só a mais recente. */
-async function rolar(dado: Dado, quantidade: number, visibilidade: VisibilidadeRolagem) {
+async function rolar(expressao: string, visibilidade: VisibilidadeRolagem, rotulo?: string) {
     try {
-        aoNovaMensagem(await api.rolar(dado, quantidade, visibilidade, ativoId.value));
+        aoNovaMensagem(await api.rolar(expressao, visibilidade, ativoId.value, rotulo));
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+/** Botão do card de uma rolagem (ex.: Dano): rola a ação como o mesmo personagem e com a mesma visibilidade. */
+async function rolarAcaoDoChat(mensagem: Mensagem, acao: AcaoDaRolagem) {
+    const visibilidade: VisibilidadeRolagem =
+        mensagem.visibilidade === 'secreto' || mensagem.visibilidade === 'mestre' ? mensagem.visibilidade : 'todos';
+    try {
+        aoNovaMensagem(await api.rolar(acao.expressao, visibilidade, mensagem.autor?.personagem_id ?? null, acao.rotuloRolagem));
     } catch (e) {
         avisar(mensagemDe(e));
     }
@@ -479,7 +668,10 @@ const meuId = props.jogador.id;
 function aoMudarCena(payload: { ator: number | null }) {
     if (payload.ator === meuId) return;
     clearTimeout(temporizadorCena);
-    temporizadorCena = setTimeout(() => router.reload({ only: ['objetos', 'pagina', 'paginas', 'pastas', 'jogadores', 'personagens', 'meusPersonagens'] }), 120);
+    temporizadorCena = setTimeout(
+        () => router.reload({ only: ['objetos', 'pagina', 'paginas', 'pastas', 'jogadores', 'personagens', 'meusPersonagens', 'itens'] }),
+        120,
+    );
 }
 
 onMounted(() => {
@@ -490,6 +682,7 @@ onMounted(() => {
             canal
                 .listen('.mensagem', (e: { mensagem: Mensagem; substitui?: boolean }) => aoNovaMensagem(e.mensagem, !!e.substitui))
                 .listen('.cena', (e: { ator: number | null }) => aoMudarCena(e))
+                .listen('.ficha', aoMudarFicha)
                 .listen('.combate', (e: { combate: Combate; ator: number }) => e.ator !== meuId && (combate.value = e.combate));
         abrir(conexao.echo.private(base));
         abrir(conexao.echo.private(`${base}.jogador.${meuId}`));
@@ -524,8 +717,13 @@ async function criarLuz(cx: number, cy: number) {
     try {
         objetos.value.push(
             await api.criarObjeto(props.pagina.id, {
-                camada: 'iluminacao', tipo: 'luz', nome: 'Luz',
-                x: cx - raio, y: cy - raio, largura: raio * 2, altura: raio * 2,
+                camada: 'iluminacao',
+                tipo: 'luz',
+                nome: 'Luz',
+                x: cx - raio,
+                y: cy - raio,
+                largura: raio * 2,
+                altura: raio * 2,
                 dados: { raio, cor: '#ffd27a' },
             }),
         );
@@ -539,8 +737,13 @@ async function criarParede(p: [number, number, number, number], tipo: TipoParede
     const [x1, y1, x2, y2] = p;
     try {
         const novo = await api.criarObjeto(props.pagina.id, {
-            camada: 'iluminacao', tipo: 'parede', nome: tipo,
-            x: Math.min(x1, x2), y: Math.min(y1, y2), largura: Math.max(1, Math.abs(x2 - x1)), altura: Math.max(1, Math.abs(y2 - y1)),
+            camada: 'iluminacao',
+            tipo: 'parede',
+            nome: tipo,
+            x: Math.min(x1, x2),
+            y: Math.min(y1, y2),
+            largura: Math.max(1, Math.abs(x2 - x1)),
+            altura: Math.max(1, Math.abs(y2 - y1)),
             dados: { pontos: p, tipo, aberta: false },
         });
         objetos.value.push(novo);
@@ -587,7 +790,15 @@ function alternarPorta(id: number) {
         </div>
 
         <div class="pointer-events-none absolute inset-0">
-            <BarraSuperior :mesa-nome="mesa.nome" :pagina-nome="pagina?.nome ?? '—'" :jogador="jogador" :ativo="ativo" :mestre="mestre" @paginas="menuAberto = true" @sair="router.post(sairUrl)" />
+            <BarraSuperior
+                :mesa-nome="mesa.nome"
+                :pagina-nome="pagina?.nome ?? '—'"
+                :jogador="jogador"
+                :ativo="ativo"
+                :mestre="mestre"
+                @paginas="menuAberto = true"
+                @sair="router.post(sairUrl)"
+            />
 
             <template v-if="pagina">
                 <BarraFerramentas
@@ -597,25 +808,57 @@ function alternarPorta(id: number) {
                     :dados="painelDados"
                     :turnos="painelTurnos"
                     @ferramenta="ferramenta = $event"
-                    @dados="(painelDados = !painelDados), (painelTurnos = false)"
-                    @turnos="(painelTurnos = !painelTurnos), (painelDados = false)"
+                    @dados="((painelDados = !painelDados), (painelTurnos = false))"
+                    @turnos="((painelTurnos = !painelTurnos), (painelDados = false))"
                     @enviar-mapa="inputMapa?.click()"
                     @novo-token="tokenAberto = true"
                     @configurar="configurar(pagina.id)"
                 />
                 <SeletorCamada v-if="mestre" :camada="camada" @camada="(c) => ((camada = c), (ferramenta = 'selecionar'))" />
                 <!-- Área do mapa: recua para não ficar sob a barra do chat -->
-                <div class="pointer-events-none absolute bottom-0 left-0 top-0 transition-[right] duration-200" :style="{ right: margemDireita + 'px', top: lateralAberta ? '0px' : '2.75rem' }">
-                    <Inspetor v-if="mestre && selecionado && pagina" :objeto="selecionado" :pagina="pagina" @atualizar="atualizarSelecionado" @remover="removerSelecionado" />
+                <div
+                    class="pointer-events-none absolute bottom-0 left-0 top-0 transition-[right] duration-200"
+                    :style="{ right: margemDireita + 'px', top: lateralAberta ? '0px' : '2.75rem' }"
+                >
+                    <Inspetor
+                        v-if="mestre && selecionado && pagina"
+                        :objeto="selecionado"
+                        :pagina="pagina"
+                        @atualizar="atualizarSelecionado"
+                        @remover="removerSelecionado"
+                    />
                     <ControlesZoom :escala="escala" @mais="canvas?.zoomPor(1.25)" @menos="canvas?.zoomPor(1 / 1.25)" @ajustar="canvas?.ajustar()" />
-                    <BarraTurnos :combate="combate" :mestre="mestre" @anterior="passarTurno(-1)" @proximo="passarTurno(1)" @abrir="(painelTurnos = true), (painelDados = false)" />
+                    <BarraTurnos
+                        :combate="combate"
+                        :mestre="mestre"
+                        @anterior="passarTurno(-1)"
+                        @proximo="passarTurno(1)"
+                        @abrir="((painelTurnos = true), (painelDados = false))"
+                    />
                 </div>
-                <OpcoesFerramenta v-if="(ferramenta === 'pintar' || ferramenta === 'texto') && !painelDados && !painelTurnos" :ferramenta="ferramenta" v-model:estilo="estilo" />
+                <OpcoesFerramenta
+                    v-if="(ferramenta === 'pintar' || ferramenta === 'texto') && !painelDados && !painelTurnos"
+                    :ferramenta="ferramenta"
+                    v-model:estilo="estilo"
+                />
                 <PainelDados v-if="painelDados" v-model:animacao="animacao" :mestre="mestre" @rolar="rolar" @fechar="painelDados = false" />
-                <PainelTurnos v-if="painelTurnos && mestre" :combate="combate" :personagens="personagens" @atualizar="salvarCombate" @fechar="painelTurnos = false" />
-                <BarraLateral v-model:aba="abaLateral" v-model:aberta="lateralAberta" :nao-lidas="naoLidas">
+                <PainelTurnos
+                    v-if="painelTurnos && mestre"
+                    :combate="combate"
+                    :personagens="personagens"
+                    @atualizar="salvarCombate"
+                    @fechar="painelTurnos = false"
+                />
+                <BarraLateral v-model:aba="abaLateral" v-model:aberta="lateralAberta" :nao-lidas="naoLidas" :mestre="mestre">
                     <template #chat>
-                        <PainelChat :mensagens="mensagens" :meu-id="jogador.id" :visivel="lateralAberta && abaLateral === 'chat'" @enviar="enviarTexto" />
+                        <PainelChat
+                            :mensagens="mensagens"
+                            :meu-id="jogador.id"
+                            :visivel="lateralAberta && abaLateral === 'chat'"
+                            :mestre="mestre"
+                            @enviar="enviarTexto"
+                            @acao="rolarAcaoDoChat"
+                        />
                     </template>
                     <template #personagens>
                         <PainelPersonagens
@@ -630,7 +873,11 @@ function alternarPorta(id: number) {
                             @abrir="abrirPersonagem"
                             @focar="focarPersonagem"
                             @atribuir="pedirAtribuicao"
+                            @criar="novoPersonagemAberto = true"
                         />
+                    </template>
+                    <template v-if="mestre" #itens>
+                        <PainelItens :itens="itensDaMesa" @editar="abrirEditorItem" />
                     </template>
                 </BarraLateral>
 
@@ -653,7 +900,13 @@ function alternarPorta(id: number) {
                 </form>
             </template>
 
-            <div v-if="erro" role="alert" class="pointer-events-auto absolute left-1/2 top-16 z-30 max-w-md -translate-x-1/2 rounded-md border border-ouro-500/40 bg-preto-900 px-4 py-2 text-sm text-ouro-100 shadow-lg">{{ erro }}</div>
+            <div
+                v-if="erro"
+                role="alert"
+                class="pointer-events-auto absolute left-1/2 top-16 z-30 max-w-md -translate-x-1/2 rounded-md border border-ouro-500/40 bg-preto-900 px-4 py-2 text-sm text-ouro-100 shadow-lg"
+            >
+                {{ erro }}
+            </div>
         </div>
 
         <!-- Fichas: janelas flutuantes por cima do mapa (arrastar, redimensionar, várias abertas) -->
@@ -667,15 +920,46 @@ function alternarPorta(id: number) {
             :largura="tamanhoFicha().largura"
             :altura="tamanhoFicha().altura"
             :z="f.z"
+            :class="fichaSobre === f.id ? 'ring-2 ring-ouro-300' : ''"
             @focar="focarFicha(f.id)"
             @fechar="fecharFicha(f.id)"
+            @dragenter="itemSobreFicha($event, f.id)"
+            @dragover="itemSobreFicha($event, f.id)"
+            @dragleave="itemSaiuDaFicha($event, f.id)"
+            @drop="soltarItemNaFicha($event, f.id)"
         >
-            <FichaDnd5e :personagem="f.personagem!" />
+            <div
+                v-if="fichaSobre === f.id"
+                class="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-lg bg-ouro-500/15 text-sm font-semibold text-ouro-100 backdrop-blur-[1px]"
+                role="status"
+            >
+                Solte para entregar o item a {{ f.personagem!.nome }}
+            </div>
+            <FichaNaoImplementada v-if="!moduloSistema" :personagem="f.personagem!" :sistema="sistema.nome" />
+            <component
+                :is="moduloSistema.Ficha"
+                v-else-if="fichas[f.id]"
+                :personagem="f.personagem!"
+                :ficha="fichas[f.id]"
+                :itens="itensDaMesa"
+                :mestre="mestre"
+                @editor-item="abrirEditorItem"
+                @salvar="(campos: Record<string, unknown>) => salvarFicha(f.id, campos)"
+                @rolar="(expressao: string, rotulo: string) => rolarDaFicha(f.id, expressao, rotulo)"
+            />
+            <FichaPrivada v-else :personagem="f.personagem!" />
         </JanelaFlutuante>
 
         <DadosAnimacao v-if="animacaoAtual" :key="animacaoAtual.id" :mensagem="animacaoAtual" @fim="animacaoAtual = null" />
 
-        <input ref="inputMapa" type="file" class="sr-only" tabindex="-1" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4" @change="enviarMapa" />
+        <input
+            ref="inputMapa"
+            type="file"
+            class="sr-only"
+            tabindex="-1"
+            accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4"
+            @change="enviarMapa"
+        />
 
         <template v-if="mestre">
             <MenuPaginas
@@ -698,7 +982,16 @@ function alternarPorta(id: number) {
                 @excluir-pasta="(id) => acao(() => api.removerPasta(id), ['pastas', 'paginas'])()"
             />
             <ConfigPaginaDialog v-model:open="configAberta" :pagina="configPagina" :erro="configErro" @salvar="salvarConfig" />
+            <NovoPersonagemDialog v-model:open="novoPersonagemAberto" :jogadores="jogadores" :criar="criarPersonagem" @criado="aoCriarPersonagem" />
             <AtribuirJogadoresDialog v-model:open="atribuicaoAberta" :personagem="atribuindo" :jogadores="jogadores" @salvar="salvarAtribuicao" />
+            <EditorItemDialog
+                v-model:open="editorAberto"
+                :item="itemEditando"
+                :modulo="moduloSistema"
+                :salvar="salvarItem"
+                :excluir="excluirItem"
+                @salvo="aoSalvarItemOk"
+            />
             <NovoTokenDialog v-model:open="tokenAberto" :personagens="personagens" :camada-nome="camadaNome" @criar="criarToken" />
         </template>
     </div>
