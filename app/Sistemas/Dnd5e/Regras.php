@@ -3,6 +3,7 @@
 namespace App\Sistemas\Dnd5e;
 
 use App\Nucleo\Efeitos\Efeitos;
+use App\Nucleo\Rolagem\Rolador;
 
 /**
  * Regras derivadas da ficha de D&D 5e. ESPELHA `resources/js/app/sistemas/dnd5e/regras.ts` (o cliente mostra
@@ -59,7 +60,8 @@ final class Regras
     }
 
     /**
-     * Efeitos ativos da ficha: itens (na ordem do inventário), condições (na ordem salva), depois os ajustes manuais (soma).
+     * Efeitos ativos da ficha: itens (na ordem do inventário), características (ativas ou passivas, na ordem salva),
+     * condições, depois os ajustes manuais (soma).
      *
      * @param  array<int, array>  $itens  itens da mesa por id (`Item::paraFront()`)
      * @return list<array{fonte: string, alvo: string, modo: string, valor: mixed}>
@@ -74,6 +76,14 @@ final class Regras
                     continue;
                 }
                 array_push($efeitos, ...Efeitos::deFonte((string) ($item['nome'] ?? 'Item'), [...($item['efeitos'] ?? []), ...self::efeitosDoItem($item)]));
+            }
+        }
+
+        // Características com buffs: a passiva sempre vale; a ativa, só ligada (ex.: Fúria, Aura de Proteção)
+        foreach ($f['caracteristicas'] ?? [] as $c) {
+            $vale = ($c['tipo'] ?? 'passiva') === 'passiva' || ($c['ativa'] ?? false) === true;
+            if ($vale && ! empty($c['efeitos'])) {
+                array_push($efeitos, ...Efeitos::deFonte((string) ($c['nome'] ?? 'Característica'), $c['efeitos']));
             }
         }
 
@@ -220,15 +230,17 @@ final class Regras
      * crítica da arma é `critico` (20 por padrão; armas específicas baixam para 19 ou 18); 1 é `falha`.
      * Rolagens que não usam `@arma.<id>.ataque` não são marcadas.
      *
-     * Num ataque com arma o card do chat também oferece o DANO: um botão "Dano" (`1d8+4`) e, se o ataque foi crítico,
-     * "Dano crítico" (`2d8+4`: os dados do item dobram; o modificador entra uma vez) em destaque, com o normal ao lado.
+     * Num ataque com arma o card do chat também oferece o DANO: um botão "Dano" (`1d8+3d6+4`: o dado da arma, os dados
+     * extras — da própria arma e dos buffs, como o Ataque Furtivo — e o bônus fixo) e, se o ataque foi crítico, "Dano
+     * crítico" (`2d8+6d6+4`: TODOS os dados dobram; o bônus fixo entra uma vez) em destaque, com o normal ao lado.
      * Falha crítica (1 natural) erra sempre: não oferece dano.
      *
      * @param  list<array>  $termos
      * @param  array<int, array>  $itens
+     * @param  array<string, mixed>  $ficha  a ficha do personagem (para os dados extras dos buffs)
      * @return array<string, mixed>
      */
-    public static function metadadosDaRolagem(array $termos, array $variaveis, array $itens = []): array
+    public static function metadadosDaRolagem(array $termos, array $variaveis, array $itens = [], array $ficha = []): array
     {
         $arma = null;
         foreach ($termos as $t) {
@@ -264,24 +276,83 @@ final class Regras
             }
         }
 
-        $dano = $itens[$arma]['dados']['arma']['dano'] ?? null;
-        if (is_string($dano) && isset($variaveis["arma.{$arma}.dano"]) && ($meta['destaque'] ?? null) !== 'falha') {
+        $dados = self::dadosDeDano($ficha, $itens, $arma);
+        if ($dados !== [] && isset($variaveis["arma.{$arma}.dano"]) && ($meta['destaque'] ?? null) !== 'falha') {
             $nome = (string) ($itens[$arma]['nome'] ?? 'Arma');
             $bonus = $variaveis["arma.{$arma}.dano"];
-            $acao = fn (string $id, string $rotulo, string $dados, string $rotuloRolagem) => [
-                'id' => $id, 'rotulo' => $rotulo, 'resumo' => $dados.($bonus > 0 ? "+{$bonus}" : ($bonus < 0 ? (string) $bonus : '')),
-                'expressao' => "{$dados}+@arma.{$arma}.dano", 'rotuloRolagem' => $rotuloRolagem,
-            ];
-            $normal = $acao('dano', 'Dano', $dano, $nome);
+            $acao = function (string $id, string $rotulo, array $termos, string $rotuloRolagem) use ($arma, $bonus) {
+                $dados = implode('+', $termos);
+
+                return [
+                    'id' => $id, 'rotulo' => $rotulo, 'resumo' => $dados.($bonus > 0 ? "+{$bonus}" : ($bonus < 0 ? (string) $bonus : '')),
+                    'expressao' => "{$dados}+@arma.{$arma}.dano", 'rotuloRolagem' => $rotuloRolagem,
+                ];
+            };
+            // O crítico dobra todos os dados: se dobrados passariam do limite do rolador, os extras que sobram ficam de fora.
+            $dados = self::cabemDobrados($dados);
+            $normal = $acao('dano', 'Dano', $dados, $nome);
             $meta['acoes'] = ($meta['destaque'] ?? null) === 'critico'
                 ? [
-                    [...$acao('dano-critico', 'Dano crítico', self::dobrarDados($dano), $nome), 'destaque' => 'critico'],
+                    [...$acao('dano-critico', 'Dano crítico', array_map(self::dobrarDados(...), $dados), $nome), 'destaque' => 'critico'],
                     [...$normal, 'rotulo' => 'Dano normal'],
                 ]
                 : [$normal];
         }
 
         return $meta;
+    }
+
+    /**
+     * Todos os dados do dano de uma arma, em ordem: o da arma, os extras DA ARMA (`danoExtra`, ex.: +2d6 de fogo) e os
+     * extras dos buffs ativos (efeitos de modo `dados` em `dano.arma`: Ataque Furtivo, itens, características).
+     * Vazio se o item não é arma.
+     *
+     * @param  array<string, mixed>  $f
+     * @param  array<int, array>  $itens
+     * @return list<string>
+     */
+    public static function dadosDeDano(array $f, array $itens, int $itemId): array
+    {
+        $arma = $itens[$itemId]['dados']['arma'] ?? null;
+        if (! is_array($arma) || ! is_string($arma['dano'] ?? null)) {
+            return [];
+        }
+
+        $dados = [$arma['dano']];
+        foreach ($arma['danoExtra'] ?? [] as $extra) {
+            if (Efeitos::dadosValidos($extra['dados'] ?? null)) {
+                $dados[] = $extra['dados'];
+            }
+        }
+        foreach (self::efeitosAtivos($f, $itens) as $e) {
+            if ($e['modo'] === 'dados' && Efeitos::casa($e['alvo'], 'dano.arma') && Efeitos::dadosValidos($e['valor'] ?? null)) {
+                $dados[] = $e['valor'];
+            }
+        }
+
+        return $dados;
+    }
+
+    /**
+     * Mantém os dados (o da arma sempre, depois os extras na ordem) enquanto a soma DOBRADA couber no limite do rolador.
+     *
+     * @param  list<string>  $dados
+     * @return list<string>
+     */
+    private static function cabemDobrados(array $dados): array
+    {
+        $saida = [];
+        $total = 0;
+        foreach ($dados as $i => $d) {
+            $quantidade = (int) $d;
+            if ($i > 0 && ($total + $quantidade) * 2 > Rolador::MAX_DADOS_TOTAL) {
+                continue;
+            }
+            $saida[] = $d;
+            $total += $quantidade;
+        }
+
+        return $saida;
     }
 
     /** Dados do item dobrados para o crítico (`1d8` → `2d8`); formato inesperado volta como está. */

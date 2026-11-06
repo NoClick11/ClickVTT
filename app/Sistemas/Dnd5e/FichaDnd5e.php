@@ -2,6 +2,7 @@
 
 namespace App\Sistemas\Dnd5e;
 
+use App\Nucleo\Efeitos\Efeitos;
 use Illuminate\Validation\Rule;
 
 /**
@@ -27,9 +28,30 @@ final class FichaDnd5e
 
     public const MAX_SINTONIA = 3;
 
+    public const MAX_DANO_EXTRA = 3;
+
     public const TIPOS_ARMADURA = ['leve', 'media', 'pesada', 'escudo'];
 
     public const BIOGRAFIA = ['personalidade', 'ideais', 'vinculos', 'defeitos', 'aparencia', 'texto'];
+
+    /**
+     * Alvos que um efeito pode ter no D&D 5e (os valores calculados da ficha). `Dnd5e::alvosDeEfeito()` devolve estes.
+     *
+     * @return list<string>
+     */
+    public static function alvosDeEfeito(): array
+    {
+        return [
+            // numéricos (soma, base, mín., máx.)
+            'ca', 'iniciativa', 'cd', 'ataque', 'ataque.arma', 'dano.arma', 'carga.max', 'pv.max',
+            'salv.*', 'pericia.*', 'atributos.*',
+            // só para vantagem/desvantagem: testes de atributo e de ferramenta (os demais alvos de rolagem são os de cima)
+            'teste.*', 'ferramenta.*', ...array_map(fn ($a) => "teste.{$a}", self::ATRIBUTOS),
+            ...array_map(fn ($a) => "salv.{$a}", self::ATRIBUTOS),
+            ...array_map(fn ($a) => "atributos.{$a}", self::ATRIBUTOS),
+            ...array_map(fn ($p) => "pericia.{$p}", array_keys(self::PERICIAS)),
+        ];
+    }
 
     public static function padrao(): array
     {
@@ -139,6 +161,12 @@ final class FichaDnd5e
         $r['caracteristicas.*.tipo'] = ['required', 'string', Rule::in(['ativa', 'passiva'])];
         $r['caracteristicas.*.usos.atual'] = $inteiro(0, 999);
         $r['caracteristicas.*.usos.max'] = $inteiro(0, 999);
+        // Buffs de classe: uma característica também carrega efeitos (os mesmos dos itens). A passiva sempre vale; a ativa
+        // vale enquanto `ativa` estiver ligada (o interruptor da ficha).
+        $r['caracteristicas.*.ativa'] = ['boolean:strict'];
+        // Em que descanso os usos voltam (padrão: o longo). Qualquer descanso desliga os buffs ativos.
+        $r['caracteristicas.*.descanso'] = ['nullable', 'string', Rule::in(['curto', 'longo'])];
+        $r += Efeitos::regras('caracteristicas.*.efeitos', self::alvosDeEfeito());
 
         $r['magias.atributo'] = ['string', Rule::in(self::ATRIBUTOS)];
         $r['magias.preparadas.max'] = $inteiro(0, 200);
@@ -193,6 +221,14 @@ final class FichaDnd5e
             'dados.arma.bonusAtaque' => ['nullable', 'integer:strict', 'between:-10,20'],
             'dados.arma.bonusDano' => ['nullable', 'integer:strict', 'between:-10,20'],
             'dados.arma.bonusMagico' => ['integer:strict', 'between:-3,10'],
+            // Dados extras DA ARMA (ex.: +2d6 de fogo): até 3, cada um com o tipo do dano. Sem regra no pai, para só o declarado
+            // ser guardado; o limite de 3 vai na regra de cada um.
+            'dados.arma.danoExtra.*.dados' => ['required', 'string', 'regex:'.Efeitos::REGEX_DADOS, function (string $atributo, mixed $valor, \Closure $fail) {
+                if (preg_match('/danoExtra\.(\d+)\./', $atributo, $m) && (int) $m[1] >= self::MAX_DANO_EXTRA) {
+                    $fail('No máximo '.self::MAX_DANO_EXTRA.' dados extras por arma.');
+                }
+            }],
+            'dados.arma.danoExtra.*.tipo' => ['nullable', 'string', 'max:30'],
             'dados.arma.margemCritica' => ['integer:strict', 'between:10,20'], // d20 puro igual ou maior é crítico (padrão 20)
         ];
     }

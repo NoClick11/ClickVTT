@@ -127,10 +127,10 @@ class ChatTest extends TestCase
     }
 
     /** Cenário com uma arma equipada de margem crítica `$margem`; o sorteio devolve os valores da fila (d20 fixo). */
-    private function ataqueComArma(int $margem, array $sorteios, string $expressao = '1d20+@arma.%d.ataque', array $ficha = []): array
+    private function ataqueComArma(int $margem, array $sorteios, string $expressao = '1d20+@arma.%d.ataque', array $ficha = [], array $dadosArma = []): array
     {
         $c = $this->cenario();
-        $espada = $c->mesa->itens()->create(['nome' => 'Espada', 'peso' => 3, 'dados' => ['arma' => ['dano' => '1d8', 'atributo' => 'for', 'proficiente' => true, 'margemCritica' => $margem]]]);
+        $espada = $c->mesa->itens()->create(['nome' => 'Espada', 'peso' => 3, 'dados' => ['arma' => $dadosArma + ['dano' => '1d8', 'atributo' => 'for', 'proficiente' => true, 'margemCritica' => $margem]]]);
         $c->aria->forceFill(['ficha' => array_replace_recursive(FichaDnd5e::padrao(), $ficha, ['inventario' => [['secao' => 'A', 'itens' => [['item_id' => $espada->id, 'qtd' => 1, 'equipado' => true, 'sintonizado' => false]]]]])])->save();
         $this->app->instance(Rolador::class, new Rolador(function (int $faces) use (&$sorteios) {
             return min($faces, array_shift($sorteios) ?? 1);
@@ -182,6 +182,50 @@ class ChatTest extends TestCase
 
         // Falha crítica (1 natural) erra sempre: sem botão de dano.
         $this->assertArrayNotHasKey('acoes', $this->ataqueComArma(20, [1], ficha: $ficha)['sistema']);
+    }
+
+    public function test_dano_do_card_soma_os_dados_extras_da_arma_e_dos_buffs_e_o_critico_dobra_todos(): void
+    {
+        $ficha = ['atributos' => ['for' => 16], 'caracteristicas' => [
+            ['nome' => 'Ataque Furtivo', 'origem' => 'Ladino 1', 'tipo' => 'ativa', 'ativa' => true, 'efeitos' => [['alvo' => 'dano.arma', 'modo' => 'dados', 'valor' => '3d6']]],
+            ['nome' => 'Golpe Desligado', 'origem' => 'X', 'tipo' => 'ativa', 'ativa' => false, 'efeitos' => [['alvo' => 'dano.arma', 'modo' => 'dados', 'valor' => '9d6']]],
+        ]];
+        $extra = ['danoExtra' => [['dados' => '2d6', 'tipo' => 'fogo']]];
+
+        // FOR 16 = +3. A arma (1d8), o extra dela (2d6) e o buff ligado (3d6); o buff desligado não entra.
+        $normal = $this->ataqueComArma(20, [10], ficha: $ficha, dadosArma: $extra);
+        $a = $normal['arma_id'];
+        $this->assertSame(['dano'], array_column($normal['sistema']['acoes'], 'id'));
+        $this->assertSame("1d8+2d6+3d6+@arma.{$a}.dano", $normal['sistema']['acoes'][0]['expressao']);
+        $this->assertSame('1d8+2d6+3d6+3', $normal['sistema']['acoes'][0]['resumo']);
+
+        // Crítico: TODOS os dados dobram; o bônus fixo entra uma vez.
+        $critico = $this->ataqueComArma(20, [20], ficha: $ficha, dadosArma: $extra);
+        $a = $critico['arma_id'];
+        $this->assertSame("2d8+4d6+6d6+@arma.{$a}.dano", $critico['sistema']['acoes'][0]['expressao']);
+        $this->assertSame('2d8+4d6+6d6+3', $critico['sistema']['acoes'][0]['resumo']);
+        $this->assertSame('1d8+2d6+3d6+3', $critico['sistema']['acoes'][1]['resumo']); // o normal ao lado
+
+        // A ação do card rola de verdade, com todos esses dados.
+        $c = $critico['c'];
+        $this->app->instance(Rolador::class, new Rolador(fn (int $faces) => 2));
+        $r = $this->rolar($c, $c->ana, ['expressao' => $critico['sistema']['acoes'][0]['expressao'], 'personagem_id' => $c->aria->id])->assertCreated()->json('dados');
+        $this->assertSame((2 + 4 + 6) * 2 + 3, $r['total']); // 12 dados valendo 2 cada, mais o +3
+    }
+
+    public function test_extras_que_estourariam_o_limite_do_rolador_no_critico_ficam_de_fora(): void
+    {
+        // 50d6 + três extras de 20d6: dobrado seria 220 dados (o limite é 200). Os dois primeiros extras cabem (180).
+        $r = $this->ataqueComArma(20, [20], dadosArma: ['dano' => '50d6', 'danoExtra' => [['dados' => '20d6'], ['dados' => '20d6'], ['dados' => '20d6']]]);
+        $a = $r['arma_id'];
+
+        $this->assertSame("100d6+40d6+40d6+@arma.{$a}.dano", $r['sistema']['acoes'][0]['expressao']);
+        $this->assertSame("50d6+20d6+20d6+@arma.{$a}.dano", $r['sistema']['acoes'][1]['expressao']);
+
+        // E a expressão do crítico é aceita pelo rolador (não estoura o limite).
+        $c = $r['c'];
+        $this->app->instance(Rolador::class, new Rolador(fn (int $faces) => 1));
+        $this->rolar($c, $c->ana, ['expressao' => $r['sistema']['acoes'][0]['expressao'], 'personagem_id' => $c->aria->id])->assertCreated();
     }
 
     public function test_resumo_do_dano_sem_bonus_e_com_bonus_negativo(): void
@@ -286,6 +330,29 @@ class ChatTest extends TestCase
         // FOR 16 = +3, sem proficiência
         $this->assertSame([5, 4], [$v["arma.{$separados->id}.ataque"], $v["arma.{$separados->id}.dano"]]); // +2 no acerto, +1 no dano
         $this->assertSame([6, 6], [$v["arma.{$antiga->id}.ataque"], $v["arma.{$antiga->id}.dano"]]);       // formato antigo: +3 nos dois
+    }
+
+    public function test_buffs_de_caracteristica_valem_passiva_sempre_e_ativa_so_ligada(): void
+    {
+        $c = $this->cenario();
+        $c->aria->forceFill(['ficha' => array_replace(FichaDnd5e::padrao(), ['caracteristicas' => [
+            ['nome' => 'Estilo de Luta: Defesa', 'origem' => 'Guerreiro 1', 'tipo' => 'passiva', 'efeitos' => [['alvo' => 'ca', 'modo' => 'soma', 'valor' => 1]]],
+            ['nome' => 'Escudo da Fé', 'origem' => 'Clérigo 1', 'tipo' => 'ativa', 'ativa' => false, 'efeitos' => [['alvo' => 'ca', 'modo' => 'soma', 'valor' => 2]]],
+        ]])])->save();
+        $ca = fn () => collect($this->rolar($c, $c->ana, ['expressao' => '@ca', 'personagem_id' => $c->aria->id])->assertCreated()->json('dados.termos'))->firstWhere('nome', 'ca')['valor'];
+
+        $this->assertSame(11, $ca()); // 10 + a passiva (+1); a ativa está desligada
+
+        // Ligar o interruptor (edição normal da ficha pelo dono) faz o buff valer na próxima rolagem.
+        $url = route('jogo.personagens.ficha', [$c->mesa->id, $c->aria->id]);
+        $lista = $c->aria->fresh()->ficha['caracteristicas'];
+        $lista[1]['ativa'] = true;
+        $this->como($c->ana)->patchJson($url, ['campos' => ['caracteristicas' => $lista]])->assertOk();
+        $this->assertSame(13, $ca());
+
+        $lista[1]['ativa'] = false;
+        $this->como($c->ana)->patchJson($url, ['campos' => ['caracteristicas' => $lista]])->assertOk();
+        $this->assertSame(11, $ca());
     }
 
     public function test_arma_nao_equipada_nao_gera_variavel(): void

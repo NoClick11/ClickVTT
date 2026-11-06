@@ -163,6 +163,23 @@ class ItemTest extends TestCase
         $post(['bonusDano' => 1.5])->assertStatus(422);     // inteiro
     }
 
+    public function test_dados_extras_da_arma(): void
+    {
+        $c = $this->cenario();
+        $post = fn (array $extras) => $this->como($c->mestre)->postJson(route('jogo.itens.store', $c->mesa->id), $this->corpo(['efeitos' => []]) + ['dados' => ['arma' => ['dano' => '1d8', 'atributo' => 'for', 'danoExtra' => $extras]]]);
+
+        $r = $post([['dados' => '2d6', 'tipo' => 'fogo', 'lixo' => 1], ['dados' => '1d4']])->assertCreated()->json('dados.arma.danoExtra');
+        $this->assertSame([['dados' => '2d6', 'tipo' => 'fogo'], ['dados' => '1d4']], $r); // só o declarado é guardado
+
+        $post([['dados' => '1d6'], ['dados' => '1d6'], ['dados' => '1d6']])->assertCreated();   // até 3
+        $post([['dados' => '1d6'], ['dados' => '1d6'], ['dados' => '1d6'], ['dados' => '1d6']])->assertStatus(422); // 4 não
+        $post([['dados' => '21d6']])->assertStatus(422);
+        $post([['dados' => '2d6+3']])->assertStatus(422);   // modificador vai no bônus fixo
+        $post([['dados' => '1d1']])->assertStatus(422);
+        $post([['dados' => 2]])->assertStatus(422);
+        $post([['tipo' => 'fogo']])->assertStatus(422);     // sem os dados
+    }
+
     public function test_atributo_do_dano_e_separado_do_do_ataque(): void
     {
         $c = $this->cenario();

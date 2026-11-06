@@ -53,14 +53,14 @@ class ChatController extends Controller
             'personagem_id' => ['nullable', 'integer', Rule::in($acesso->personagensPermitidos())], // personagem ativo
         ]);
 
-        [$sistema, $variaveis, $itens] = $this->variaveis($mesa, $dados['personagem_id'] ?? null, $sistemas);
+        [$sistema, $variaveis, $itens, $ficha] = $this->variaveis($mesa, $dados['personagem_id'] ?? null, $sistemas);
         try {
             $resultado = $rolador->rolar($dados['expressao'], $variaveis);
         } catch (RolagemInvalida $e) {
             throw ValidationException::withMessages(['expressao' => $e->getMessage()]);
         }
         // O sistema pode marcar a rolagem (ex.: ataque crítico); o núcleo só guarda e repassa.
-        $marcas = $sistema?->metadadosDaRolagem($resultado['termos'], $variaveis, $itens) ?? [];
+        $marcas = $sistema?->metadadosDaRolagem($resultado['termos'], $variaveis, $itens, $ficha) ?? [];
 
         $mensagem = $mesa->mensagens()->create([
             'jogador_id' => $acesso->jogador->id,
@@ -82,9 +82,9 @@ class ChatController extends Controller
 
     /**
      * O módulo do sistema, as variáveis do personagem e os itens da ficha dele (sem personagem ou sem módulo:
-     * `[null, [], []]`).
+     * `[null, [], [], []]`).
      *
-     * @return array{0: ?Sistema, 1: array<string, int|float>, 2: array<int, array>}
+     * @return array{0: ?Sistema, 1: array<string, int|float>, 2: array<int, array>, 3: array<string, mixed>}
      */
     private function variaveis(Mesa $mesa, ?int $personagemId, RegistroSistemas $sistemas): array
     {
@@ -92,13 +92,13 @@ class ChatController extends Controller
         $sistema = $personagem ? $sistemas->resolver($mesa->sistema->slug) : null;
 
         if (! $sistema) {
-            return [null, [], []];
+            return [null, [], [], []];
         }
         $ficha = $personagem->ficha ?? $sistema->fichaPadrao();
         $ids = $sistema->itensReferenciados($ficha);
         $itens = $ids ? $mesa->itens()->whereIn('id', $ids)->get()->mapWithKeys(fn ($i) => [$i->id => $i->paraFront()])->all() : [];
 
-        return [$sistema, $sistema->variaveisDeRolagem($ficha, $itens), $itens];
+        return [$sistema, $sistema->variaveisDeRolagem($ficha, $itens), $itens, $ficha];
     }
 
     /** Distribui a mensagem: cada canal recebe só o que pode ver. Quem enviou recebe a sua pela resposta. */

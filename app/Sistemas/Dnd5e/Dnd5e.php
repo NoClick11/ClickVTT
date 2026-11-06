@@ -27,9 +27,9 @@ class Dnd5e implements Sistema
         return Regras::calcular($ficha, $itens);
     }
 
-    public function metadadosDaRolagem(array $termos, array $variaveis, array $itens = []): array
+    public function metadadosDaRolagem(array $termos, array $variaveis, array $itens = [], array $ficha = []): array
     {
-        return Regras::metadadosDaRolagem($termos, $variaveis, $itens);
+        return Regras::metadadosDaRolagem($termos, $variaveis, $itens, $ficha);
     }
 
     public function itensReferenciados(array $ficha): array
@@ -62,15 +62,6 @@ class Dnd5e implements Sistema
 
     public function alvosDeEfeito(): array
     {
-        return [
-            // numéricos (soma, base, mín., máx.)
-            'ca', 'iniciativa', 'cd', 'ataque', 'ataque.arma', 'dano.arma', 'carga.max', 'pv.max',
-            'salv.*', 'pericia.*', 'atributos.*',
-            // só para vantagem/desvantagem: testes de atributo e de ferramenta (os demais alvos de rolagem são os de cima)
-            'teste.*', 'ferramenta.*', ...array_map(fn ($a) => "teste.{$a}", FichaDnd5e::ATRIBUTOS),
-            ...array_map(fn ($a) => "salv.{$a}", FichaDnd5e::ATRIBUTOS),
-            ...array_map(fn ($a) => "atributos.{$a}", FichaDnd5e::ATRIBUTOS),
-            ...array_map(fn ($p) => "pericia.{$p}", array_keys(FichaDnd5e::PERICIAS)),
-        ];
+        return FichaDnd5e::alvosDeEfeito();
     }
 }

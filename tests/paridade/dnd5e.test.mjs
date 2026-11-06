@@ -10,7 +10,10 @@ import {
     analisar,
     armasAtivas,
     calcular,
+    camposDoDescanso,
+    comBuffAlternado,
     comItemEntregue,
+    dadosDeDano,
     efeitosAtivos,
     modoDaRolagem,
 } from '../../resources/js/app/sistemas/dnd5e/regras.ts';
@@ -21,6 +24,8 @@ for (const caso of casos) {
     test(caso.nome, () => {
         const r = calcular(caso.ficha, caso.itens ?? {});
         if (!caso.parcial) assert.deepEqual(Object.keys(r).sort(), Object.keys(caso.esperado).sort(), 'chaves diferentes');
+        for (const [id, esperado] of Object.entries(caso.dadosDeDano ?? {}))
+            assert.deepEqual(dadosDeDano(caso.ficha, caso.itens ?? {}, Number(id)), esperado, `dados do dano do item ${id}`);
         if (caso.efeitosAtivos) assert.deepEqual(efeitosAtivos(caso.ficha, caso.itens ?? {}), caso.efeitosAtivos, 'efeitos ativos');
         for (const [chave, valor] of Object.entries(caso.esperado)) {
             assert.ok(chave in r, `falta ${chave}`);
@@ -98,6 +103,121 @@ test('armasAtivas lista só as armas que contam, com os bônus calculados', () =
     assert.deepEqual(armasAtivas(naoEquipada, base.itens, calcular(naoEquipada, base.itens)), []);
 });
 
+test('buffs de característica chegam aos botões certos (só passiva e ativa ligada)', () => {
+    const ficha = structuredClone(base.ficha);
+    ficha.caracteristicas = [
+        { nome: 'Fúria', origem: 'Bárbaro 1', tipo: 'ativa', ativa: true, efeitos: [{ alvo: 'pericia.atletismo', modo: 'vantagem' }] },
+        { nome: 'Calma', origem: 'Monge 1', tipo: 'ativa', ativa: false, efeitos: [{ alvo: 'pericia.furtividade', modo: 'vantagem' }] },
+        { nome: 'Sentidos Aguçados', origem: 'Elfo', tipo: 'passiva', efeitos: [{ alvo: 'pericia.percepcao', modo: 'vantagem' }] },
+    ];
+    const { efeitos } = analisar(ficha, base.itens);
+
+    assert.equal(modoDaRolagem(efeitos, 'pericia.atletismo'), 'vantagem');
+    assert.equal(modoDaRolagem(efeitos, 'pericia.furtividade'), null, 'ativa desligada não conta');
+    assert.equal(modoDaRolagem(efeitos, 'pericia.percepcao'), 'vantagem', 'passiva sempre vale');
+    assert.deepEqual([...new Set(efeitos.map((e) => e.fonte))], ['Fúria', 'Sentidos Aguçados']);
+
+    // o bônus numérico mostra a característica como origem
+    ficha.caracteristicas.push({ nome: 'Defesa', origem: 'Guerreiro 1', tipo: 'passiva', efeitos: [{ alvo: 'ca', modo: 'soma', valor: 1 }] });
+    assert.deepEqual(analisar(ficha, base.itens).origens.ca, [{ fonte: 'Defesa', modo: 'soma', valor: 1 }]);
+});
+
+test('ligar um buff gasta um uso; sem uso não liga; desligar não devolve; passiva não tem interruptor', () => {
+    const furia = {
+        nome: 'Fúria',
+        origem: 'Bárbaro 1',
+        tipo: 'ativa',
+        ativa: false,
+        usos: { atual: 2, max: 3 },
+        efeitos: [{ alvo: 'dano.arma', modo: 'soma', valor: 2 }],
+    };
+
+    const ligada = comBuffAlternado(furia);
+    assert.equal(ligada.ativa, true);
+    assert.deepEqual(ligada.usos, { atual: 1, max: 3 });
+    assert.deepEqual(furia.usos, { atual: 2, max: 3 }, 'não muda o original');
+
+    const desligada = comBuffAlternado(ligada);
+    assert.equal(desligada.ativa, false);
+    assert.deepEqual(desligada.usos, { atual: 1, max: 3 }, 'desligar não devolve o uso');
+
+    assert.equal(comBuffAlternado({ ...furia, usos: { atual: 0, max: 3 } }), null, 'sem usos restantes não liga');
+    assert.equal(comBuffAlternado({ ...furia, ativa: true, usos: { atual: 0, max: 3 } }).ativa, false, 'ligada sempre pode desligar');
+
+    const semUsos = { nome: 'Escudo da Fé', origem: 'Clérigo', tipo: 'ativa', efeitos: [] };
+    assert.equal(comBuffAlternado(semUsos).ativa, true, 'sem controle de usos liga de graça');
+    assert.equal(comBuffAlternado({ ...semUsos, usos: { atual: 0, max: 0 } }).ativa, true, 'max 0 também é sem controle');
+    assert.equal(comBuffAlternado({ nome: 'Alerta', origem: 'Talento', tipo: 'passiva' }), null);
+});
+
+const fichaDeDescanso = () => ({
+    nivel: 5,
+    pv: { atual: 10, max: 44, temp: 3 },
+    dadosVida: { restantes: 1, tipo: 'd8' },
+    exaustao: 2,
+    morte: { sucessos: 2, falhas: 1 },
+    magias: {
+        atributo: 'sab',
+        preparadas: { max: 0 },
+        espacos: [
+            { nivel: 1, usados: 3, total: 4 },
+            { nivel: 2, usados: 1, total: 3 },
+        ],
+        lista: [],
+    },
+    caracteristicas: [
+        { nome: 'Fúria', origem: 'Bárbaro 1', tipo: 'ativa', ativa: true, usos: { atual: 0, max: 3 }, efeitos: [] },
+        { nome: 'Retomar o Fôlego', origem: 'Guerreiro 1', tipo: 'ativa', ativa: false, descanso: 'curto', usos: { atual: 0, max: 1 }, efeitos: [] },
+        { nome: 'Defesa', origem: 'Guerreiro 1', tipo: 'passiva', efeitos: [] },
+    ],
+});
+
+test('descanso longo: restaura tudo, usa o PV máximo EFETIVO e desliga os buffs', () => {
+    const campos = camposDoDescanso(fichaDeDescanso(), 'longo', 49); // 44 base + 5 de um item
+    assert.equal(campos['pv.atual'], 49);
+    assert.equal(campos['dadosVida.restantes'], 3, 'metade do nível (2) a mais');
+    assert.equal(campos.exaustao, 1);
+    assert.equal(campos['morte.sucessos'], 0);
+    assert.equal(campos['morte.falhas'], 0);
+    assert.deepEqual(campos['magias.espacos'], [
+        { nivel: 1, usados: 0, total: 4 },
+        { nivel: 2, usados: 0, total: 3 },
+    ]);
+    const c = campos.caracteristicas;
+    assert.deepEqual([c[0].ativa, c[0].usos.atual], [false, 3], 'Fúria: desligada e usos de volta');
+    assert.equal(c[1].usos.atual, 1, 'as de descanso curto também voltam no longo');
+    assert.equal('ativa' in c[2], false, 'passiva não ganha o campo ativa');
+});
+
+test('descanso longo: nunca passa do nível em dados de vida nem desce a exaustão de 0', () => {
+    const f = fichaDeDescanso();
+    f.dadosVida.restantes = 5;
+    f.exaustao = 0;
+    const campos = camposDoDescanso(f, 'longo');
+    assert.equal(campos['dadosVida.restantes'], 5);
+    assert.equal(campos.exaustao, 0);
+    assert.equal(campos['pv.atual'], 44, 'sem pvMax informado usa o da ficha');
+    f.nivel = 1;
+    f.dadosVida.restantes = 0;
+    assert.equal(camposDoDescanso(f, 'longo')['dadosVida.restantes'], 1, 'pelo menos 1 dado de vida');
+});
+
+test('descanso curto: só as de descanso curto voltam; os buffs desligam; PV e magias ficam', () => {
+    const campos = camposDoDescanso(fichaDeDescanso(), 'curto');
+    assert.deepEqual(Object.keys(campos), ['caracteristicas']);
+    const c = campos.caracteristicas;
+    assert.deepEqual([c[0].ativa, c[0].usos.atual], [false, 0], 'Fúria desliga mas o uso NÃO volta (é de descanso longo)');
+    assert.equal(c[1].usos.atual, 1, 'Retomar o Fôlego volta');
+});
+
+test('descanso curto sem nada a mudar não devolve campos', () => {
+    const f = fichaDeDescanso();
+    f.caracteristicas = [{ nome: 'Defesa', origem: 'Guerreiro 1', tipo: 'passiva', efeitos: [] }];
+    assert.deepEqual(camposDoDescanso(f, 'curto'), {});
+    f.caracteristicas = undefined;
+    assert.deepEqual(camposDoDescanso(f, 'curto'), {}, 'ficha antiga sem características');
+});
+
 test('catálogo de condições confere com a referência', () => {
     assert.deepEqual(CONDICOES, JSON.parse(readFileSync(new URL('./condicoes-dnd5e.json', import.meta.url), 'utf8')));
 });
@@ -134,6 +254,8 @@ test('cada alvo tem modos coerentes: teste.* e ferramenta.* só de rolagem; atri
     assert.deepEqual(modos('teste.for'), ['vantagem', 'desvantagem']);
     assert.deepEqual(modos('ferramenta.*'), ['vantagem', 'desvantagem']);
     assert.deepEqual(modos('ca'), ['soma', 'base', 'min', 'max']);
+    assert.deepEqual(modos('dano.arma'), ['soma', 'base', 'min', 'max', 'dados'], 'só o dano das armas aceita dados extras');
+    assert.equal(ALVOS_DE_EFEITO.filter((a) => a.modos.includes('dados')).length, 1);
     assert.deepEqual(modos('atributos.for'), ['soma', 'base', 'min', 'max']);
     assert.ok(modos('pericia.percepcao').includes('vantagem') && modos('pericia.percepcao').includes('soma'));
 });

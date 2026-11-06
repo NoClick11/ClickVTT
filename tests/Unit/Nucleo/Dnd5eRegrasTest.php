@@ -31,6 +31,9 @@ class Dnd5eRegrasTest extends TestCase
         if (! ($caso['parcial'] ?? false)) {
             $this->assertEqualsCanonicalizing(array_keys($caso['esperado']), array_keys($calculado), 'chaves diferentes');
         }
+        foreach ($caso['dadosDeDano'] ?? [] as $id => $esperado) {
+            $this->assertSame($esperado, Regras::dadosDeDano($caso['ficha'], $itens, (int) $id), "{$nome}: dados do dano do item {$id}");
+        }
         if (isset($caso['efeitosAtivos'])) {
             $this->assertEquals($caso['efeitosAtivos'], Regras::efeitosAtivos($caso['ficha'], $itens), "{$nome}: efeitos ativos");
         }

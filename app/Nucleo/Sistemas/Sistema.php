@@ -47,9 +47,10 @@ interface Sistema
      * @param  list<array>  $termos  termos da rolagem (`Rolador::rolar()['termos']`)
      * @param  array<string, int|float>  $variaveis  as mesmas variáveis usadas na rolagem
      * @param  array<int, array>  $itens  itens da mesa referenciados pela ficha, por id (`Item::paraFront()`)
+     * @param  array<string, mixed>  $ficha  a ficha do personagem que rolou (ex.: para os buffs que acrescentam dados ao dano)
      * @return array<string, mixed> vazio quando não há nada a marcar
      */
-    public function metadadosDaRolagem(array $termos, array $variaveis, array $itens = []): array;
+    public function metadadosDaRolagem(array $termos, array $variaveis, array $itens = [], array $ficha = []): array;
 
     /**
      * Ids dos itens da mesa que a ficha referencia no inventário (sem repetição).

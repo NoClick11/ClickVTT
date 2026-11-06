@@ -209,6 +209,49 @@ class FichaTest extends TestCase
         $this->assertSame(2, $c->aria->fresh()->ficha['ajustes']['ca']);
     }
 
+    public function test_caracteristica_com_buffs_e_salva_e_validada(): void
+    {
+        $c = $this->cenario();
+        $furia = ['nome' => 'Fúria', 'origem' => 'Bárbaro 1', 'tipo' => 'ativa', 'ativa' => false, 'usos' => ['atual' => 2, 'max' => 2], 'efeitos' => [
+            ['alvo' => 'dano.arma', 'modo' => 'soma', 'valor' => 2],
+            ['alvo' => 'pericia.atletismo', 'modo' => 'vantagem'],
+            ['alvo' => 'ca', 'modo' => 'soma', 'valor' => '@mod.con'],
+        ]];
+        $salvar = fn (array $caracteristica) => $this->salvar($c, $c->ana, ['caracteristicas' => [$caracteristica]]);
+
+        $r = $salvar($furia)->assertOk()->json();
+        $this->assertSame($furia['efeitos'], $r['ficha']['caracteristicas'][0]['efeitos']);
+        $this->assertFalse($r['ficha']['caracteristicas'][0]['ativa']);
+
+        $salvar(['nome' => 'Antiga', 'origem' => 'Clérigo', 'tipo' => 'passiva'])->assertOk(); // sem efeitos (formato antigo) continua valendo
+
+        $ruim = fn (array $efeito) => $salvar(['nome' => 'X', 'origem' => 'Y', 'tipo' => 'passiva', 'efeitos' => [$efeito]]);
+        $ruim(['alvo' => 'mana', 'modo' => 'soma', 'valor' => 1])->assertStatus(422);          // alvo que o sistema não tem
+        $ruim(['alvo' => 'ca', 'modo' => 'multiplica', 'valor' => 2])->assertStatus(422);
+        $ruim(['alvo' => 'ca', 'modo' => 'soma', 'valor' => '2d6'])->assertStatus(422);        // fórmula sem dados
+        $ruim(['alvo' => 'ca', 'modo' => 'soma'])->assertStatus(422);                           // soma sem valor
+        $salvar(['nome' => 'X', 'origem' => 'Y', 'tipo' => 'ativa', 'ativa' => 'sim'])->assertStatus(422);   // o interruptor é booleano de verdade
+        $salvar(['nome' => 'X', 'origem' => 'Y', 'tipo' => 'passiva', 'efeitos' => array_fill(0, 31, ['alvo' => 'ca', 'modo' => 'soma', 'valor' => 1])])->assertStatus(422);
+
+        $this->assertSame('Antiga', $c->aria->fresh()->ficha['caracteristicas'][0]['nome']); // nada ruim foi gravado
+    }
+
+    public function test_caracteristica_com_dano_extra_em_dados_e_descanso(): void
+    {
+        $c = $this->cenario();
+        $furtivo = ['nome' => 'Ataque Furtivo', 'origem' => 'Ladino 1', 'tipo' => 'ativa', 'ativa' => false, 'descanso' => 'curto', 'usos' => ['atual' => 1, 'max' => 1], 'efeitos' => [['alvo' => 'dano.arma', 'modo' => 'dados', 'valor' => '3d6']]];
+        $salvar = fn (array $caracteristica) => $this->salvar($c, $c->ana, ['caracteristicas' => [$caracteristica]]);
+
+        $r = $salvar($furtivo)->assertOk()->json('ficha.caracteristicas.0');
+        $this->assertSame(['curto', '3d6'], [$r['descanso'], $r['efeitos'][0]['valor']]);
+
+        $salvar([...$furtivo, 'descanso' => 'longo'])->assertOk();
+        $salvar([...$furtivo, 'descanso' => 'nunca'])->assertStatus(422);
+        $salvar([...$furtivo, 'efeitos' => [['alvo' => 'dano.arma', 'modo' => 'dados', 'valor' => '3d6+2']]])->assertStatus(422);
+        $salvar([...$furtivo, 'efeitos' => [['alvo' => 'dano.arma', 'modo' => 'dados', 'valor' => 3]]])->assertStatus(422);
+        $this->assertSame('longo', $c->aria->fresh()->ficha['caracteristicas'][0]['descanso']);
+    }
+
     public function test_condicoes_sao_salvas_e_validadas_contra_o_catalogo(): void
     {
         $c = $this->cenario();

@@ -6349,5 +6349,2083 @@
             "arma.7.ataque": 3,
             "arma.7.dano": 3
         }
+    },
+    {
+        "nome": "característica passiva soma na CA",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 10,
+                "des": 14,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": []
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Estilo de Luta: Defesa",
+                    "origem": "Classe 1",
+                    "tipo": "passiva",
+                    "efeitos": [
+                        {
+                            "alvo": "ca",
+                            "modo": "soma",
+                            "valor": 1
+                        }
+                    ]
+                }
+            ]
+        },
+        "itens": {},
+        "esperado": {
+            "ca": 13
+        }
+    },
+    {
+        "nome": "característica passiva ignora o campo ativa",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 10,
+                "des": 14,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": []
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Estilo de Luta: Defesa",
+                    "origem": "Classe 1",
+                    "tipo": "passiva",
+                    "efeitos": [
+                        {
+                            "alvo": "ca",
+                            "modo": "soma",
+                            "valor": 1
+                        }
+                    ],
+                    "ativa": false
+                }
+            ]
+        },
+        "itens": {},
+        "esperado": {
+            "ca": 13
+        }
+    },
+    {
+        "nome": "característica ativa desligada não conta",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 16,
+                "des": 10,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": [
+                        {
+                            "item_id": 7,
+                            "qtd": 1,
+                            "equipado": true,
+                            "sintonizado": false
+                        }
+                    ]
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Fúria",
+                    "origem": "Classe 1",
+                    "tipo": "ativa",
+                    "efeitos": [
+                        {
+                            "alvo": "dano.arma",
+                            "modo": "soma",
+                            "valor": 2
+                        }
+                    ],
+                    "ativa": false
+                }
+            ]
+        },
+        "itens": {
+            "7": {
+                "nome": "Espada",
+                "peso": 1,
+                "equipavel": true,
+                "requer_sintonia": false,
+                "dados": {
+                    "arma": {
+                        "dano": "1d8",
+                        "atributo": "for",
+                        "proficiente": false
+                    }
+                },
+                "efeitos": []
+            }
+        },
+        "esperado": {
+            "dano.arma": 0,
+            "arma.7.dano": 3
+        }
+    },
+    {
+        "nome": "característica ativa ligada conta",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 16,
+                "des": 10,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": [
+                        {
+                            "item_id": 7,
+                            "qtd": 1,
+                            "equipado": true,
+                            "sintonizado": false
+                        }
+                    ]
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Fúria",
+                    "origem": "Classe 1",
+                    "tipo": "ativa",
+                    "efeitos": [
+                        {
+                            "alvo": "dano.arma",
+                            "modo": "soma",
+                            "valor": 2
+                        }
+                    ],
+                    "ativa": true
+                }
+            ]
+        },
+        "itens": {
+            "7": {
+                "nome": "Espada",
+                "peso": 1,
+                "equipavel": true,
+                "requer_sintonia": false,
+                "dados": {
+                    "arma": {
+                        "dano": "1d8",
+                        "atributo": "for",
+                        "proficiente": false
+                    }
+                },
+                "efeitos": []
+            }
+        },
+        "esperado": {
+            "dano.arma": 2,
+            "arma.7.dano": 5,
+            "arma.7.ataque": 3
+        }
+    },
+    {
+        "nome": "característica ativa sem o campo ativa não conta",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 16,
+                "des": 10,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": [
+                        {
+                            "item_id": 7,
+                            "qtd": 1,
+                            "equipado": true,
+                            "sintonizado": false
+                        }
+                    ]
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Fúria",
+                    "origem": "Classe 1",
+                    "tipo": "ativa",
+                    "efeitos": [
+                        {
+                            "alvo": "dano.arma",
+                            "modo": "soma",
+                            "valor": 2
+                        }
+                    ]
+                }
+            ]
+        },
+        "itens": {
+            "7": {
+                "nome": "Espada",
+                "peso": 1,
+                "equipavel": true,
+                "requer_sintonia": false,
+                "dados": {
+                    "arma": {
+                        "dano": "1d8",
+                        "atributo": "for",
+                        "proficiente": false
+                    }
+                },
+                "efeitos": []
+            }
+        },
+        "esperado": {
+            "dano.arma": 0,
+            "arma.7.dano": 3
+        }
+    },
+    {
+        "nome": "característica com fórmula (Aura de Proteção)",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 16
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": []
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Aura de Proteção",
+                    "origem": "Classe 1",
+                    "tipo": "passiva",
+                    "efeitos": [
+                        {
+                            "alvo": "salv.*",
+                            "modo": "soma",
+                            "valor": "@mod.car"
+                        }
+                    ]
+                }
+            ]
+        },
+        "itens": {},
+        "esperado": {
+            "salv.for": 3,
+            "salv.sab": 3,
+            "salv.car": 6
+        }
+    },
+    {
+        "nome": "característica Alerta: +5 de iniciativa",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 10,
+                "des": 14,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": []
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Alerta",
+                    "origem": "Classe 1",
+                    "tipo": "passiva",
+                    "efeitos": [
+                        {
+                            "alvo": "iniciativa",
+                            "modo": "soma",
+                            "valor": 5
+                        }
+                    ]
+                }
+            ]
+        },
+        "itens": {},
+        "esperado": {
+            "iniciativa": 7
+        }
+    },
+    {
+        "nome": "característica aumenta atributo",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 16,
+                "des": 10,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": []
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Aumento de Atributo",
+                    "origem": "Classe 1",
+                    "tipo": "passiva",
+                    "efeitos": [
+                        {
+                            "alvo": "atributos.for",
+                            "modo": "soma",
+                            "valor": 2
+                        }
+                    ]
+                }
+            ]
+        },
+        "itens": {},
+        "esperado": {
+            "atributos.for": 18,
+            "mod.for": 4,
+            "carga.max": 270
+        }
+    },
+    {
+        "nome": "característica, item e ajuste somam juntos",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 10,
+                "des": 14,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 1,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": [
+                        {
+                            "item_id": 3,
+                            "qtd": 1,
+                            "equipado": true,
+                            "sintonizado": false
+                        }
+                    ]
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Defesa",
+                    "origem": "Classe 1",
+                    "tipo": "passiva",
+                    "efeitos": [
+                        {
+                            "alvo": "ca",
+                            "modo": "soma",
+                            "valor": 1
+                        }
+                    ]
+                }
+            ]
+        },
+        "itens": {
+            "3": {
+                "nome": "Anel",
+                "peso": 0,
+                "equipavel": true,
+                "requer_sintonia": false,
+                "dados": null,
+                "efeitos": [
+                    {
+                        "alvo": "ca",
+                        "modo": "soma",
+                        "valor": 1
+                    }
+                ]
+            }
+        },
+        "esperado": {
+            "ca": 15
+        }
+    },
+    {
+        "nome": "característica sem efeitos (formato antigo)",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": []
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Canalizar",
+                    "origem": "Clérigo 2",
+                    "tipo": "ativa",
+                    "usos": {
+                        "atual": 1,
+                        "max": 2
+                    }
+                }
+            ]
+        },
+        "itens": {},
+        "esperado": {
+            "ca": 10
+        }
+    },
+    {
+        "nome": "característica nos efeitos ativos: itens, características, condições, ajustes",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 1,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": [
+                        {
+                            "item_id": 3,
+                            "qtd": 1,
+                            "equipado": true,
+                            "sintonizado": false
+                        }
+                    ]
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Fúria",
+                    "origem": "Classe 1",
+                    "tipo": "ativa",
+                    "efeitos": [
+                        {
+                            "alvo": "dano.arma",
+                            "modo": "soma",
+                            "valor": 2
+                        },
+                        {
+                            "alvo": "pericia.atletismo",
+                            "modo": "vantagem"
+                        }
+                    ],
+                    "ativa": true
+                },
+                {
+                    "nome": "Calma",
+                    "origem": "Classe 1",
+                    "tipo": "ativa",
+                    "efeitos": [
+                        {
+                            "alvo": "ca",
+                            "modo": "soma",
+                            "valor": 9
+                        }
+                    ],
+                    "ativa": false
+                }
+            ],
+            "condicoes": ["cego"]
+        },
+        "itens": {
+            "3": {
+                "nome": "Anel",
+                "peso": 0,
+                "equipavel": true,
+                "requer_sintonia": false,
+                "dados": null,
+                "efeitos": [
+                    {
+                        "alvo": "ca",
+                        "modo": "soma",
+                        "valor": 1
+                    }
+                ]
+            }
+        },
+        "esperado": {
+            "ca": 12
+        },
+        "efeitosAtivos": [
+            {
+                "fonte": "Anel",
+                "alvo": "ca",
+                "modo": "soma",
+                "valor": 1
+            },
+            {
+                "fonte": "Fúria",
+                "alvo": "dano.arma",
+                "modo": "soma",
+                "valor": 2
+            },
+            {
+                "fonte": "Fúria",
+                "alvo": "pericia.atletismo",
+                "modo": "vantagem",
+                "valor": null
+            },
+            {
+                "fonte": "Cego",
+                "alvo": "ataque.arma",
+                "modo": "desvantagem",
+                "valor": null
+            },
+            {
+                "fonte": "Cego",
+                "alvo": "ataque",
+                "modo": "desvantagem",
+                "valor": null
+            },
+            {
+                "fonte": "Ajuste manual",
+                "alvo": "ca",
+                "modo": "soma",
+                "valor": 1
+            }
+        ]
+    },
+    {
+        "nome": "dano em dados: só o dado da arma",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 16,
+                "des": 10,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": [
+                        {
+                            "item_id": 7,
+                            "qtd": 1,
+                            "equipado": true,
+                            "sintonizado": false
+                        }
+                    ]
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": []
+        },
+        "itens": {
+            "7": {
+                "nome": "Espada",
+                "peso": 1,
+                "equipavel": true,
+                "requer_sintonia": false,
+                "dados": {
+                    "arma": {
+                        "dano": "1d8",
+                        "atributo": "for",
+                        "proficiente": false
+                    }
+                },
+                "efeitos": []
+            }
+        },
+        "esperado": {
+            "arma.7.dano": 3
+        },
+        "dadosDeDano": {
+            "7": ["1d8"]
+        }
+    },
+    {
+        "nome": "dano em dados: extra da própria arma",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": [
+                        {
+                            "item_id": 7,
+                            "qtd": 1,
+                            "equipado": true,
+                            "sintonizado": false
+                        }
+                    ]
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": []
+        },
+        "itens": {
+            "7": {
+                "nome": "Espada",
+                "peso": 1,
+                "equipavel": true,
+                "requer_sintonia": false,
+                "dados": {
+                    "arma": {
+                        "dano": "1d8",
+                        "atributo": "for",
+                        "proficiente": false,
+                        "danoExtra": [
+                            {
+                                "dados": "2d6",
+                                "tipo": "fogo"
+                            }
+                        ]
+                    }
+                },
+                "efeitos": []
+            }
+        },
+        "esperado": {
+            "dano.arma": 0
+        },
+        "dadosDeDano": {
+            "7": ["1d8", "2d6"]
+        }
+    },
+    {
+        "nome": "dano em dados: buff ativo ligado soma dados",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 16,
+                "des": 10,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": [
+                        {
+                            "item_id": 7,
+                            "qtd": 1,
+                            "equipado": true,
+                            "sintonizado": false
+                        }
+                    ]
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Ataque Furtivo",
+                    "origem": "Classe 1",
+                    "tipo": "ativa",
+                    "efeitos": [
+                        {
+                            "alvo": "dano.arma",
+                            "modo": "dados",
+                            "valor": "3d6"
+                        }
+                    ],
+                    "ativa": true
+                }
+            ]
+        },
+        "itens": {
+            "7": {
+                "nome": "Espada",
+                "peso": 1,
+                "equipavel": true,
+                "requer_sintonia": false,
+                "dados": {
+                    "arma": {
+                        "dano": "1d8",
+                        "atributo": "for",
+                        "proficiente": false,
+                        "danoExtra": [
+                            {
+                                "dados": "2d6",
+                                "tipo": "fogo"
+                            }
+                        ]
+                    }
+                },
+                "efeitos": []
+            }
+        },
+        "esperado": {
+            "dano.arma": 0,
+            "arma.7.dano": 3
+        },
+        "dadosDeDano": {
+            "7": ["1d8", "2d6", "3d6"]
+        }
+    },
+    {
+        "nome": "dano em dados: buff ativo desligado não conta",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": [
+                        {
+                            "item_id": 7,
+                            "qtd": 1,
+                            "equipado": true,
+                            "sintonizado": false
+                        }
+                    ]
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Ataque Furtivo",
+                    "origem": "Classe 1",
+                    "tipo": "ativa",
+                    "efeitos": [
+                        {
+                            "alvo": "dano.arma",
+                            "modo": "dados",
+                            "valor": "3d6"
+                        }
+                    ],
+                    "ativa": false
+                }
+            ]
+        },
+        "itens": {
+            "7": {
+                "nome": "Espada",
+                "peso": 1,
+                "equipavel": true,
+                "requer_sintonia": false,
+                "dados": {
+                    "arma": {
+                        "dano": "1d8",
+                        "atributo": "for",
+                        "proficiente": false
+                    }
+                },
+                "efeitos": []
+            }
+        },
+        "esperado": {
+            "dano.arma": 0
+        },
+        "dadosDeDano": {
+            "7": ["1d8"]
+        }
+    },
+    {
+        "nome": "dano em dados: buff passivo sempre conta",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": [
+                        {
+                            "item_id": 7,
+                            "qtd": 1,
+                            "equipado": true,
+                            "sintonizado": false
+                        }
+                    ]
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Golpe Divino",
+                    "origem": "Classe 1",
+                    "tipo": "passiva",
+                    "efeitos": [
+                        {
+                            "alvo": "dano.arma",
+                            "modo": "dados",
+                            "valor": "1d8"
+                        }
+                    ]
+                }
+            ]
+        },
+        "itens": {
+            "7": {
+                "nome": "Espada",
+                "peso": 1,
+                "equipavel": true,
+                "requer_sintonia": false,
+                "dados": {
+                    "arma": {
+                        "dano": "1d8",
+                        "atributo": "for",
+                        "proficiente": false
+                    }
+                },
+                "efeitos": []
+            }
+        },
+        "esperado": {
+            "dano.arma": 0
+        },
+        "dadosDeDano": {
+            "7": ["1d8", "1d8"]
+        }
+    },
+    {
+        "nome": "dano em dados: ordem arma, extras da arma, itens, características",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": [
+                        {
+                            "item_id": 7,
+                            "qtd": 1,
+                            "equipado": true,
+                            "sintonizado": false
+                        },
+                        {
+                            "item_id": 3,
+                            "qtd": 1,
+                            "equipado": true,
+                            "sintonizado": false
+                        }
+                    ]
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Ataque Furtivo",
+                    "origem": "Classe 1",
+                    "tipo": "ativa",
+                    "efeitos": [
+                        {
+                            "alvo": "dano.arma",
+                            "modo": "dados",
+                            "valor": "3d6"
+                        }
+                    ],
+                    "ativa": true
+                }
+            ]
+        },
+        "itens": {
+            "7": {
+                "nome": "Espada",
+                "peso": 1,
+                "equipavel": true,
+                "requer_sintonia": false,
+                "dados": {
+                    "arma": {
+                        "dano": "1d8",
+                        "atributo": "for",
+                        "proficiente": false,
+                        "danoExtra": [
+                            {
+                                "dados": "2d6",
+                                "tipo": "fogo"
+                            }
+                        ]
+                    }
+                },
+                "efeitos": []
+            },
+            "3": {
+                "nome": "Anel",
+                "peso": 0,
+                "equipavel": true,
+                "requer_sintonia": false,
+                "dados": null,
+                "efeitos": [
+                    {
+                        "alvo": "dano.arma",
+                        "modo": "dados",
+                        "valor": "1d6"
+                    }
+                ]
+            }
+        },
+        "esperado": {
+            "dano.arma": 0
+        },
+        "dadosDeDano": {
+            "7": ["1d8", "2d6", "1d6", "3d6"],
+            "3": []
+        }
+    },
+    {
+        "nome": "dano em dados: inválidos e de outro alvo são ignorados",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": [
+                        {
+                            "item_id": 7,
+                            "qtd": 1,
+                            "equipado": true,
+                            "sintonizado": false
+                        }
+                    ]
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Quebrado",
+                    "origem": "Classe 1",
+                    "tipo": "passiva",
+                    "efeitos": [
+                        {
+                            "alvo": "dano.arma",
+                            "modo": "dados",
+                            "valor": "3d6+2"
+                        },
+                        {
+                            "alvo": "dano.arma",
+                            "modo": "dados",
+                            "valor": "21d6"
+                        },
+                        {
+                            "alvo": "ca",
+                            "modo": "dados",
+                            "valor": "2d6"
+                        },
+                        {
+                            "alvo": "dano.arma",
+                            "modo": "dados",
+                            "valor": 5
+                        },
+                        {
+                            "alvo": "dano.arma",
+                            "modo": "soma",
+                            "valor": "1d6"
+                        }
+                    ]
+                }
+            ]
+        },
+        "itens": {
+            "7": {
+                "nome": "Espada",
+                "peso": 1,
+                "equipavel": true,
+                "requer_sintonia": false,
+                "dados": {
+                    "arma": {
+                        "dano": "1d8",
+                        "atributo": "for",
+                        "proficiente": false,
+                        "danoExtra": [
+                            {
+                                "dados": "3d6+1"
+                            },
+                            {
+                                "dados": "0d6"
+                            },
+                            {
+                                "dados": "1d6"
+                            }
+                        ]
+                    }
+                },
+                "efeitos": []
+            }
+        },
+        "esperado": {
+            "dano.arma": 0,
+            "ca": 10
+        },
+        "dadosDeDano": {
+            "7": ["1d8", "1d6"]
+        }
+    },
+    {
+        "nome": "dano em dados: arma não equipada não gera variáveis, mas a lista da arma existe",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": []
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": []
+        },
+        "itens": {
+            "7": {
+                "nome": "Espada",
+                "peso": 1,
+                "equipavel": true,
+                "requer_sintonia": false,
+                "dados": {
+                    "arma": {
+                        "dano": "1d8",
+                        "atributo": "for",
+                        "proficiente": false,
+                        "danoExtra": [
+                            {
+                                "dados": "2d6"
+                            }
+                        ]
+                    }
+                },
+                "efeitos": []
+            }
+        },
+        "esperado": {
+            "dano.arma": 0
+        },
+        "dadosDeDano": {
+            "7": ["1d8", "2d6"]
+        }
+    },
+    {
+        "nome": "dano em dados não muda a CA nem o dano fixo",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "atributos": {
+                "for": 16,
+                "des": 14,
+                "con": 10,
+                "int": 10,
+                "sab": 10,
+                "car": 10
+            },
+            "salvaguardas": [],
+            "pericias": {},
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "int": 0,
+                    "sab": 0,
+                    "car": 0
+                },
+                "pericias": {
+                    "acrobacia": 0,
+                    "adestrar": 0,
+                    "arcanismo": 0,
+                    "atletismo": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "furtividade": 0,
+                    "historia": 0,
+                    "intimidacao": 0,
+                    "intuicao": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "percepcao": 0,
+                    "persuasao": 0,
+                    "prestidigitacao": 0,
+                    "religiao": 0,
+                    "sobrevivencia": 0
+                }
+            },
+            "ferramentas": [],
+            "inventario": [
+                {
+                    "secao": "Equipamento",
+                    "itens": [
+                        {
+                            "item_id": 7,
+                            "qtd": 1,
+                            "equipado": true,
+                            "sintonizado": false
+                        }
+                    ]
+                }
+            ],
+            "magias": {
+                "atributo": "sab",
+                "lista": []
+            },
+            "caracteristicas": [
+                {
+                    "nome": "Ataque Furtivo",
+                    "origem": "Classe 1",
+                    "tipo": "ativa",
+                    "efeitos": [
+                        {
+                            "alvo": "dano.arma",
+                            "modo": "dados",
+                            "valor": "3d6"
+                        }
+                    ],
+                    "ativa": true
+                }
+            ]
+        },
+        "itens": {
+            "7": {
+                "nome": "Espada",
+                "peso": 1,
+                "equipavel": true,
+                "requer_sintonia": false,
+                "dados": {
+                    "arma": {
+                        "dano": "1d8",
+                        "atributo": "for",
+                        "proficiente": false
+                    }
+                },
+                "efeitos": []
+            }
+        },
+        "esperado": {
+            "ca": 12,
+            "dano.arma": 0,
+            "arma.7.dano": 3,
+            "arma.7.ataque": 3
+        },
+        "dadosDeDano": {
+            "7": ["1d8", "3d6"]
+        }
     }
 ]
