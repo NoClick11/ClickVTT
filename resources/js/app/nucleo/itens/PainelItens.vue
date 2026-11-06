@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { Plus } from 'lucide-vue-next';
 import type { ItemDto } from '../../tipos-mesa';
-import { resumoEfeito } from '../efeitos/resumo';
+import { resumoEfeito, type FormatoResumo } from '../efeitos/resumo';
 import { MIME_ITEM } from './arrastar';
 
 /** Catálogo de itens da mesa (só o mestre): lista, cria e abre o editor. */
-defineProps<{ itens: ItemDto[] }>();
+defineProps<{ itens: ItemDto[]; formato?: FormatoResumo }>();
 const emit = defineEmits<{ editar: [itemId: number | null] }>();
 /** Arrastar o item para a janela de uma ficha o entrega ao personagem. */
 function arrastar(e: DragEvent, itemId: number) {
@@ -49,7 +49,7 @@ const peso = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2
                     <span v-if="i.descricao" class="block truncate text-xs text-preto-400">{{ i.descricao }}</span>
                     <span v-if="i.efeitos.length || i.requer_sintonia" class="mt-1 flex flex-wrap gap-1">
                         <span v-for="(e, n) in i.efeitos.slice(0, 4)" :key="n" class="rounded bg-preto-800 px-1.5 text-[10px] text-ouro-200">{{
-                            resumoEfeito(e)
+                            resumoEfeito(e, formato)
                         }}</span>
                         <span v-if="i.efeitos.length > 4" class="text-[10px] text-preto-500">+{{ i.efeitos.length - 4 }}</span>
                         <span v-if="i.requer_sintonia" class="rounded border border-ouro-500/40 px-1.5 text-[10px] uppercase text-ouro-300"

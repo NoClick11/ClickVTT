@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { aplicar, rolagem } from '../../resources/js/app/nucleo/efeitos/efeitos.ts';
+import { aplicar, dadosValidos, rolagem } from '../../resources/js/app/nucleo/efeitos/efeitos.ts';
 import { avaliar, FormulaInvalida, sintaxeValida } from '../../resources/js/app/nucleo/efeitos/formula.ts';
 
 const ler = (arquivo) => JSON.parse(readFileSync(new URL(arquivo, import.meta.url), 'utf8'));
@@ -33,4 +33,10 @@ test('sintaxe valida aceita variaveis quaisquer', () => {
     assert.equal(sintaxeValida('2d6'), false);
     assert.equal(sintaxeValida('1/0'), false);
     assert.equal(sintaxeValida('min('), false);
+});
+
+test('dano extra: dados válidos (espelha o servidor)', () => {
+    for (const ok of ['1d4', '3d6', '20d100', '9d2', '10d10']) assert.equal(dadosValidos(ok), true, ok);
+    for (const ruim of ['21d6', '0d6', '1d1', '1d101', '3d6+2', '3 d6', '', 'd6', 3, null, undefined, '@mod.for', '03d6'])
+        assert.equal(dadosValidos(ruim), false, String(ruim));
 });

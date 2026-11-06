@@ -1,6 +1,7 @@
 import type { Component } from 'vue';
 import type { ItemDto } from '../../tipos-mesa';
 import type { ModoEfeito } from '../efeitos/efeitos';
+import type { FormatoResumo } from '../efeitos/resumo';
 
 /** Dados mínimos do personagem que toda ficha recebe; o resto vem do módulo do sistema. */
 export interface PersonagemFicha {
@@ -49,6 +50,8 @@ export interface ModuloSistema {
     Ficha: Component;
     /** Alvos de efeito do sistema (formulário do mestre); devem ser os mesmos de `alvosDeEfeito()` no servidor. */
     alvosDeEfeito: AlvoEfeito[];
+    /** Como o sistema escreve os efeitos nas etiquetas (alvos pelo nome, variáveis pela sigla); sem isso aparecem os ids. */
+    formatoDeResumo?: FormatoResumo;
     /**
      * Quando o mestre arrasta um item para a janela da ficha: os campos a salvar para a ficha receber o item (o formato
      * do inventário é do sistema), ou `null` se não dá. Função pura sobre a ficha atual.

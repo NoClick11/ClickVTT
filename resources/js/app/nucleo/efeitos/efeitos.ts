@@ -1,14 +1,19 @@
 /**
  * Motor de efeitos, independente de sistema. ESPELHA `app/Nucleo/Efeitos/Efeitos.php`
  * (casos de `tests/paridade/efeitos.json` rodam nas duas implementações). Veja a documentação do modelo lá:
- * modos `base` → `soma` → `min` → `max` dentro de um alvo; `vantagem`/`desvantagem` só orientam a rolagem.
+ * modos `base` → `soma` → `min` → `max` dentro de um alvo; `vantagem`/`desvantagem` só orientam a rolagem; `dados`
+ * (dano extra, `3d6`) não mexe no valor: quem monta a rolagem lê esses efeitos.
  *
  * Arquivo PURO: o Node o executa direto nos testes de paridade.
  */
 import { avaliar, FormulaInvalida, type Variaveis } from './formula.ts';
 
-export type ModoEfeito = 'soma' | 'base' | 'min' | 'max' | 'vantagem' | 'desvantagem';
-export const MODOS: ModoEfeito[] = ['soma', 'base', 'min', 'max', 'vantagem', 'desvantagem'];
+export type ModoEfeito = 'soma' | 'base' | 'min' | 'max' | 'vantagem' | 'desvantagem' | 'dados';
+export const MODOS: ModoEfeito[] = ['soma', 'base', 'min', 'max', 'vantagem', 'desvantagem', 'dados'];
+
+/** Dados extras (`3d6`): 1 a 20 dados de 2 a 100 faces. Espelha `Efeitos::REGEX_DADOS`. */
+export const REGEX_DADOS = /^(?:[1-9]|1\d|20)d(?:[2-9]|[1-9]\d|100)$/;
+export const dadosValidos = (valor: unknown): valor is string => typeof valor === 'string' && REGEX_DADOS.test(valor);
 
 /** Efeito como guardado no item/condição: sem a fonte. `valor` = número ou fórmula (não vale em vantagem/desvantagem). */
 export interface EfeitoBruto {

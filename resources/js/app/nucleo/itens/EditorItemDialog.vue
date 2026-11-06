@@ -5,7 +5,7 @@ import { ref, watch } from 'vue';
 import type { ItemDto, NovoItem } from '../../tipos-mesa';
 import EditorEfeitos from '../efeitos/EditorEfeitos.vue';
 import type { EfeitoBruto } from '../efeitos/efeitos';
-import { sintaxeValida } from '../efeitos/formula';
+import { erroDosEfeitos } from '../efeitos/validacao';
 import { clonar } from '../ficha/caminho';
 import type { ModuloSistema } from '../sistemas/tipos';
 
@@ -53,26 +53,12 @@ watch(
     { immediate: true },
 );
 
-const efeitoValido = (e: EfeitoBruto) =>
-    e.modo === 'vantagem' ||
-    e.modo === 'desvantagem' ||
-    (e.valor !== undefined && e.valor !== null && e.valor !== '' && (typeof e.valor === 'number' || sintaxeValida(e.valor)));
-/** A fórmula usa só valores que existem neste alvo? (Senão o efeito seria ignorado em silêncio.) */
-function usaApenasVariaveisDoAlvo(e: EfeitoBruto): boolean {
-    const oferecidas = props.modulo?.variaveisDeEfeito;
-    if (!oferecidas || typeof e.valor !== 'string') return true;
-    const ids = new Set(oferecidas(e.alvo).map((v) => v.id));
-
-    return [...e.valor.toLowerCase().matchAll(/@([a-z0-9_.]+)/g)].every((m) => ids.has(m[1]));
-}
-
 async function enviar() {
     erro.value = '';
     if (!nome.value.trim()) return (erro.value = 'Dê um nome ao item.');
     if (!(peso.value >= 0)) return (erro.value = 'O peso não pode ser negativo.');
-    if (!efeitos.value.every(efeitoValido)) return (erro.value = 'Algum efeito tem valor ou fórmula inválidos.');
-    if (!efeitos.value.every(usaApenasVariaveisDoAlvo))
-        return (erro.value = 'Alguma fórmula usa um valor que não existe no alvo do efeito (nos atributos só vale o nível).');
+    const erroEfeitos = erroDosEfeitos(efeitos.value, props.modulo?.variaveisDeEfeito);
+    if (erroEfeitos) return (erro.value = erroEfeitos);
 
     ocupado.value = true;
     try {

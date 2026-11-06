@@ -2,13 +2,14 @@
 import { Plus, Trash2 } from 'lucide-vue-next';
 import { computed } from 'vue';
 import type { AlvoEfeito, VariavelEfeito } from '../sistemas/tipos';
-import { MODOS, type EfeitoBruto, type ModoEfeito } from './efeitos';
-import { sintaxeValida } from './formula';
+import { dadosValidos, MODOS, type EfeitoBruto, type ModoEfeito } from './efeitos';
+import { efeitoValido } from './validacao';
 
 /**
  * Editor de uma lista de efeitos (`{alvo, modo, valor}`), genérico: os alvos, os modos de cada um e as variáveis que
  * o valor pode usar vêm do sistema. O valor é um número fixo, uma variável da ficha (ex.: o modificador de um
- * atributo) ou uma fórmula livre (`14+min(@mod.des,2)`; sem dados). Vantagem e desvantagem não têm valor.
+ * atributo) ou uma fórmula livre (`14+min(@mod.des,2)`; sem dados). Vantagem e desvantagem não têm valor. O modo "dano
+ * extra" acrescenta dados (`3d6`) à rolagem do alvo.
  */
 const props = defineProps<{
     modelValue: EfeitoBruto[];
@@ -26,6 +27,7 @@ const ROTULOS: Record<ModoEfeito, string> = {
     max: 'Máximo',
     vantagem: 'Vantagem',
     desvantagem: 'Desvantagem',
+    dados: 'Dano extra (dados)',
 };
 const DICAS: Record<ModoEfeito, string> = {
     soma: 'Soma ao valor (ex.: +1 de CA)',
@@ -34,6 +36,7 @@ const DICAS: Record<ModoEfeito, string> = {
     max: 'Limita ao máximo',
     vantagem: 'Os botões de rolagem do alvo usam vantagem',
     desvantagem: 'Os botões de rolagem do alvo usam desvantagem',
+    dados: 'Acrescenta estes dados ao dano das armas (ex.: Ataque Furtivo, 3d6); eles dobram no crítico',
 };
 const NUMERO = '__numero';
 const FORMULA = '__formula';
@@ -61,8 +64,7 @@ function opcoesDe(alvo: string) {
 
 /** Número digitado vira número; qualquer outra coisa é fórmula (texto). */
 const converter = (texto: string): number | string => (/^-?\d+(\.\d+)?$/.test(texto.trim()) ? Number(texto) : texto);
-const valida = (e: EfeitoBruto) =>
-    semValor(e.modo) || (e.valor !== undefined && e.valor !== null && e.valor !== '' && (typeof e.valor === 'number' || sintaxeValida(e.valor)));
+const valida = efeitoValido;
 /** Uma variável que o alvo atual não oferece (ex.: trocou para atributos) deixaria o efeito sem efeito. */
 const variavelIndisponivel = (e: EfeitoBruto) => {
     if (typeof e.valor !== 'string') return false;
@@ -77,8 +79,13 @@ function mudar(i: number, campos: Partial<EfeitoBruto>) {
     lista[i] = { ...lista[i], ...campos };
     // Trocou o alvo e o modo não vale mais nele: usa o primeiro que vale.
     if (campos.alvo !== undefined && !modosDe(lista[i].alvo).includes(lista[i].modo)) lista[i].modo = modosDe(lista[i].alvo)[0];
+    // O valor padrão do modo só entra quando o MODO (ou o alvo) muda. Ao DIGITAR, o texto fica como está: "3" e "3d" são
+    // inválidos no meio da digitação de "3d6" e não podem ser trocados por um padrão.
+    const mudouModo = campos.modo !== undefined || campos.alvo !== undefined;
     if (semValor(lista[i].modo)) delete lista[i].valor;
-    else if (lista[i].valor === undefined) lista[i].valor = 1;
+    else if (lista[i].modo === 'dados') {
+        if (mudouModo && !dadosValidos(lista[i].valor)) lista[i].valor = '1d6';
+    } else if (lista[i].valor === undefined || (mudouModo && dadosValidos(lista[i].valor))) lista[i].valor = 1;
     emit('update:modelValue', lista);
 }
 /** Trocou a origem do valor: número fixo, uma variável (vira `@id`) ou fórmula livre (mantém o texto atual). */
@@ -136,7 +143,7 @@ const campo =
                     </button>
                 </div>
 
-                <div v-if="!semValor(e.modo)" class="flex flex-wrap items-center gap-1.5">
+                <div v-if="!semValor(e.modo) && e.modo !== 'dados'" class="flex flex-wrap items-center gap-1.5">
                     <select
                         :value="origemDe(e)"
                         :class="campo"
@@ -172,6 +179,24 @@ const campo =
                         Esta fórmula usa um valor que não existe neste alvo; o efeito seria ignorado.
                     </p>
                     <p v-else-if="!valida(e)" class="basis-full text-[11px] text-red-300" role="alert">Fórmula inválida.</p>
+                </div>
+                <div v-else-if="e.modo === 'dados'" class="flex flex-wrap items-center gap-1.5">
+                    <input
+                        :value="e.valor ?? ''"
+                        type="text"
+                        maxlength="6"
+                        placeholder="3d6"
+                        spellcheck="false"
+                        autocomplete="off"
+                        :class="[campo, 'w-28 font-mono', valida(e) ? '' : 'border-red-400']"
+                        :aria-label="`Dados do efeito ${i + 1}`"
+                        :aria-invalid="!valida(e)"
+                        @input="mudar(i, { valor: ($event.target as HTMLInputElement).value.trim().toLowerCase() })"
+                    />
+                    <span class="text-[11px] text-preto-500">somados ao dano; dobram no crítico</span>
+                    <p v-if="!valida(e)" class="basis-full text-[11px] text-red-300" role="alert">
+                        Use dados simples, como 3d6 (até 20 dados de 2 a 100 faces).
+                    </p>
                 </div>
                 <p v-else class="px-1 text-[11px] text-preto-500">{{ DICAS[e.modo] }}.</p>
             </li>

@@ -15,12 +15,17 @@ namespace App\Nucleo\Efeitos;
  *  - `soma`: soma ao valor. Ex.: anel de proteção +1.
  *  - `min` / `max`: eleva ao mínimo / limita ao máximo. Ex.: Cinto de Força (`min 21`).
  *  - `vantagem` / `desvantagem`: não mexem no valor; o botão de rolagem do alvo usa 2 dados (as duas anulam).
+ *  - `dados`: dano EXTRA em dados (`valor` = `3d6`), que o sistema acrescenta à rolagem do alvo (ex.: Ataque Furtivo no
+ *    dano das armas) e que dobra no crítico. Não mexe no valor calculado: quem monta a rolagem lê estes efeitos.
  * `valor` é um número ou uma fórmula (`Formula`) avaliada com as variáveis informadas por quem chama.
  * Efeito com fórmula inválida/variável desconhecida é ignorado (não derruba a ficha).
  */
 final class Efeitos
 {
-    public const MODOS = ['soma', 'base', 'min', 'max', 'vantagem', 'desvantagem'];
+    public const MODOS = ['soma', 'base', 'min', 'max', 'vantagem', 'desvantagem', 'dados'];
+
+    /** Dados extras: 1 a 20 dados de 2 a 100 faces (`3d6`). Sem modificadores: eles vão em efeitos de soma. */
+    public const REGEX_DADOS = '/^(?:[1-9]|1\d|20)d(?:[2-9]|[1-9]\d|100)$/';
 
     private const NUMERICOS = ['base', 'soma', 'min', 'max'];
 
@@ -149,6 +154,9 @@ final class Efeitos
         if (! in_array($modo, self::MODOS, true)) {
             return 'Modo do efeito inválido.';
         }
+        if ($modo === 'dados') {
+            return self::dadosValidos($e['valor'] ?? null) ? null : 'Dano extra precisa de dados (ex.: 3d6, até 20 dados de 2 a 100 faces).';
+        }
         if (! in_array($modo, self::NUMERICOS, true)) {
             return null; // vantagem/desvantagem não têm valor
         }
@@ -161,6 +169,12 @@ final class Efeitos
         }
 
         return 'Informe um número ou uma fórmula válida (ex.: 2 ou 14+min(@mod.des,2)).';
+    }
+
+    /** `valor` é uma expressão de dados simples (`3d6`)? */
+    public static function dadosValidos(mixed $valor): bool
+    {
+        return is_string($valor) && preg_match(self::REGEX_DADOS, $valor) === 1;
     }
 
     private static function valorDe(mixed $valor, array $variaveis): int|float|null

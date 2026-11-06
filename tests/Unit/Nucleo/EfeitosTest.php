@@ -100,6 +100,14 @@ class EfeitosTest extends TestCase
             'efeito não é objeto' => [['ca'], false],
             'alvo fora do sistema' => [[['alvo' => 'mana', 'modo' => 'soma', 'valor' => 1]], false, ['ca', 'pericia.*']],
             'alvo do sistema' => [[['alvo' => 'pericia.*', 'modo' => 'soma', 'valor' => 1]], true, ['ca', 'pericia.*']],
+            'dano extra em dados' => [[['alvo' => 'dano.arma', 'modo' => 'dados', 'valor' => '3d6']], true],
+            'dano extra: 20 dados de 100 faces' => [[['alvo' => 'dano.arma', 'modo' => 'dados', 'valor' => '20d100']], true],
+            'dano extra: mais de 20 dados' => [[['alvo' => 'dano.arma', 'modo' => 'dados', 'valor' => '21d6']], false],
+            'dano extra: dado de 1 face' => [[['alvo' => 'dano.arma', 'modo' => 'dados', 'valor' => '1d1']], false],
+            'dano extra: com modificador' => [[['alvo' => 'dano.arma', 'modo' => 'dados', 'valor' => '3d6+2']], false],
+            'dano extra: número no lugar dos dados' => [[['alvo' => 'dano.arma', 'modo' => 'dados', 'valor' => 3]], false],
+            'dano extra: sem valor' => [[['alvo' => 'dano.arma', 'modo' => 'dados']], false],
+            'dano extra: fórmula' => [[['alvo' => 'dano.arma', 'modo' => 'dados', 'valor' => '@mod.for']], false],
             'efeitos demais' => [array_fill(0, 31, ['alvo' => 'ca', 'modo' => 'soma', 'valor' => 1]), false],
         ];
     }

@@ -646,5 +646,36 @@
             "origens": [],
             "rolagem": null
         }
+    },
+    {
+        "nome": "dano extra em dados não mexe no valor calculado",
+        "alvo": "dano.arma",
+        "base": 0,
+        "efeitos": [
+            {
+                "fonte": "Ataque Furtivo",
+                "alvo": "dano.arma",
+                "modo": "dados",
+                "valor": "3d6"
+            },
+            {
+                "fonte": "Fúria",
+                "alvo": "dano.arma",
+                "modo": "soma",
+                "valor": 2
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 2,
+            "origens": [
+                {
+                    "fonte": "Fúria",
+                    "modo": "soma",
+                    "valor": 2
+                }
+            ],
+            "rolagem": null
+        }
     }
 ]
