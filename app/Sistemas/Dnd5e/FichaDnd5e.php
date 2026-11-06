@@ -161,6 +161,8 @@ final class FichaDnd5e
         $r['caracteristicas.*.tipo'] = ['required', 'string', Rule::in(['ativa', 'passiva'])];
         $r['caracteristicas.*.usos.atual'] = $inteiro(0, 999);
         $r['caracteristicas.*.usos.max'] = $inteiro(0, 999);
+        // Máximo igual ao bônus de proficiência (o front recalcula).
+        $r['caracteristicas.*.usos.porProf'] = ['nullable', 'boolean'];
         // Buffs de classe: uma característica também carrega efeitos (os mesmos dos itens). A passiva sempre vale; a ativa
         // vale enquanto `ativa` estiver ligada (o interruptor da ficha).
         $r['caracteristicas.*.ativa'] = ['boolean:strict'];

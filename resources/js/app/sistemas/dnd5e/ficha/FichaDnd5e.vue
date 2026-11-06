@@ -23,7 +23,7 @@ import FichaLateral from './FichaLateral.vue';
 const props = defineProps<{ personagem: PersonagemFicha; ficha: FichaDnd5e; itens: ItemDto[]; mestre: boolean }>();
 const emit = defineEmits<{
     salvar: [campos: Record<string, unknown>];
-    rolar: [expressao: string, rotulo: string];
+    rolar: [expressao: string, rotulo: string, aoRolar?: (total: number) => void];
     editorItem: Parameters<AbrirEditorItem>;
 }>();
 
@@ -45,7 +45,7 @@ provide(CHAVE_FICHA, {
     mestre: props.mestre,
     abrirEditorItem: (itemId, aoSalvar) => emit('editorItem', itemId, aoSalvar),
     salvar: (campos) => emit('salvar', campos),
-    rolar: (expressao, rotulo) => emit('rolar', expressao, rotulo),
+    rolar: (expressao, rotulo, aoRolar) => emit('rolar', expressao, rotulo, aoRolar),
     // Shift = vantagem, Ctrl/Alt = desvantagem (manual vence); sem tecla, valem os efeitos dos itens.
     d20: (evento, variavel, rotulo) => {
         const manual = evento.shiftKey ? 'vantagem' : evento.ctrlKey || evento.altKey ? 'desvantagem' : null;

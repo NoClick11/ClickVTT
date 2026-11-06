@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Heart, Shield, Skull, Swords } from 'lucide-vue-next';
+import { Flame, Footprints, Heart, Shield, Skull, Sparkles, Swords, Zap } from 'lucide-vue-next';
 import { computed } from 'vue';
 import DadoIcone from '../../../components/DadoIcone.vue';
 import type { PersonagemFicha } from '../../../nucleo/sistemas/tipos';
@@ -9,24 +9,25 @@ import CampoTexto from '../../../nucleo/ui/CampoTexto.vue';
 import IndicadorD20 from '../../../nucleo/ui/IndicadorD20.vue';
 import { condicaoPorId } from '../condicoes';
 import { estilos, useFicha } from '../contexto';
-import { comSinal, DADOS_DE_VIDA, type FichaDnd5e } from '../regras';
+import { camposDoDadoDeVida, camposDoTesteContraMorte, comSinal, DADOS_DE_VIDA, type FichaDnd5e } from '../regras';
 
 const props = defineProps<{ ficha: FichaDnd5e; personagem: PersonagemFicha }>();
-const { editar, calc, salvar, d20, modoDe, armas } = useFicha();
+const { editar, calc, salvar, rolar, d20, modoDe, armas } = useFicha();
 
 const pvPct = computed(() => (calc.value['pv.max'] > 0 ? Math.max(0, Math.min(100, (props.ficha.pv.atual / calc.value['pv.max']) * 100)) : 0));
 const pvCor = computed(() => (pvPct.value > 50 ? '#22c55e' : pvPct.value > 25 ? '#eab308' : '#ef4444'));
 const dvPct = computed(() => (calc.value['dv.max'] > 0 ? (props.ficha.dadosVida.restantes / calc.value['dv.max']) * 100 : 0));
 
+/** Dado de vida: rola `1dX + mod. CON` e o total sorteado pelo servidor cura PV e gasta um dado. */
+const gastarDadoDeVida = () =>
+    rolar(`1${props.ficha.dadosVida.tipo}+@mod.con`, 'Dado de vida', (total) => salvar(camposDoDadoDeVida(props.ficha, total, calc.value['pv.max'])));
+/** Teste contra a morte: d20 puro; o resultado marca sucesso/falha (20 devolve 1 PV). */
+const testeContraMorte = () => rolar('1d20', 'Teste contra a morte', (d) => salvar(camposDoTesteContraMorte(props.ficha, d)));
+const dadoDeVidaDisponivel = computed(() => props.ficha.dadosVida.restantes > 0 && props.ficha.pv.atual < calc.value['pv.max']);
+
 /** Clicar na bolinha N marca até N; clicar de novo na última marcada desmarca. */
 const marcar = (campo: string, atual: number, i: number) => salvar({ [campo]: atual === i ? i - 1 : i });
 const titulo = estilos.rotulo;
-/** O deslocamento é texto livre: a fonte diminui com o tamanho para não cortar ("9 m" grande, "12 m, voo 18 m" menor). */
-const tamanhoDeslocamento = computed(() => {
-    const n = props.ficha.deslocamento.length;
-
-    return n <= 5 ? 'text-lg' : n <= 9 ? 'text-sm' : 'text-xs';
-});
 const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) => condicaoPorId(id)).filter((c) => c !== undefined));
 </script>
 
@@ -98,15 +99,28 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
         </div>
 
         <!-- exaustão -->
-        <div class="flex items-center justify-between" :class="editar ? '' : 'mt-4'" role="group" aria-label="Exaustão">
-            <span :class="titulo">Exaustão</span>
-            <span class="flex gap-1"
+        <!-- exaustão: 6 níveis; clicar no N marca até N, clicar de novo no último desmarca -->
+        <div
+            class="flex items-center justify-between gap-2 rounded-lg border bg-preto-950/70 px-2.5 py-1.5"
+            :class="[editar ? '' : 'mt-4', ficha.exaustao > 0 ? 'border-red-400/50' : 'border-preto-700']"
+            role="group"
+            aria-label="Exaustão"
+            title="Exaustão: cada nível piora os testes; no 6º o personagem morre"
+        >
+            <span class="flex items-center gap-1.5" :class="titulo"
+                ><Flame class="size-3.5" :class="ficha.exaustao > 0 ? 'text-red-400' : 'text-preto-500'" /> Exaustão</span
+            >
+            <span class="flex items-center gap-1"
                 ><button
                     v-for="i in 6"
                     :key="i"
                     type="button"
-                    class="size-3 rounded-full border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
-                    :class="i <= ficha.exaustao ? 'border-red-400 bg-red-500' : 'border-preto-600'"
+                    class="size-3.5 rounded-full border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                    :class="
+                        i <= ficha.exaustao
+                            ? 'border-red-400 bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.6)]'
+                            : 'border-preto-600 hover:border-red-400/60'
+                    "
                     :aria-label="`Exaustão ${i}`"
                     :aria-pressed="i <= ficha.exaustao"
                     @click="marcar('exaustao', ficha.exaustao, i)"
@@ -125,49 +139,53 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
             </li>
         </ul>
 
-        <!-- iniciativa, deslocamento, proficiência -->
-        <!-- a coluna do meio (deslocamento) é mais larga: o texto é livre ("9 m", "9 m, voo 18 m") -->
-        <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)] gap-1.5 text-center">
+        <!-- iniciativa e proficiência lado a lado; o deslocamento (texto livre) ocupa a linha de baixo -->
+        <div class="grid grid-cols-2 gap-1.5 text-center">
             <!-- a caixa inteira rola a iniciativa (Shift = vantagem, Ctrl = desvantagem) -->
             <AreaRolavel
                 rotulo="iniciativa"
                 :modo="modoDe('iniciativa')"
-                class="rounded-md border border-preto-700 bg-preto-950 p-1.5 text-center"
+                class="group relative rounded-lg border border-preto-700 bg-gradient-to-b from-preto-800/70 to-preto-950 px-2 py-2 text-center transition hover:border-ouro-400"
                 @rolar="d20($event, 'iniciativa', 'Iniciativa')"
             >
-                <span :class="titulo" class="block">Inic.</span>
-                <span class="block font-serif text-lg font-semibold text-ouro-100">{{ comSinal(calc.iniciativa) }}</span>
+                <Zap class="mx-auto size-4 text-ouro-400" aria-hidden="true" />
+                <span class="mt-0.5 block font-serif text-2xl font-bold leading-none text-ouro-100">{{ comSinal(calc.iniciativa) }}</span>
+                <span :class="titulo" class="mt-1 block">Iniciativa</span>
                 <IndicadorD20
                     :modo="modoDe('iniciativa')"
-                    class="mx-auto mt-0.5 block size-5 opacity-40 transition group-hover:scale-110 group-hover:opacity-100"
+                    class="absolute right-1 top-1 block size-4 opacity-30 transition group-hover:scale-110 group-hover:opacity-100"
                 />
             </AreaRolavel>
-            <div class="rounded-md border border-preto-700 bg-preto-950 p-1.5">
-                <p :class="titulo">Desl.</p>
-                <!-- Editar: campo com borda (como os outros editáveis) para ficar claro que dá para mudar.
-                     Jogar: só leitura, em texto que quebra em até duas linhas (um campo de texto cortaria o fim). -->
-                <CampoTexto
-                    v-if="editar"
-                    :model-value="ficha.deslocamento"
-                    :maximo="80"
-                    aria-label="Deslocamento"
-                    title="Deslocamento: escreva como quiser (ex.: 9 m, 12 m, voo 18 m)"
-                    class="w-full rounded border border-preto-600 bg-preto-900 text-center font-serif font-semibold text-ouro-100 hover:border-ouro-500/60 focus-visible:border-ouro-400 focus-visible:outline-none"
-                    :class="tamanhoDeslocamento"
-                    @salvar="salvar({ deslocamento: $event })"
-                />
-                <span
-                    v-else
-                    class="line-clamp-2 break-words text-center font-serif font-semibold leading-tight text-ouro-100"
-                    :class="tamanhoDeslocamento"
-                    :title="ficha.deslocamento"
-                    aria-label="Deslocamento"
-                    >{{ ficha.deslocamento || '—' }}</span
-                >
+            <div class="rounded-lg border border-preto-700 bg-gradient-to-b from-preto-800/70 to-preto-950 px-2 py-2" title="Bônus de proficiência">
+                <Sparkles class="mx-auto size-4 text-ouro-400" aria-hidden="true" />
+                <p class="mt-0.5 font-serif text-2xl font-bold leading-none text-ouro-100">{{ comSinal(calc.prof) }}</p>
+                <p :class="titulo" class="mt-1">Proficiência</p>
             </div>
-            <div class="rounded-md border border-preto-700 bg-preto-950 p-1.5">
-                <p :class="titulo">Prof.</p>
-                <p class="font-serif text-lg font-semibold text-ouro-100">{{ comSinal(calc.prof) }}</p>
+            <div
+                class="col-span-2 flex items-center gap-2.5 rounded-lg border border-preto-700 bg-gradient-to-b from-preto-800/70 to-preto-950 px-2.5 py-2 text-left"
+            >
+                <Footprints class="size-4 shrink-0 text-ouro-400" aria-hidden="true" />
+                <div class="min-w-0 flex-1">
+                    <p :class="titulo">Deslocamento</p>
+                    <!-- Editar: campo com borda para ficar claro que dá para mudar. Jogar: texto que quebra em até duas linhas. -->
+                    <CampoTexto
+                        v-if="editar"
+                        :model-value="ficha.deslocamento"
+                        :maximo="80"
+                        aria-label="Deslocamento"
+                        title="Deslocamento: escreva como quiser (ex.: 9 m, 12 m, voo 18 m)"
+                        class="mt-0.5 w-full rounded border border-preto-600 bg-preto-900 px-1.5 font-serif text-base font-semibold text-ouro-100 hover:border-ouro-500/60 focus-visible:border-ouro-400 focus-visible:outline-none"
+                        @salvar="salvar({ deslocamento: $event })"
+                    />
+                    <p
+                        v-else
+                        class="line-clamp-2 break-words font-serif text-base font-semibold leading-tight text-ouro-100"
+                        :title="ficha.deslocamento"
+                        aria-label="Deslocamento"
+                    >
+                        {{ ficha.deslocamento || '—' }}
+                    </p>
+                </div>
             </div>
         </div>
 
@@ -295,11 +313,34 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                     <span v-else>{{ ficha.dadosVida.tipo }}</span>
                 </div>
             </div>
+            <button
+                v-if="!editar"
+                type="button"
+                :disabled="!dadoDeVidaDisponivel"
+                class="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border border-ouro-500/40 py-1 text-xs font-semibold text-ouro-100 transition hover:bg-ouro-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 disabled:cursor-not-allowed disabled:opacity-40"
+                :title="
+                    dadoDeVidaDisponivel
+                        ? `Gasta um dado de vida: rola 1${ficha.dadosVida.tipo} + mod. CON e recupera esse tanto de PV`
+                        : 'Sem dados de vida ou com os PV no máximo'
+                "
+                @click="gastarDadoDeVida"
+            >
+                <span class="size-4"><DadoIcone :faces="Number(ficha.dadosVida.tipo.slice(1))" /></span> Rolar dado de vida
+            </button>
         </section>
 
         <!-- testes contra a morte -->
         <section aria-label="Testes contra a morte">
             <p :class="titulo" class="mb-1 flex items-center gap-1"><Skull class="size-3" /> Testes contra a Morte</p>
+            <button
+                v-if="!editar"
+                type="button"
+                class="mb-1 flex w-full items-center justify-center gap-1.5 rounded-md border border-ouro-500/40 py-1 text-xs font-semibold text-ouro-100 transition hover:bg-ouro-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                title="Rola 1d20: 10 ou mais é sucesso, 9 ou menos é falha, 1 são duas falhas, 20 volta com 1 PV"
+                @click="testeContraMorte"
+            >
+                <span class="size-4"><DadoIcone :faces="20" /></span> Rolar teste
+            </button>
             <div class="grid gap-1 text-xs">
                 <div class="flex items-center justify-between">
                     <span class="text-preto-400">Sucessos</span

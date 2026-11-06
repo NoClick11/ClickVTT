@@ -16,7 +16,7 @@ export interface ContextoFicha {
     /** Salva campos (1 = edição pontual; vários = lote). */
     salvar: (campos: Record<string, unknown>) => void;
     /** Rola uma expressão (pode usar `@variaveis`) com o nome da rolagem. */
-    rolar: (expressao: string, rotulo: string) => void;
+    rolar: (expressao: string, rotulo: string, aoRolar?: (total: number) => void) => void;
     /** De onde vem cada bônus, por alvo (`origens.value.ca` = [{fonte: 'Placas', modo: 'base', valor: 16}, ...]). */
     origens: ComputedRef<Record<string, Origem[]>>;
     /** Efeitos ativos agora (itens, condições e ajustes manuais), cada um com a fonte. */

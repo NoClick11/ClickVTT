@@ -131,7 +131,8 @@ export interface Caracteristica {
     nome: string;
     origem: string;
     tipo: 'ativa' | 'passiva';
-    usos?: { atual: number; max: number };
+    /** `porProf`: o máximo acompanha o bônus de proficiência (ver `usosMax`); `max` guarda o último valor calculado. */
+    usos?: { atual: number; max: number; porProf?: boolean };
     /** Buffs da característica (os mesmos efeitos dos itens). A passiva sempre vale; a ativa, só com `ativa` ligada. */
     efeitos?: EfeitoBruto[];
     /** Interruptor das características ativas (ex.: Fúria ligada). A passiva ignora. */
@@ -300,7 +301,7 @@ export function analisar(f: FichaDnd5e, itens: ItensPorId = {}): Analise {
     };
 
     const nivel = Number(f.nivel);
-    const prof = 2 + Math.floor((nivel - 1) / 4) + (f.ajustes?.proficiencia ?? 0);
+    const prof = bonusProficiencia(f);
     const r: Record<string, number> = { nivel, prof };
 
     // Fase 1: atributos efetivos
@@ -474,20 +475,54 @@ export function comItemEntregue(f: FichaDnd5e, itemId: number): FichaDnd5e['inve
 
 export type TipoDescanso = 'curto' | 'longo';
 
+/** Bônus de proficiência: 2 + (nível − 1) / 4, mais o ajuste manual. */
+export function bonusProficiencia(f: FichaDnd5e): number {
+    return 2 + Math.floor((Number(f.nivel) - 1) / 4) + (f.ajustes?.proficiencia ?? 0);
+}
+
+/** Máximo de usos de uma característica: fixo, ou igual ao bônus de proficiência (`usos.porProf`). */
+export function usosMax(c: Caracteristica, prof: number): number {
+    return c.usos?.porProf ? Math.max(0, prof) : (c.usos?.max ?? 0);
+}
+
 /**
  * Liga ou desliga o buff de uma característica ativa. LIGAR gasta 1 uso (se a característica tem usos): sem usos
  * restantes não liga (devolve null). Desligar não devolve o uso. Passiva não tem interruptor (null).
  */
-export function comBuffAlternado(c: Caracteristica): Caracteristica | null {
+export function comBuffAlternado(c: Caracteristica, prof = 2): Caracteristica | null {
     if (c.tipo !== 'ativa') return null;
     if (c.ativa) return { ...c, ativa: false };
-    if (c.usos && c.usos.max > 0) {
+    if (c.usos && usosMax(c, prof) > 0) {
         if (c.usos.atual <= 0) return null;
 
         return { ...c, ativa: true, usos: { ...c.usos, atual: c.usos.atual - 1 } };
     }
 
     return { ...c, ativa: true };
+}
+
+/**
+ * Gastar um dado de vida: o dado rolado (`1dX + mod. CON`, `total`) cura PV (nunca abaixo de 0 nem acima do máximo
+ * efetivo) e consome um dado. Vazio se não há dado restante.
+ */
+export function camposDoDadoDeVida(f: FichaDnd5e, total: number, pvMax: number = f.pv.max): Record<string, unknown> {
+    if (f.dadosVida.restantes <= 0) return {};
+
+    return {
+        'dadosVida.restantes': f.dadosVida.restantes - 1,
+        'pv.atual': Math.min(pvMax, f.pv.atual + Math.max(0, total)),
+    };
+}
+
+/**
+ * Teste contra a morte com o d20 puro: 20 = volta com 1 PV e zera as marcas; 1 = duas falhas; 10+ = sucesso;
+ * 9 ou menos = falha (no máximo 3 de cada).
+ */
+export function camposDoTesteContraMorte(f: FichaDnd5e, d20: number): Record<string, unknown> {
+    if (d20 >= 20) return { 'pv.atual': Math.max(1, f.pv.atual), 'morte.sucessos': 0, 'morte.falhas': 0 };
+    if (d20 >= 10) return { 'morte.sucessos': Math.min(3, f.morte.sucessos + 1) };
+
+    return { 'morte.falhas': Math.min(3, f.morte.falhas + (d20 === 1 ? 2 : 1)) };
 }
 
 /**
@@ -500,13 +535,14 @@ export function comBuffAlternado(c: Caracteristica): Caracteristica | null {
 export function camposDoDescanso(f: FichaDnd5e, tipo: TipoDescanso, pvMax: number = f.pv.max): Record<string, unknown> {
     const campos: Record<string, unknown> = {};
 
+    const prof = bonusProficiencia(f);
     const antes = f.caracteristicas ?? [];
     const depois = antes.map((c) => {
         const recarrega = c.usos !== undefined && (tipo === 'longo' || (c.descanso ?? 'longo') === 'curto');
 
         return {
             ...c,
-            ...(recarrega ? { usos: { ...c.usos!, atual: c.usos!.max } } : {}),
+            ...(recarrega ? { usos: { ...c.usos!, max: usosMax(c, prof), atual: usosMax(c, prof) } } : {}),
             ...(c.tipo === 'ativa' && c.ativa ? { ativa: false } : {}),
         };
     });

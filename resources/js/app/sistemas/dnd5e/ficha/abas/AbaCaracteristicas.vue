@@ -6,10 +6,10 @@ import { clonar } from '../../../../nucleo/ficha/caminho';
 import { formatoDeResumo } from '../../alvos';
 import { estilos, useFicha } from '../../contexto';
 import EditorCaracteristicaDialog from '../../EditorCaracteristicaDialog.vue';
-import { comBuffAlternado, type Caracteristica, type FichaDnd5e } from '../../regras';
+import { comBuffAlternado, usosMax, type Caracteristica, type FichaDnd5e } from '../../regras';
 
 const props = defineProps<{ ficha: FichaDnd5e }>();
-const { editar, salvar } = useFicha();
+const { editar, salvar, calc } = useFicha();
 
 // índices da lista completa (a lista é salva por inteiro), agrupados por tipo
 const grupos = computed(() => [
@@ -29,10 +29,12 @@ const usar = (i: number, atual: number, n: number) => mudar((l) => (l[i].usos!.a
  * uso, se ela tem usos; sem usos restantes não liga (ver `comBuffAlternado`).
  */
 function alternar(i: number) {
-    const nova = comBuffAlternado(props.ficha.caracteristicas[i]);
+    const nova = comBuffAlternado(props.ficha.caracteristicas[i], calc.value.prof);
     if (nova) mudar((l) => (l[i] = nova));
 }
-const gastaUso = (c: Caracteristica) => !c.ativa && !!c.usos && c.usos.max > 0;
+/** Máximo de usos agora (fixo ou igual ao bônus de proficiência). */
+const maxUsos = (c: Caracteristica) => usosMax(c, calc.value.prof);
+const gastaUso = (c: Caracteristica) => !c.ativa && !!c.usos && maxUsos(c) > 0;
 const semUsos = (c: Caracteristica) => gastaUso(c) && c.usos!.atual <= 0;
 /** Os efeitos de uma ativa desligada não contam: aparecem apagados. */
 const conta = (c: Caracteristica) => c.tipo === 'passiva' || c.ativa === true;
@@ -104,12 +106,12 @@ function aoSalvar(c: Caracteristica) {
                         <span
                             v-if="c.usos"
                             class="shrink-0 text-[10px] uppercase text-preto-500"
-                            :title="`Os usos voltam no descanso ${c.descanso === 'curto' ? 'curto' : 'longo'}`"
+                            :title="`Os usos voltam no descanso ${c.descanso === 'curto' ? 'curto (e no longo)' : 'longo'}${c.usos.porProf ? ' · usos = bônus de proficiência' : ''}`"
                             >↻ {{ c.descanso === 'curto' ? 'curto' : 'longo' }}</span
                         >
-                        <span v-if="c.usos" class="flex shrink-0 gap-1" role="group" :aria-label="`${c.usos.atual} de ${c.usos.max} usos`"
+                        <span v-if="c.usos" class="flex shrink-0 gap-1" role="group" :aria-label="`${c.usos.atual} de ${maxUsos(c)} usos`"
                             ><button
-                                v-for="n in c.usos.max"
+                                v-for="n in maxUsos(c)"
                                 :key="n"
                                 type="button"
                                 class="size-3.5 rounded-full border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"

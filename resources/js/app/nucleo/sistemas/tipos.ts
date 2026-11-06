@@ -20,7 +20,8 @@ export type DadosFicha = Record<string, unknown>;
  * `Ficha` (layout definido pelo sistema) recebe as props `{ personagem, ficha, itens, mestre }` (`itens` = itens da
  * mesa que o jogador pode ver; `mestre` = quem vê os controles de criar/entregar itens) e se comunica só por eventos:
  *  - `salvar(campos)`: edição campo a campo, `{ 'pv.atual': 30 }`; vários campos = um lote atômico;
- *  - `rolar(expressao, rotulo)`: expressão de rolagem (pode usar `@variaveis` do sistema) e o nome da rolagem;
+ *  - `rolar(expressao, rotulo, aoRolar?)`: expressão de rolagem (pode usar `@variaveis` do sistema) e o nome da rolagem;
+ *    `aoRolar(total)` (opcional) recebe o total sorteado pelo servidor, para a ficha aplicar o efeito (ex.: curar);
  *  - `editorItem(itemId, aoSalvar?)`: o mestre abre o editor de itens (`null` = novo item); `aoSalvar` recebe o item
  *    salvo (ex.: para já entregá-lo ao personagem).
  * A ficha NUNCA fala com a API: quem salva, rola, edita itens e sincroniza é a mesa.

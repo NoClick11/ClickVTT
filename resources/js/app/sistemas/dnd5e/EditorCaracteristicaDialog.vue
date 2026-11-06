@@ -21,6 +21,7 @@ const nome = ref('');
 const origem = ref('');
 const tipo = ref<Caracteristica['tipo']>('passiva');
 const usos = ref(0);
+const usosPorProf = ref(false);
 const descanso = ref<'curto' | 'longo'>('longo');
 const efeitos = ref<EfeitoBruto[]>([]);
 const erro = ref('');
@@ -33,6 +34,7 @@ watch(
         origem.value = c && c.origem !== '—' ? c.origem : '';
         tipo.value = c?.tipo ?? 'passiva';
         usos.value = c?.usos?.max ?? 0;
+        usosPorProf.value = c?.usos?.porProf ?? false;
         descanso.value = c?.descanso ?? 'longo';
         efeitos.value = clonar(c?.efeitos ?? []);
         erro.value = '';
@@ -43,7 +45,8 @@ watch(
 function enviar() {
     erro.value = '';
     if (!nome.value.trim()) return (erro.value = 'Dê um nome à característica.');
-    const max = Math.max(0, Math.min(20, Math.floor(Number(usos.value) || 0)));
+    // Por proficiência o máximo é o bônus (a ficha recalcula); aqui guarda o mínimo para o `usos` existir.
+    const max = usosPorProf.value ? Math.max(1, Math.floor(Number(usos.value) || 0)) : Math.max(0, Math.min(20, Math.floor(Number(usos.value) || 0)));
     const erroEfeitos = erroDosEfeitos(efeitos.value, variaveisParaAlvo);
     if (erroEfeitos) return (erro.value = erroEfeitos);
 
@@ -52,7 +55,12 @@ function enviar() {
         nome: nome.value.trim(),
         origem: origem.value.trim() || '—',
         tipo: tipo.value,
-        ...(max > 0 ? { usos: { atual: Math.min(anterior?.usos?.atual ?? max, max), max }, descanso: descanso.value } : {}),
+        ...(max > 0
+            ? {
+                  usos: { atual: Math.min(anterior?.usos?.atual ?? max, max), max, ...(usosPorProf.value ? { porProf: true } : {}) },
+                  descanso: descanso.value,
+              }
+            : {}),
         ...(efeitos.value.length ? { efeitos: efeitos.value } : {}),
         // O interruptor só existe para ativa com efeitos; editar não liga nem desliga um buff que já estava de um jeito.
         ...(tipo.value === 'ativa' && efeitos.value.length ? { ativa: anterior?.tipo === 'ativa' ? (anterior.ativa ?? false) : false } : {}),
@@ -138,7 +146,7 @@ const rotulo = 'mb-1 block text-[11px] font-semibold uppercase tracking-wider te
                 </fieldset>
 
                 <div class="flex flex-wrap items-end gap-3">
-                    <label class="grid max-w-48 gap-1"
+                    <label v-if="!usosPorProf" class="grid max-w-48 gap-1"
                         ><span :class="rotulo">Usos por descanso</span
                         ><input
                             v-model.number="usos"
@@ -150,11 +158,14 @@ const rotulo = 'mb-1 block text-[11px] font-semibold uppercase tracking-wider te
                             aria-label="Usos por descanso (0 = sem usos)"
                             title="0 = sem controle de usos"
                     /></label>
-                    <label v-if="usos > 0" class="grid gap-1"
+                    <label class="flex items-center gap-2 pb-1.5 text-sm text-preto-200"
+                        ><input v-model="usosPorProf" type="checkbox" class="size-4 accent-ouro-500" /> Usos = bônus de proficiência</label
+                    >
+                    <label v-if="usos > 0 || usosPorProf" class="grid gap-1"
                         ><span :class="rotulo">Os usos voltam no</span
                         ><select v-model="descanso" :class="campo" aria-label="Descanso em que os usos voltam">
-                            <option value="longo">Descanso longo</option>
-                            <option value="curto">Descanso curto</option>
+                            <option value="longo">Só no descanso longo</option>
+                            <option value="curto">Descanso curto (e também no longo)</option>
                         </select></label
                     >
                 </div>
