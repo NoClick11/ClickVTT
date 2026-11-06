@@ -1,0 +1,650 @@
+[
+    {
+        "nome": "sem efeitos",
+        "alvo": "ca",
+        "base": 12,
+        "efeitos": [],
+        "variaveis": {},
+        "esperado": {
+            "valor": 12,
+            "origens": [],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "somas",
+        "alvo": "ca",
+        "base": 12,
+        "efeitos": [
+            {
+                "fonte": "Anel",
+                "alvo": "ca",
+                "modo": "soma",
+                "valor": 1
+            },
+            {
+                "fonte": "Escudo",
+                "alvo": "ca",
+                "modo": "soma",
+                "valor": 2
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 15,
+            "origens": [
+                {
+                    "fonte": "Anel",
+                    "modo": "soma",
+                    "valor": 1
+                },
+                {
+                    "fonte": "Escudo",
+                    "modo": "soma",
+                    "valor": 2
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "armadura define a base e soma depois",
+        "alvo": "ca",
+        "base": 12,
+        "efeitos": [
+            {
+                "fonte": "Anel",
+                "alvo": "ca",
+                "modo": "soma",
+                "valor": 1
+            },
+            {
+                "fonte": "Cota de Malha",
+                "alvo": "ca",
+                "modo": "base",
+                "valor": 16
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 17,
+            "origens": [
+                {
+                    "fonte": "Cota de Malha",
+                    "modo": "base",
+                    "valor": 16
+                },
+                {
+                    "fonte": "Anel",
+                    "modo": "soma",
+                    "valor": 1
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "vários base: vale o maior",
+        "alvo": "ca",
+        "base": 10,
+        "efeitos": [
+            {
+                "fonte": "A",
+                "alvo": "ca",
+                "modo": "base",
+                "valor": 14
+            },
+            {
+                "fonte": "B",
+                "alvo": "ca",
+                "modo": "base",
+                "valor": 17
+            },
+            {
+                "fonte": "C",
+                "alvo": "ca",
+                "modo": "base",
+                "valor": 15
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 17,
+            "origens": [
+                {
+                    "fonte": "B",
+                    "modo": "base",
+                    "valor": 17
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "empate no base: vale o primeiro",
+        "alvo": "ca",
+        "base": 10,
+        "efeitos": [
+            {
+                "fonte": "A",
+                "alvo": "ca",
+                "modo": "base",
+                "valor": 14
+            },
+            {
+                "fonte": "B",
+                "alvo": "ca",
+                "modo": "base",
+                "valor": 14
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 14,
+            "origens": [
+                {
+                    "fonte": "A",
+                    "modo": "base",
+                    "valor": 14
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "base substitui mesmo sendo menor",
+        "alvo": "ca",
+        "base": 18,
+        "efeitos": [
+            {
+                "fonte": "Armadura",
+                "alvo": "ca",
+                "modo": "base",
+                "valor": 11
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 11,
+            "origens": [
+                {
+                    "fonte": "Armadura",
+                    "modo": "base",
+                    "valor": 11
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "mínimo eleva (Cinto de Força)",
+        "alvo": "atributos.for",
+        "base": 14,
+        "efeitos": [
+            {
+                "fonte": "Cinto",
+                "alvo": "atributos.for",
+                "modo": "min",
+                "valor": 21
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 21,
+            "origens": [
+                {
+                    "fonte": "Cinto",
+                    "modo": "min",
+                    "valor": 21
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "mínimo não rebaixa",
+        "alvo": "atributos.for",
+        "base": 22,
+        "efeitos": [
+            {
+                "fonte": "Cinto",
+                "alvo": "atributos.for",
+                "modo": "min",
+                "valor": 21
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 22,
+            "origens": [],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "máximo limita",
+        "alvo": "atributos.for",
+        "base": 20,
+        "efeitos": [
+            {
+                "fonte": "Maldição",
+                "alvo": "atributos.for",
+                "modo": "max",
+                "valor": 8
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 8,
+            "origens": [
+                {
+                    "fonte": "Maldição",
+                    "modo": "max",
+                    "valor": 8
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "ordem: base, soma, mínimo, máximo",
+        "alvo": "ca",
+        "base": 10,
+        "efeitos": [
+            {
+                "fonte": "C",
+                "alvo": "ca",
+                "modo": "max",
+                "valor": 18
+            },
+            {
+                "fonte": "B",
+                "alvo": "ca",
+                "modo": "min",
+                "valor": 20
+            },
+            {
+                "fonte": "A",
+                "alvo": "ca",
+                "modo": "soma",
+                "valor": 5
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 18,
+            "origens": [
+                {
+                    "fonte": "A",
+                    "modo": "soma",
+                    "valor": 5
+                },
+                {
+                    "fonte": "B",
+                    "modo": "min",
+                    "valor": 20
+                },
+                {
+                    "fonte": "C",
+                    "modo": "max",
+                    "valor": 18
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "fórmula com variável",
+        "alvo": "ca",
+        "base": 10,
+        "efeitos": [
+            {
+                "fonte": "Anel Sábio",
+                "alvo": "ca",
+                "modo": "soma",
+                "valor": "@mod.sab"
+            }
+        ],
+        "variaveis": {
+            "mod.sab": 3
+        },
+        "esperado": {
+            "valor": 13,
+            "origens": [
+                {
+                    "fonte": "Anel Sábio",
+                    "modo": "soma",
+                    "valor": 3
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "armadura média limita DES a +2",
+        "alvo": "ca",
+        "base": 14,
+        "efeitos": [
+            {
+                "fonte": "Meia-armadura",
+                "alvo": "ca",
+                "modo": "base",
+                "valor": "14+min(@mod.des,2)"
+            }
+        ],
+        "variaveis": {
+            "mod.des": 4
+        },
+        "esperado": {
+            "valor": 16,
+            "origens": [
+                {
+                    "fonte": "Meia-armadura",
+                    "modo": "base",
+                    "valor": 16
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "armadura média com DES baixo",
+        "alvo": "ca",
+        "base": 11,
+        "efeitos": [
+            {
+                "fonte": "Meia-armadura",
+                "alvo": "ca",
+                "modo": "base",
+                "valor": "14+min(@mod.des,2)"
+            }
+        ],
+        "variaveis": {
+            "mod.des": 1
+        },
+        "esperado": {
+            "valor": 15,
+            "origens": [
+                {
+                    "fonte": "Meia-armadura",
+                    "modo": "base",
+                    "valor": 15
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "curinga casa o alvo",
+        "alvo": "pericia.percepcao",
+        "base": 5,
+        "efeitos": [
+            {
+                "fonte": "Amuleto",
+                "alvo": "pericia.*",
+                "modo": "soma",
+                "valor": 2
+            },
+            {
+                "fonte": "Botas",
+                "alvo": "pericia.furtividade",
+                "modo": "soma",
+                "valor": 9
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 7,
+            "origens": [
+                {
+                    "fonte": "Amuleto",
+                    "modo": "soma",
+                    "valor": 2
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "curinga não casa outro grupo",
+        "alvo": "salv.sab",
+        "base": 5,
+        "efeitos": [
+            {
+                "fonte": "Amuleto",
+                "alvo": "pericia.*",
+                "modo": "soma",
+                "valor": 2
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 5,
+            "origens": [],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "fórmula inválida é ignorada",
+        "alvo": "ca",
+        "base": 10,
+        "efeitos": [
+            {
+                "fonte": "Quebrado",
+                "alvo": "ca",
+                "modo": "soma",
+                "valor": "@xyz"
+            },
+            {
+                "fonte": "Anel",
+                "alvo": "ca",
+                "modo": "soma",
+                "valor": 2
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 12,
+            "origens": [
+                {
+                    "fonte": "Anel",
+                    "modo": "soma",
+                    "valor": 2
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "sem valor é ignorado",
+        "alvo": "ca",
+        "base": 10,
+        "efeitos": [
+            {
+                "fonte": "Sem valor",
+                "alvo": "ca",
+                "modo": "soma",
+                "valor": null
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 10,
+            "origens": [],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "soma negativa",
+        "alvo": "ca",
+        "base": 10,
+        "efeitos": [
+            {
+                "fonte": "Maldição",
+                "alvo": "ca",
+                "modo": "soma",
+                "valor": -2
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 8,
+            "origens": [
+                {
+                    "fonte": "Maldição",
+                    "modo": "soma",
+                    "valor": -2
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "valor em texto numérico",
+        "alvo": "ca",
+        "base": 10,
+        "efeitos": [
+            {
+                "fonte": "Texto",
+                "alvo": "ca",
+                "modo": "soma",
+                "valor": "3"
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 13,
+            "origens": [
+                {
+                    "fonte": "Texto",
+                    "modo": "soma",
+                    "valor": 3
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "conjunto completo",
+        "alvo": "ca",
+        "base": 12,
+        "efeitos": [
+            {
+                "fonte": "Escudo",
+                "alvo": "ca",
+                "modo": "soma",
+                "valor": 2
+            },
+            {
+                "fonte": "Anel",
+                "alvo": "ca",
+                "modo": "soma",
+                "valor": 1
+            },
+            {
+                "fonte": "Cota",
+                "alvo": "ca",
+                "modo": "base",
+                "valor": 16
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 19,
+            "origens": [
+                {
+                    "fonte": "Cota",
+                    "modo": "base",
+                    "valor": 16
+                },
+                {
+                    "fonte": "Escudo",
+                    "modo": "soma",
+                    "valor": 2
+                },
+                {
+                    "fonte": "Anel",
+                    "modo": "soma",
+                    "valor": 1
+                }
+            ],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "vantagem",
+        "alvo": "ataque.arma",
+        "base": 0,
+        "efeitos": [
+            {
+                "fonte": "Abençoado",
+                "alvo": "ataque.arma",
+                "modo": "vantagem"
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 0,
+            "origens": [],
+            "rolagem": "vantagem"
+        }
+    },
+    {
+        "nome": "vantagem e desvantagem se anulam",
+        "alvo": "ataque.arma",
+        "base": 0,
+        "efeitos": [
+            {
+                "fonte": "A",
+                "alvo": "ataque.arma",
+                "modo": "vantagem"
+            },
+            {
+                "fonte": "B",
+                "alvo": "ataque.arma",
+                "modo": "desvantagem"
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 0,
+            "origens": [],
+            "rolagem": null
+        }
+    },
+    {
+        "nome": "desvantagem por curinga",
+        "alvo": "pericia.furtividade",
+        "base": 3,
+        "efeitos": [
+            {
+                "fonte": "Armadura pesada",
+                "alvo": "pericia.*",
+                "modo": "desvantagem"
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 3,
+            "origens": [],
+            "rolagem": "desvantagem"
+        }
+    },
+    {
+        "nome": "vantagem de outro alvo não vale",
+        "alvo": "ca",
+        "base": 10,
+        "efeitos": [
+            {
+                "fonte": "A",
+                "alvo": "ataque.arma",
+                "modo": "vantagem"
+            }
+        ],
+        "variaveis": {},
+        "esperado": {
+            "valor": 10,
+            "origens": [],
+            "rolagem": null
+        }
+    }
+]

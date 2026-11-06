@@ -1,0 +1,336 @@
+[
+    {
+        "nome": "2",
+        "expr": "2",
+        "vars": {},
+        "esperado": 2
+    },
+    {
+        "nome": "2+3*4",
+        "expr": "2+3*4",
+        "vars": {},
+        "esperado": 14
+    },
+    {
+        "nome": "(2+3)*4",
+        "expr": "(2+3)*4",
+        "vars": {},
+        "esperado": 20
+    },
+    {
+        "nome": "7/2",
+        "expr": "7/2",
+        "vars": {},
+        "esperado": 3
+    },
+    {
+        "nome": "-7/2",
+        "expr": "-7/2",
+        "vars": {},
+        "esperado": -4
+    },
+    {
+        "nome": "+5",
+        "expr": "+5",
+        "vars": {},
+        "esperado": 5
+    },
+    {
+        "nome": "--3",
+        "expr": "--3",
+        "vars": {},
+        "esperado": 3
+    },
+    {
+        "nome": "10-@x",
+        "expr": "10-@x",
+        "vars": {
+            "x": 3
+        },
+        "esperado": 7
+    },
+    {
+        "nome": "@a*@b",
+        "expr": "@a*@b",
+        "vars": {
+            "a": 3,
+            "b": -2
+        },
+        "esperado": -6
+    },
+    {
+        "nome": "menos unário antes da divisão",
+        "expr": "-@x/2",
+        "vars": {
+            "x": 3
+        },
+        "esperado": -2
+    },
+    {
+        "nome": "@mod.sab",
+        "expr": "@mod.sab",
+        "vars": {
+            "mod.sab": 3
+        },
+        "esperado": 3
+    },
+    {
+        "nome": "espaços e maiúsculas",
+        "expr": " @MOD.SAB + 1 ",
+        "vars": {
+            "mod.sab": 3
+        },
+        "esperado": 4
+    },
+    {
+        "nome": "armadura média com DES 4",
+        "expr": "14+min(@mod.des,2)",
+        "vars": {
+            "mod.des": 4
+        },
+        "esperado": 16
+    },
+    {
+        "nome": "armadura média com DES 1",
+        "expr": "14+min(@mod.des,2)",
+        "vars": {
+            "mod.des": 1
+        },
+        "esperado": 15
+    },
+    {
+        "nome": "armadura média com DES -1",
+        "expr": "14+min(@mod.des,2)",
+        "vars": {
+            "mod.des": -1
+        },
+        "esperado": 13
+    },
+    {
+        "nome": "max(1,@mod.car)",
+        "expr": "max(1,@mod.car)",
+        "vars": {
+            "mod.car": -1
+        },
+        "esperado": 1
+    },
+    {
+        "nome": "max com car 3",
+        "expr": "max(1,@mod.car)",
+        "vars": {
+            "mod.car": 3
+        },
+        "esperado": 3
+    },
+    {
+        "nome": "floor(@nivel/2)",
+        "expr": "floor(@nivel/2)",
+        "vars": {
+            "nivel": 5
+        },
+        "esperado": 2
+    },
+    {
+        "nome": "floor(7)",
+        "expr": "floor(7)",
+        "vars": {},
+        "esperado": 7
+    },
+    {
+        "nome": "min(3,1,2)",
+        "expr": "min(3,1,2)",
+        "vars": {},
+        "esperado": 1
+    },
+    {
+        "nome": "max(-5,-2,-9)",
+        "expr": "max(-5,-2,-9)",
+        "vars": {},
+        "esperado": -2
+    },
+    {
+        "nome": "10 parênteses aninhados",
+        "expr": "((((((((((1))))))))))",
+        "vars": {},
+        "esperado": 1
+    },
+    {
+        "nome": "funções aninhadas",
+        "expr": "min(max(@a,1),@b)",
+        "vars": {
+            "a": 9,
+            "b": 4
+        },
+        "esperado": 4
+    },
+    {
+        "nome": "erro: ",
+        "expr": "",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro:    ",
+        "expr": "   ",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: 2+",
+        "expr": "2+",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: (1",
+        "expr": "(1",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: 1)",
+        "expr": "1)",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: @",
+        "expr": "@",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: @desconhecida",
+        "expr": "@desconhecida",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: foo(1)",
+        "expr": "foo(1)",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: min",
+        "expr": "min",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: min(",
+        "expr": "min(",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: min()",
+        "expr": "min()",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: floor(1,2)",
+        "expr": "floor(1,2)",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: 1/0",
+        "expr": "1/0",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: 2d6",
+        "expr": "2d6",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: 1/(@x-@x)",
+        "expr": "1/(@x-@x)",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: 2*",
+        "expr": "2*",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: *2",
+        "expr": "*2",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: @x@y",
+        "expr": "@x@y",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "erro: 7.5",
+        "expr": "7.5",
+        "vars": {
+            "x": 2
+        },
+        "erro": true
+    },
+    {
+        "nome": "9 argumentos",
+        "expr": "min(1,1,1,1,1,1,1,1,1)",
+        "vars": {},
+        "erro": true
+    },
+    {
+        "nome": "longa demais",
+        "expr": "1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1",
+        "vars": {},
+        "erro": true
+    },
+    {
+        "nome": "11 parênteses aninhados",
+        "expr": "(((((((((((1)))))))))))",
+        "vars": {},
+        "erro": true
+    }
+]
