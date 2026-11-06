@@ -1,0 +1,201 @@
+/**
+ * Catálogo de condições do D&D 5e. ESPELHA `app/Sistemas/Dnd5e/Condicoes.php`; os dois são conferidos contra
+ * `tests/paridade/condicoes-dnd5e.json`. Quando a regra é expressável vira efeito de vantagem/desvantagem nos
+ * alvos de rolagem; as demais (falha automática, deslocamento 0...) ficam só na descrição.
+ *
+ * Arquivo PURO: o Node o executa direto nos testes de paridade.
+ */
+import type { EfeitoBruto } from '../../nucleo/efeitos/efeitos.ts';
+
+export interface Condicao {
+    id: string;
+    nome: string;
+    descricao: string;
+    efeitos: EfeitoBruto[];
+}
+
+export const CONDICOES: Condicao[] = [
+    {
+        id: 'agarrado',
+        nome: 'Agarrado',
+        descricao: 'Deslocamento 0 e sem bônus de deslocamento. Termina se quem agarra ficar incapacitado ou o alvo for afastado.',
+        efeitos: [],
+    },
+    {
+        id: 'amedrontado',
+        nome: 'Amedrontado',
+        descricao:
+            'Desvantagem em testes de atributo e jogadas de ataque enquanto a fonte do medo estiver à vista; não pode se aproximar dela por vontade própria.',
+        efeitos: [
+            {
+                alvo: 'ataque.arma',
+                modo: 'desvantagem',
+            },
+            {
+                alvo: 'ataque',
+                modo: 'desvantagem',
+            },
+            {
+                alvo: 'teste.*',
+                modo: 'desvantagem',
+            },
+            {
+                alvo: 'pericia.*',
+                modo: 'desvantagem',
+            },
+            {
+                alvo: 'ferramenta.*',
+                modo: 'desvantagem',
+            },
+            {
+                alvo: 'iniciativa',
+                modo: 'desvantagem',
+            },
+        ],
+    },
+    {
+        id: 'atordoado',
+        nome: 'Atordoado',
+        descricao:
+            'Incapacitado, sem se mover e só fala de forma truncada. Falha automática em salvaguardas de Força e Destreza; ataques contra a criatura têm vantagem.',
+        efeitos: [],
+    },
+    {
+        id: 'caido',
+        nome: 'Caído',
+        descricao:
+            'Só rasteja (ou se levanta, gastando metade do deslocamento). Desvantagem nas jogadas de ataque; ataques corpo a corpo contra a criatura têm vantagem e os à distância, desvantagem.',
+        efeitos: [
+            {
+                alvo: 'ataque.arma',
+                modo: 'desvantagem',
+            },
+            {
+                alvo: 'ataque',
+                modo: 'desvantagem',
+            },
+        ],
+    },
+    {
+        id: 'cego',
+        nome: 'Cego',
+        descricao: 'Falha automática em testes que dependam da visão. Ataques contra a criatura têm vantagem; os dela têm desvantagem.',
+        efeitos: [
+            {
+                alvo: 'ataque.arma',
+                modo: 'desvantagem',
+            },
+            {
+                alvo: 'ataque',
+                modo: 'desvantagem',
+            },
+        ],
+    },
+    {
+        id: 'contido',
+        nome: 'Contido',
+        descricao: 'Deslocamento 0. Ataques contra a criatura têm vantagem; os dela têm desvantagem. Desvantagem em salvaguardas de Destreza.',
+        efeitos: [
+            {
+                alvo: 'ataque.arma',
+                modo: 'desvantagem',
+            },
+            {
+                alvo: 'ataque',
+                modo: 'desvantagem',
+            },
+            {
+                alvo: 'salv.des',
+                modo: 'desvantagem',
+            },
+        ],
+    },
+    {
+        id: 'enfeiticado',
+        nome: 'Enfeitiçado',
+        descricao:
+            'Não pode atacar quem o enfeitiçou nem tê-lo como alvo de efeitos nocivos; quem enfeitiçou tem vantagem em interações sociais com a criatura.',
+        efeitos: [],
+    },
+    {
+        id: 'envenenado',
+        nome: 'Envenenado',
+        descricao: 'Desvantagem em jogadas de ataque e em testes de atributo.',
+        efeitos: [
+            {
+                alvo: 'ataque.arma',
+                modo: 'desvantagem',
+            },
+            {
+                alvo: 'ataque',
+                modo: 'desvantagem',
+            },
+            {
+                alvo: 'teste.*',
+                modo: 'desvantagem',
+            },
+            {
+                alvo: 'pericia.*',
+                modo: 'desvantagem',
+            },
+            {
+                alvo: 'ferramenta.*',
+                modo: 'desvantagem',
+            },
+            {
+                alvo: 'iniciativa',
+                modo: 'desvantagem',
+            },
+        ],
+    },
+    {
+        id: 'incapacitado',
+        nome: 'Incapacitado',
+        descricao: 'Não pode realizar ações nem reações.',
+        efeitos: [],
+    },
+    {
+        id: 'inconsciente',
+        nome: 'Inconsciente',
+        descricao:
+            'Incapacitado, caído, solta o que segura e não percebe o entorno. Falha automática em salvaguardas de Força e Destreza; ataques contra a criatura têm vantagem e, a 1,5 m, são críticos.',
+        efeitos: [],
+    },
+    {
+        id: 'invisivel',
+        nome: 'Invisível',
+        descricao: 'Vantagem nas jogadas de ataque; ataques contra a criatura têm desvantagem.',
+        efeitos: [
+            {
+                alvo: 'ataque.arma',
+                modo: 'vantagem',
+            },
+            {
+                alvo: 'ataque',
+                modo: 'vantagem',
+            },
+        ],
+    },
+    {
+        id: 'paralisado',
+        nome: 'Paralisado',
+        descricao:
+            'Incapacitado, sem se mover nem falar. Falha automática em salvaguardas de Força e Destreza; ataques contra a criatura têm vantagem e, a 1,5 m, são críticos.',
+        efeitos: [],
+    },
+    {
+        id: 'petrificado',
+        nome: 'Petrificado',
+        descricao:
+            'Transformado em pedra: incapacitado, sem se mover nem falar, resistência a todo dano e imunidade a veneno e doença. Falha automática em salvaguardas de Força e Destreza.',
+        efeitos: [],
+    },
+    {
+        id: 'surdo',
+        nome: 'Surdo',
+        descricao: 'Não pode ouvir e falha automaticamente em testes que dependam da audição.',
+        efeitos: [],
+    },
+];
+
+export const condicaoPorId = (id: string): Condicao | undefined => CONDICOES.find((c) => c.id === id);
