@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Site;
 
+use App\Models\Mesa;
+use App\Models\Personagem;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -14,9 +16,21 @@ class PersonagemRequest extends FormRequest
 
     public function rules(): array
     {
-        $mesa = $this->route('mesa');
-        $personagem = $this->route('personagem');
+        return self::regrasPara($this->route('mesa'), $this->route('personagem'));
+    }
 
+    public function messages(): array
+    {
+        return self::mensagens();
+    }
+
+    /**
+     * Regras de nome, cor e jogadores de um personagem; o site (dono da mesa) e o jogo (mestre) usam as mesmas.
+     *
+     * @return array<string, mixed>
+     */
+    public static function regrasPara(Mesa $mesa, ?Personagem $personagem = null): array
+    {
         return [
             'nome' => [
                 'required', 'string', 'max:60',
@@ -29,7 +43,8 @@ class PersonagemRequest extends FormRequest
         ];
     }
 
-    public function messages(): array
+    /** @return array<string, string> */
+    public static function mensagens(): array
     {
         return [
             'nome.unique' => 'Já existe um personagem com esse nome nesta mesa.',

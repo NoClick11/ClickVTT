@@ -3,17 +3,18 @@
 use App\Http\Controllers\App\BroadcastAuthController;
 use App\Http\Controllers\App\ChatController;
 use App\Http\Controllers\App\CombateController;
+use App\Http\Controllers\App\FichaController;
+use App\Http\Controllers\App\ItemController;
 use App\Http\Controllers\App\JogoController;
 use App\Http\Controllers\App\ObjetoController;
 use App\Http\Controllers\App\PaginaController;
-use App\Http\Controllers\App\PersonagemController as PersonagemDoJogoController;
 use App\Http\Controllers\App\PastaController;
+use App\Http\Controllers\App\PersonagemController as PersonagemDoJogoController;
 use App\Http\Controllers\Site\ConviteController;
 use App\Http\Controllers\Site\JogadorController;
 use App\Http\Controllers\Site\MesaController;
 use App\Http\Controllers\Site\PersonagemController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::middleware('auth')->group(function () {
     Route::get('/', [MesaController::class, 'index'])->name('home');
@@ -45,7 +46,13 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::patch('paginas/{pagina}', [PaginaController::class, 'update'])->name('paginas.update');
     Route::delete('paginas/{pagina}', [PaginaController::class, 'destroy'])->name('paginas.destroy');
     Route::post('paginas/{pagina}/jogadores/{jogador}', [PaginaController::class, 'moverJogador'])->name('paginas.jogador');
+    Route::patch('personagens/{personagem}/ficha', [FichaController::class, 'atualizar'])
+        ->middleware('throttle:120,1')->name('personagens.ficha');
+    Route::post('personagens', [PersonagemDoJogoController::class, 'criar'])->middleware('throttle:30,1')->name('personagens.store');
     Route::put('personagens/{personagem}/jogadores', [PersonagemDoJogoController::class, 'atribuir'])->name('personagens.atribuir');
+    Route::post('itens', [ItemController::class, 'store'])->middleware('throttle:60,1')->name('itens.store');
+    Route::patch('itens/{item}', [ItemController::class, 'update'])->middleware('throttle:60,1')->name('itens.update');
+    Route::delete('itens/{item}', [ItemController::class, 'destroy'])->name('itens.destroy');
     Route::post('paginas/{pagina}/objetos', [ObjetoController::class, 'store'])->name('objetos.store');
     Route::post('pastas', [PastaController::class, 'store'])->name('pastas.store');
     Route::patch('pastas/{pasta}', [PastaController::class, 'update'])->name('pastas.update');

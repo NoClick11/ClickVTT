@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\App;
 
 use App\Http\Controllers\Controller;
+use App\Models\Jogador;
 use App\Models\Mesa;
 use App\Models\Objeto;
 use App\Models\Pagina;
-use App\Models\Jogador;
+use App\Nucleo\Sistemas\RegistroSistemas;
 use App\Support\AcessoMesa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,7 +27,7 @@ class JogoController extends Controller
             : redirect()->route('convite.show', $mesa->convite_token);
     }
 
-    public function show(Request $request, Mesa $mesa, Jogador $jogador): Response|RedirectResponse
+    public function show(Request $request, Mesa $mesa, Jogador $jogador, RegistroSistemas $sistemas): Response|RedirectResponse
     {
         abort_unless($jogador->mesa_id === $mesa->id, 404);
         $acesso = AcessoMesa::resolver($request, $mesa, $jogador->id);
@@ -44,8 +45,12 @@ class JogoController extends Controller
             ? $pagina->objetos()->when(! $mestre, fn ($q) => $q->visivelAoJogador())->orderBy('z')->orderBy('id')->get()
             : collect();
 
+        $personagens = $mesa->personagens()->with('jogadores')->orderBy('nome')->get();
+
         return Inertia::render('app/Jogo', [
             'mesa' => ['id' => $mesa->id, 'slug' => $mesa->slug, 'nome' => $mesa->nome, 'capa' => $mesa->capaUrl()],
+            // `modulo` = existe módulo do sistema no servidor; o front resolve o seu pelo mesmo slug.
+            'sistema' => ['slug' => $mesa->sistema->slug, 'nome' => $mesa->sistema->nome, 'modulo' => $sistemas->possui($mesa->sistema->slug)],
             'jogador' => $acesso->jogador->paraFront(),
             'mestre' => $mestre,
             'pagina' => $pagina?->paraFront(),
@@ -56,14 +61,31 @@ class JogoController extends Controller
             // Todos veem quem joga e os personagens (com os donos); só o mestre vê a página de cada jogador.
             'jogadores' => $mesa->jogadores()->orderByRaw("papel = 'mestre' desc")->orderBy('nome')->get()
                 ->map(fn ($j) => $mestre ? $j->paraFront() : $j->publico())->values(),
-            'personagens' => $mesa->personagens()->with('jogadores')->orderBy('nome')->get()->map->paraFront()->values(),
+            // A ficha em si só vai ao mestre e aos jogadores do personagem.
+            'personagens' => $personagens->map(fn ($p) => $p->paraFront($acesso->podeControlar($p->id), $sistemas->resolver($mesa->sistema->slug)))->values(),
             // Personagens que ESTE jogador controla (o mestre controla todos): tokens que ele pode mover e "falar como".
             'meusPersonagens' => $acesso->personagensPermitidos(),
+            // Itens da mesa: o mestre vê todos; o jogador só os que aparecem nas fichas que ele controla.
+            'itens' => $this->itensVisiveis($mesa, $acesso, $personagens, $sistemas),
             'combate' => $mesa->combate ?? ['ativo' => false, 'rodada' => 1, 'atual' => null, 'itens' => []],
             'mensagens' => $mesa->mensagens()->with(['personagem', 'jogador'])->latest('id')->limit(80)->get()->reverse()
                 ->map(fn ($m) => $m->para($acesso->jogador))->filter()->values(),
             'sairUrl' => route('convite.sair', $mesa->convite_token).'?jogador='.$acesso->jogador->id,
         ]);
+    }
+
+    /** @return \Illuminate\Support\Collection<int, array> */
+    private function itensVisiveis(Mesa $mesa, AcessoMesa $acesso, $personagens, RegistroSistemas $sistemas)
+    {
+        if ($acesso->ehMestre()) {
+            return $mesa->itens()->orderBy('nome')->get()->map->paraFront()->values();
+        }
+        $sistema = $sistemas->resolver($mesa->sistema->slug);
+        $ids = $sistema
+            ? $personagens->filter(fn ($p) => $p->ficha && $acesso->podeControlar($p->id))->flatMap(fn ($p) => $sistema->itensReferenciados($p->ficha))->unique()->values()->all()
+            : [];
+
+        return $ids ? $mesa->itens()->whereIn('id', $ids)->orderBy('nome')->get()->map->paraFront()->values() : collect();
     }
 
     /** Mestre navega livremente (?pagina=ID); jogador vê sempre a página onde o mestre o colocou. */

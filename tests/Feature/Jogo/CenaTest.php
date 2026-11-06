@@ -357,7 +357,8 @@ class CenaTest extends TestCase
 
     public function test_migracao_preserva_tokens_mensagens_e_senhas_dos_personagens_antigos(): void
     {
-        $this->artisan('migrate:rollback', ['--step' => 1])->assertExitCode(0);
+        // Desfaz só a migração da separação (pelo caminho), sem depender de ser a última.
+        $this->artisan('migrate:rollback', ['--path' => 'database/migrations/2026_11_05_100000_separa_jogadores_e_personagens.php'])->assertExitCode(0);
         $dono = User::factory()->create();
         $mesa = $dono->mesas()->create(['nome' => 'Velha', 'slug' => 'velha', 'sistema_id' => Sistema::value('id'), 'tema_entrada' => 'padrao']);
         $pagina = $mesa->paginas()->create(['nome' => 'P', 'ordem' => 1]);
