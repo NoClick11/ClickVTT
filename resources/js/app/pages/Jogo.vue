@@ -279,6 +279,12 @@ provide('alvoDoAtaque', alvoDoAtaque);
 // Cada jogador mira o seu alvo (só local): botão Mirar ou tecla T + clique num token de personagem. O alvo fica travado
 // até ser trocado ou limpo e recebe o dano aplicado pelo chat e os efeitos do painel.
 const alvoObjetoId = ref<number | null>(null);
+/** A mira foi posta por uma Técnica (o mais perto da área): o painel de aplicar efeito não abre, a Técnica já traz o efeito, a CD e a duração. */
+const miraDaTecnica = ref(false);
+function miraManual(id: number | null) {
+    miraDaTecnica.value = false;
+    alvoObjetoId.value = id;
+}
 const alvoObjeto = computed(() => objetos.value.find((o) => o.id === alvoObjetoId.value && o.tipo === 'token') ?? null);
 const alvoPersonagem = computed(() => props.personagens.find((p) => p.id === alvoObjeto.value?.personagem_id) ?? null);
 watch(alvoObjeto, (o) => {
@@ -800,7 +806,10 @@ async function escolherAreaDaFicha(personagemId: number, area: AreaDeEfeito): Pr
         return null;
     }
     const maisPerto = objetos.value.find((o) => o.tipo === 'token' && o.personagem_id === alvos[0]);
-    if (maisPerto) alvoObjetoId.value = maisPerto.id;
+    if (maisPerto) {
+        alvoObjetoId.value = maisPerto.id;
+        miraDaTecnica.value = true;
+    }
 
     return alvos;
 }
@@ -1302,7 +1311,7 @@ function alternarPorta(id: number) {
                     @criar-texto="pedirTexto"
                     @selecionar="selecionadoId = $event"
                     @selecao="selecionadosIds = $event"
-                    @mirar="alvoObjetoId = $event"
+                    @mirar="miraManual($event)"
                     @gabarito="aoGabarito"
                     @alterar="aoAlterar"
                     @zoom="escala = $event"
@@ -1363,7 +1372,7 @@ function alternarPorta(id: number) {
                         @devolver="(item, categoria) => comandoCombate('devolver', { item_id: item, categoria })"
                     />
                     <PainelAlvo
-                        v-if="alvoPersonagem"
+                        v-if="alvoPersonagem && !miraDaTecnica"
                         :nome="alvoPersonagem.nome"
                         :cor="alvoPersonagem.cor"
                         :condicoes="moduloSistema?.condicoes ?? []"
