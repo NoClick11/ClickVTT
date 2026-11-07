@@ -41,6 +41,9 @@ services:
         image: 'sail-8.5/app'
         command: 'npm run dev -- --host 0.0.0.0'
         working_dir: /var/www/html
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
         ports:
             - '${VITE_PORT:-5173}:5173'
         volumes:
