@@ -18,12 +18,14 @@ export class ObjetoVisual {
     private marcador = new Graphics();
     private iconesStatus = new Container();
     private statusDesenhado = '';
+    private mira = new Graphics();
+    private miraLigada = false;
     private destruido = false;
     private enfase = true;
 
     constructor(dto: ObjetoDto, private mestre = false) {
         this.dto = { ...dto };
-        this.container.addChild(this.fundo, this.marcador, this.iconesStatus);
+        this.container.addChild(this.fundo, this.marcador, this.iconesStatus, this.mira);
         this.aplicar();
         void this.carregarMidia();
     }
@@ -96,6 +98,7 @@ export class ObjetoVisual {
         this.desenharFundo();
         this.desenharMarcador();
         this.desenharStatus();
+        this.desenharMira();
         this.ajustarMidia();
         this.atualizarRotulo(largura, altura);
     }
@@ -190,6 +193,31 @@ export class ObjetoVisual {
         if (this.dto.tipo !== 'luz' || !this.mestre) return;
         g.circle(this.dto.largura / 2, this.dto.altura / 2, 9).fill(0x0d0a12).stroke({ color: corHex(this.dto.dados?.cor ?? '#ffd27a'), width: 3 });
         g.circle(this.dto.largura / 2, this.dto.altura / 2, 3).fill(0xffffff);
+    }
+
+    /** Liga ou desliga a mira (o token é o alvo de quem joga). */
+    definirAlvo(ligada: boolean): void {
+        if (this.miraLigada === ligada) return;
+        this.miraLigada = ligada;
+        this.desenharMira();
+    }
+
+    /** Mira vermelha por fora do token: um anel com quatro tracinhos apontando para o centro. */
+    private desenharMira(): void {
+        const g = this.mira.clear();
+        if (!this.miraLigada || !this.ehToken) return;
+        const { largura, altura } = this.dto;
+        const cx = largura / 2;
+        const cy = altura / 2;
+        const rx = largura / 2 + 6;
+        const ry = altura / 2 + 6;
+        const risco = Math.max(8, Math.min(largura, altura) * 0.22);
+        g.ellipse(cx, cy, rx, ry).stroke({ color: 0xef4444, width: 3, alpha: 0.95 });
+        for (const [dx, dy, ax, ay] of [[0, -1, 0, 1], [0, 1, 0, -1], [-1, 0, 1, 0], [1, 0, -1, 0]] as const) {
+            const x0 = cx + dx * rx;
+            const y0 = cy + dy * ry;
+            g.moveTo(x0 + dx * 6, y0 + dy * 6).lineTo(x0 + ax * risco, y0 + ay * risco).stroke({ color: 0xef4444, width: 3, alpha: 0.95, cap: 'round' });
+        }
     }
 
     /**

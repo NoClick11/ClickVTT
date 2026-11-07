@@ -8,7 +8,7 @@ export const CAMADAS: { id: Camada; nome: string; dica: string }[] = [
     { id: 'iluminacao', nome: 'Iluminação', dica: 'Luzes, paredes, portas e janelas' },
 ];
 
-export type Ferramenta = 'selecionar' | 'mover' | 'regua' | 'pintar' | 'texto' | 'parede' | 'porta' | 'janela' | 'luz';
+export type Ferramenta = 'selecionar' | 'mirar' | 'mover' | 'regua' | 'pintar' | 'texto' | 'parede' | 'porta' | 'janela' | 'luz';
 
 /** Estilo atual das ferramentas de pintar (traço) e texto. */
 export interface EstiloPintura {
@@ -69,7 +69,10 @@ export type AlcaRedimensionar = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw
 export type CamposGeometria = Partial<Pick<ObjetoDto, 'x' | 'y' | 'largura' | 'altura'>>;
 
 export interface CenaEventos {
+    /** O objeto selecionado quando há um só (o inspetor usa); `null` com nenhum ou vários. */
     selecionar: (id: number | null) => void;
+    /** A seleção inteira (um ou vários objetos: laço, Shift+clique, Ctrl+A). */
+    selecao: (ids: number[]) => void;
     /** `final` = soltou o mouse (persistir); false = arrasto em andamento. */
     alterar: (id: number, campos: CamposGeometria, final: boolean) => void;
     zoom: (escala: number) => void;
@@ -83,4 +86,6 @@ export interface CenaEventos {
     alternarPorta: (id: number) => void;
     /** Botão direito (sem arrastar) sobre um objeto, em qualquer camada: posição na tela (client) para abrir o menu. */
     menuObjeto: (id: number, tela: { x: number; y: number }) => void;
+    /** Ferramenta Mirar (ou tecla T + clique): o token de personagem clicado vira o alvo (`null` = limpar o alvo). */
+    mirar: (id: number | null) => void;
 }

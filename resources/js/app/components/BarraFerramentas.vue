@@ -3,6 +3,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
     AppWindow,
     BrickWall,
+    Crosshair,
     Dices,
     DoorClosed,
     Hand,
@@ -29,6 +30,7 @@ interface Item {
 }
 const ferramentas: Item[] = [
     { id: 'selecionar', rotulo: 'Selecionar e mover', icone: MousePointer2 },
+    { id: 'mirar', rotulo: 'Mirar: trava um token como alvo (ou segure T e clique)', icone: Crosshair },
     { id: 'mover', rotulo: 'Mover a vista (ou segure Espaço)', icone: Hand },
     { id: 'regua', rotulo: 'Régua', icone: Ruler },
     { id: 'pintar', rotulo: 'Pintar', icone: Paintbrush },

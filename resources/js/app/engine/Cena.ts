@@ -1,4 +1,5 @@
 import { Application, Container, Graphics, Text } from 'pixi.js';
+import { limitar as limitarPasso, metros as metrosDe } from '../nucleo/combate/movimento';
 import { ObjetoVisual } from './ObjetoVisual';
 import {
     CAMADAS,
@@ -18,7 +19,7 @@ const TAMANHO_ALCA = 8; // px na tela
 const MARGEM_TOPO = 48; // altura da barra superior
 const ALCAS: AlcaRedimensionar[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
-type Modo = 'nenhum' | 'pan' | 'mover' | 'redimensionar' | 'regua' | 'desenhar' | 'pintar';
+type Modo = 'nenhum' | 'pan' | 'mover' | 'redimensionar' | 'regua' | 'desenhar' | 'pintar' | 'laco';
 
 interface Opcoes {
     mestre: boolean;
@@ -53,6 +54,20 @@ export class Cena {
     private camadaAtiva: Camada = 'jogadores';
     private ferramenta: Ferramenta = 'selecionar';
     private selecionadoId: number | null = null;
+    /** Os outros objetos da seleção em lote (além do principal). */
+    private extras = new Set<number>();
+    /** Onde cada objeto do grupo estava ao começar o arrasto em grupo. */
+    private grupoInicio = new Map<number, { x: number; y: number }>();
+    /** Começo do retângulo de seleção (laço), em coordenadas do mundo, e se o Shift estava apertado (soma à seleção). */
+    private lacoInicio = { x: 0, y: 0 };
+    private lacoSoma = false;
+    /** O objeto que o arrasto do grupo segura (o encaixe na grade segue o dele). */
+    private ancoraDoGrupo: number | null = null;
+    private alvoId: number | null = null;
+    /** Deslocamento do turno do token que se move agora (metros): a régua do arrasto mostra o gasto e, para o jogador, trava. */
+    private movimento: { objetoId: number; usado: number; total: number; limitar: boolean } | null = null;
+    /** Tecla T apertada: o próximo clique em um token o mira (qualquer ferramenta). */
+    private teclaMirar = false;
 
     private modo: Modo = 'nenhum';
     private espaco = false;
@@ -140,6 +155,7 @@ export class Cena {
                 this.moverParaCamada(existente, dto.camada);
             } else {
                 const v = new ObjetoVisual(dto, this.opcoes.mestre);
+                v.definirAlvo(dto.id === this.alvoId);
                 v.definirEnfase(this.camadaAtiva === 'iluminacao');
                 this.visuais.set(dto.id, v);
                 this.camadas.get(dto.camada)?.addChild(v.container);
@@ -149,7 +165,7 @@ export class Cena {
             if (!ids.has(id)) {
                 v.destruir();
                 this.visuais.delete(id);
-                if (this.selecionadoId === id) this.selecionar(null);
+                if (this.selecionadoId === id || this.extras.has(id)) this.definirSelecao(this.selecionadosIds().filter((x) => x !== id));
             }
         }
         this.ordenarCamadas();
@@ -162,6 +178,17 @@ export class Cena {
         const sel = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
         if (sel && sel.dto.camada !== camada) this.selecionar(null);
         this.atualizarCursor();
+    }
+
+    /** O token do turno e o quanto já andou/pode andar (null = sem limite medido). */
+    setMovimento(m: { objetoId: number; usado: number; total: number; limitar: boolean } | null): void {
+        this.movimento = m;
+    }
+
+    /** Token mirado por quem joga (só local): ganha a mira desenhada por cima. */
+    setAlvo(id: number | null): void {
+        this.alvoId = id;
+        for (const v of this.visuais.values()) v.definirAlvo(v.dto.id === id);
     }
 
     setPersonagensPermitidos(ids: number[]): void {
@@ -189,10 +216,48 @@ export class Cena {
     }
 
     selecionar(id: number | null): void {
-        if (this.selecionadoId === id) return;
-        this.selecionadoId = id;
+        if (this.selecionadoId === id && this.extras.size === 0) return;
+        this.definirSelecao(id === null ? [] : [id]);
+    }
+
+    /** Ids da seleção inteira (o principal primeiro). */
+    private selecionadosIds(): number[] {
+        return this.selecionadoId === null ? [] : [this.selecionadoId, ...this.extras];
+    }
+
+    /** Troca a seleção (vazia, um objeto ou vários), redesenha e avisa a tela. */
+    private definirSelecao(ids: number[]): void {
+        this.selecionadoId = ids[0] ?? null;
+        this.extras = new Set(ids.slice(1));
         this.desenharSelecao();
-        this.opcoes.eventos.selecionar(id);
+        this.opcoes.eventos.selecao(ids);
+        this.opcoes.eventos.selecionar(ids.length === 1 ? ids[0] : null);
+    }
+
+    /** Ctrl+A: seleciona tudo o que a pessoa pode mexer na camada ativa. */
+    selecionarTodos(): void {
+        this.definirSelecao([...this.visuais.values()].filter((v) => this.podeInteragir(v) && this.ferramenta !== 'mirar').map((v) => v.dto.id));
+    }
+
+    /** Objetos que o retângulo (mundo) toca e que a pessoa pode mexer. */
+    private objetosNoLaco(a: { x: number; y: number }, b: { x: number; y: number }): number[] {
+        const [x0, x1] = [Math.min(a.x, b.x), Math.max(a.x, b.x)];
+        const [y0, y1] = [Math.min(a.y, b.y), Math.max(a.y, b.y)];
+
+        return [...this.visuais.values()]
+            .filter((v) => {
+                if (!this.podeInteragir(v)) return false;
+                const c = v.caixa();
+                const pts = v.dto.dados?.pontos;
+                // parede: o segmento (pelo menos uma das pontas dentro, ou a caixa cruza)
+                if (v.dto.tipo === 'parede' && pts?.length === 4) {
+                    const dentro = (px: number, py: number) => px >= x0 && px <= x1 && py >= y0 && py <= y1;
+                    return dentro(pts[0], pts[1]) || dentro(pts[2], pts[3]) || (Math.min(pts[0], pts[2]) <= x1 && Math.max(pts[0], pts[2]) >= x0 && Math.min(pts[1], pts[3]) <= y1 && Math.max(pts[1], pts[3]) >= y0);
+                }
+
+                return c.x <= x1 && c.x + c.largura >= x0 && c.y <= y1 && c.y + c.altura >= y0;
+            })
+            .map((v) => v.dto.id);
     }
 
     // --- vista -----------------------------------------------------------------
@@ -335,6 +400,22 @@ export class Cena {
         const g = this.selecaoG.clear();
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
         if (!v) return;
+        // Seleção em lote: um contorno em cada objeto (sem alças: o grupo só se move e se apaga)
+        if (this.extras.size > 0) {
+            for (const id of this.selecionadosIds()) {
+                const o = this.visuais.get(id);
+                if (!o) continue;
+                const pts = o.dto.dados?.pontos;
+                if (o.dto.tipo === 'parede' && pts?.length === 4) {
+                    g.moveTo(pts[0], pts[1]).lineTo(pts[2], pts[3]).stroke({ color: 0xd4a843, width: 14, alpha: 0.35, cap: 'round' });
+                    continue;
+                }
+                const c = o.caixa();
+                g.rect(c.x, c.y, c.largura, c.altura).fill({ color: 0xd4a843, alpha: 0.08 }).stroke({ color: 0xd4a843, width: 1.5, alpha: 0.95, pixelLine: true });
+            }
+
+            return;
+        }
         const { x, y, largura, altura } = v.caixa();
         const pts = v.dto.dados?.pontos;
         if (v.dto.tipo === 'parede' && pts?.length === 4) {
@@ -499,6 +580,14 @@ export class Cena {
                 this.atualizarCursor();
                 e.preventDefault();
             }
+            if (e.code === 'KeyA' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                this.selecionarTodos();
+            }
+            if (e.code === 'KeyT' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                this.teclaMirar = true;
+                this.atualizarCursor();
+            }
             if (e.key === 'Escape') {
                 this.limparRegua();
                 this.selecionar(null);
@@ -507,6 +596,10 @@ export class Cena {
         ouvirJanela('keyup', (e) => {
             if (e.code === 'Space') {
                 this.espaco = false;
+                this.atualizarCursor();
+            }
+            if (e.code === 'KeyT') {
+                this.teclaMirar = false;
                 this.atualizarCursor();
             }
         });
@@ -536,6 +629,13 @@ export class Cena {
             this.reguaInicio = { x: this.snapCentro(p.x), y: this.snapCentro(p.y) };
             return;
         }
+        // Mirar (ferramenta ou tecla T): o token de personagem sob o clique vira o alvo; clicar no vazio, com a ferramenta, limpa.
+        if (this.ferramenta === 'mirar' || this.teclaMirar) {
+            const token = this.tokenEm(p.x, p.y);
+            if (token) this.opcoes.eventos.mirar(token.dto.id === this.alvoId ? null : token.dto.id);
+            else if (this.ferramenta === 'mirar') this.opcoes.eventos.mirar(null);
+            return;
+        }
         if (this.ferramenta === 'pintar') {
             this.modo = 'pintar';
             this.tracoAtual = [p.x, p.y];
@@ -559,18 +659,50 @@ export class Cena {
         // Ferramenta "selecionar": alça > objeto > vazio.
         const alca = this.alcaEm(p.x, p.y);
         const sel = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
-        if (alca && sel) {
+        if (alca && sel && this.extras.size === 0) {
             this.modo = 'redimensionar';
             this.alca = alca;
             this.inicioObjeto = { x: sel.dto.x, y: sel.dto.y, largura: sel.dto.largura, altura: sel.dto.altura };
             return;
         }
         const alvo = this.objetoEm(p.x, p.y);
-        this.selecionar(alvo?.dto.id ?? null);
-        if (alvo && alvo.dto.tipo !== 'parede') {
+        const emLote = this.extras.size > 0;
+        // Shift+clique: soma ou tira o objeto da seleção (sem arrastar)
+        if (e.shiftKey && alvo) {
+            const ids = this.selecionadosIds();
+            this.definirSelecao(ids.includes(alvo.dto.id) ? ids.filter((x) => x !== alvo.dto.id) : [...ids, alvo.dto.id]);
+            return;
+        }
+        // Clique num objeto que já faz parte do lote: arrasta o grupo todo
+        if (alvo && emLote && this.selecionadosIds().includes(alvo.dto.id)) {
+            this.iniciarGrupo(alvo);
+            return;
+        }
+        // Clique no vazio: começa o laço (o Shift mantém a seleção atual e soma o que o laço pegar)
+        if (!alvo) {
+            this.lacoSoma = e.shiftKey;
+            this.lacoInicio = p;
+            if (!e.shiftKey) this.selecionar(null);
+            this.modo = 'laco';
+            return;
+        }
+        this.selecionar(alvo.dto.id);
+        if (alvo.dto.tipo !== 'parede') {
             this.modo = 'mover';
             this.inicioObjeto = { x: alvo.dto.x, y: alvo.dto.y };
         }
+    }
+
+    /** Começa o arrasto do grupo: lembra onde cada objeto (menos paredes) estava; o clicado é o principal. */
+    private iniciarGrupo(ancora: ObjetoVisual): void {
+        this.grupoInicio.clear();
+        for (const id of this.selecionadosIds()) {
+            const o = this.visuais.get(id);
+            if (o && o.dto.tipo !== 'parede') this.grupoInicio.set(id, { x: o.dto.x, y: o.dto.y });
+        }
+        this.modo = 'mover';
+        this.inicioObjeto = { x: ancora.dto.x, y: ancora.dto.y };
+        this.ancoraDoGrupo = ancora.dto.id;
     }
 
     private aoMover(e: PointerEvent): void {
@@ -606,15 +738,38 @@ export class Cena {
             this.atualizarRegua({ x: this.snapCentro(p.x), y: this.snapCentro(p.y) });
             return;
         }
+        if (this.modo === 'laco') {
+            const [x0, y0] = [Math.min(this.lacoInicio.x, p.x), Math.min(this.lacoInicio.y, p.y)];
+            this.desenhoG
+                .clear()
+                .rect(x0, y0, Math.abs(p.x - this.lacoInicio.x), Math.abs(p.y - this.lacoInicio.y))
+                .fill({ color: 0xd4a843, alpha: 0.12 })
+                .stroke({ color: 0xf4e0a0, width: 1.5, alpha: 0.95, pixelLine: true });
+            return;
+        }
+        // Arrasto do grupo: todos andam o mesmo tanto (o encaixe na grade segue o objeto que o mouse segura)
+        if (this.modo === 'mover' && this.grupoInicio.size > 1 && this.ancoraDoGrupo !== null) {
+            if (!this.iniciou && Math.hypot(tela.x - this.inicioTela.x, tela.y - this.inicioTela.y) < 3) return;
+            this.iniciou = true;
+            const base = this.grupoInicio.get(this.ancoraDoGrupo) ?? { x: 0, y: 0 };
+            const dx = this.snap(base.x + (p.x - this.inicioMundo.x)) - base.x;
+            const dy = this.snap(base.y + (p.y - this.inicioMundo.y)) - base.y;
+            for (const [id, ini] of this.grupoInicio) {
+                const o = this.visuais.get(id);
+                if (!o) continue;
+                const campos = { x: ini.x + dx, y: ini.y + dy };
+                o.definirGeometria(campos);
+                this.opcoes.eventos.alterar(id, campos, false);
+            }
+            this.desenharSelecao();
+            return;
+        }
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
         if (this.modo === 'mover' && v && v.dto.tipo !== 'parede') {
             // Só começa a arrastar após alguns px, para que um clique não mova o objeto.
             if (!this.iniciou && Math.hypot(tela.x - this.inicioTela.x, tela.y - this.inicioTela.y) < 3) return;
             this.iniciou = true;
-            const campos = {
-                x: this.snap((this.inicioObjeto.x ?? 0) + (p.x - this.inicioMundo.x)),
-                y: this.snap((this.inicioObjeto.y ?? 0) + (p.y - this.inicioMundo.y)),
-            };
+            const campos = this.posicaoDoArrasto(v, p);
             v.definirGeometria(campos);
             this.desenharSelecao();
             this.opcoes.eventos.alterar(v.dto.id, campos, false);
@@ -632,6 +787,59 @@ export class Cena {
         // Cursor de alça ao passar por cima.
         const alca = this.modo === 'nenhum' ? this.alcaEm(p.x, p.y) : null;
         this.atualizarCursor(alca ? cursorDaAlca(alca) : undefined);
+    }
+
+    /**
+     * Onde o token fica durante o arrasto. No turno com deslocamento medido, a régua mostra o gasto (verde dentro do limite,
+     * vermelho além) e, para o jogador, o token TRAVA onde o deslocamento acaba; o encaixe na grade só vale se couber.
+     */
+    private posicaoDoArrasto(v: ObjetoVisual, p: { x: number; y: number }): { x: number; y: number } {
+        const ox = this.inicioObjeto.x ?? 0;
+        const oy = this.inicioObjeto.y ?? 0;
+        const livre = { x: ox + (p.x - this.inicioMundo.x), y: oy + (p.y - this.inicioMundo.y) };
+        const encaixado = { x: this.snap(livre.x), y: this.snap(livre.y) };
+        const m = this.movimento;
+        const pagina = this.pagina;
+        if (!m || !pagina || m.objetoId !== v.dto.id) return encaixado;
+        const restante = Math.max(0, m.total - m.usado);
+        let final = encaixado;
+        let travou = false;
+        if (m.limitar) {
+            const r = limitarPasso(ox, oy, encaixado.x, encaixado.y, restante, pagina);
+            if (r.travou) {
+                // o encaixe estourou: tenta o ponto livre limitado (sem grade), que fica exatamente no fim do deslocamento
+                const livreLimitado = limitarPasso(ox, oy, livre.x, livre.y, restante, pagina);
+                final = { x: livreLimitado.x, y: livreLimitado.y };
+                travou = livreLimitado.travou;
+            }
+        }
+        this.desenharMovimento(v, { x: ox, y: oy }, final, m.usado, m.total, travou, !m.limitar);
+
+        return final;
+    }
+
+    /** Régua do arrasto do token do turno: linha do ponto de partida até o token, com o gasto do turno. */
+    private desenharMovimento(v: ObjetoVisual, ini: { x: number; y: number }, fim: { x: number; y: number }, usado: number, total: number, travou: boolean, livre: boolean): void {
+        const pagina = this.pagina!;
+        const { largura, altura } = v.dto;
+        const a = { x: ini.x + largura / 2, y: ini.y + altura / 2 };
+        const b = { x: fim.x + largura / 2, y: fim.y + altura / 2 };
+        const andou = metrosDe(b.x - a.x, b.y - a.y, pagina);
+        const restante = Math.max(0, total - usado);
+        // trecho dentro do limite (verde) e o que passa dele (vermelho); o mestre pode passar
+        const t = andou > 0 ? Math.min(1, restante / andou) : 1;
+        const corte = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+        const g = this.reguaG.clear();
+        const esgotado = travou || restante <= 0.0001;
+        g.moveTo(a.x, a.y).lineTo(corte.x, corte.y).stroke({ color: esgotado ? 0xef4444 : 0x4ade80, width: 4 / this.mundo.scale.x, alpha: 0.95, cap: 'round' });
+        if (t < 1) g.moveTo(corte.x, corte.y).lineTo(b.x, b.y).stroke({ color: 0xef4444, width: 4 / this.mundo.scale.x, alpha: 0.95, cap: 'round' });
+        g.circle(a.x, a.y, 5 / this.mundo.scale.x).fill(0x4ade80);
+        g.circle(b.x, b.y, 5 / this.mundo.scale.x).fill(esgotado || t < 1 ? 0xef4444 : 0x4ade80);
+        this.reguaTexto.text = `${formatar(andou)} m · ${esgotado ? (travou ? 'deslocamento esgotado' : 'sem deslocamento') : `restam ${formatar(restante - andou)} m`}${livre && t < 1 ? ' (além do limite)' : ''}`;
+        this.reguaTexto.style.fill = esgotado || t < 1 ? 0xfca5a5 : 0xbbf7d0;
+        this.reguaTexto.scale.set(1 / this.mundo.scale.x);
+        this.reguaTexto.position.set((a.x + b.x) / 2 + 8 / this.mundo.scale.x, (a.y + b.y) / 2 - 22 / this.mundo.scale.x);
+        this.reguaTexto.visible = true;
     }
 
     private aoSoltar(e: PointerEvent): void {
@@ -672,12 +880,36 @@ export class Cena {
                 this.opcoes.eventos.criarParede([this.desenhoInicio.x, this.desenhoInicio.y, fim.x, fim.y], tipo);
             }
         }
+        if (this.modo === 'laco') {
+            const tela = this.posTela(e);
+            const fim = this.paraMundo(tela.x, tela.y);
+            this.desenhoG.clear();
+            const arrastou = Math.hypot(fim.x - this.lacoInicio.x, fim.y - this.lacoInicio.y) * this.mundo.scale.x > 4;
+            if (arrastou) {
+                const pegos = this.objetosNoLaco(this.lacoInicio, fim);
+                this.definirSelecao(this.lacoSoma ? [...new Set([...this.selecionadosIds(), ...pegos])] : pegos);
+            }
+        }
+        // Fim do arrasto em grupo: cada objeto manda a posição final
+        if (this.modo === 'mover' && this.grupoInicio.size > 1 && this.iniciou) {
+            for (const id of this.grupoInicio.keys()) {
+                const o = this.visuais.get(id);
+                if (o) this.opcoes.eventos.alterar(id, { x: o.dto.x, y: o.dto.y }, true);
+            }
+        }
+        const emGrupo = this.grupoInicio.size > 1;
+        this.grupoInicio.clear();
+        this.ancoraDoGrupo = null;
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
         const modo = this.modo;
+        if (modo === 'mover' && this.movimento) {
+            this.limparRegua();
+            this.reguaTexto.style.fill = 0xfaf0cf;
+        }
         this.modo = 'nenhum';
         this.alca = null;
         this.atualizarCursor();
-        if (!v) return;
+        if (!v || emGrupo) return;
         if (modo === 'mover' && this.iniciou) {
             const { x, y } = v.dto;
             this.opcoes.eventos.alterar(v.dto.id, { x, y }, true);
@@ -723,10 +955,21 @@ export class Cena {
         this.app.ticker.add(passo);
     }
 
+    /** O token de personagem mais acima no ponto do mundo (qualquer jogador pode mirar qualquer token que enxerga). */
+    private tokenEm(x: number, y: number): ObjetoVisual | null {
+        let achado: ObjetoVisual | null = null;
+        for (const v of this.visuais.values()) {
+            if (v.dto.tipo !== 'token' || v.dto.personagem_id === null || !v.contem(x, y)) continue;
+            if (!achado || v.dto.z >= achado.dto.z) achado = v;
+        }
+
+        return achado;
+    }
+
     private atualizarCursor(forcado?: string): void {
         if (!this.pronto) return;
         const emPan = this.espaco || this.ferramenta === 'mover';
-        const padrao = ['regua', 'luz', 'parede', 'porta', 'janela', 'pintar'].includes(this.ferramenta)
+        const padrao = this.teclaMirar || ['mirar', 'regua', 'luz', 'parede', 'porta', 'janela', 'pintar'].includes(this.ferramenta)
             ? 'crosshair'
             : this.ferramenta === 'texto'
               ? 'text'

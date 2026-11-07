@@ -13,10 +13,15 @@ const props = defineProps<{
     personagensPermitidos: number[];
     estilo: EstiloPintura;
     margemDireita: number;
+    /** Token mirado por este jogador (id do objeto), desenhado com a mira. */
+    alvoId?: number | null;
+    /** Deslocamento do turno do token que se move (metros), com a régua do arrasto; null = sem limite medido. */
+    movimento?: { objetoId: number; usado: number; total: number; limitar: boolean } | null;
 }>();
 
 const emit = defineEmits<{
     selecionar: [id: number | null];
+    selecao: [ids: number[]];
     alterar: [id: number, campos: CamposGeometria, final: boolean];
     zoom: [escala: number];
     criarLuz: [x: number, y: number];
@@ -25,6 +30,7 @@ const emit = defineEmits<{
     criarParede: [pontos: [number, number, number, number], tipo: TipoParede];
     alternarPorta: [id: number];
     menuObjeto: [id: number, tela: { x: number; y: number }];
+    mirar: [id: number | null];
 }>();
 
 const host = ref<HTMLDivElement | null>(null);
@@ -38,6 +44,7 @@ onMounted(async () => {
         personagensPermitidos: props.personagensPermitidos,
         eventos: {
             selecionar: (id) => emit('selecionar', id),
+            selecao: (ids) => emit('selecao', ids),
             alterar: (id, campos, final) => emit('alterar', id, campos, final),
             zoom: (e) => emit('zoom', e),
             criarLuz: (x, y) => emit('criarLuz', x, y),
@@ -46,6 +53,7 @@ onMounted(async () => {
             criarParede: (pontos, tipo) => emit('criarParede', pontos, tipo),
             alternarPorta: (id) => emit('alternarPorta', id),
             menuObjeto: (id, tela) => emit('menuObjeto', id, tela),
+            mirar: (id) => emit('mirar', id),
         },
     });
     await nova.iniciar(host.value!);
@@ -60,6 +68,8 @@ onMounted(async () => {
     nova.setMargemDireita(props.margemDireita);
     nova.setEstilo(props.estilo);
     nova.setObjetos(props.objetos);
+    nova.setAlvo(props.alvoId ?? null);
+    nova.setMovimento(props.movimento ?? null);
 });
 
 onBeforeUnmount(() => {
@@ -77,6 +87,15 @@ watch(
     () => props.objetos,
     (o) => cena?.setObjetos(o),
     { deep: true },
+);
+watch(
+    () => props.movimento,
+    (m) => cena?.setMovimento(m ?? null),
+    { deep: true },
+);
+watch(
+    () => props.alvoId,
+    (id) => cena?.setAlvo(id ?? null),
 );
 watch(
     () => props.camada,
@@ -112,6 +131,7 @@ defineExpose({
         return cena?.pontoDoMundo(cx - (r?.left ?? 0), cy - (r?.top ?? 0)) ?? { x: 0, y: 0 };
     },
     selecionar: (id: number | null) => cena?.selecionar(id),
+    selecionarTodos: () => cena?.selecionarTodos(),
     focar: (id: number, selecionar = false) => cena?.focar(id, selecionar),
 });
 </script>
