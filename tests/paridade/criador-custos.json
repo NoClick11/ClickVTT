@@ -1,0 +1,542 @@
+[
+  {
+    "nome": "Medusa (5º)",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 5,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 0,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "condicao",
+          "condicoes": [
+            "paralisado"
+          ]
+        }
+      ]
+    },
+    "total": 10
+  },
+  {
+    "nome": "Fast Punc (4º)",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 4,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 6,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 0,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "condicao",
+          "condicoes": [
+            "atordoado"
+          ]
+        },
+        {
+          "id": "colateral",
+          "params": {
+            "dano": 20
+          }
+        }
+      ]
+    },
+    "total": 8
+  },
+  {
+    "nome": "Gomu Bullet (4º)",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 4,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 5,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 0,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "condicao",
+          "condicoes": [
+            "atordoado"
+          ]
+        },
+        {
+          "id": "debilitante",
+          "params": {
+            "minutos": 1
+          }
+        }
+      ]
+    },
+    "total": 8
+  },
+  {
+    "nome": "Barrier Crash (2º)",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 2,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 0,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "empurrao",
+          "params": {
+            "metros": 6
+          }
+        }
+      ]
+    },
+    "total": 4
+  },
+  {
+    "nome": "Zan Giri Mochi (4º)",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 4,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 7,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 0,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "critico",
+          "params": {
+            "margem": "19"
+          }
+        }
+      ]
+    },
+    "total": 8
+  },
+  {
+    "nome": "Love Arrow (2º)",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 2,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 0,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "acerto-automatico"
+        }
+      ]
+    },
+    "total": 4
+  },
+  {
+    "nome": "Diamond Drill (3º)",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 3,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 4,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 0,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "cerco"
+        }
+      ]
+    },
+    "total": 6
+  },
+  {
+    "nome": "Kaijin no Te (2º)",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 2,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 1,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 0,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "acerto",
+          "params": {
+            "bonus": 3
+          }
+        }
+      ]
+    },
+    "total": 4
+  },
+  {
+    "nome": "Enjomo (3º)",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 3,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "area",
+      "modoDoDano": "ataque",
+      "dados": 5,
+      "intensificado": false,
+      "formaDeAlcance": "cone",
+      "alcance": 18,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "cirurgico"
+        }
+      ]
+    },
+    "total": 6
+  },
+  {
+    "nome": "Naginata Rasetsu (2º)",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 2,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "area",
+      "modoDoDano": "ataque",
+      "dados": 1,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 0,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "condicao",
+          "condicoes": [
+            "estremecido"
+          ]
+        },
+        {
+          "id": "condicao-area"
+        }
+      ]
+    },
+    "total": 4
+  },
+  {
+    "nome": "Gear Second (aux)",
+    "escolhas": {
+      "tipo": "auxiliar",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "aumentar-dano"
+        }
+      ]
+    },
+    "total": 3
+  },
+  {
+    "nome": "Chronicle (aux)",
+    "escolhas": {
+      "tipo": "auxiliar",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "voo",
+          "params": {
+            "metros": "12"
+          }
+        }
+      ]
+    },
+    "total": 3
+  },
+  {
+    "nome": "Brave Shine (aux)",
+    "escolhas": {
+      "tipo": "auxiliar",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "reacao",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "cr",
+          "params": {
+            "bonus": 3
+          }
+        }
+      ]
+    },
+    "total": 3
+  },
+  {
+    "nome": "Dash Punc (aux)",
+    "escolhas": {
+      "tipo": "auxiliar",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "movimento",
+          "params": {
+            "metros": "6"
+          }
+        }
+      ]
+    },
+    "total": 2
+  },
+  {
+    "nome": "Kumo no Sugaki (aux)",
+    "escolhas": {
+      "tipo": "auxiliar",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "reacao",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "contencao-coletiva",
+          "params": {
+            "dados": 5
+          }
+        }
+      ]
+    },
+    "total": 5
+  },
+  {
+    "nome": "Desert Escudo (aux)",
+    "escolhas": {
+      "tipo": "auxiliar",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "reacao",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "contencao-individual",
+          "params": {
+            "pares": 5
+          }
+        }
+      ]
+    },
+    "total": 5
+  },
+  {
+    "nome": "Black (aux)",
+    "escolhas": {
+      "tipo": "auxiliar",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "reducao-movimento",
+          "params": {
+            "nivel": "zero"
+          }
+        }
+      ]
+    },
+    "total": 2
+  },
+  {
+    "nome": "Dos Fleur (aux)",
+    "escolhas": {
+      "tipo": "auxiliar",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "multiplos"
+        }
+      ]
+    },
+    "total": 6
+  }
+]

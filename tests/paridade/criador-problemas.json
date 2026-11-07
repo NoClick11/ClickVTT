@@ -1,0 +1,1579 @@
+[
+  {
+    "nome": "1º grau no nível 1",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 1,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 9,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": null
+  },
+  {
+    "nome": "2º grau no nível 1",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 2,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 9,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "exige o nível 3"
+  },
+  {
+    "nome": "2º grau no nível 3",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 2,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 4,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 15,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 3,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": null
+  },
+  {
+    "nome": "4º grau, usuário simples nível 9",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 4,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 4,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 20,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 9,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "Ainda não dá"
+  },
+  {
+    "nome": "4º grau, usuário avançado nível 9",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 4,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 4,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 20,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 9,
+      "usuario": "avancado",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": null
+  },
+  {
+    "nome": "6º grau sem despertar nível 16",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 6,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 4,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 30,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 16,
+      "usuario": "avancado",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "Ainda não dá"
+  },
+  {
+    "nome": "6º grau desperto nível 16",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 6,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 4,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 30,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 16,
+      "usuario": "avancado",
+      "despertado": true,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": null
+  },
+  {
+    "nome": "7º grau desperto nível 19",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 7,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 4,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 30,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 19,
+      "usuario": "avancado",
+      "despertado": true,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "exige o nível 20"
+  },
+  {
+    "nome": "dados acima do dobro do grau",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 1,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 3,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 9,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "No máximo 2 dados"
+  },
+  {
+    "nome": "custo acima do máximo do grau",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 1,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 9,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "condicao",
+          "condicoes": [
+            "atordoado"
+          ]
+        }
+      ]
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "passa do máximo"
+  },
+  {
+    "nome": "alcance acima do grau",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 1,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 15,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "Linha: no máximo"
+  },
+  {
+    "nome": "redução acima de 2× grau",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 2,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 4,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 15,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "exaustiva",
+          "params": {
+            "niveis": 2
+          }
+        }
+      ]
+    },
+    "ctx": {
+      "nivel": 3,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "redução de custo"
+  },
+  {
+    "nome": "cura em 1º grau",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 1,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 9,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "cura",
+          "params": {
+            "dados": 1
+          }
+        }
+      ]
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "não pode ser Técnica de 1º grau"
+  },
+  {
+    "nome": "técnica rápida em 5º grau",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 5,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 1,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 20,
+      "acao": "bonus",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "rapida"
+        }
+      ]
+    },
+    "ctx": {
+      "nivel": 12,
+      "usuario": "avancado",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "só em Técnicas de 4º"
+  },
+  {
+    "nome": "Auxiliar no nível 1 (simples)",
+    "escolhas": {
+      "tipo": "auxiliar",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "movimento",
+          "params": {
+            "metros": "3"
+          }
+        }
+      ]
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "Auxiliar"
+  },
+  {
+    "nome": "Auxiliar no nível 6 (simples)",
+    "escolhas": {
+      "tipo": "auxiliar",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "movimento",
+          "params": {
+            "metros": "3"
+          }
+        }
+      ]
+    },
+    "ctx": {
+      "nivel": 6,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": null
+  },
+  {
+    "nome": "Auxiliar com dano",
+    "escolhas": {
+      "tipo": "auxiliar",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 1,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "movimento",
+          "params": {
+            "metros": "3"
+          }
+        }
+      ]
+    },
+    "ctx": {
+      "nivel": 6,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "não causam dano"
+  },
+  {
+    "nome": "MP passiva dentro do limite",
+    "escolhas": {
+      "tipo": "mp",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "cr",
+          "params": {
+            "bonus": 3
+          }
+        }
+      ],
+      "ativacao": "passiva"
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "Ação Poderosa"
+  },
+  {
+    "nome": "MP passiva com 3 pontos",
+    "escolhas": {
+      "tipo": "mp",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "movimento",
+          "params": {
+            "metros": "6"
+          }
+        }
+      ],
+      "ativacao": "passiva"
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": null
+  },
+  {
+    "nome": "MP com dano adicional",
+    "escolhas": {
+      "tipo": "mp",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "dano-adicional",
+          "params": {
+            "dados": 1
+          }
+        }
+      ],
+      "ativacao": "poderosa"
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "Manifestações de Poder"
+  },
+  {
+    "nome": "MP acima dos pontos virtuais",
+    "escolhas": {
+      "tipo": "mp",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "cerco"
+        },
+        {
+          "id": "cirurgico"
+        },
+        {
+          "id": "movimento",
+          "params": {
+            "metros": "6"
+          }
+        }
+      ],
+      "ativacao": "passiva"
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "Pontos Virtuais"
+  },
+  {
+    "nome": "Genialidade 1 → 1º grau (avançado)",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 1,
+      "forma": "base",
+      "origem": {
+        "tipo": "genialidade",
+        "indice": 1
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 9,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "avancado",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia",
+      "genialidades": 1
+    },
+    "contem": null
+  },
+  {
+    "nome": "Genialidade 1 → 2º grau",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 2,
+      "forma": "base",
+      "origem": {
+        "tipo": "genialidade",
+        "indice": 1
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 9,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 3,
+      "usuario": "avancado",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia",
+      "genialidades": 1
+    },
+    "contem": "cria uma Técnica de 1º grau"
+  },
+  {
+    "nome": "Genialidade não aprendida",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 1,
+      "forma": "base",
+      "origem": {
+        "tipo": "genialidade",
+        "indice": 2
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 9,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 3,
+      "usuario": "avancado",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia",
+      "genialidades": 1
+    },
+    "contem": "não foi aprendida"
+  },
+  {
+    "nome": "Genialidade, usuário simples (fruta)",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 1,
+      "forma": "base",
+      "origem": {
+        "tipo": "genialidade",
+        "indice": 1
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 9,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia",
+      "genialidades": 1
+    },
+    "contem": "Usuário simples"
+  },
+  {
+    "nome": "Genialidade em estilo de luta",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 1,
+      "forma": "base",
+      "origem": {
+        "tipo": "genialidade",
+        "indice": 1
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 9,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "estilo",
+      "akuma": "",
+      "genialidades": 1
+    },
+    "contem": null
+  },
+  {
+    "nome": "estilo sem Genialidade",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 1,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 9,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "estilo",
+      "akuma": "",
+      "genialidades": 1
+    },
+    "contem": "só são criadas com a Genialidade"
+  },
+  {
+    "nome": "estilo: 3ª Genialidade no nível 3",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 3,
+      "forma": "base",
+      "origem": {
+        "tipo": "genialidade",
+        "indice": 3
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 20,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 3,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "estilo",
+      "akuma": "",
+      "genialidades": 3
+    },
+    "contem": "exige o nível 6"
+  },
+  {
+    "nome": "Zoan só por Points",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 1,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 9,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "zoan"
+    },
+    "contem": "Zoan"
+  },
+  {
+    "nome": "Forma Aperfeiçoada do 3º para o 5º",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 5,
+      "forma": "aperfeicoada",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 6,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 20,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [],
+      "grauOriginal": 3
+    },
+    "ctx": {
+      "nivel": 12,
+      "usuario": "avancado",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": null
+  },
+  {
+    "nome": "Forma Aperfeiçoada acima de 5º",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 6,
+      "forma": "aperfeicoada",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 4,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 20,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [],
+      "grauOriginal": 5
+    },
+    "ctx": {
+      "nivel": 16,
+      "usuario": "avancado",
+      "despertado": true,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "Forma Aperfeiçoada"
+  },
+  {
+    "nome": "Zoan Comum: técnica pelo nível",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 1,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 9,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "zoan",
+      "zoan": "comum"
+    },
+    "contem": "apenas pelos Points"
+  },
+  {
+    "nome": "Zoan Comum: técnica do 2º Point (custom)",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 2,
+      "forma": "base",
+      "origem": {
+        "tipo": "point",
+        "ponto": 2
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 4,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 15,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 3,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "zoan",
+      "zoan": "comum",
+      "points": [
+        {
+          "ponto": 2,
+          "modelo": "custom"
+        }
+      ]
+    },
+    "contem": null
+  },
+  {
+    "nome": "Zoan Comum: Point sem o slot custom",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 2,
+      "forma": "base",
+      "origem": {
+        "tipo": "point",
+        "ponto": 2
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 4,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 15,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 3,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "zoan",
+      "zoan": "comum",
+      "points": []
+    },
+    "contem": "Crie o 2º Point"
+  },
+  {
+    "nome": "Zoan: grau diferente do Point",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 3,
+      "forma": "base",
+      "origem": {
+        "tipo": "point",
+        "ponto": 2
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 4,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 15,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 6,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "zoan",
+      "zoan": "comum",
+      "points": [
+        {
+          "ponto": 2,
+          "modelo": "custom"
+        }
+      ]
+    },
+    "contem": "é de 2º grau"
+  },
+  {
+    "nome": "Zoan: Traço Realçado no 1º Point",
+    "escolhas": {
+      "tipo": "mp",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "point",
+        "ponto": 1
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "movimento",
+          "params": {
+            "metros": "3"
+          }
+        }
+      ],
+      "ativacao": "passiva"
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "zoan",
+      "zoan": "comum",
+      "points": [
+        {
+          "ponto": 1,
+          "modelo": "custom"
+        }
+      ]
+    },
+    "contem": "não tem Traço Realçado"
+  },
+  {
+    "nome": "Zoan: Traço Realçado do 2º Point com 4 pontos",
+    "escolhas": {
+      "tipo": "mp",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "point",
+        "ponto": 2
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "cerco"
+        },
+        {
+          "id": "cirurgico"
+        },
+        {
+          "id": "movimento",
+          "params": {
+            "metros": "3"
+          }
+        }
+      ],
+      "ativacao": "passiva"
+    },
+    "ctx": {
+      "nivel": 3,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "zoan",
+      "zoan": "comum",
+      "points": [
+        {
+          "ponto": 2,
+          "modelo": "custom"
+        }
+      ]
+    },
+    "contem": null
+  },
+  {
+    "nome": "Zoan: Traço Realçado do 2º Point com 5 pontos",
+    "escolhas": {
+      "tipo": "mp",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "point",
+        "ponto": 2
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "cerco"
+        },
+        {
+          "id": "cirurgico"
+        },
+        {
+          "id": "movimento",
+          "params": {
+            "metros": "6"
+          }
+        }
+      ],
+      "ativacao": "passiva"
+    },
+    "ctx": {
+      "nivel": 3,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "zoan",
+      "zoan": "comum",
+      "points": [
+        {
+          "ponto": 2,
+          "modelo": "custom"
+        }
+      ]
+    },
+    "contem": "custa no máximo 4"
+  },
+  {
+    "nome": "Zoan Mítica: técnica de 1º grau pelo nível",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 1,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 2,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 9,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "zoan",
+      "zoan": "mitica"
+    },
+    "contem": null
+  },
+  {
+    "nome": "Zoan Mítica: Auxiliar no nível 1",
+    "escolhas": {
+      "tipo": "auxiliar",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "movimento",
+          "params": {
+            "metros": "3"
+          }
+        }
+      ]
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "zoan",
+      "zoan": "mitica"
+    },
+    "contem": "Auxiliar"
+  },
+  {
+    "nome": "Zoan Mítica desperta: 6º grau no nível 16",
+    "escolhas": {
+      "tipo": "combate",
+      "grau": 6,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 4,
+      "intensificado": false,
+      "formaDeAlcance": "linha",
+      "alcance": 30,
+      "acao": "poderosa",
+      "ataque": true,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": []
+    },
+    "ctx": {
+      "nivel": 16,
+      "usuario": "simples",
+      "despertado": true,
+      "destino": "akuma",
+      "akuma": "zoan",
+      "zoan": "mitica"
+    },
+    "contem": null
+  },
+  {
+    "nome": "Logia: Corpo Elemental só com Power Up",
+    "escolhas": {
+      "tipo": "auxiliar",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "aspecto"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "power-up",
+          "params": {
+            "desv": true,
+            "tamanho": false,
+            "dados": false,
+            "pv": false
+          }
+        }
+      ]
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "logia"
+    },
+    "contem": null
+  },
+  {
+    "nome": "Logia: Corpo Elemental com outro efeito",
+    "escolhas": {
+      "tipo": "auxiliar",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "aspecto"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "movimento",
+          "params": {
+            "metros": "3"
+          }
+        }
+      ]
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "logia"
+    },
+    "contem": "exclusivamente"
+  },
+  {
+    "nome": "Paramecia: Corpo Elemental",
+    "escolhas": {
+      "tipo": "auxiliar",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "aspecto"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "power-up",
+          "params": {
+            "desv": true,
+            "tamanho": false,
+            "dados": false,
+            "pv": false
+          }
+        }
+      ]
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "paramecia"
+    },
+    "contem": "só aos usuários de Logia"
+  },
+  {
+    "nome": "Power Up em MP com dados extras",
+    "escolhas": {
+      "tipo": "mp",
+      "grau": 0,
+      "forma": "base",
+      "origem": {
+        "tipo": "nivel"
+      },
+      "alvo": "unico",
+      "modoDoDano": "ataque",
+      "dados": 0,
+      "intensificado": false,
+      "formaDeAlcance": "pessoal",
+      "alcance": 0,
+      "acao": "bonus",
+      "ataque": false,
+      "salvaguarda": false,
+      "tipoDano": "",
+      "efeitos": [
+        {
+          "id": "power-up",
+          "params": {
+            "desv": false,
+            "tamanho": false,
+            "dados": true,
+            "pv": false
+          }
+        }
+      ],
+      "ativacao": "poderosa"
+    },
+    "ctx": {
+      "nivel": 1,
+      "usuario": "simples",
+      "despertado": false,
+      "destino": "akuma",
+      "akuma": "logia"
+    },
+    "contem": "não pode aumentar dano"
+  }
+]
