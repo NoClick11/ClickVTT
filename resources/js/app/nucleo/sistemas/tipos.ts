@@ -8,6 +8,10 @@ export interface PersonagemFicha {
     id: number;
     nome: string;
     cor: string;
+    /** Quem joga com ele (vazio = NPC). */
+    jogadores?: unknown[];
+    /** NPC aliado dos jogadores (público). */
+    aliado?: boolean;
 }
 
 /** Valores da ficha: o formato é definido (e validado) pelo módulo do sistema. */

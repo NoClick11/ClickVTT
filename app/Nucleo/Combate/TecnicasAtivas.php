@@ -81,8 +81,8 @@ final class TecnicasAtivas
         }
         $alvo = Personagem::query()->where('mesa_id', $mesa->id)->find($alvoId);
         foreach ($depois['ativas'] as $a) {
-            // sem fogo amigo: a Técnica só pede ataque contra quem é do outro lado
-            if (! $alvo || $a['personagem_id'] === $alvoId || Equipes::mesmoLado($mesa, $a['personagem_id'], $alvoId)) {
+            // sem fogo amigo: a Técnica só pede ataque contra quem o atacante pode atingir
+            if (! $alvo || $a['personagem_id'] === $alvoId || ! Equipes::podeAtingir($mesa, $a['personagem_id'], $alvoId)) {
                 continue;
             }
             $atacante = Personagem::query()->where('mesa_id', $mesa->id)->find($a['personagem_id']);

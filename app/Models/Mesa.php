@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 class Mesa extends Model
 {
     protected $fillable = [
-        'nome', 'slug', 'sistema_id', 'descricao', 'capa', 'tema_entrada', 'favorita', 'travada',
+        'nome', 'slug', 'sistema_id', 'descricao', 'capa', 'tema_entrada', 'favorita', 'travada', 'fogo_amigo',
     ];
 
     protected function casts(): array
@@ -20,6 +20,7 @@ class Mesa extends Model
             'combate' => 'array',
             'favorita' => 'boolean',
             'travada' => 'boolean',
+            'fogo_amigo' => 'boolean',
         ];
     }
 

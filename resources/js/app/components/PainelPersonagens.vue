@@ -25,12 +25,15 @@ defineProps<{
     paginaDe: Record<number, PaginaDto | undefined>;
     /** ids de personagens que têm token na página aberta */
     comToken: number[];
+    /** Fogo amigo da mesa (o mestre liga). */
+    fogoAmigo?: boolean;
 }>();
 defineEmits<{
     abrir: [personagemId: number];
     focar: [personagemId: number];
     atribuir: [personagemId: number];
     criar: [];
+    fogoAmigo: [ligado: boolean];
     /** Botão direito (só o mestre): o menu de opções do personagem. */
     menu: [personagemId: number, tela: { x: number; y: number }];
 }>();
@@ -50,6 +53,21 @@ defineEmits<{
                     <Plus class="size-3.5" /> Novo personagem
                 </button>
             </div>
+            <label
+                v-if="mestre"
+                class="mb-2 flex items-center gap-2 rounded-md border border-preto-700 bg-preto-900/60 px-2.5 py-1.5 text-xs text-preto-300"
+                title="Desligado: jogador só acerta NPC (não aliado) e NPC só acerta jogador. Ligado: todos podem se acertar."
+            >
+                <input
+                    type="checkbox"
+                    class="size-3.5 accent-ouro-500"
+                    :checked="!!fogoAmigo"
+                    aria-label="Fogo amigo"
+                    @change="$emit('fogoAmigo', ($event.target as HTMLInputElement).checked)"
+                />
+                Fogo amigo
+                <span class="ml-auto" :class="fogoAmigo ? 'text-red-300' : 'text-preto-500'">{{ fogoAmigo ? 'ligado' : 'desligado' }}</span>
+            </label>
             <ul class="grid gap-1.5">
                 <li
                     v-for="p in personagens"

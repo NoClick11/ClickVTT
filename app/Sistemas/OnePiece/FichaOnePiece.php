@@ -80,6 +80,7 @@ final class FichaOnePiece
             'ancestralidade' => '',
             // Anão com Hóspede Feérico: id do personagem em cujo espaço ele está (null = em lugar nenhum).
             'hospedado' => null,
+            'aliado' => false,
             // Primeiros Socorros: esta criatura já recebeu o tratamento (volta no descanso longo)
             'socorrido' => false,
             // Superioridade Absoluta: bônus ao nível para zerar o alvo, +5 por criatura derrotada (máx. +15) até o fim do encontro
@@ -149,6 +150,8 @@ final class FichaOnePiece
         }
         $r['ancestralidade'] = ['string', 'max:2000'];
         $r['hospedado'] = ['nullable', 'integer:strict', 'min:1'];
+        // NPC aliado dos jogadores (só o mestre muda): os jogadores não o atingem
+        $r['aliado'] = ['boolean:strict'];
         $r['socorrido'] = ['boolean:strict'];
         $r['bonusExecucao'] = ['integer:strict', 'between:0,15'];
         $r['atributoPrimario'] = ['string', Rule::in(self::ATRIBUTOS)];

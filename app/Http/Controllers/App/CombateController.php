@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Mesa;
 use App\Nucleo\Combate\CombateService;
 use App\Support\AcessoMesa;
+use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -106,5 +107,16 @@ class CombateController extends Controller
         ]);
 
         return response()->json(['combate' => $combate->darAtaquesExtras($mesa, $acesso, $dados['personagem_id'], $dados['n'])]);
+    }
+
+    /** O mestre liga ou desliga o fogo amigo da mesa (desligado: jogador só acerta NPC não aliado e NPC só acerta jogador). */
+    public function fogoAmigo(Request $request, Mesa $mesa): JsonResponse
+    {
+        $acesso = AcessoMesa::exigirMestre($request, $mesa);
+        $dados = $request->validate(['ligado' => ['required', 'boolean']]);
+        $mesa->forceFill(['fogo_amigo' => (bool) $dados['ligado']])->save();
+        Transmitir::cena($mesa, null, $acesso->jogador->id);
+
+        return response()->json(['fogo_amigo' => (bool) $mesa->fogo_amigo]);
     }
 }

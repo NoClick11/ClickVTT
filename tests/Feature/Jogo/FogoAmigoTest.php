@@ -8,7 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/** Sem fogo amigo: jogador não machuca jogador nem NPC machuca NPC (em combate vale a disposição de cada um). */
+/** Sem fogo amigo: jogador só acerta NPC (não aliado) e NPC só acerta jogador; o mestre pode ligar o fogo amigo. */
 class FogoAmigoTest extends TestCase
 {
     use RefreshDatabase;
@@ -45,17 +45,48 @@ class FogoAmigoTest extends TestCase
         ]);
     }
 
-    public function test_jogador_contra_jogador_e_npc_contra_npc_sao_recusados_e_o_resto_vale(): void
+    public function test_jogador_so_acerta_npc_e_npc_so_acerta_jogador(): void
     {
         $c = $this->cenario();
         $this->atacar($c, $c->ana, $c->aria, $c->bruno)->assertStatus(422)->assertJsonValidationErrors('alvo_personagem_id'); // PC → PC
         $this->atacar($c, $c->mestre, $c->orc, $c->goblin)->assertStatus(422);                                                   // NPC → NPC
         $this->atacar($c, $c->ana, $c->aria, $c->orc)->assertCreated();                                                          // PC → NPC
         $this->atacar($c, $c->mestre, $c->orc, $c->aria)->assertCreated();                                                       // NPC → PC
-        $this->atacar($c, $c->ana, $c->aria, $c->aria)->assertCreated();                                                         // a si mesmo não é "outro": fora da regra
+        $this->atacar($c, $c->ana, $c->aria, $c->aria)->assertCreated();                                                         // a si mesmo não é "outro"
     }
 
-    public function test_aplicar_o_dano_do_chat_no_aliado_e_recusado(): void
+    public function test_npc_aliado_nao_e_atingido_pelos_jogadores_e_so_o_mestre_marca(): void
+    {
+        $c = $this->cenario();
+        $marcar = fn ($quem, bool $v) => $this->como($quem)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->orc->id]), ['campos' => ['aliado' => $v]]);
+        $marcar($c->ana, true)->assertForbidden(); // jogador não marca (nem o dono de outro personagem)
+        $marcar($c->mestre, true)->assertOk();
+        $this->atacar($c, $c->ana, $c->aria, $c->orc)->assertStatus(422); // o Orc agora é aliado
+        $this->atacar($c, $c->ana, $c->aria, $c->goblin)->assertCreated(); // o Goblin segue inimigo
+        $this->atacar($c, $c->mestre, $c->goblin, $c->orc)->assertStatus(422); // NPC → NPC segue proibido (aliado ou não)
+        $this->assertTrue($c->orc->fresh()->paraFront()['aliado']); // público: a tela filtra a área dos jogadores por isto
+        $marcar($c->mestre, false)->assertOk();
+        $this->atacar($c, $c->ana, $c->aria, $c->orc)->assertCreated();
+    }
+
+    public function test_o_mestre_liga_o_fogo_amigo_e_tudo_passa_a_valer(): void
+    {
+        $c = $this->cenario();
+        $rota = route('jogo.fogo-amigo', $c->mesa->id);
+        $this->como($c->ana)->patchJson($rota, ['ligado' => true])->assertForbidden(); // só o mestre
+        $this->assertFalse((bool) $c->mesa->fresh()->fogo_amigo);
+
+        $this->como($c->mestre)->patchJson($rota, ['ligado' => true])->assertOk()->assertJson(['fogo_amigo' => true]);
+        $this->atacar($c, $c->ana, $c->aria, $c->bruno)->assertCreated();       // PC → PC
+        $this->atacar($c, $c->mestre, $c->orc, $c->goblin)->assertCreated();    // NPC → NPC
+        $this->como($c->mestre)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->orc->id]), ['campos' => ['aliado' => true]])->assertOk();
+        $this->atacar($c, $c->ana, $c->aria, $c->orc)->assertCreated();         // até o NPC aliado
+
+        $this->como($c->mestre)->patchJson($rota, ['ligado' => false])->assertOk();
+        $this->atacar($c, $c->ana, $c->aria, $c->bruno)->assertStatus(422);
+    }
+
+    public function test_aplicar_o_dano_do_chat_segue_a_mesma_regra(): void
     {
         $c = $this->cenario();
         $m = $this->como($c->ana)->postJson(route('jogo.rolagens.store', $c->mesa->id), [
@@ -65,24 +96,13 @@ class FogoAmigoTest extends TestCase
         $this->como($c->ana)->postJson(route('jogo.personagens.dano', [$c->mesa->id, $c->orc->id]), ['mensagem_id' => $m['id']])->assertOk();
     }
 
-    public function test_em_combate_vale_a_disposicao_o_npc_aliado_dos_jogadores_nao_apanha_deles(): void
-    {
-        $c = $this->cenario();
-        $item = fn ($id, $p, $disp) => ['id' => $id, 'nome' => $p->nome, 'cor' => '#000', 'personagem_id' => $p->id, 'objeto_id' => null, 'disposicao' => $disp, 'iniciativa' => 10, 'acoes' => [], 'movimento' => ['usado' => 0.0, 'bonus' => 0.0]];
-        $c->mesa->combate = ['ativo' => true, 'fase' => 'em_curso', 'rodada' => 1, 'atual' => 'a', 'itens' => [$item('a', $c->aria, 'jogadores'), $item('b', $c->orc, 'aliado'), $item('c', $c->goblin, 'inimigo')]];
-        $c->mesa->save();
-        $this->atacar($c, $c->mestre, $c->aria, $c->orc)->assertStatus(422);     // o Orc é aliado dos jogadores
-        $this->atacar($c, $c->mestre, $c->orc, $c->goblin)->assertCreated();      // aliado → inimigo vale
-        $this->atacar($c, $c->mestre, $c->goblin, $c->aria)->assertCreated();     // inimigo → jogador vale
-    }
-
-    public function test_salvaguarda_em_area_recusa_aliados_entre_os_alvos(): void
+    public function test_salvaguarda_em_area_recusa_quem_nao_pode_ser_atingido(): void
     {
         $c = $this->cenario();
         $abrir = fn (array $alvos) => $this->como($c->ana)->postJson(route('jogo.tecnicas.salvaguarda.abrir', $c->mesa->id), [
             'personagem_id' => $c->aria->id, 'nome' => 'Explosão', 'atributo' => 'des', 'alvos' => $alvos, 'dano' => ['expressao' => '5', 'tipo' => 'fogo'],
         ]);
-        $abrir([$c->orc->id, $c->bruno->id])->assertStatus(422)->assertJsonValidationErrors('alvos');
+        $abrir([$c->orc->id, $c->bruno->id])->assertStatus(422)->assertJsonValidationErrors('alvos'); // Bruno é jogador
         $abrir([$c->orc->id, $c->goblin->id])->assertCreated();
     }
 

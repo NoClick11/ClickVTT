@@ -3,6 +3,7 @@
 //   npm run e2e:quick-draw
 //
 // Precisa do app no ar (http://localhost:8000, com o Vite) e do container do Laravel (docker exec). Variáveis: APP_URL, CONTAINER, CHROME_PATH, MOSTRAR=1 (abre a janela).
+// Regras conferidas: jogador só acerta NPC não aliado, NPC só acerta jogador, o mestre marca NPC aliado e liga o fogo amigo.
 // O roteiro restaura a mesa (php artisan e2e:preparar-mesa), joga como o jogador e o mestre e confere o que o SERVIDOR decidiu (php artisan e2e:estado).
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -33,7 +34,7 @@ const mesa = artisan('e2e:preparar-mesa');
 const navegador = await chromium.launch({ executablePath: achar(), args: ['--no-sandbox'], headless: !process.env.MOSTRAR });
 const erros = [];
 const entrar = async (quem) => {
-    const page = await navegador.newPage({ viewport: { width: 1500, height: 950 } });
+    const page = await navegador.newPage({ viewport: { width: 1500, height: 950 }, extraHTTPHeaders: { 'X-E2E': '1' } }); // o servidor de desenvolvimento dispensa o limite de entradas por minuto para este header
     page.on('pageerror', (e) => erros.push(`${quem}: ${e.message.slice(0, 160)}`));
     // a entrada pelo convite tem limite de 8 por minuto: rodadas seguidas do roteiro podem esbarrar nele (espera a janela passar e tenta de novo)
     for (let tentativa = 1; ; tentativa++) {
@@ -124,24 +125,36 @@ try {
     }
     confere(s.gatilhos.length === 1 && s.gatilhos[0].alvo === 'PertoE2E', 'servidor: só 1 card de gatilho até aqui (Perto)', JSON.stringify(s.gatilhos));
 
-    etapa('4. Camadas e sem fogo amigo: Oculto (camada do Mestre), Amigo (PC) e Longe (45 m) não geram card');
-    for (const [nome] of [['OcultoE2E'], ['AmigoE2E'], ['LongeE2E']]) {
+    etapa('4. O mestre marca o AliadoE2E como aliado dos jogadores, pela ficha dele');
+    await abrirAba(mestre, 'Personagens');
+    await mestre.getByLabel('Abrir a ficha de AliadoE2E').click();
+    await mestre.waitForTimeout(1200);
+    await mestre.getByLabel('Aliado dos jogadores').check();
+    await mestre.waitForTimeout(1200);
+    confere(artisan('e2e:estado').aliado === true, 'servidor: o AliadoE2E ficou marcado como aliado');
+    await mestre.getByLabel('Fechar ficha').click(); // a janela da ficha cobre a barra de turnos do mestre
+    await jogador.reload();
+    await jogador.waitForTimeout(2500);
+    await abaChat(jogador);
+
+    etapa('5. Sem fogo amigo e camadas: Aliado (NPC aliado), Oculto (camada do Mestre), Amigo (jogador) e Longe (45 m) não geram card');
+    for (const nome of ['AliadoE2E', 'OcultoE2E', 'AmigoE2E', 'LongeE2E']) {
         await proximoTurno();
         await jogador.waitForTimeout(500);
         confere((await jogador.getByRole('button', { name: new RegExp(`^Atacar ${nome}`) }).count()) === 0, `nenhum card para ${nome} no chat do jogador`);
     }
     s = artisan('e2e:estado');
-    confere(s.gatilhos.length === 1, 'servidor: continua 1 só card de gatilho (os outros três foram barrados)', JSON.stringify(s.gatilhos));
-    confere(s.pv.oculto === 400 && s.pv.amigo !== null && s.pv.longe === 400, 'servidor: ninguém além do Perto levou dano');
+    confere(s.gatilhos.length === 1, 'servidor: continua 1 só card de gatilho (os outros quatro foram barrados)', JSON.stringify(s.gatilhos));
+    confere(s.pv.oculto === 400 && s.pv.longe === 400 && s.pv.aliado === 400, 'servidor: ninguém além do Perto levou dano');
 
-    etapa('5. Nova rodada: a duração cai para 9 e o Atirador não é alvo de si mesmo');
+    etapa('6. Nova rodada: a duração cai para 9 e o Atirador não é alvo de si mesmo');
     await proximoTurno();
     s = artisan('e2e:estado');
     confere(s.rodada === 2 && s.atual === 'a', 'servidor: rodada 2, de volta ao Atirador', `${s.rodada}/${s.atual}`);
     confere(s.ativas[0]?.rodadas === 9, 'servidor: faltam 9 rodadas', JSON.stringify(s.ativas));
     confere(s.gatilhos.length === 1, 'servidor: o Atirador não gerou card contra si mesmo');
 
-    etapa('6. A ficha mostra a Técnica ativa e o jogador a encerra');
+    etapa('7. A ficha mostra a Técnica ativa e o jogador a encerra');
     await abrirAba(jogador, 'Personagens');
     await jogador.getByLabel('Abrir a ficha de AtiradorE2E').click();
     await jogador.waitForTimeout(1200);
@@ -153,6 +166,31 @@ try {
     confere(artisan('e2e:estado').ativas.length === 0, 'servidor: a Técnica foi encerrada');
     await abaChat(jogador);
     confere((await textoDoChat(jogador)).includes('Quick Draw foi encerrada'), 'o chat avisa que foi encerrada');
+
+    etapa('8. O mestre liga o fogo amigo: agora o jogador e o NPC aliado também entram no gatilho');
+    await abrirAba(mestre, 'Personagens');
+    await mestre.getByLabel('Fogo amigo').check();
+    await mestre.waitForTimeout(1200);
+    confere(artisan('e2e:estado').fogo_amigo === true, 'servidor: fogo amigo ligado');
+    await jogador.reload();
+    await jogador.waitForTimeout(2500);
+    await abrirAba(jogador, 'Personagens');
+    await jogador.getByLabel('Abrir a ficha de AtiradorE2E').click();
+    await jogador.waitForTimeout(1200);
+    await jogador.getByText('Técnicas', { exact: true }).first().click();
+    await jogador.waitForTimeout(500);
+    await jogador.getByRole('button', { name: /^Usar Quick Draw/ }).click();
+    await jogador.waitForTimeout(1500);
+    await abaChat(jogador);
+    confere(artisan('e2e:estado').ativas.length === 1, 'servidor: o Quick Draw ficou ativo de novo');
+    for (let i = 0; i < 6; i++) await proximoTurno(); // Perto, Aliado, Oculto, Amigo, Longe, Atirador
+    await jogador.waitForTimeout(800);
+    confere((await jogador.getByRole('button', { name: /^Atacar AmigoE2E/ }).count()) === 1, 'com fogo amigo, o jogador AmigoE2E entra no gatilho');
+    confere((await jogador.getByRole('button', { name: /^Atacar AliadoE2E/ }).count()) === 1, 'com fogo amigo, o NPC aliado também entra');
+    confere((await jogador.getByRole('button', { name: /^Atacar OcultoE2E/ }).count()) === 0, 'o NPC escondido na camada do Mestre continua de fora');
+    await mestre.getByLabel('Fogo amigo').uncheck();
+    await mestre.waitForTimeout(800);
+    confere(artisan('e2e:estado').fogo_amigo === false, 'servidor: fogo amigo desligado de novo');
 
     confere(erros.length === 0, 'nenhum erro de JavaScript na página', erros.join(' | '));
 } catch (e) {

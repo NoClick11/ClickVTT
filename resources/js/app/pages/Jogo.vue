@@ -41,7 +41,7 @@ import {
 } from '../engine/tipos';
 import { avaliarAcao, avaliarAtaque, type CategoriaAcao } from '../nucleo/combate/acoes';
 import type { AreaDeEfeito } from '../nucleo/combate/area';
-import { mesmoLado } from '../nucleo/combate/equipes';
+import { podeAtingir } from '../nucleo/combate/equipes';
 import { emCurso, itemAtual, normalizar as normalizarCombate, podeAgirAgora, rodadaParaFicha, semIniciativaDe } from '../nucleo/combate/estado';
 import { totalDoTurno } from '../nucleo/combate/movimento';
 import { comResumo, semOfertasDe, type OfertaDeReacao, type ResumoEvento } from '../nucleo/combate/reacoes';
@@ -76,7 +76,7 @@ interface Pasta {
     ordem: number;
 }
 const props = defineProps<{
-    mesa: { id: number; slug: string; nome: string; capa: string | null };
+    mesa: { id: number; slug: string; nome: string; capa: string | null; fogo_amigo?: boolean };
     /** Sistema da mesa: o módulo (ficha, regras) é resolvido pelo slug. */
     sistema: { slug: string; nome: string; modulo: boolean };
     jogador: Jogador;
@@ -717,7 +717,10 @@ function salvarFicha(personagemId: number, campos: Record<string, unknown>) {
     if ('condicoes' in campos) statusPorPersonagem.value[personagemId] = [...((campos.condicoes as string[] | null) ?? [])];
     const fila = (filasFicha.get(personagemId) ?? Promise.resolve())
         .then(() => api.salvarFicha(personagemId, campos))
-        .then(() => undefined)
+        .then(() => {
+            // o "aliado" do NPC é público (a área dos jogadores o consulta): traz a lista de personagens de volta
+            if ('aliado' in campos) recarregar(['personagens']);
+        })
         .catch((e) => {
             avisar(mensagemDe(e));
             recarregar(['personagens']);
@@ -813,14 +816,30 @@ const escolherNaArea = (area: AreaDeEfeito, origem: number, excluir: number[]) =
         resolverGabarito = resolver;
         gabarito.value = { area, origem, excluir };
     });
-/** O personagem tem jogador atribuído (PC) ou é NPC? Os lados para o "sem fogo amigo" saem daqui e da disposição no combate. */
-const temJogadorDo = (id: number) => (props.personagens.find((p) => p.id === id)?.jogadores?.length ?? 0) > 0;
-/** O token é de alguém do mesmo lado de quem usa a Técnica? (a área não o atinge: sem fogo amigo) */
-const aliadosDe = (personagemId: number) =>
-    objetos.value
-        .filter((o) => o.tipo === 'token' && o.personagem_id !== null && mesmoLado(combate.value, personagemId, o.personagem_id, temJogadorDo))
-        .map((o) => o.id);
+/** Fogo amigo da mesa (o mestre liga): sem ele, jogador só acerta NPC não aliado e NPC só acerta jogador. */
+const fogoAmigo = ref(props.mesa.fogo_amigo ?? false);
+watch(
+    () => props.mesa.fogo_amigo,
+    (v) => (fogoAmigo.value = v ?? false),
+);
+async function alternarFogoAmigo(ligado: boolean) {
+    try {
+        fogoAmigo.value = (await api.fogoAmigo(ligado)).fogo_amigo;
+        recarregar(['mesa']);
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+const ladoDe = (id: number) => {
+    const p = props.personagens.find((x) => x.id === id);
 
+    return { id, jogador: (p?.jogadores?.length ?? 0) > 0, aliado: !!p?.aliado };
+};
+/** Os tokens que a Técnica de quem usa NÃO pode atingir (jogador, aliado...): a área não os conta nem destaca. */
+const protegidosDe = (personagemId: number) =>
+    objetos.value
+        .filter((o) => o.tipo === 'token' && o.personagem_id !== null && !podeAtingir(fogoAmigo.value, ladoDe(personagemId), ladoDe(o.personagem_id)))
+        .map((o) => o.id);
 /**
  * Marca a área da Técnica no mapa e devolve os personagens atingidos (do mais perto ao mais longe), ou null (cancelou, sem token no mapa ou
  * ninguém dentro). O mais perto vira o alvo mirado: o ataque e o "Aplicar" do chat o usam.
@@ -833,11 +852,11 @@ async function escolherAreaDaFicha(personagemId: number, area: AreaDeEfeito): Pr
         return null;
     }
     avisar('Marque a área no mapa: clique para confirmar, Esc cancela.');
-    const alvos = await escolherNaArea(area, token.id, aliadosDe(personagemId));
+    const alvos = await escolherNaArea(area, token.id, protegidosDe(personagemId));
     erro.value = null;
     if (alvos === null) return null;
     if (!alvos.length) {
-        avisar('Nenhum inimigo na área (sem fogo amigo: aliados não são atingidos).');
+        avisar('Nenhum alvo válido na área (sem fogo amigo: jogadores e aliados não são atingidos).');
 
         return null;
     }
@@ -1303,7 +1322,7 @@ function aoMudarCena(payload: { ator: number | null }) {
     if (payload.ator === meuId) return;
     clearTimeout(temporizadorCena);
     temporizadorCena = setTimeout(
-        () => router.reload({ only: ['objetos', 'pagina', 'paginas', 'pastas', 'jogadores', 'personagens', 'meusPersonagens', 'itens'] }),
+        () => router.reload({ only: ['objetos', 'pagina', 'paginas', 'pastas', 'jogadores', 'personagens', 'meusPersonagens', 'itens', 'mesa'] }),
         120,
     );
 }
@@ -1568,6 +1587,8 @@ function alternarPorta(id: number) {
                             @menu="(id, tela) => (menuPersonagem = { id, ...tela })"
                             @focar="focarPersonagem"
                             @atribuir="pedirAtribuicao"
+                            :fogo-amigo="fogoAmigo"
+                            @fogo-amigo="alternarFogoAmigo"
                             @criar="novoPersonagemAberto = true"
                         />
                     </template>

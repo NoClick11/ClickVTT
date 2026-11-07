@@ -82,7 +82,7 @@ class ChatController extends Controller
 
         // Sem fogo amigo: um ataque contra alguém do mesmo lado é recusado antes de gastar qualquer coisa
         if (! empty($dados['alvo_personagem_id']) && ! empty($dados['personagem_id'])) {
-            \App\Nucleo\Combate\Equipes::exigirInimigos($mesa, (int) $dados['personagem_id'], (int) $dados['alvo_personagem_id'], 'alvo_personagem_id');
+            \App\Nucleo\Combate\Equipes::exigirPodeAtingir($mesa, (int) $dados['personagem_id'], (int) $dados['alvo_personagem_id'], 'alvo_personagem_id');
         }
         [$sistema, $variaveis, $itens, $ficha] = $this->variaveis($mesa, $dados['personagem_id'] ?? null, $sistemas);
         if (isset($dados['acao']) && ! empty($dados['personagem_id'])) {

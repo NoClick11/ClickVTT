@@ -168,6 +168,8 @@ export function apiMesa(mesaId: number, atorId: number) {
         gatilhoEscolher: (mensagemId: number, opcao: string) =>
             requisitar<Mensagem>(atorId, 'POST', r('jogo.gatilhos.escolher', mensagemId), { opcao }),
         gatilhoIgnorar: (mensagemId: number) => requisitar<Mensagem>(atorId, 'POST', r('jogo.gatilhos.ignorar', mensagemId), {}),
+        /** Só o mestre: liga ou desliga o fogo amigo da mesa. */
+        fogoAmigo: (ligado: boolean) => requisitar<{ fogo_amigo: boolean }>(atorId, 'PATCH', r('jogo.fogo-amigo'), { ligado }),
         /** Ataques extras do turno (Tempestade de Balas, Alvo Travado...): soma `n` (pode ser negativo) ao limite de ataques do personagem. */
         ataquesExtras: (personagemId: number, n: number) =>
             requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.ataques-extras'), { personagem_id: personagemId, n }),

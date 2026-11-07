@@ -21,7 +21,9 @@ class EstadoMesaE2E extends Command
         $c = $mesa->combate ?? [];
         $this->line(json_encode([
             'pp' => $atirador?->ficha['pp']['atual'] ?? null,
-            'pv' => ['perto' => $pv('PertoE2E'), 'oculto' => $pv('OcultoE2E'), 'amigo' => $pv('AmigoE2E'), 'longe' => $pv('LongeE2E')],
+            'pv' => ['perto' => $pv('PertoE2E'), 'oculto' => $pv('OcultoE2E'), 'amigo' => $pv('AmigoE2E'), 'longe' => $pv('LongeE2E'), 'aliado' => $pv('AliadoE2E')],
+            'fogo_amigo' => (bool) $mesa->fogo_amigo,
+            'aliado' => (bool) (Personagem::query()->where('mesa_id', $mesa->id)->where('nome', 'AliadoE2E')->first()?->ficha['aliado'] ?? false),
             'rodada' => $c['rodada'] ?? null,
             'atual' => $c['atual'] ?? null,
             'ativas' => array_map(fn ($a) => ['nome' => $a['nome'], 'rodadas' => $a['rodadas'], 'alcance' => $a['alcance']], $c['ativas'] ?? []),

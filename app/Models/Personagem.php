@@ -56,6 +56,8 @@ class Personagem extends Model
             'nome' => $this->nome,
             'cor' => $this->cor,
             'status' => array_values($this->ficha['condicoes'] ?? []),
+            // NPC marcado pelo mestre como aliado dos jogadores: os jogadores não o atingem (sem fogo amigo)
+            'aliado' => (bool) ($this->ficha['aliado'] ?? false),
             'jogadores' => $this->jogadores->map(fn (Jogador $j) => ['id' => $j->id, 'nome' => $j->nome, 'cor' => $j->cor])->values(),
         ];
     }

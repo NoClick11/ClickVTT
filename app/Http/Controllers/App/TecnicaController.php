@@ -66,7 +66,7 @@ class TecnicaController extends Controller
         $sistema = $sistemas->resolver($mesa->sistema->slug) ?? throw ValidationException::withMessages(['sistema' => 'Este sistema não tem ficha.']);
         $atacante = $mesa->personagens()->findOrFail($d['personagem_id']);
         foreach ($d['alvos'] as $alvoId) {
-            Equipes::exigirInimigos($mesa, $atacante->id, (int) $alvoId, 'alvos');
+            Equipes::exigirPodeAtingir($mesa, $atacante->id, (int) $alvoId, 'alvos');
             // camadas: quem está só na camada do Mestre não é visto pelos jogadores, então a área deles não o atinge
             if (! $acesso->ehMestre() && Visibilidade::oculto((int) $alvoId)) {
                 throw ValidationException::withMessages(['alvos' => 'Esse alvo não está à vista.']);

@@ -53,7 +53,7 @@ class AlvoController extends Controller
             }
 
             if ($mensagem->personagem_id) {
-                \App\Nucleo\Combate\Equipes::exigirInimigos($mesa, $mensagem->personagem_id, $personagem->id, 'mensagem_id');
+                \App\Nucleo\Combate\Equipes::exigirPodeAtingir($mesa, $mensagem->personagem_id, $personagem->id, 'mensagem_id');
             }
             $tipo = $dano['tipo'] ?? null;
             // Fração do dano que vale (arma à distância do anão: metade), antes das defesas do alvo.

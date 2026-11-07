@@ -30,6 +30,7 @@ class PrepararMesaE2E extends Command
         ]);
 
         // estado limpo: sem personagens (e tokens), itens, mensagens e eventos; a mesa e os jogadores ficam
+        $mesa->forceFill(['fogo_amigo' => false])->save();
         $mesa->personagens()->each(fn ($p) => $p->delete());
         $mesa->mensagens()->delete();
         $mesa->eventosDeCombate()->delete();
@@ -73,6 +74,7 @@ class PrepararMesaE2E extends Command
         $perto = $personagem('PertoE2E', null, $inimigo());               // NPC inimigo ao alcance (15 m)
         $oculto = $personagem('OcultoE2E', null, $inimigo());             // NPC inimigo ao alcance, mas na camada do Mestre
         $longe = $personagem('LongeE2E', null, $inimigo());               // NPC inimigo fora do alcance (45 m)
+        $aliado = $personagem('AliadoE2E', null, $inimigo());             // NPC ao alcance que o roteiro marca como aliado dos jogadores
 
         // 70 px = 1,5 m: o Atirador em (1000, 1000)
         $token = fn ($p, string $camada, float $dx) => $pagina->objetos()->create([
@@ -84,6 +86,7 @@ class PrepararMesaE2E extends Command
             'c' => $token($oculto, 'mestre', 70 * 7),       // 10,5 m (escondido)
             'd' => $token($amigo, 'jogadores', 70 * 8),     // 12 m (aliado)
             'e' => $token($longe, 'jogadores', 70 * 30),    // 45 m
+            'f' => $token($aliado, 'jogadores', 70 * 5),    // 7,5 m
         ];
         $item = fn (string $id, $p, int $ini, string $disp) => [
             'id' => $id, 'nome' => $p->nome, 'cor' => '#0ea5e9', 'personagem_id' => $p->id, 'objeto_id' => $objetos[$id]->id,
@@ -91,13 +94,13 @@ class PrepararMesaE2E extends Command
         ];
         $mesa->combate = ['ativo' => true, 'fase' => 'em_curso', 'rodada' => 1, 'atual' => 'a', 'ativas' => [], 'itens' => [
             $item('a', $atirador, 30, 'jogadores'), $item('b', $perto, 25, 'inimigo'), $item('c', $oculto, 20, 'inimigo'),
-            $item('d', $amigo, 15, 'jogadores'), $item('e', $longe, 10, 'inimigo'),
+            $item('f', $aliado, 18, 'inimigo'), $item('d', $amigo, 15, 'jogadores'), $item('e', $longe, 10, 'inimigo'),
         ]];
         $mesa->save();
 
         $this->line(json_encode([
             'token' => $mesa->convite_token, 'mesa' => $mesa->id, 'slug' => $mesa->slug,
-            'atirador' => $atirador->id, 'perto' => $perto->id, 'oculto' => $oculto->id, 'amigo' => $amigo->id, 'longe' => $longe->id,
+            'atirador' => $atirador->id, 'perto' => $perto->id, 'oculto' => $oculto->id, 'amigo' => $amigo->id, 'longe' => $longe->id, 'aliado' => $aliado->id,
         ]));
 
         return self::SUCCESS;

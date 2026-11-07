@@ -7,42 +7,46 @@ use App\Models\Personagem;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Sem fogo amigo: dano e efeitos hostis não atingem quem é do mesmo lado. Os lados são dois, jogadores e inimigos. Em combate em curso vale a
- * disposição de cada participante (`jogadores` e `aliado` de um lado, `inimigo` do outro); fora dele, personagem com jogador é do lado dos
- * jogadores e NPC (sem jogador) é do lado dos inimigos. Espelha `resources/js/app/nucleo/combate/equipes.ts`.
+ * Sem fogo amigo (o mestre pode ligar na mesa). Dois tipos de personagem: JOGADOR (tem jogador atribuído) e NPC (sem jogador). Com o fogo
+ * amigo desligado:
+ * - o jogador só acerta NPC, e nunca um NPC marcado como ALIADO (`aliado` na ficha do NPC, só o mestre muda);
+ * - o NPC só acerta jogador (NPC contra NPC nunca, aliado ou não).
+ * Com o fogo amigo ligado nada disso vale. Quem age sobre si mesmo não conta como "outro". Espelha `resources/js/app/nucleo/combate/equipes.ts`.
  */
 final class Equipes
 {
-    public const JOGADORES = 'jogadores';
-
-    public const INIMIGOS = 'inimigos';
-
-    /** O lado do personagem agora. */
-    public static function de(Mesa $mesa, int $personagemId): string
+    public static function ehJogador(int $personagemId): bool
     {
-        $c = CombateService::normalizar($mesa->combate);
-        if ($c['fase'] === 'em_curso') {
-            $item = collect($c['itens'])->firstWhere('personagem_id', $personagemId);
-            if ($item) {
-                return $item['disposicao'] === 'inimigo' ? self::INIMIGOS : self::JOGADORES;
-            }
+        return Personagem::query()->whereKey($personagemId)->first()?->jogadores()->exists() ?? false;
+    }
+
+    public static function ehAliado(int $personagemId): bool
+    {
+        return (bool) (Personagem::query()->whereKey($personagemId)->first()?->ficha['aliado'] ?? false);
+    }
+
+    /** `$de` pode atingir `$para` com dano ou efeito hostil? */
+    public static function podeAtingir(Mesa $mesa, int $de, int $para): bool
+    {
+        if ($de === $para || $mesa->fogo_amigo) {
+            return true;
+        }
+        if (self::ehJogador($de)) {
+            return ! self::ehJogador($para) && ! self::ehAliado($para);
         }
 
-        return Personagem::query()->whereKey($personagemId)->first()?->jogadores()->exists() ? self::JOGADORES : self::INIMIGOS;
+        return self::ehJogador($para);
     }
 
-    /** Os dois personagens são do mesmo lado (e são pessoas diferentes)? */
-    public static function mesmoLado(Mesa $mesa, int $a, int $b): bool
+    /** Recusa (422) um dano ou efeito hostil de `$de` em `$para` quando as regras de fogo amigo não deixam. */
+    public static function exigirPodeAtingir(Mesa $mesa, int $de, int $para, string $campo = 'alvo'): void
     {
-        return $a !== $b && self::de($mesa, $a) === self::de($mesa, $b);
-    }
-
-    /** Recusa (422) um dano ou efeito hostil de `$de` em `$para` quando são do mesmo lado. */
-    public static function exigirInimigos(Mesa $mesa, int $de, int $para, string $campo = 'alvo'): void
-    {
-        if (self::mesmoLado($mesa, $de, $para)) {
+        if (! self::podeAtingir($mesa, $de, $para)) {
             $nome = Personagem::query()->whereKey($para)->value('nome') ?? 'o alvo';
-            throw ValidationException::withMessages([$campo => "Sem fogo amigo: {$nome} é do mesmo lado."]);
+            $motivo = self::ehJogador($de)
+                ? (self::ehJogador($para) ? 'é de outro jogador' : 'é aliado')
+                : 'é um NPC';
+            throw ValidationException::withMessages([$campo => "Sem fogo amigo: {$nome} {$motivo} (o mestre pode ligar o fogo amigo)."]);
         }
     }
 }

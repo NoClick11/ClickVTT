@@ -42,7 +42,7 @@ Route::middleware('auth')->group(function () {
 
 // Convite público: o jogador escolhe o personagem e digita a senha. Sem conta.
 Route::get('convite/{token}', [ConviteController::class, 'show'])->name('convite.show');
-Route::post('convite/{token}', [ConviteController::class, 'entrar'])->middleware('throttle:8,1')->name('convite.entrar');
+Route::post('convite/{token}', [ConviteController::class, 'entrar'])->middleware('throttle:convite')->name('convite.entrar');
 Route::post('convite/{token}/sair', [ConviteController::class, 'sair'])->name('convite.sair');
 Route::get('jogo/{mesa:slug}', [JogoController::class, 'entrada'])->name('jogo.entrada');
 Route::get('jogo/{mesa:slug}/{jogador}', [JogoController::class, 'show'])->name('jogo');
@@ -98,6 +98,7 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::post('gatilhos/{mensagem}/atacar', [TecnicaAtivaController::class, 'atacar'])->middleware('throttle:60,1')->name('gatilhos.atacar');
     Route::post('gatilhos/{mensagem}/escolher', [TecnicaAtivaController::class, 'escolher'])->middleware('throttle:60,1')->name('gatilhos.escolher');
     Route::post('gatilhos/{mensagem}/ignorar', [TecnicaAtivaController::class, 'ignorar'])->middleware('throttle:60,1')->name('gatilhos.ignorar');
+    Route::patch('fogo-amigo', [CombateController::class, 'fogoAmigo'])->name('fogo-amigo');
     Route::post('combate/ataques-extras', [CombateController::class, 'ataquesExtras'])->middleware('throttle:60,1')->name('combate.ataques-extras');
     Route::post('combate/acao', [CombateController::class, 'acao'])->middleware('throttle:240,1')->name('combate.acao');
     Route::post('broadcasting/auth', BroadcastAuthController::class)->name('broadcasting.auth');

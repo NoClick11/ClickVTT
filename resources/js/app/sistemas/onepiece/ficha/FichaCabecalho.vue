@@ -11,7 +11,9 @@ import SubirDeNivel from './SubirDeNivel.vue';
 
 const props = defineProps<{ ficha: FichaOnePiece; personagem: PersonagemFicha }>();
 const emit = defineEmits<{ 'update:editar': [boolean]; construtor: [] }>();
-const { editar, calc, salvar } = useFicha();
+const { editar, calc, salvar, mestre } = useFicha();
+/** O mestre marca um NPC como aliado dos jogadores: eles não o atingem (sem fogo amigo). */
+const podeMarcarAliado = computed(() => mestre && !(props.personagem.jogadores?.length ?? 0));
 
 const subindo = ref(false);
 const xpPct = computed(() => Math.min(100, Math.round((props.ficha.xp.atual / calc.value['xp.proximo']) * 100)));
@@ -50,6 +52,21 @@ function descansar(tipo: TipoDescanso) {
                     Editar
                 </button>
             </div>
+
+            <label
+                v-if="podeMarcarAliado"
+                class="flex shrink-0 items-center gap-1.5 rounded-md border border-preto-700 px-2 py-1 text-xs text-preto-300"
+                title="NPC aliado dos jogadores: os jogadores não o atingem (sem fogo amigo). Só o mestre marca."
+            >
+                <input
+                    type="checkbox"
+                    class="size-3.5 accent-ouro-500"
+                    :checked="!!ficha.aliado"
+                    aria-label="Aliado dos jogadores"
+                    @change="salvar({ aliado: ($event.target as HTMLInputElement).checked })"
+                />
+                Aliado dos jogadores
+            </label>
 
             <div class="min-w-48 flex-1">
                 <h2 class="font-serif text-2xl font-semibold leading-tight text-ouro-50" :style="{ textShadow: `0 0 18px ${personagem.cor}55` }">

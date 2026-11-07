@@ -364,6 +364,8 @@ export interface FichaOnePiece {
     tracosDeMaestria: { id: string; nivel: number }[];
     estiloId: string;
     estiloCaminho: string;
+    /** NPC aliado dos jogadores: os jogadores não o atingem (só o mestre marca). */
+    aliado?: boolean;
     /** Habilidades Básicas escolhidas (id, nível em que vieram e a opção, no Quebrador de Regras). */
     habilidadesBasicas: { id: string; nivel: number; opcao?: string }[];
     /** Anão com Hóspede Feérico: id do personagem em cujo espaço ele está. */
