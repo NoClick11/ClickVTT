@@ -86,6 +86,13 @@ const aoPassar = computed(() => (d.value.tecnica.aoPassar === 'metade' ? 'metade
                             >{{ a.passou ? 'Passou' : 'Falhou' }}</span
                         >
                         <span
+                            v-if="resolvido && a.condicao"
+                            class="max-w-24 truncate text-right text-[10px] font-semibold uppercase tracking-wide"
+                            :class="a.condicao.situacao === 'aplicada' ? 'text-orange-300' : 'text-preto-400'"
+                            :title="a.condicao.situacao === 'aplicada' ? `${a.condicao.nome} aplicada` : `Imune a ${a.condicao.nome}`"
+                            >{{ a.condicao.situacao === 'aplicada' ? a.condicao.nome : 'imune' }}</span
+                        >
+                        <span
                             v-if="resolvido && d.tecnica.dano"
                             class="w-16 text-right font-mono text-[11px] text-preto-200"
                             :title="a.modo && a.modo !== 'normal' ? a.modo : ''"

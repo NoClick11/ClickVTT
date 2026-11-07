@@ -244,13 +244,23 @@ export interface Ferramenta {
  * salvaguarda contra a CD de quem usou; `automatico`: acerta sem rolar. `aoPassar` vale para o dano da salvaguarda (metade ou nada).
  * `secundaria` é a salvaguarda do EFEITO (condição) de quem foi atingido ou falhou.
  */
+/** A condição que a Técnica aplica a quem falha (aplicada sozinha, com a duração): `turnos` = fim do turno do afetado que zera a contagem. */
+export interface EfeitoDeCondicao {
+    condicao: string;
+    turnos?: number;
+    /** Acaba ao receber dano. */
+    aoDano?: boolean;
+}
+
 export interface TesteDaTecnica {
     tipo: 'ataque' | 'salvaguarda' | 'automatico';
     /** Salvaguarda: o atributo que o alvo rola. */
     atributo?: AtributoId;
     desvantagem?: boolean;
     aoPassar?: 'metade' | 'nada';
-    secundaria?: { atributo: AtributoId; desvantagem?: boolean; efeito: string };
+    /** A condição de quem falha na Salvaguarda desta Técnica (Salvaguarda de área, sem dano ou com). */
+    aplica?: EfeitoDeCondicao;
+    secundaria?: { atributo: AtributoId; desvantagem?: boolean; efeito: string; aplica?: EfeitoDeCondicao };
 }
 
 export interface Tecnica {

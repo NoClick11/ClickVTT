@@ -121,6 +121,7 @@ async function usar(t: Tecnica) {
             aoPassar: teste.aoPassar ?? 'metade',
             alvos,
             dano,
+            ...(teste.aplica ? { aplica: teste.aplica } : {}),
             ...(teste.secundaria ? { secundaria: teste.secundaria } : {}),
             pagar,
         });

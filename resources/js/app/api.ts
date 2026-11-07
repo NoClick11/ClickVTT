@@ -119,7 +119,13 @@ export function apiMesa(mesaId: number, atorId: number) {
             alvos: number[];
             dano?: { expressao: string; tipo: string | null } | null;
             efeito?: string;
-            secundaria?: { atributo: string; desvantagem?: boolean; efeito: string } | null;
+            aplica?: { condicao: string; turnos?: number; aoDano?: boolean } | null;
+            secundaria?: {
+                atributo: string;
+                desvantagem?: boolean;
+                efeito: string;
+                aplica?: { condicao: string; turnos?: number; aoDano?: boolean };
+            } | null;
         }) => requisitar<Mensagem>(atorId, 'POST', r('jogo.tecnicas.salvaguarda.abrir'), dados),
         /** Um alvo rola a Salvaguarda do card; com o último a rolar o servidor rola o dano e o aplica. */
         rolarSalvaguarda: (mensagemId: number, personagemId: number) =>

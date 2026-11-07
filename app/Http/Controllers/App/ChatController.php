@@ -74,6 +74,10 @@ class ChatController extends Controller
             'tecnica.secundaria.atributo' => ['required_with:tecnica.secundaria', 'string', 'max:3'],
             'tecnica.secundaria.desvantagem' => ['nullable', 'boolean'],
             'tecnica.secundaria.efeito' => ['required_with:tecnica.secundaria', 'string', 'max:200'],
+            'tecnica.secundaria.aplica' => ['nullable', 'array'],
+            'tecnica.secundaria.aplica.condicao' => ['required_with:tecnica.secundaria.aplica', 'string', 'max:40'],
+            'tecnica.secundaria.aplica.turnos' => ['nullable', 'integer', 'between:1,99'],
+            'tecnica.secundaria.aplica.aoDano' => ['nullable', 'boolean'],
         ]);
 
         if (isset($dados['acao']) && ! empty($dados['personagem_id'])) {

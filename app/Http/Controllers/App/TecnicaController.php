@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Mensagem;
 use App\Models\Mesa;
 use App\Models\Personagem;
+use App\Nucleo\Combate\AplicarCondicao;
 use App\Nucleo\Combate\AplicarDano;
+use App\Nucleo\Combate\Duracoes;
 use App\Nucleo\Combate\Pipeline;
 use App\Nucleo\Rolagem\Rolador;
 use App\Nucleo\Rolagem\RolagemInvalida;
@@ -45,7 +47,16 @@ class TecnicaController extends Controller
             'dano.expressao' => ['required_with:dano', 'string', 'max:'.Rolador::MAX_EXPRESSAO],
             'dano.tipo' => ['nullable', 'string', 'max:30'],
             'efeito' => ['nullable', 'string', 'max:200'], // o que acontece com quem falha (Salvaguarda do efeito)
+            // A condição que quem falha recebe sozinha, com a duração (id da condição do sistema)
+            'aplica' => ['nullable', 'array'],
+            'aplica.condicao' => ['required_with:aplica', 'string', 'max:40'],
+            'aplica.turnos' => ['nullable', 'integer', 'between:1,99'],
+            'aplica.aoDano' => ['nullable', 'boolean'],
             'secundaria' => ['nullable', 'array'],
+            'secundaria.aplica' => ['nullable', 'array'],
+            'secundaria.aplica.condicao' => ['required_with:secundaria.aplica', 'string', 'max:40'],
+            'secundaria.aplica.turnos' => ['nullable', 'integer', 'between:1,99'],
+            'secundaria.aplica.aoDano' => ['nullable', 'boolean'],
             'secundaria.atributo' => ['required_with:secundaria', Rule::in(self::ATRIBUTOS)],
             'secundaria.desvantagem' => ['nullable', 'boolean'],
             'secundaria.efeito' => ['required_with:secundaria', 'string', 'max:200'],
@@ -75,14 +86,14 @@ class TecnicaController extends Controller
             'nome' => trim($d['nome']), 'atributo' => $d['atributo'], 'desvantagem' => (bool) ($d['desvantagem'] ?? false),
             'cd' => (int) $variaveis['cd'], 'aoPassar' => $d['ao_passar'] ?? 'metade',
             'dano' => isset($d['dano']) ? ['expressao' => $d['dano']['expressao'], 'tipo' => filled($d['dano']['tipo'] ?? null) ? trim($d['dano']['tipo']) : null] : null,
-            'efeito' => $d['efeito'] ?? null, 'secundaria' => $d['secundaria'] ?? null,
+            'efeito' => $d['efeito'] ?? null, 'aplica' => $d['aplica'] ?? null, 'secundaria' => $d['secundaria'] ?? null,
         ], $d['alvos']);
 
         return response()->json($mensagem->para($acesso->jogador), 201);
     }
 
     /** Um alvo rola a Salvaguarda (o dono do personagem, ou o mestre). Com o último, o dano é rolado e aplicado. */
-    public function rolar(Request $request, Mesa $mesa, Mensagem $mensagem, RegistroSistemas $sistemas, Rolador $rolador, AplicarDano $aplicar): JsonResponse
+    public function rolar(Request $request, Mesa $mesa, Mensagem $mensagem, RegistroSistemas $sistemas, Rolador $rolador, AplicarDano $aplicar, AplicarCondicao $condicoes): JsonResponse
     {
         $acesso = AcessoMesa::exigir($request, $mesa);
         abort_unless($mensagem->mesa_id === $mesa->id && $mensagem->tipo === 'tecnica', 404);
@@ -91,7 +102,8 @@ class TecnicaController extends Controller
         $sistema = $sistemas->resolver($mesa->sistema->slug) ?? throw ValidationException::withMessages(['sistema' => 'Este sistema não tem ficha.']);
 
         $aplicados = [];
-        $mensagem = DB::transaction(function () use ($mesa, $mensagem, $d, $sistema, $rolador, $aplicar, &$aplicados) {
+        $condicionados = [];
+        $mensagem = DB::transaction(function () use ($mesa, $mensagem, $d, $sistema, $rolador, $aplicar, $condicoes, &$aplicados, &$condicionados) {
             $m = Mensagem::query()->whereKey($mensagem->id)->lockForUpdate()->firstOrFail();
             $dados = $m->dados;
             if (($dados['estado'] ?? null) !== 'aguardando') {
@@ -108,7 +120,7 @@ class TecnicaController extends Controller
             $dados['alvos'][$i] = [...$dados['alvos'][$i], 'estado' => 'rolou', 'total' => $r['total'], 'termos' => $r['termos'], 'passou' => $r['total'] >= $t['cd']];
 
             if (collect($dados['alvos'])->every(fn ($a) => $a['estado'] === 'rolou')) {
-                $dados = $this->resolver($mesa, $m, $dados, $sistema, $rolador, $aplicar, $aplicados);
+                $dados = $this->resolver($mesa, $m, $dados, $sistema, $rolador, $aplicar, $condicoes, $aplicados, $condicionados);
             }
             $m->dados = $dados;
             $m->save();
@@ -118,6 +130,12 @@ class TecnicaController extends Controller
 
         foreach ($aplicados as $r) {
             $aplicar->avisar($mesa, $acesso, 'todos', $r, postar: false);
+        }
+        foreach ($condicionados as $c) {
+            if ($c['situacao'] === 'aplicada') {
+                Duracoes::transmitir($mesa, $c['p'], $c['campos'], true);
+            }
+            AplicarDano::postar($mesa, $acesso, 'todos', $c['texto']);
         }
         EntregarMensagem::para($mesa, $mensagem, $acesso, substitui: true);
         $this->abrirSecundaria($mesa, $acesso, $mensagem);
@@ -132,7 +150,7 @@ class TecnicaController extends Controller
      * @param  list<array>  $aplicados  recebe os resultados do AplicarDano (para avisar depois da transação)
      * @return array<string, mixed>
      */
-    private function resolver(Mesa $mesa, Mensagem $m, array $dados, mixed $sistema, Rolador $rolador, AplicarDano $aplicar, array &$aplicados): array
+    private function resolver(Mesa $mesa, Mensagem $m, array $dados, mixed $sistema, Rolador $rolador, AplicarDano $aplicar, AplicarCondicao $condicoes, array &$aplicados, array &$condicionados): array
     {
         $t = $dados['tecnica'];
         $atacante = Personagem::query()->where('mesa_id', $mesa->id)->find($t['atacante_id']);
@@ -150,6 +168,23 @@ class TecnicaController extends Controller
                     $dados['alvos'][$i]['modo'] = $res['calculo']['modo'];
                     $aplicados[] = $res;
                 }
+            }
+        }
+        // A condição da Técnica vai sozinha para quem falhou, com a duração (imunidade respeitada)
+        if ($t['aplica'] ?? null) {
+            foreach ($dados['alvos'] as $i => $a) {
+                if ($a['passou']) {
+                    continue;
+                }
+                $c = $condicoes->aplicar($a['personagem_id'], $sistema, $t['aplica']['condicao'], $t['aplica']['turnos'] ?? null, (bool) ($t['aplica']['aoDano'] ?? false));
+                $dados['alvos'][$i]['condicao'] = ['nome' => $c['nome'], 'situacao' => $c['situacao']];
+                $duracao = isset($t['aplica']['turnos']) ? " por {$t['aplica']['turnos']} turno".($t['aplica']['turnos'] > 1 ? 's' : '') : '';
+                $c['texto'] = match ($c['situacao']) {
+                    'aplicada' => "{$a['nome']} recebeu a condição {$c['nome']}{$duracao} ({$t['nome']}).",
+                    'imune' => "{$a['nome']} é imune a {$c['nome']}.",
+                    default => "{$t['nome']}: condição {$t['aplica']['condicao']} não existe neste sistema.",
+                };
+                $condicionados[] = $c;
             }
         }
         $dados['estado'] = 'resolvido';
@@ -176,7 +211,7 @@ class TecnicaController extends Controller
         $t = $dados['tecnica'];
         $this->criar($mesa, $acesso, $atacante, [
             'nome' => "{$t['nome']}: efeito", 'atributo' => $s['atributo'], 'desvantagem' => (bool) ($s['desvantagem'] ?? false), 'cd' => $t['cd'],
-            'aoPassar' => 'nada', 'dano' => null, 'efeito' => $s['efeito'], 'secundaria' => null,
+            'aoPassar' => 'nada', 'dano' => null, 'efeito' => $s['efeito'], 'aplica' => $s['aplica'] ?? null, 'secundaria' => null,
         ], $falharam);
     }
 

@@ -361,6 +361,12 @@ final class FichaOnePiece
             $r["{$base}.teste.secundaria.atributo"] = ['required_with:'.$base.'.teste.secundaria', 'string', Rule::in(self::ATRIBUTOS)];
             $r["{$base}.teste.secundaria.desvantagem"] = ['nullable', 'boolean:strict'];
             $r["{$base}.teste.secundaria.efeito"] = ['required_with:'.$base.'.teste.secundaria', 'string', 'max:200'];
+            foreach (["{$base}.teste.aplica", "{$base}.teste.secundaria.aplica"] as $aplica) {
+                $r[$aplica] = ['nullable', 'array'];
+                $r["{$aplica}.condicao"] = ['required_with:'.$aplica, 'string', 'max:40'];
+                $r["{$aplica}.turnos"] = ['nullable', 'integer:strict', 'between:1,99'];
+                $r["{$aplica}.aoDano"] = ['nullable', 'boolean:strict'];
+            }
         }
 
         // Reação (usada fora do turno, ex.: ao ser atacado): gatilho, a quem serve, bônus na defesa e cura.

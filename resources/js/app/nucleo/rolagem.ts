@@ -71,7 +71,10 @@ export interface MarcasDoSistema {
     /** Botões do card (ex.: Dano, Dano crítico). */
     acoes?: AcaoDaRolagem[];
     /** Ataque de uma Técnica: o nome e a Salvaguarda do efeito (condição), que o card oferece pedir ao alvo atingido. */
-    tecnica?: { nome: string; secundaria?: { atributo: string; desvantagem?: boolean; efeito: string } };
+    tecnica?: {
+        nome: string;
+        secundaria?: { atributo: string; desvantagem?: boolean; efeito: string; aplica?: { condicao: string; turnos?: number; aoDano?: boolean } };
+    };
     /** Expertise da arma no acerto crítico (efeitos para o jogador e o Narrador aplicarem). */
     expertise?: { id: string; texto: string }[];
 }
@@ -154,6 +157,7 @@ export interface DadosDaTecnica {
         aoPassar: 'metade' | 'nada';
         dano: { expressao: string; tipo: string | null } | null;
         efeito: string | null;
+        aplica?: { condicao: string; turnos?: number; aoDano?: boolean } | null;
         atacante_id: number | null;
     };
     alvos: {
@@ -167,6 +171,8 @@ export interface DadosDaTecnica {
         base?: number;
         final?: number;
         modo?: string;
+        /** A condição que a Técnica aplicou a quem falhou (ou a imunidade que impediu). */
+        condicao?: { nome: string; situacao: 'aplicada' | 'imune' | 'desconhecida' };
     }[];
     dano?: { total: number; expressao: string; tipo: string | null; termos: TermoRolagem[]; repeticoes?: number[]; escolhida?: number };
 }

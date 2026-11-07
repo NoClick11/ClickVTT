@@ -821,6 +821,7 @@ async function salvaguardaDaFicha(personagemId: number, uso: UsoDeSalvaguarda) {
                 ao_passar: uso.aoPassar,
                 alvos,
                 dano: uso.dano,
+                ...(uso.aplica ? { aplica: uso.aplica } : {}),
                 ...(uso.secundaria ? { secundaria: uso.secundaria } : {}),
             }),
         );
@@ -860,6 +861,7 @@ async function pedirSalvaguardaDoEfeito(mensagem: Mensagem) {
                 ao_passar: 'nada',
                 alvos: [alvo],
                 efeito: t.secundaria.efeito,
+                ...(t.secundaria.aplica ? { aplica: t.secundaria.aplica } : {}),
             }),
         );
     } catch (e) {

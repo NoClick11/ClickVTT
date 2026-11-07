@@ -232,8 +232,8 @@ export function camposDoNivel(f: FichaOnePiece, esc: EscolhasDoNivel): Record<st
 
             const nova = tecnicaDoEstilo(t);
 
-            // a que já existe segue como está (o jogador pode ter editado); só ganha o teste, que fichas antigas não têm
-            return antiga ? { ...antiga, ...(nova.teste && !antiga.teste ? { teste: nova.teste } : {}) } : nova;
+            // a que já existe segue como está (o jogador pode ter editado); o teste (ataque, Salvaguarda, condição) acompanha os dados do livro
+            return antiga ? { ...antiga, ...(nova.teste ? { teste: nova.teste } : {}) } : nova;
         }),
     ];
 

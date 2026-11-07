@@ -129,6 +129,7 @@ class TecnicaTest extends TestCase
 
     public function test_o_ataque_da_tecnica_oferece_o_dano_e_o_critico_dobra_os_dados(): void
     {
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
         $c = $this->cenario(10, 10);
         $dano = ['expressao' => '3d10+2', 'tipo' => 'perfurante'];
         $enviar = fn () => $this->como($c->ana)->postJson(route('jogo.rolagens.store', $c->mesa->id), [
@@ -152,5 +153,33 @@ class TecnicaTest extends TestCase
             }
         }
         $this->assertTrue(\App\Sistemas\OnePiece\Regras::dobrarDadosDaExpressao('d8+2d6+3') === '2d8+4d6+3');
+    }
+
+    public function test_a_condicao_da_tecnica_vai_sozinha_para_quem_falhou_com_a_duracao(): void
+    {
+        $c = $this->cenario(30, 1); // quem falha: todos
+        $r = $this->abrir($c, ['dano' => null, 'aplica' => ['condicao' => 'caido'], 'ao_passar' => 'nada'])->assertCreated()->json();
+        $this->rolar($c, $r['id'], $c->bia, $c->alvoA->id)->assertOk();
+        $r = $this->rolar($c, $r['id'], $c->mestre, $c->alvoB->id)->assertOk()->json();
+        $this->assertSame('aplicada', $r['dados']['alvos'][0]['condicao']['situacao']);
+        $this->assertContains('caido', $c->alvoA->fresh()->ficha['condicoes']);
+        $this->assertContains('caido', $c->alvoB->fresh()->ficha['condicoes']);
+
+        // com duração e a segunda Salvaguarda (efeito): Atordoado por 1 turno
+        $c2 = $this->cenario(30, 1);
+        $f = $c2->alvoA->ficha;
+        $f['atributos']['con'] = 1; // Con -5: o máximo é 15, abaixo da CD 20
+        $c2->alvoA->ficha = $f;
+        $c2->alvoA->save();
+        $r = $this->abrir($c2, ['secundaria' => ['atributo' => 'con', 'efeito' => 'Atordoado', 'aplica' => ['condicao' => 'atordoado', 'turnos' => 1]]])->assertCreated()->json();
+        $this->rolar($c2, $r['id'], $c2->bia, $c2->alvoA->id)->assertOk();
+        $this->rolar($c2, $r['id'], $c2->mestre, $c2->alvoB->id)->assertOk();
+        $segunda = $c2->mesa->mensagens()->where('tipo', 'tecnica')->orderByDesc('id')->first();
+        $this->assertSame(['condicao' => 'atordoado', 'turnos' => 1], $segunda->dados['tecnica']['aplica']);
+        $this->rolar($c2, $segunda->id, $c2->bia, $c2->alvoA->id)->assertOk(); // Con 1: a CD 20 não passa
+        $this->rolar($c2, $segunda->id, $c2->mestre, $c2->alvoB->id)->assertOk(); // o card resolve quando todos rolam
+        $ficha = $c2->alvoA->fresh()->ficha;
+        $this->assertContains('atordoado', $ficha['condicoes']);
+        $this->assertSame(1, $ficha['duracoes']['atordoado']['turnos']);
     }
 }

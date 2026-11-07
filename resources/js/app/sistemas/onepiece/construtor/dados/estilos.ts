@@ -658,22 +658,36 @@ const TESTES_DO_ATIRADOR: Record<string, TesteDaTecnica> = {
         atributo: 'des',
         desvantagem: true,
         aoPassar: 'metade',
-        secundaria: { atributo: 'con', efeito: 'Sangramento' },
+        secundaria: { atributo: 'con', efeito: 'Sangramento', aplica: { condicao: 'sangramento' } },
     },
-    'Stunning Shot': { tipo: 'ataque', secundaria: { atributo: 'con', efeito: 'Atordoado até o fim do próximo turno dela' } },
+    'Stunning Shot': {
+        tipo: 'ataque',
+        secundaria: { atributo: 'con', efeito: 'Atordoado até o fim do próximo turno dela', aplica: { condicao: 'atordoado', turnos: 1 } },
+    },
     'Quick Draw': { tipo: 'ataque' },
     Execução: { tipo: 'ataque' },
-    'Último Recurso': { tipo: 'ataque', secundaria: { atributo: 'con', desvantagem: true, efeito: 'Incapacitado até o fim do próximo turno dela' } },
+    'Último Recurso': {
+        tipo: 'ataque',
+        secundaria: {
+            atributo: 'con',
+            desvantagem: true,
+            efeito: 'Incapacitado até o fim do próximo turno dela',
+            aplica: { condicao: 'incapacitado', turnos: 1 },
+        },
+    },
     'Tiro de Advertência': {
         tipo: 'ataque',
         secundaria: { atributo: 'von', efeito: 'escolhe entre se mover ou realizar uma ação, sem reação nem ação bônus até o fim do próximo turno' },
     },
     'Tiro Certeiro': { tipo: 'automatico' },
-    'Mira Cruel': { tipo: 'ataque', secundaria: { atributo: 'con', efeito: 'Impedido até o fim do próximo turno' } },
+    'Mira Cruel': {
+        tipo: 'ataque',
+        secundaria: { atributo: 'con', efeito: 'Impedido até o fim do próximo turno', aplica: { condicao: 'contido', turnos: 1 } },
+    },
     'Shooting Stars': { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'metade' },
     'Zona do Atirador': { tipo: 'ataque' },
     Headshot: { tipo: 'ataque' },
-    'Saída Forçada': { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'nada' },
+    'Saída Forçada': { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'nada', aplica: { condicao: 'caido' } },
 };
 for (const t of ATIRADOR.tecnicas) if (TESTES_DO_ATIRADOR[t.nome]) t.teste = TESTES_DO_ATIRADOR[t.nome];
 

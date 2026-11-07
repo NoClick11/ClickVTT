@@ -3,7 +3,7 @@ import type { AreaDeEfeito } from '../../nucleo/combate/area';
 import type { Efeito, Origem, Rolagem } from '../../nucleo/efeitos/efeitos';
 import type { AbrirEditorItem } from '../../nucleo/sistemas/tipos';
 import type { ArmaParaForja, ItemDto } from '../../tipos-mesa';
-import type { AcaoCaracteristica, ArmaAtiva, AtributoId } from './regras';
+import type { AcaoCaracteristica, ArmaAtiva, AtributoId, EfeitoDeCondicao } from './regras';
 
 /**
  * Contexto da ficha de D&D 5e, compartilhado pelos blocos sem passar props: modo Jogar/Editar, valores
@@ -76,6 +76,8 @@ export interface EfeitoSecundario {
     atributo: AtributoId;
     desvantagem?: boolean;
     efeito: string;
+    /** A condição que quem falha recebe sozinha. */
+    aplica?: EfeitoDeCondicao;
 }
 
 /** Uma Técnica de Salvaguarda sendo usada: a mesa escolhe os alvos (a área no mapa), cobra o custo (`pagar`) e abre o card no chat. */
@@ -87,6 +89,8 @@ export interface UsoDeSalvaguarda {
     /** Quem a área atingiu (do mais perto ao mais longe); null = a Técnica não tem área: vale o alvo mirado. */
     alvos: number[] | null;
     dano: DanoDaTecnica | null;
+    /** A condição que quem falha nesta Salvaguarda recebe sozinha (Caído...). */
+    aplica?: EfeitoDeCondicao;
     secundaria?: EfeitoSecundario;
     /** Gasta os PP e a ação; false = não pôde (nada é aberto). Chamado só depois de escolhidos os alvos. */
     pagar: () => Promise<boolean>;
