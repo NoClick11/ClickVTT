@@ -54,6 +54,11 @@ export interface ContextoFicha {
     rodada: ComputedRef<number | null>;
     /** Pede à mesa uma ação de característica (aplicar condição ao alvo mirado, hospedar-se). */
     acao: (acao: AcaoCaracteristica) => void;
+    /**
+     * Técnica com área (esfera, cone, linha): ANTES de rolar qualquer coisa a área é marcada no mapa a partir do token de quem usa. Devolve os
+     * personagens atingidos (do mais perto ao mais longe), ou null se cancelou ou não há ninguém dentro. O mais perto vira o alvo mirado.
+     */
+    escolherArea: (area: AreaDeEfeito) => Promise<number[] | null>;
     /** Ataque de uma Técnica (1d20 + ataque, com vantagem/desvantagem dos efeitos) no alvo mirado: o card oferece o dano depois do acerto. */
     ataqueDeTecnica: (dados: { nome: string; dano: DanoDaTecnica | null; secundaria?: EfeitoSecundario }) => void;
     /** Técnica de Salvaguarda: a mesa marca a área no mapa e abre a Salvaguarda coletiva no chat. */
@@ -79,8 +84,8 @@ export interface UsoDeSalvaguarda {
     atributo: AtributoId;
     desvantagem: boolean;
     aoPassar: 'metade' | 'nada';
-    /** A forma e o tamanho da área (null = sem forma: vale o alvo mirado). */
-    area: AreaDeEfeito | null;
+    /** Quem a área atingiu (do mais perto ao mais longe); null = a Técnica não tem área: vale o alvo mirado. */
+    alvos: number[] | null;
     dano: DanoDaTecnica | null;
     secundaria?: EfeitoSecundario;
     /** Gasta os PP e a ação; false = não pôde (nada é aberto). Chamado só depois de escolhidos os alvos. */

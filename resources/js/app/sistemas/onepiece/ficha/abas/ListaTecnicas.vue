@@ -33,7 +33,7 @@ const props = defineProps<{
     vazio: string;
     tom: 'sky' | 'violet';
 }>();
-const { editar, salvar, rolar, acoes, calc, itens, ataqueDeTecnica, salvaguardaDeTecnica } = useFicha();
+const { editar, salvar, rolar, acoes, calc, itens, ataqueDeTecnica, salvaguardaDeTecnica, escolherArea } = useFicha();
 /** A categoria que usar a técnica gasta no combate: a dela ou a poderosa (que só serve para técnicas). */
 const CATEGORIAS = computed(() => acoes.todas());
 const categoria = (t: Tecnica) => t.acao ?? 'poderosa';
@@ -102,15 +102,24 @@ async function usar(t: Tecnica) {
     const dano = expressao ? { expressao, tipo: t.tipoDano?.trim() || null } : null;
     const teste = t.teste;
 
+    // Técnica com área (esfera, cone, linha): a área é marcada no mapa ANTES de gastar ou rolar qualquer coisa
+    // (o alcance da Kokuto amplia a área). Quem estiver dentro é alvo; o mais perto vira o alvo mirado.
+    const ampliado = alcanceDe(t);
+    const area = areaDoAlcance(ampliado?.mudou ? ampliado.texto : t.alcance);
+    let alvos: number[] | null = null;
+    if (area) {
+        alvos = await escolherArea(area);
+        if (!alvos) return;
+    }
+
     if (teste?.tipo === 'salvaguarda' && teste.atributo) {
-        // O alcance da Kokuto amplia a área; as criaturas dela têm desvantagem na Salvaguarda
-        const ampliado = alcanceDe(t);
+        // As criaturas da área têm desvantagem na Salvaguarda contra a Kokuto
         await salvaguardaDeTecnica({
             nome: rotuloDoUso(t),
             atributo: teste.atributo,
             desvantagem: !!teste.desvantagem || (kokuto.value && !!t.armaCortante),
             aoPassar: teste.aoPassar ?? 'metade',
-            area: areaDoAlcance(ampliado?.mudou ? ampliado.texto : t.alcance),
+            alvos,
             dano,
             ...(teste.secundaria ? { secundaria: teste.secundaria } : {}),
             pagar,

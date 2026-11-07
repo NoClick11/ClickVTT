@@ -20,6 +20,13 @@ export default defineConfig({
             },
         }),
     ],
+    // No Docker o Vite escuta em 0.0.0.0, mas o navegador precisa de um endereço que alcance: o `public/hot` e o HMR usam localhost.
+    server: {
+        host: '0.0.0.0',
+        origin: `http://localhost:${process.env.VITE_PORT ?? 5173}`,
+        cors: true,
+        hmr: { host: 'localhost' },
+    },
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './resources/js'),

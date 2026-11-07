@@ -779,20 +779,38 @@ const escolherNaArea = (area: AreaDeEfeito, origem: number) =>
         gabarito.value = { area, origem };
     });
 
+/**
+ * Marca a área da Técnica no mapa e devolve os personagens atingidos (do mais perto ao mais longe), ou null (cancelou, sem token no mapa ou
+ * ninguém dentro). O mais perto vira o alvo mirado: o ataque e o "Aplicar" do chat o usam.
+ */
+async function escolherAreaDaFicha(personagemId: number, area: AreaDeEfeito): Promise<number[] | null> {
+    const token = objetos.value.find((o) => o.tipo === 'token' && o.personagem_id === personagemId);
+    if (!token) {
+        avisar('Coloque o seu token no mapa para marcar a área da Técnica.');
+
+        return null;
+    }
+    avisar('Marque a área no mapa: clique para confirmar, Esc cancela.');
+    const alvos = await escolherNaArea(area, token.id);
+    erro.value = null;
+    if (alvos === null) return null;
+    if (!alvos.length) {
+        avisar('Nenhuma criatura na área.');
+
+        return null;
+    }
+    const maisPerto = objetos.value.find((o) => o.tipo === 'token' && o.personagem_id === alvos[0]);
+    if (maisPerto) alvoObjetoId.value = maisPerto.id;
+
+    return alvos;
+}
+provide('escolherArea', escolherAreaDaFicha);
+
+/** Técnica de Salvaguarda: os alvos vêm da área já marcada (ou é o alvo mirado); o custo é cobrado ao abrir o card. */
 async function salvaguardaDaFicha(personagemId: number, uso: UsoDeSalvaguarda) {
     try {
-        let alvos: number[] | null;
-        const token = objetos.value.find((o) => o.tipo === 'token' && o.personagem_id === personagemId);
-        if (uso.area && token) {
-            avisar('Mire a área no mapa: clique para confirmar, Esc cancela.');
-            alvos = await escolherNaArea(uso.area, token.id);
-            if (alvos === null) return;
-            if (!alvos.length) return avisar('Nenhuma criatura na área.');
-        } else {
-            // Sem forma (ou sem o token no mapa): vale o alvo mirado
-            if (!alvoPersonagem.value) return avisar(uso.area ? 'Coloque o seu token no mapa para marcar a área, ou mire um alvo.' : 'Mire um alvo.');
-            alvos = [alvoPersonagem.value.id];
-        }
+        const alvos = uso.alvos ?? (alvoPersonagem.value ? [alvoPersonagem.value.id] : null);
+        if (!alvos) return avisar('Mire um alvo.');
         if (!(await uso.pagar())) return;
         aoNovaMensagem(
             await api.abrirSalvaguarda({

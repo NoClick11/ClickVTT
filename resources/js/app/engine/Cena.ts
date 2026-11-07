@@ -272,7 +272,16 @@ export class Cena {
     private confirmarGabarito(cursor: { x: number; y: number }): void {
         const r = this.alcancadosPeloGabarito(cursor);
         if (!r) return;
-        const ids = r.ids.map((id) => this.visuais.get(id)?.dto.personagem_id).filter((x): x is number => typeof x === 'number');
+        // do mais perto de quem usa ao mais longe (o disparo em linha acerta primeiro o que está na frente)
+        const perto = (id: number) => {
+            const o = this.visuais.get(id)?.dto;
+
+            return o ? Math.hypot(o.x + o.largura / 2 - r.origem.x, o.y + o.altura / 2 - r.origem.y) : Infinity;
+        };
+        const ids = [...r.ids]
+            .sort((a, b) => perto(a) - perto(b))
+            .map((id) => this.visuais.get(id)?.dto.personagem_id)
+            .filter((x): x is number => typeof x === 'number');
         this.opcoes.eventos.gabarito(ids);
     }
 
