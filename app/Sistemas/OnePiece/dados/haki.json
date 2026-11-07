@@ -1,0 +1,450 @@
+{
+  "limitesEstagio": [
+    [
+      1,
+      1
+    ],
+    [
+      21,
+      2
+    ],
+    [
+      71,
+      3
+    ]
+  ],
+  "talentos": [
+    {
+      "id": "ataque-infuso",
+      "nome": "Ataque Infuso",
+      "tipo": "armamento",
+      "estagio": 1,
+      "custo": 5,
+      "requisitos": [],
+      "formas": 3
+    },
+    {
+      "id": "endurecimento-defensivo",
+      "nome": "Endurecimento Defensivo",
+      "tipo": "armamento",
+      "estagio": 1,
+      "custo": 5,
+      "requisitos": [],
+      "formas": 3
+    },
+    {
+      "id": "endurecimento-ofensivo",
+      "nome": "Endurecimento Ofensivo",
+      "tipo": "armamento",
+      "estagio": 2,
+      "custo": 4,
+      "requisitos": [
+        "ataque-infuso"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "chama-do-armamento",
+      "nome": "Chama do Armamento",
+      "tipo": "armamento",
+      "estagio": 2,
+      "custo": 2,
+      "requisitos": [
+        "ataque-infuso",
+        "endurecimento-ofensivo"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "emissao-defensiva",
+      "nome": "Emissão Defensiva",
+      "tipo": "armamento",
+      "estagio": 2,
+      "custo": 4,
+      "requisitos": [
+        "endurecimento-defensivo"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "escudo-de-vontade",
+      "nome": "Escudo de Vontade",
+      "tipo": "armamento",
+      "estagio": 2,
+      "custo": 4,
+      "requisitos": [
+        "endurecimento-defensivo"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "emissao-ofensiva",
+      "nome": "Emissão Ofensiva",
+      "tipo": "armamento",
+      "estagio": 2,
+      "custo": 3,
+      "requisitos": [
+        "endurecimento-ofensivo"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "corpo-armadurado",
+      "nome": "Corpo Armadurado",
+      "tipo": "armamento",
+      "estagio": 2,
+      "custo": 4,
+      "requisitos": [
+        "escudo-de-vontade"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "destruicao-interna",
+      "nome": "Destruição Interna",
+      "tipo": "armamento",
+      "estagio": 3,
+      "custo": 5,
+      "requisitos": [
+        "emissao-ofensiva"
+      ],
+      "formas": 2
+    },
+    {
+      "id": "armadura-suprema",
+      "nome": "Armadura Suprema",
+      "tipo": "armamento",
+      "estagio": 3,
+      "custo": 6,
+      "requisitos": [
+        "emissao-defensiva"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "defesa-suprema",
+      "nome": "Defesa Suprema",
+      "tipo": "armamento",
+      "estagio": 3,
+      "custo": 3,
+      "requisitos": [
+        "emissao-defensiva",
+        "corpo-armadurado"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "perceber-emocoes",
+      "nome": "Perceber Emoções",
+      "tipo": "observacao",
+      "estagio": 1,
+      "custo": 2,
+      "requisitos": [],
+      "formas": 3
+    },
+    {
+      "id": "antecipacao",
+      "nome": "Antecipação",
+      "tipo": "observacao",
+      "estagio": 1,
+      "custo": 5,
+      "requisitos": [],
+      "formas": 3
+    },
+    {
+      "id": "antevisao",
+      "nome": "Antevisão",
+      "tipo": "observacao",
+      "estagio": 1,
+      "custo": 4,
+      "requisitos": [],
+      "formas": 3
+    },
+    {
+      "id": "previsao",
+      "nome": "Previsão",
+      "tipo": "observacao",
+      "estagio": 1,
+      "custo": 3,
+      "requisitos": [],
+      "formas": 3
+    },
+    {
+      "id": "perceber-presenca",
+      "nome": "Perceber Presença",
+      "tipo": "observacao",
+      "estagio": 2,
+      "custo": 2,
+      "requisitos": [
+        "perceber-emocoes"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "perceber-desafio",
+      "nome": "Perceber Desafio",
+      "tipo": "observacao",
+      "estagio": 2,
+      "custo": 1,
+      "requisitos": [
+        "perceber-presenca"
+      ],
+      "formas": 2
+    },
+    {
+      "id": "perceber-o-futuro",
+      "nome": "Perceber o Futuro",
+      "tipo": "observacao",
+      "estagio": 3,
+      "custo": 4,
+      "requisitos": [
+        "perceber-desafio"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "clarividencia",
+      "nome": "Clarividência",
+      "tipo": "observacao",
+      "estagio": 2,
+      "custo": 2,
+      "requisitos": [
+        "antecipacao"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "vidente",
+      "nome": "Vidente",
+      "tipo": "observacao",
+      "estagio": 2,
+      "custo": 2,
+      "requisitos": [
+        "clarividencia"
+      ],
+      "formas": 2
+    },
+    {
+      "id": "premonicao",
+      "nome": "Premonição",
+      "tipo": "observacao",
+      "estagio": 3,
+      "custo": 2,
+      "requisitos": [
+        "vidente"
+      ],
+      "formas": 1
+    },
+    {
+      "id": "ver-o-futuro",
+      "nome": "Ver o Futuro",
+      "tipo": "observacao",
+      "estagio": 3,
+      "custo": 5,
+      "requisitos": [
+        "vidente"
+      ],
+      "formas": 1
+    },
+    {
+      "id": "passo-antecipado",
+      "nome": "Passo Antecipado",
+      "tipo": "observacao",
+      "estagio": 2,
+      "custo": 2,
+      "requisitos": [
+        "antevisao"
+      ],
+      "formas": 1
+    },
+    {
+      "id": "antevisao-sobrenatural",
+      "nome": "Antevisão Sobrenatural",
+      "tipo": "observacao",
+      "estagio": 2,
+      "custo": 3,
+      "requisitos": [
+        "antevisao"
+      ],
+      "formas": 1
+    },
+    {
+      "id": "antecipar-movimentos",
+      "nome": "Antecipar Movimentos",
+      "tipo": "observacao",
+      "estagio": 3,
+      "custo": 4,
+      "requisitos": [
+        "passo-antecipado"
+      ],
+      "formas": 1
+    },
+    {
+      "id": "antevisao-especial",
+      "nome": "Antevisão Especial",
+      "tipo": "observacao",
+      "estagio": 3,
+      "custo": 5,
+      "requisitos": [
+        "antevisao-sobrenatural"
+      ],
+      "formas": 2
+    },
+    {
+      "id": "antevisao-profetica",
+      "nome": "Antevisão Profética",
+      "tipo": "observacao",
+      "estagio": 3,
+      "custo": 5,
+      "requisitos": [
+        "antecipar-movimentos",
+        "antevisao-especial"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "previsao-sobrenatural",
+      "nome": "Previsão Sobrenatural",
+      "tipo": "observacao",
+      "estagio": 2,
+      "custo": 2,
+      "requisitos": [
+        "previsao"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "impeto-antecipado",
+      "nome": "Ímpeto Antecipado",
+      "tipo": "observacao",
+      "estagio": 3,
+      "custo": 5,
+      "requisitos": [
+        "previsao-sobrenatural"
+      ],
+      "formas": 2
+    },
+    {
+      "id": "previsao-especial",
+      "nome": "Previsão Especial",
+      "tipo": "observacao",
+      "estagio": 3,
+      "custo": 5,
+      "requisitos": [
+        "previsao-sobrenatural"
+      ],
+      "formas": 2
+    },
+    {
+      "id": "previsao-profetica",
+      "nome": "Previsão Profética",
+      "tipo": "observacao",
+      "estagio": 3,
+      "custo": 5,
+      "requisitos": [
+        "impeto-antecipado",
+        "previsao-especial"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "rei",
+      "nome": "Rei",
+      "tipo": "rei",
+      "estagio": 1,
+      "custo": 0,
+      "requisitos": [],
+      "formas": 1
+    },
+    {
+      "id": "autoridade-do-rei",
+      "nome": "Autoridade do Rei",
+      "tipo": "rei",
+      "estagio": 2,
+      "custo": 3,
+      "requisitos": [
+        "rei"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "soberania-do-rei",
+      "nome": "Soberania do Rei",
+      "tipo": "rei",
+      "estagio": 2,
+      "custo": 3,
+      "requisitos": [
+        "autoridade-do-rei"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "superacao-majestosa",
+      "nome": "Superação Majestosa",
+      "tipo": "rei",
+      "estagio": 2,
+      "custo": 6,
+      "requisitos": [
+        "rei"
+      ],
+      "formas": 2
+    },
+    {
+      "id": "imposicao-do-rei",
+      "nome": "Imposição do Rei",
+      "tipo": "rei",
+      "estagio": 2,
+      "custo": 4,
+      "requisitos": [
+        "rei"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "vontade-do-rei",
+      "nome": "Vontade do Rei",
+      "tipo": "rei",
+      "estagio": 2,
+      "custo": 6,
+      "requisitos": [
+        "rei"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "presenca-esmagadora",
+      "nome": "Presença Esmagadora",
+      "tipo": "rei",
+      "estagio": 3,
+      "custo": 5,
+      "requisitos": [
+        "soberania-do-rei",
+        "superacao-majestosa"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "armamento-do-rei",
+      "nome": "Armamento do Rei",
+      "tipo": "rei",
+      "estagio": 3,
+      "custo": 7,
+      "requisitos": [
+        "imposicao-do-rei"
+      ],
+      "formas": 3
+    },
+    {
+      "id": "emissao-de-autoridade",
+      "nome": "Emissão de Autoridade",
+      "tipo": "rei",
+      "estagio": 3,
+      "custo": 5,
+      "requisitos": [
+        "imposicao-do-rei",
+        "vontade-do-rei"
+      ],
+      "formas": 1
+    }
+  ]
+}
