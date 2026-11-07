@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { Apple, Backpack, Flame, GraduationCap, Hammer, ListChecks, Settings, Skull, Sparkles, Waves } from 'lucide-vue-next';
 import { computed, inject, provide, ref, type Component, type ComputedRef } from 'vue';
-import type { AreaDeEfeito } from '../../../nucleo/combate/area';
 import type { AbrirEditorItem, PersonagemFicha } from '../../../nucleo/sistemas/tipos';
 import type { ItemDto } from '../../../tipos-mesa';
-import { CHAVE_FICHA, type DanoDaTecnica, type EfeitoSecundario, type ServicosDaFicha, type UsoDeSalvaguarda } from '../contexto';
+import { CHAVE_FICHA, type DanoDaTecnica, type EfeitoSecundario, type ServicosDaFicha, type UsoDeTecnica } from '../contexto';
 import { abaDoHakiVisivel } from '../haki/regras';
 import { analisar, armasAtivas, modoDaRolagem, type AcaoCaracteristica, type FichaOnePiece } from '../regras';
 import AbaAkuma from './abas/AbaAkuma.vue';
@@ -38,8 +37,8 @@ const emit = defineEmits<{
         alvoPersonagemId?: number | null,
         tecnica?: { nome: string; dano?: DanoDaTecnica | null; secundaria?: EfeitoSecundario | null },
     ];
-    /** Técnica de Salvaguarda: a mesa escolhe os alvos (a área no mapa), cobra o custo e abre a Salvaguarda no chat. */
-    salvaguarda: [uso: UsoDeSalvaguarda];
+    /** Usar uma Técnica: a mesa escolhe os alvos (a área no mapa), cobra o custo e rola ou abre a Salvaguarda no chat. */
+    usarTecnica: [uso: UsoDeTecnica];
     editorItem: Parameters<AbrirEditorItem>;
     /** O jogador quer abrir o assistente de criação. */
     construtor: [];
@@ -66,9 +65,6 @@ const alvoDoAtaque = inject<ComputedRef<number | null>>(
     computed(() => null),
 );
 
-// A mesa marca a área da Técnica no mapa e devolve quem ela atingiu; sem a mesa (ficha fora do jogo), não há área.
-const escolherAreaNoMapa = inject<(personagemId: number, area: AreaDeEfeito) => Promise<number[] | null>>('escolherArea', async () => null);
-
 // Economia de ações do combate (provida pela mesa); sem ela (ficha fora do jogo), nada é bloqueado.
 const acoesDoCombate = inject<{
     categorias: ComputedRef<{ id: string; nome: string }[]>;
@@ -92,13 +88,7 @@ provide(CHAVE_FICHA, {
     abrirEditorItem: (itemId, aoSalvar) => emit('editorItem', itemId, aoSalvar),
     salvar: (campos) => emit('salvar', campos),
     rolar: (expressao, rotulo, aoRolar, dano, acao) => emit('rolar', expressao, rotulo, aoRolar, dano, acao),
-    escolherArea: (area) => escolherAreaNoMapa(props.personagem.id, area),
-    ataqueDeTecnica: (t) => {
-        const modo = modoDe('ataque');
-        const dados = modo === 'vantagem' ? '2d20kh1' : modo === 'desvantagem' ? '2d20kl1' : '1d20';
-        emit('rolar', `${dados}+@ataque`, modo ? `${t.nome} (${modo})` : t.nome, undefined, undefined, undefined, alvoDoAtaque.value, t);
-    },
-    salvaguardaDeTecnica: async (uso) => emit('salvaguarda', uso),
+    usarTecnica: (uso) => emit('usarTecnica', uso),
     acoes: {
         pode: (categoria, tecnica) => acoesDoCombate.pode(props.personagem.id, categoria, tecnica),
         gastar: (categoria, tecnica) => acoesDoCombate.gastar(props.personagem.id, categoria, tecnica),

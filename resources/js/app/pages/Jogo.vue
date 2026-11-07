@@ -55,7 +55,7 @@ import { moduloDoSistema } from '../nucleo/sistemas/registro';
 import type { AbrirEditorItem } from '../nucleo/sistemas/tipos';
 import JanelaFlutuante from '../nucleo/ui/JanelaFlutuante.vue';
 import { conectar, type Conexao } from '../realtime';
-import type { UsoDeSalvaguarda } from '../sistemas/onepiece/contexto';
+import type { UsoDeTecnica } from '../sistemas/onepiece/contexto';
 import type { AcaoCaracteristica } from '../sistemas/onepiece/regras';
 import type {
     Combate,
@@ -209,21 +209,24 @@ watch(
 
 /** Ações do combate para as fichas: o botão liga ou desliga pela categoria e gastar avisa o servidor (que recusa se não pode). */
 const categoriasAcao = computed(() => props.categoriasDeAcao ?? []);
+async function gastarAcaoDoCombate(personagemId: number, categoria: string | undefined, tecnica = false): Promise<boolean> {
+    if (!categoria || !emCurso(combate.value)) return true;
+    try {
+        combate.value = normalizarCombate((await api.gastarAcao(personagemId, categoria, tecnica)).combate);
+
+        return true;
+    } catch (e) {
+        avisar(mensagemDe(e));
+
+        return false;
+    }
+}
 provide('acoesDoCombate', {
     categorias: categoriasAcao,
     pode: (personagemId: number, categoria: string | undefined, tecnica = false) =>
         avaliarAcao(combate.value, categoriasAcao.value, personagemId, categoria, props.mestre, tecnica),
     /** Gasta a ação no servidor; false (com aviso do motivo) se não pôde. Fora do combate em curso não faz nada e libera. */
-    gastar: async (personagemId: number, categoria: string | undefined, tecnica = false): Promise<boolean> => {
-        if (!categoria || !emCurso(combate.value)) return true;
-        try {
-            combate.value = normalizarCombate((await api.gastarAcao(personagemId, categoria, tecnica)).combate);
-            return true;
-        } catch (e) {
-            avisar(mensagemDe(e));
-            return false;
-        }
-    },
+    gastar: (personagemId: number, categoria: string | undefined, tecnica = false) => gastarAcaoDoCombate(personagemId, categoria, tecnica),
 });
 
 /** Em combate, só o token de quem está no turno se move (o servidor também recusa); o mestre controla todos. */
@@ -815,27 +818,56 @@ async function escolherAreaDaFicha(personagemId: number, area: AreaDeEfeito): Pr
 
     return alvos;
 }
-provide('escolherArea', escolherAreaDaFicha);
 
-/** Técnica de Salvaguarda: os alvos vêm da área já marcada (ou é o alvo mirado); o custo é cobrado ao abrir o card. */
-async function salvaguardaDaFicha(personagemId: number, uso: UsoDeSalvaguarda) {
+/**
+ * Usar uma Técnica (a ficha só monta o pedido; tudo roda aqui, então fechar a janela da ficha no meio não perde nada):
+ * 1. com área, marca-a no mapa antes de qualquer custo (o mais perto vira o alvo mirado);
+ * 2. gasta a ação e os PP;
+ * 3. ataque: rola 1d20+ataque no alvo (o card oferece o dano); Salvaguarda: abre o card coletivo; senão rola o dano.
+ */
+async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
     try {
-        const alvos = uso.alvos ?? (alvoPersonagem.value ? [alvoPersonagem.value.id] : null);
-        if (!alvos) return avisar('Mire um alvo.');
-        if (!(await uso.pagar())) return;
-        aoNovaMensagem(
-            await api.abrirSalvaguarda({
-                personagem_id: personagemId,
-                nome: uso.nome,
-                atributo: uso.atributo,
-                desvantagem: uso.desvantagem,
-                ao_passar: uso.aoPassar,
-                alvos,
-                dano: uso.dano,
-                ...(uso.aplica ? { aplica: uso.aplica } : {}),
-                ...(uso.secundaria ? { secundaria: uso.secundaria } : {}),
-            }),
-        );
+        let alvos: number[] | null = null;
+        if (uso.area) {
+            alvos = await escolherAreaDaFicha(personagemId, uso.area);
+            if (!alvos) return;
+        }
+        const teste = uso.teste;
+        // sem área, a Salvaguarda vale para o alvo mirado: confere antes de gastar
+        if (teste?.tipo === 'salvaguarda' && !alvos && !alvoPersonagem.value) return avisar('Mire um alvo.');
+        if (!(await gastarAcaoDoCombate(personagemId, uso.categoria, true))) return;
+        salvarFicha(personagemId, uso.camposDosPP);
+
+        if (teste?.tipo === 'salvaguarda' && teste.atributo) {
+            const alvosDaSalvaguarda = alvos ?? (alvoPersonagem.value ? [alvoPersonagem.value.id] : []);
+            aoNovaMensagem(
+                await api.abrirSalvaguarda({
+                    personagem_id: personagemId,
+                    nome: uso.nome,
+                    atributo: teste.atributo,
+                    desvantagem: uso.desvantagem,
+                    ao_passar: teste.aoPassar ?? 'metade',
+                    alvos: alvosDaSalvaguarda,
+                    dano: uso.dano,
+                    ...(teste.aplica ? { aplica: teste.aplica } : {}),
+                    ...(uso.secundaria ? { secundaria: uso.secundaria } : {}),
+                }),
+            );
+        } else if (teste?.tipo === 'ataque') {
+            const dados = uso.modoAtaque === 'vantagem' ? '2d20kh1' : uso.modoAtaque === 'desvantagem' ? '2d20kl1' : '1d20';
+            await rolarDaFicha(
+                personagemId,
+                `${dados}+@ataque`,
+                uso.modoAtaque ? `${uso.nome} (${uso.modoAtaque})` : uso.nome,
+                undefined,
+                undefined,
+                undefined,
+                alvoDoAtaque.value,
+                { nome: uso.nome, dano: uso.dano, ...(uso.secundaria ? { secundaria: uso.secundaria } : {}) },
+            );
+        } else if (uso.dano) {
+            await rolarDaFicha(personagemId, uso.dano.expressao, uso.nome, undefined, uso.dano.tipo ? { tipo: uso.dano.tipo } : undefined);
+        }
     } catch (e) {
         avisar(mensagemDe(e));
     }
@@ -1549,7 +1581,7 @@ function alternarPorta(id: number) {
                 @acao="(a: AcaoCaracteristica) => executarAcao(f.id, a)"
                 @salvar="(campos: Record<string, unknown>) => salvarFicha(f.id, campos)"
                 @rolar="(...a: RolagemDaFicha) => rolarDaFicha(f.id, ...a)"
-                @salvaguarda="(uso: UsoDeSalvaguarda) => salvaguardaDaFicha(f.id, uso)"
+                @usar-tecnica="(uso: UsoDeTecnica) => usarTecnicaDaFicha(f.id, uso)"
             />
             <FichaPrivada v-else :personagem="f.personagem!" />
         </JanelaFlutuante>

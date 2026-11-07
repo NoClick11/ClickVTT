@@ -33,7 +33,7 @@ const props = defineProps<{
     vazio: string;
     tom: 'sky' | 'violet';
 }>();
-const { editar, salvar, rolar, acoes, calc, itens, ataqueDeTecnica, salvaguardaDeTecnica, escolherArea } = useFicha();
+const { editar, salvar, acoes, calc, itens, modoDe, usarTecnica } = useFicha();
 /** A categoria que usar a técnica gasta no combate: a dela ou a poderosa (que só serve para técnicas). */
 const CATEGORIAS = computed(() => acoes.todas());
 const categoria = (t: Tecnica) => t.acao ?? 'poderosa';
@@ -80,62 +80,33 @@ const comDadosDaMeito = (expressao: string, t: Tecnica): string =>
     t.armaCortante ? comDadosExtras(expressao, dadosExtrasDeMeito(props.ficha, itens.value)) : expressao;
 
 /**
- * Usar: gasta os PP e a ação e, conforme o teste da Técnica:
- * - Ataque: rola o ataque (Técnicas) no alvo mirado; depois do acerto o card do chat oferece o dano (e a Salvaguarda do efeito);
- * - Salvaguarda: a mesa marca a área no mapa, e cada criatura dentro rola a Salvaguarda no chat (o dano sai sozinho no fim);
- * - Automática ou sem teste: rola o dano direto (o card oferece "Aplicar" ao alvo, respeitando resistências).
+ * Usar: monta o pedido e entrega à mesa, que faz tudo (a janela da ficha pode até fechar no meio):
+ * - Técnica com área (esfera, cone, linha): a área é marcada no mapa ANTES de gastar ou rolar qualquer coisa; quem estiver dentro é alvo;
+ * - Ataque: rola o ataque (Técnicas) no alvo; depois do acerto o card do chat oferece o dano e a Salvaguarda do efeito;
+ * - Salvaguarda: cada criatura da área rola no chat e o dano sai sozinho no fim (a condição vai a quem falhou);
+ * - Automática ou sem teste: rola o dano direto (o card oferece "Aplicar" ao alvo).
  * Sem PP suficiente não faz nada.
  */
-async function usar(t: Tecnica) {
+function usar(t: Tecnica) {
     const campos = camposDoGastoDePP(props.ficha, t.custo);
     if (!campos) return;
-    // A ação vem antes dos PP: se o servidor recusar (fora do turno, ação já usada), nada é gasto.
-    const pagar = async () => {
-        if (!(await acoes.gastar(categoria(t), true))) return false;
-        salvar(campos);
-
-        return true;
-    };
     const expressao = t.rolagem.trim()
         ? comDadosDaMeito(expandirRolagem(t.rolagem.trim(), calc.value, 'tecnica'), t) + (dobrarDano(t) ? '^2' : '')
         : '';
-    const dano = expressao ? { expressao, tipo: t.tipoDano?.trim() || null } : null;
-    const teste = t.teste;
-
-    // Técnica com área (esfera, cone, linha): a área é marcada no mapa ANTES de gastar ou rolar qualquer coisa
-    // (o alcance da Kokuto amplia a área). Quem estiver dentro é alvo; o mais perto vira o alvo mirado.
+    // O alcance da Kokuto amplia a área; as criaturas dela têm desvantagem na Salvaguarda
     const ampliado = alcanceDe(t);
-    const area = areaDoAlcance(ampliado?.mudou ? ampliado.texto : t.alcance);
-    let alvos: number[] | null = null;
-    if (area) {
-        alvos = await escolherArea(area);
-        if (!alvos) return;
-    }
-
-    if (teste?.tipo === 'salvaguarda' && teste.atributo) {
-        // As criaturas da área têm desvantagem na Salvaguarda contra a Kokuto
-        await salvaguardaDeTecnica({
-            nome: rotuloDoUso(t),
-            atributo: teste.atributo,
-            desvantagem: !!teste.desvantagem || (kokuto.value && !!t.armaCortante),
-            aoPassar: teste.aoPassar ?? 'metade',
-            alvos,
-            dano,
-            ...(teste.aplica ? { aplica: teste.aplica } : {}),
-            ...(teste.secundaria ? { secundaria: teste.secundaria } : {}),
-            pagar,
-        });
-
-        return;
-    }
-    if (!(await pagar())) return;
-    if (teste?.tipo === 'ataque') {
-        ataqueDeTecnica({ nome: rotuloDoUso(t), dano, ...(teste.secundaria ? { secundaria: teste.secundaria } : {}) });
-
-        return;
-    }
-    // Com tipo de dano preenchido a rolagem é um dano: o card do chat oferece "Aplicar" ao alvo, respeitando resistências.
-    if (dano) rolar(dano.expressao, rotuloDoUso(t), undefined, dano.tipo ? { tipo: dano.tipo } : undefined);
+    const teste = t.teste;
+    usarTecnica({
+        nome: rotuloDoUso(t),
+        ...(teste ? { teste: { tipo: teste.tipo, atributo: teste.atributo, aoPassar: teste.aoPassar, aplica: teste.aplica } } : {}),
+        desvantagem: !!teste?.desvantagem || (kokuto.value && !!t.armaCortante),
+        area: areaDoAlcance(ampliado?.mudou ? ampliado.texto : t.alcance),
+        dano: expressao ? { expressao, tipo: t.tipoDano?.trim() || null } : null,
+        ...(teste?.secundaria ? { secundaria: teste.secundaria } : {}),
+        modoAtaque: modoDe('ataque') === 'vantagem' ? 'vantagem' : modoDe('ataque') === 'desvantagem' ? 'desvantagem' : null,
+        categoria: categoria(t),
+        camposDosPP: campos,
+    });
 }
 
 /** Muda o tipo de teste da técnica ('' = nenhum); a Salvaguarda começa em Destreza, passando = metade do dano. */

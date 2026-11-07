@@ -55,14 +55,10 @@ export interface ContextoFicha {
     /** Pede à mesa uma ação de característica (aplicar condição ao alvo mirado, hospedar-se). */
     acao: (acao: AcaoCaracteristica) => void;
     /**
-     * Técnica com área (esfera, cone, linha): ANTES de rolar qualquer coisa a área é marcada no mapa a partir do token de quem usa. Devolve os
-     * personagens atingidos (do mais perto ao mais longe), ou null se cancelou ou não há ninguém dentro. O mais perto vira o alvo mirado.
+     * Usa uma Técnica: a MESA faz tudo (marca a área no mapa, gasta a ação e os PP, rola o ataque ou abre a Salvaguarda). Assim o fluxo
+     * não depende de a janela da ficha continuar aberta enquanto o jogador mira no mapa.
      */
-    escolherArea: (area: AreaDeEfeito) => Promise<number[] | null>;
-    /** Ataque de uma Técnica (1d20 + ataque, com vantagem/desvantagem dos efeitos) no alvo mirado: o card oferece o dano depois do acerto. */
-    ataqueDeTecnica: (dados: { nome: string; dano: DanoDaTecnica | null; secundaria?: EfeitoSecundario }) => void;
-    /** Técnica de Salvaguarda: a mesa marca a área no mapa e abre a Salvaguarda coletiva no chat. */
-    salvaguardaDeTecnica: (uso: UsoDeSalvaguarda) => Promise<void>;
+    usarTecnica: (uso: UsoDeTecnica) => void;
     /** Teste de d20 + variável: Shift = vantagem, Ctrl/Alt = desvantagem. `acao`: a categoria que a rolagem gasta no combate. */
     d20: (evento: MouseEvent, variavel: string, rotulo: string, acao?: { categoria: string; tecnica?: boolean }) => void;
 }
@@ -80,20 +76,22 @@ export interface EfeitoSecundario {
     aplica?: EfeitoDeCondicao;
 }
 
-/** Uma Técnica de Salvaguarda sendo usada: a mesa escolhe os alvos (a área no mapa), cobra o custo (`pagar`) e abre o card no chat. */
-export interface UsoDeSalvaguarda {
+/** Uma Técnica sendo usada, com tudo que a mesa precisa para executá-la sem voltar à ficha. */
+export interface UsoDeTecnica {
     nome: string;
-    atributo: AtributoId;
+    /** Como acerta: ataque, Salvaguarda da área, automática; ausente = só rola o dano. */
+    teste?: { tipo: 'ataque' | 'salvaguarda' | 'automatico'; atributo?: AtributoId; aoPassar?: 'metade' | 'nada'; aplica?: EfeitoDeCondicao };
+    /** Desvantagem na Salvaguarda de quem está na área (a do livro ou a da Kokuto). */
     desvantagem: boolean;
-    aoPassar: 'metade' | 'nada';
-    /** Quem a área atingiu (do mais perto ao mais longe); null = a Técnica não tem área: vale o alvo mirado. */
-    alvos: number[] | null;
+    /** A forma e o tamanho da área no mapa (null = sem forma: vale o alvo mirado). */
+    area: AreaDeEfeito | null;
     dano: DanoDaTecnica | null;
-    /** A condição que quem falha nesta Salvaguarda recebe sozinha (Caído...). */
-    aplica?: EfeitoDeCondicao;
     secundaria?: EfeitoSecundario;
-    /** Gasta os PP e a ação; false = não pôde (nada é aberto). Chamado só depois de escolhidos os alvos. */
-    pagar: () => Promise<boolean>;
+    /** Vantagem/desvantagem dos efeitos na jogada de ataque. */
+    modoAtaque: 'vantagem' | 'desvantagem' | null;
+    /** A categoria de ação que a Técnica gasta no combate e os campos dos PP gastos (`pp.atual` já descontado). */
+    categoria: string | undefined;
+    camposDosPP: Record<string, unknown>;
 }
 
 /** O que a mesa oferece à ficha além de salvar e rolar (a ficha nunca fala com a API): a forja do Ferreiro. */
