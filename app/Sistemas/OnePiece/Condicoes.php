@@ -187,6 +187,24 @@ final class Condicoes
                 'descricao' => 'Não pode ouvir e falha automaticamente em testes que dependam da audição.',
                 'efeitos' => [],
             ],
+            [
+                'id' => 'letargico',
+                'nome' => 'Letárgico',
+                'descricao' => 'Condição do One Piece: o corpo e a mente ficam lentos. As regras completas estão no livro; encerrada por Primeiros Socorros.',
+                'efeitos' => [],
+            ],
+            [
+                'id' => 'queimado',
+                'nome' => 'Queimado',
+                'descricao' => 'Condição do One Piece: a criatura está em chamas ou com queimaduras. As regras completas estão no livro; encerrada por Primeiros Socorros.',
+                'efeitos' => [],
+            ],
+            [
+                'id' => 'sangramento',
+                'nome' => 'Sangramento',
+                'descricao' => 'Condição do One Piece: a criatura perde sangue. As regras completas estão no livro; encerrada por Primeiros Socorros.',
+                'efeitos' => [],
+            ],
         ];
     }
 
