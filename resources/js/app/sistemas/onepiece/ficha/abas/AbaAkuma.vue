@@ -3,8 +3,10 @@ import { Apple } from 'lucide-vue-next';
 import { computed } from 'vue';
 import CampoNumero from '../../../../nucleo/ui/CampoNumero.vue';
 import CampoTexto from '../../../../nucleo/ui/CampoTexto.vue';
+import { camposDaAkuma } from '../../akuma/regras';
 import { estilos, useFicha } from '../../contexto';
 import { TIPOS_AKUMA, type FichaOnePiece, type TipoAkuma } from '../../regras';
+import PerfilDaAkuma from '../akuma/PerfilDaAkuma.vue';
 import ListaTecnicas from './ListaTecnicas.vue';
 
 /**
@@ -12,7 +14,7 @@ import ListaTecnicas from './ListaTecnicas.vue';
  * os poderes gastam os mesmos pontos de poder, e a CD é a mesma das técnicas.
  */
 const props = defineProps<{ ficha: FichaOnePiece }>();
-const { editar, calc, salvar } = useFicha();
+const { editar, calc, salvar, mestre } = useFicha();
 
 const tipo = computed(() => TIPOS_AKUMA.find((t) => t.id === props.ficha.akuma.tipo)?.nome ?? 'Sem tipo');
 const caixa = 'rounded-lg border border-violet-400/30 bg-preto-950 px-2 py-1.5 text-center';
@@ -41,7 +43,7 @@ const caixa = 'rounded-lg border border-violet-400/30 bg-preto-950 px-2 py-1.5 t
                         :value="ficha.akuma.tipo"
                         aria-label="Tipo da fruta"
                         class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1 text-xs"
-                        @change="salvar({ 'akuma.tipo': ($event.target as HTMLSelectElement).value as TipoAkuma })"
+                        @change="salvar(camposDaAkuma(ficha, { tipo: ($event.target as HTMLSelectElement).value as TipoAkuma }))"
                     >
                         <option v-for="t in TIPOS_AKUMA" :key="t.id" :value="t.id">{{ t.nome }}</option>
                     </select>
@@ -55,10 +57,20 @@ const caixa = 'rounded-lg border border-violet-400/30 bg-preto-950 px-2 py-1.5 t
                                 : 'border-preto-700 text-preto-400 hover:text-ouro-200'
                         "
                         :aria-pressed="ficha.akuma.despertada"
-                        title="Despertar da fruta"
-                        @click="salvar({ 'akuma.despertada': !ficha.akuma.despertada })"
+                        :disabled="!mestre && !ficha.akuma.despertada"
+                        :title="mestre ? 'Despertar da fruta' : 'Só o mestre desperta a fruta'"
+                        @click="salvar(camposDaAkuma(ficha, { despertada: !ficha.akuma.despertada }))"
                     >
                         {{ ficha.akuma.despertada ? 'Despertada' : 'Não despertada' }}
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded-full border border-preto-700 px-2.5 py-0.5 font-semibold text-preto-300 transition hover:text-ouro-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                        :aria-pressed="ficha.akuma.usuario === 'avancado'"
+                        title="Usuário simples ou avançado (para virar avançado, treine 7 dias, 4 horas por dia)"
+                        @click="salvar(camposDaAkuma(ficha, { usuario: ficha.akuma.usuario === 'avancado' ? 'simples' : 'avancado' }))"
+                    >
+                        {{ ficha.akuma.usuario === 'avancado' ? 'Usuário avançado' : 'Usuário simples' }}
                     </button>
                 </div>
             </div>
@@ -87,6 +99,8 @@ const caixa = 'rounded-lg border border-violet-400/30 bg-preto-950 px-2 py-1.5 t
                 </p>
             </div>
         </section>
+
+        <PerfilDaAkuma :ficha="ficha" />
 
         <ListaTecnicas
             :ficha="ficha"
