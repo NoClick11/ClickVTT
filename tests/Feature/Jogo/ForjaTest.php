@@ -142,6 +142,10 @@ class ForjaTest extends TestCase
         $this->como($c->ana)->postJson($url, $corpo(['meito' => 'saijo-o-wazamono', 'fio' => 2]))->assertStatus(422); // 10 + 4 = 14 > 12 PF
         $this->como($c->ana)->postJson($url, $corpo([]))->assertStatus(422);                                          // nada a melhorar
         $this->como($c->bia)->postJson($url, $corpo(['fio' => 1]))->assertForbidden();                                // o guerreiro não pode usar a forja da Ferreira
+        // Meito exige a maldição (Yoto): sem ela, recusa e nada é gasto
+        $sem = $this->como($c->ana)->postJson($url, $corpo(['meito' => 'wazamono']))->assertStatus(422);
+        $this->assertStringContainsString('Yoto', $sem->json('errors.melhorias.0'));
+        $this->assertSame(0, $c->ferr->fresh()->ficha['forja']['gastos']);
         // Meito Ô Wazamono (6 PF) + Fio (2 PF) + Densidade (1) = 9 PF
         $r = $this->como($c->ana)->postJson($url, $corpo(['meito' => 'o-wazamono', 'fio' => 1, 'densidade' => 'cortante', 'yoto' => 'azar-mortal']))->assertOk();
         $this->assertSame(6 + 2 + 1, $r->json('pf.gastos'));

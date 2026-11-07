@@ -149,6 +149,10 @@ class ForjaController extends Controller
             if ($problemas = Forja::problemas($nova, $cortante)) {
                 throw ValidationException::withMessages(['melhorias' => $problemas[0]]);
             }
+            // Ao aprimorar uma lâmina para Meito, a maldição (Yoto) é obrigatória: ela vem junto das propriedades lendárias.
+            if (! empty($nova['meito']) && empty($nova['yoto'])) {
+                throw ValidationException::withMessages(['melhorias' => 'Ao fazer uma lâmina Meito, escolha a maldição (Yoto) que ela recebe.']);
+            }
             $custoPF = Forja::custoEmPF($antiga, $nova);
             if ($custoPF === null || $custoPF['total'] < 1) {
                 throw ValidationException::withMessages(['melhorias' => $custoPF === null ? 'Não dá para tirar ou reduzir melhorias já feitas.' : 'Escolha ao menos uma melhoria.']);

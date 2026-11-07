@@ -114,6 +114,7 @@ const problema = computed(() => {
     if (!custo.value) return 'Não dá para tirar ou reduzir melhorias já feitas.';
     if (custo.value.total < 1) return 'Escolha ao menos uma melhoria.';
     if (pedido.value.meito && !arma.value.cortante) return 'Meito são espadas e outras armas cortantes.';
+    if (pedido.value.meito && !pedido.value.yoto) return 'Escolha a maldição (Yoto): toda lâmina Meito recebe uma.';
     if (custo.value.total > pf.value.disponiveis) return `Faltam PF: custa ${custo.value.total} e restam ${pf.value.disponiveis}.`;
 
     return '';
@@ -306,8 +307,13 @@ const botao = 'rounded-md border border-ouro-500/60 px-3 py-1 text-xs font-semib
                         </label>
                         <label class="grid gap-0.5 text-xs"
                             >Maldição Yoto
-                            <select v-model="novo.yoto" :disabled="!novo.meito && !atual.meito" :class="campo" aria-label="Maldição Yoto">
-                                <option value="">Nenhuma</option>
+                            <select
+                                v-model="novo.yoto"
+                                :disabled="!novo.meito && !atual.meito"
+                                :class="campo"
+                                aria-label="Maldição Yoto (obrigatória na Meito)"
+                            >
+                                <option value="">{{ novo.meito || atual.meito ? 'Escolha a maldição' : 'Nenhuma' }}</option>
                                 <option v-for="y in YOTO" :key="y.id" :value="y.id">{{ y.nome }}</option>
                             </select>
                         </label>
