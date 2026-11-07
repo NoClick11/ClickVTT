@@ -9,6 +9,10 @@ import BarraLateral, { type AbaLateral } from '../components/BarraLateral.vue';
 import BarraSuperior from '../components/BarraSuperior.vue';
 import BarraTurnos from '../components/BarraTurnos.vue';
 import CenaCanvas from '../components/CenaCanvas.vue';
+import JanelaDeReacao from '../components/combate/JanelaDeReacao.vue';
+import ModalIniciativa from '../components/combate/ModalIniciativa.vue';
+import ModalReacao from '../components/combate/ModalReacao.vue';
+import PainelDoTurno from '../components/combate/PainelDoTurno.vue';
 import ConfigPaginaDialog from '../components/ConfigPaginaDialog.vue';
 import ControlesZoom from '../components/ControlesZoom.vue';
 import DadosAnimacao from '../components/DadosAnimacao.vue';
@@ -17,15 +21,6 @@ import MenuObjeto from '../components/MenuObjeto.vue';
 import MenuPaginas from '../components/MenuPaginas.vue';
 import NovoPersonagemDialog from '../components/NovoPersonagemDialog.vue';
 import OpcoesFerramenta from '../components/OpcoesFerramenta.vue';
-import type { AcaoCaracteristica } from '../sistemas/onepiece/regras';
-import PainelDoTurno from '../components/combate/PainelDoTurno.vue';
-import JanelaDeReacao from '../components/combate/JanelaDeReacao.vue';
-import ModalReacao from '../components/combate/ModalReacao.vue';
-import { comResumo, semOfertasDe, type OfertaDeReacao, type ResumoEvento } from '../nucleo/combate/reacoes';
-import ModalIniciativa from '../components/combate/ModalIniciativa.vue';
-import { totalDoTurno } from '../nucleo/combate/movimento';
-import { avaliarAcao, type CategoriaAcao } from '../nucleo/combate/acoes';
-import { emCurso, itemAtual, normalizar as normalizarCombate, podeAgirAgora, rodadaParaFicha, semIniciativaDe } from '../nucleo/combate/estado';
 import PainelAlvo from '../components/PainelAlvo.vue';
 import PainelChat from '../components/PainelChat.vue';
 import PainelDados from '../components/PainelDados.vue';
@@ -42,6 +37,10 @@ import {
     type PaginaDto,
     type TipoParede,
 } from '../engine/tipos';
+import { avaliarAcao, type CategoriaAcao } from '../nucleo/combate/acoes';
+import { emCurso, itemAtual, normalizar as normalizarCombate, podeAgirAgora, rodadaParaFicha, semIniciativaDe } from '../nucleo/combate/estado';
+import { totalDoTurno } from '../nucleo/combate/movimento';
+import { comResumo, semOfertasDe, type OfertaDeReacao, type ResumoEvento } from '../nucleo/combate/reacoes';
 import { definirCaminho } from '../nucleo/ficha/caminho';
 import { arrastandoItem, arrastandoPersonagem, itemSolto, personagemSolto } from '../nucleo/itens/arrastar';
 import EditorItemDialog from '../nucleo/itens/EditorItemDialog.vue';
@@ -53,6 +52,7 @@ import { moduloDoSistema } from '../nucleo/sistemas/registro';
 import type { AbrirEditorItem } from '../nucleo/sistemas/tipos';
 import JanelaFlutuante from '../nucleo/ui/JanelaFlutuante.vue';
 import { conectar, type Conexao } from '../realtime';
+import type { AcaoCaracteristica } from '../sistemas/onepiece/regras';
 import type { Combate, ItemDto, Mensagem, NovoItem, VisibilidadeRolagem } from '../tipos-mesa';
 
 interface Pasta {
@@ -216,7 +216,9 @@ const movimentoDaCena = computed(() => {
     const item = emCurso(combate.value) ? itemAtual(combate.value) : null;
     const total = item ? totalDoTurno(item) : null;
     if (!item || total === null) return null;
-    const token = objetos.value.find((o) => o.tipo === 'token' && (o.id === item.objeto_id || (item.personagem_id !== null && o.personagem_id === item.personagem_id)));
+    const token = objetos.value.find(
+        (o) => o.tipo === 'token' && (o.id === item.objeto_id || (item.personagem_id !== null && o.personagem_id === item.personagem_id)),
+    );
 
     return token ? { objetoId: token.id, usado: item.movimento.usado, total, limitar: !props.mestre } : null;
 });
@@ -317,6 +319,24 @@ async function executarAcao(personagemId: number, acao: AcaoCaracteristica) {
         if (!alvo) return avisar('Mire um token de personagem para se hospedar nele.');
         if (alvo.id === personagemId) return avisar('Escolha outro personagem como hospedeiro.');
         return salvarFicha(personagemId, { hospedado: alvo.id });
+    }
+    if (acao.tipo === 'deslocar') {
+        try {
+            combate.value = normalizarCombate((await api.deslocamento(personagemId, acao.fator ?? 1)).combate);
+        } catch (e) {
+            avisar(mensagemDe(e));
+        }
+        return;
+    }
+    if (acao.tipo === 'socorrer') {
+        const alvo = alvoPersonagem.value;
+        if (!alvo) return avisar('Mire a criatura que vai receber os Primeiros Socorros.');
+        try {
+            await api.socorros(alvo.id, personagemId, !!acao.soCondicoes);
+        } catch (e) {
+            avisar(mensagemDe(e));
+        }
+        return;
     }
     if (acao.tipo !== 'condicao' || !acao.condicao) return;
     await condicaoDoAlvo(
@@ -789,7 +809,10 @@ async function criarCompanheiroDoConstrutor(modelo: string) {
 }
 const rolarAtributosDaCriacao = (personagemId: number) => async () => {
     const r = await api.rolarAtributos(personagemId);
-    criacoes.value[personagemId] = { ...(criacoes.value[personagemId] ?? { etapa: 'atributos', concluida: false }), dados: { ...criacoes.value[personagemId]?.dados, rolados: r.rolados } };
+    criacoes.value[personagemId] = {
+        ...(criacoes.value[personagemId] ?? { etapa: 'atributos', concluida: false }),
+        dados: { ...criacoes.value[personagemId]?.dados, rolados: r.rolados },
+    };
 
     return r.rolados;
 };
@@ -948,7 +971,10 @@ onMounted(() => {
                 .listen('.mensagem', (e: { mensagem: Mensagem; substitui?: boolean }) => aoNovaMensagem(e.mensagem, !!e.substitui))
                 .listen('.cena', (e: { ator: number | null }) => aoMudarCena(e))
                 .listen('.ficha', aoMudarFicha)
-                .listen('.reacao', (e: OfertaDeReacao) => (ofertasDeReacao.value = [...semOfertasDe(ofertasDeReacao.value, e.evento_id, e.personagem_id), e]))
+                .listen(
+                    '.reacao',
+                    (e: OfertaDeReacao) => (ofertasDeReacao.value = [...semOfertasDe(ofertasDeReacao.value, e.evento_id, e.personagem_id), e]),
+                )
                 .listen('.evento', (e: ResumoEvento) => {
                     janelasDeReacao.value = comResumo(janelasDeReacao.value, e);
                     if (e.estado === 'resolvido') ofertasDeReacao.value = semOfertasDe(ofertasDeReacao.value, e.id);
@@ -1105,7 +1131,14 @@ function alternarPorta(id: number) {
                         @remover="removerSelecionado"
                     />
                     <ControlesZoom :escala="escala" @mais="canvas?.zoomPor(1.25)" @menos="canvas?.zoomPor(1 / 1.25)" @ajustar="canvas?.ajustar()" />
-                    <PainelDoTurno :combate="combate" :categorias="categoriasAcao" :mestre="mestre" :meus-personagens="meusPersonagens" @disparar="dispararDoTurno" @devolver="(item, categoria) => comandoCombate('devolver', { item_id: item, categoria })" />
+                    <PainelDoTurno
+                        :combate="combate"
+                        :categorias="categoriasAcao"
+                        :mestre="mestre"
+                        :meus-personagens="meusPersonagens"
+                        @disparar="dispararDoTurno"
+                        @devolver="(item, categoria) => comandoCombate('devolver', { item_id: item, categoria })"
+                    />
                     <PainelAlvo
                         v-if="alvoPersonagem"
                         :nome="alvoPersonagem.nome"

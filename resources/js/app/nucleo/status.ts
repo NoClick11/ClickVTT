@@ -19,6 +19,9 @@ export const ICONES_STATUS: Record<string, { icone: string; cor: string }> = {
     paralisado: { icone: '⚡', cor: '#fde047' },
     petrificado: { icone: '🗿', cor: '#a8a29e' },
     surdo: { icone: '🔇', cor: '#94a3b8' },
+    letargico: { icone: '🥱', cor: '#a3a3a3' },
+    queimado: { icone: '🔥', cor: '#fb923c' },
+    sangramento: { icone: '🩸', cor: '#ef4444' },
 };
 
 export const iconeDoStatus = (id: string): { icone: string; cor: string } => ICONES_STATUS[id] ?? { icone: ICONE_PADRAO, cor: '#d4a843' };

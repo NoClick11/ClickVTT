@@ -90,7 +90,17 @@ export function apiMesa(mesaId: number, atorId: number) {
                 ...(acao ? { acao } : {}),
             }),
         /** Disparada: gasta a ação dela e soma outro deslocamento ao turno do personagem. */
-        disparada: (personagemId: number) => requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.disparada'), { personagem_id: personagemId }),
+        disparada: (personagemId: number) =>
+            requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.disparada'), { personagem_id: personagemId }),
+        /** Soma ao turno `fator` vezes o deslocamento do personagem (Recuo Estratégico, Reflexo Afiado). */
+        deslocamento: (personagemId: number, fator: number) =>
+            requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.deslocamento'), { personagem_id: personagemId, fator }),
+        /** Primeiros Socorros: o socorrista trata o personagem alvo (cura, PV temporários, encerra condições). */
+        socorros: (alvoId: number, socorristaId: number, soCondicoes = false) =>
+            requisitar<{ texto: string }>(atorId, 'POST', r('jogo.personagens.socorros', alvoId), {
+                socorrista_id: socorristaId,
+                so_condicoes: soCondicoes,
+            }),
         /** Responde a janela de reação: usa a reação `opcao` ou passa (`null`). */
         reagir: (eventoId: number, personagemId: number, opcao: string | null) =>
             requisitar<ResumoEvento>(atorId, 'POST', r('jogo.combate.eventos.reagir', eventoId), { personagem_id: personagemId, opcao }),
@@ -104,13 +114,20 @@ export function apiMesa(mesaId: number, atorId: number) {
             requisitar<{ id: number; criado: boolean }>(atorId, 'POST', r('jogo.personagens.companheiros', personagemId), { modelo }),
         /** Aplica ao alvo o total de uma rolagem de dano (o servidor desconta PV, respeitando resistências e imunidades). */
         aplicarDano: (personagemId: number, mensagemId: number) =>
-            requisitar<{ final: number; modo: string; texto: string }>(atorId, 'POST', r('jogo.personagens.dano', personagemId), { mensagem_id: mensagemId }),
+            requisitar<{ final: number; modo: string; texto: string }>(atorId, 'POST', r('jogo.personagens.dano', personagemId), {
+                mensagem_id: mensagemId,
+            }),
         /** Liga ou desliga uma condição do alvo, com duração em turnos ou até receber dano. */
         aplicarCondicao: (
             personagemId: number,
-            dados: { condicao: string; acao: 'aplicar' | 'remover'; turnos?: string; ao_dano?: boolean; salvaguarda?: { atributo: string; cd: number } },
-        ) =>
-            requisitar<{ imune: boolean; resistiu?: boolean; texto: string }>(atorId, 'POST', r('jogo.personagens.condicoes', personagemId), dados),
+            dados: {
+                condicao: string;
+                acao: 'aplicar' | 'remover';
+                turnos?: string;
+                ao_dano?: boolean;
+                salvaguarda?: { atributo: string; cd: number };
+            },
+        ) => requisitar<{ imune: boolean; resistiu?: boolean; texto: string }>(atorId, 'POST', r('jogo.personagens.condicoes', personagemId), dados),
         /** Salva campos da ficha: 1 campo = edição pontual; vários = etapa da criação guiada (aplicados juntos). */
         salvarFicha: (personagemId: number, campos: Record<string, unknown>, criacao?: Criacao | null) =>
             requisitar<{ ficha: Record<string, unknown>; criacao: Criacao | null }>(
