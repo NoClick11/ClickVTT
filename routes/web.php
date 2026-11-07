@@ -68,6 +68,7 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     // Loja: o mestre abre/fecha (jogadores e categorias) e cria itens do catálogo; o jogador compra com a loja aberta.
     Route::post('loja', [LojaController::class, 'abrir'])->middleware('throttle:30,1')->name('loja.abrir');
     Route::delete('loja', [LojaController::class, 'fechar'])->middleware('throttle:30,1')->name('loja.fechar');
+    Route::post('loja/entregar', [LojaController::class, 'entregar'])->middleware('throttle:60,1')->name('loja.entregar');
     Route::post('loja/comprar', [LojaController::class, 'comprar'])->middleware('throttle:60,1')->name('loja.comprar');
     // Forja do Ferreiro: criar armas do catálogo e aprimorar a arma de qualquer personagem com Pontos de Forja.
     Route::post('forja/armas', [ForjaController::class, 'armas'])->middleware('throttle:60,1')->name('forja.armas');

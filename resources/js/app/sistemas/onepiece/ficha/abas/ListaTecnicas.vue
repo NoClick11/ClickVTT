@@ -73,8 +73,9 @@ function municaoQueTem(tipo: 'qualquer' | 'esferica' | 'perfurante'): number {
     let total = 0;
     for (const secao of props.ficha.inventario ?? [])
         for (const ref of secao.itens ?? []) {
-            const id = (itens.value[ref.item_id]?.dados as { catalogo?: { id?: string } } | null | undefined)?.catalogo?.id;
-            if (id && servem.includes(id)) total += ref.qtd;
+            const dados = itens.value[ref.item_id]?.dados as { catalogo?: { id?: string }; municao?: unknown } | null | undefined;
+            // "qualquer" também gasta a munição criada à mão (dados.municao)
+            if ((dados?.catalogo?.id && servem.includes(dados.catalogo.id)) || (tipo === 'qualquer' && dados?.municao)) total += ref.qtd;
         }
 
     return total;

@@ -16,6 +16,9 @@ const props = defineProps<{
     jogadores: { id: number; nome: string }[];
     lojas: LojaAbertaDto[];
     proprios: ItemDeCatalogoDto[];
+    /** Todos os personagens da mesa e como entregar um item do catálogo a um deles (sem cobrar). */
+    personagens: { id: number; nome: string }[];
+    entregar: (personagemId: number, item: string, qtd: number) => Promise<{ nome: string; qtd: number }>;
     abrirLoja: (dados: { jogadores: 'todos' | number[]; categorias: string[]; raridades: string[]; fator: number }) => Promise<void>;
     fecharLoja: (jogadores: 'todos' | number[]) => Promise<void>;
 }>();
@@ -49,6 +52,24 @@ const lista = computed(() =>
     buscarNoCatalogo({ texto: texto.value, categoria: categoria.value, raridade: raridade.value }, [...doMestre.value, ...CATALOGO_DE_ITENS]),
 );
 const meu = (id: string) => id.startsWith('c:');
+
+// --- entregar ao personagem (o mestre dá o item sem cobrar) ------------------------------------------------------------
+const destino = ref<number | ''>('');
+const qtdDaEntrega = ref(1);
+const aviso = ref('');
+async function dar(i: ItemDoCatalogo) {
+    if (destino.value === '') {
+        aviso.value = 'Escolha a quem entregar.';
+
+        return;
+    }
+    try {
+        const r = await props.entregar(destino.value, i.id, Math.max(1, Math.min(99, Math.floor(Number(qtdDaEntrega.value)) || 1)));
+        aviso.value = `${r.qtd}× ${r.nome} entregue a ${props.personagens.find((p) => p.id === destino.value)?.nome ?? 'personagem'}.`;
+    } catch (e) {
+        aviso.value = e instanceof Error ? e.message : 'Não foi possível entregar.';
+    }
+}
 
 // --- loja -------------------------------------------------------------------------------------------------------------
 /** Hospedagem e estilo de vida são despesas, não itens: não entram na loja. */
@@ -176,6 +197,26 @@ const aba_ = (ativa: boolean) =>
                         <Plus class="size-4" aria-hidden="true" /> Criar item
                     </button>
                 </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs text-preto-300" role="group" aria-label="Entregar ao personagem">
+                    <label class="flex items-center gap-1.5"
+                        >Entregar a
+                        <select v-model="destino" class="rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs" aria-label="Personagem que recebe">
+                            <option value="">escolha…</option>
+                            <option v-for="p in personagens" :key="p.id" :value="p.id">{{ p.nome }}</option>
+                        </select></label
+                    >
+                    <label class="flex items-center gap-1.5"
+                        >Qtd.
+                        <input
+                            v-model.number="qtdDaEntrega"
+                            type="number"
+                            min="1"
+                            max="99"
+                            class="w-14 rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs"
+                            aria-label="Quantidade a entregar"
+                    /></label>
+                    <span v-if="aviso" class="text-ouro-200" role="status">{{ aviso }}</span>
+                </div>
                 <p class="text-xs text-preto-400">{{ lista.length }} entradas · {{ proprios.length }} criada(s) por você</p>
                 <ul class="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
                     <li v-if="!lista.length" class="py-8 text-center text-sm text-preto-400">Nada encontrado.</li>
@@ -201,6 +242,15 @@ const aba_ = (ativa: boolean) =>
                             <span class="text-xs tabular-nums text-ouro-200">{{ precoFormatado(i) }}</span>
                             <span class="w-16 text-right text-xs tabular-nums text-preto-400">{{ pesoFormatado(i) }}</span>
                             <span v-if="i.tipo === 'servico'" class="text-[11px] text-preto-500">serviço</span>
+                            <button
+                                v-if="i.tipo !== 'servico' && !['hospedagem', 'estilo-de-vida'].includes(i.categoria)"
+                                type="button"
+                                class="rounded border border-ouro-500/50 px-2 py-0.5 text-[11px] font-semibold text-ouro-200 hover:bg-ouro-500/15"
+                                :title="`Entregar ${i.nome} ao personagem escolhido, sem cobrar`"
+                                @click.stop="dar(i)"
+                            >
+                                Dar
+                            </button>
                             <button
                                 v-if="meu(i.id)"
                                 type="button"

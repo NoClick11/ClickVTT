@@ -113,6 +113,8 @@ export interface ItemInventario {
 }
 /** Dados do sistema num item: armadura (CA base ou bônus de escudo) e/ou arma. */
 export interface DadosItemOnePiece {
+    /** Munição criada à mão: o dado e o tipo do dano que dá à arma por munição, e um lembrete do efeito especial. */
+    municao?: { dano: string; tipoDano?: string | null; nota?: string | null };
     armadura?: { tipo: 'leve' | 'media' | 'pesada' | 'escudo'; base: number };
     arma?: {
         /** Dado da arma; ausente em arma por munição (`municao`), que usa o dado da munição escolhida ao atacar. */

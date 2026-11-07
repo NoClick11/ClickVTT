@@ -240,4 +240,36 @@ class MunicaoTest extends TestCase
         $this->assertSame(['3d6', 'Fogo'], [$card->dados['tecnica']['dano']['expressao'], $card->dados['tecnica']['dano']['tipo']]);
         $this->assertEqualsCanonicalizing([$alvo->id, $perto->id], array_column($card->dados['alvos'], 'personagem_id')); // o atingido e quem está perto
     }
+
+    public function test_municao_e_arma_criadas_a_mao_funcionam_juntas(): void
+    {
+        $c = $this->cenario();
+        $dadosArma = ['arma' => ['municao' => true, 'atributo' => 'des', 'distancia' => true, 'alcanceNormal' => 9, 'alcanceMaximo' => 18, 'margemCritica' => 20, 'proficiente' => true]];
+        $arma = $c->mesa->itens()->create(['nome' => 'Rifle do Mestre', 'descricao' => '', 'peso' => 1, 'equipavel' => true, 'requer_sintonia' => false, 'dados' => $dadosArma, 'efeitos' => []]);
+        $bala = $c->mesa->itens()->create(['nome' => 'Bala Sônica', 'descricao' => '', 'peso' => 0.1, 'equipavel' => false, 'requer_sintonia' => false, 'dados' => ['municao' => ['dano' => '2d6', 'tipoDano' => 'Trovão']], 'efeitos' => []]);
+        $f = $c->p->fresh()->ficha;
+        $f['inventario'][0]['itens'][] = ['item_id' => $arma->id, 'qtd' => 1, 'equipado' => true, 'sintonizado' => false];
+        $f['inventario'][0]['itens'][] = ['item_id' => $bala->id, 'qtd' => 3, 'equipado' => false, 'sintonizado' => false];
+        $c->p->ficha = $f;
+        $c->p->save();
+        // a arma sem item do catálogo aceita a munição do catálogo e a criada à mão; a criada à mão serve também à pistola do catálogo
+        $r = $this->atacar($c, $arma, $bala->id)->assertCreated()->json();
+        $this->assertSame('Bala Sônica', $r['dados']['sistema']['municao']['nome']);
+        if ($acao = $r['dados']['sistema']['acoes'][0] ?? null) {
+            $this->assertMatchesRegularExpression('/^\d+d6\+/', $acao['expressao']);
+            $this->assertSame('Trovão', $acao['dano']['tipo']);
+        }
+        $this->assertSame(2, $this->qtd($c, $bala->id));
+        $this->atacar($c, $arma, $c->esferica->id)->assertCreated();
+        $this->atacar($c, $c->pistola, $bala->id)->assertCreated();
+        $this->assertSame(1, $this->qtd($c, $bala->id));
+        // "qualquer" de uma Técnica também gasta a munição criada à mão
+        $f = $c->p->fresh()->ficha;
+        $f['inventario'][0]['itens'][5]['equipado'] = false; // só a pistola do catálogo equipada (a arma criada à mão aceitaria até flechas)
+        $c->p->ficha = $f;
+        $c->p->save();
+        $this->tecnicaComMunicao($c, 'Rajada. Requisito: arma favorita, 3 munições (qualquer).');
+        $this->como($c->ana)->postJson(route('jogo.tecnicas.municao.gastar', $c->mesa->id), ['personagem_id' => $c->p->id, 'tecnica' => 'Tiro Duplo'])->assertOk();
+        $this->assertSame(0, $this->qtd($c, $bala->id));
+    }
 }

@@ -1057,6 +1057,13 @@ const jogadoresDaLoja = computed(() => props.jogadores.filter((j) => j.papel !==
 async function abrirLoja(dados: { jogadores: 'todos' | number[]; categorias: string[]; raridades: string[]; fator: number }) {
     lojas.value = (await api.abrirLoja(dados)).lojas;
 }
+/** O mestre entrega um item do catálogo a um personagem; a ficha dele se atualiza pelo broadcast. */
+async function entregarDoCatalogo(personagemId: number, item: string, qtd: number) {
+    const r = await api.entregarDoCatalogo({ personagem_id: personagemId, item, qtd });
+    recarregar(['personagens']);
+
+    return r;
+}
 async function fecharLoja(jogadores: 'todos' | number[]) {
     lojas.value = (await api.fecharLoja(jogadores)).lojas;
 }
@@ -1810,6 +1817,8 @@ function alternarPorta(id: number) {
                 :jogadores="jogadoresDaLoja"
                 :lojas="lojas"
                 :proprios="catalogoDoMestre ?? []"
+                :personagens="props.personagens.map((p) => ({ id: p.id, nome: p.nome }))"
+                :entregar="entregarDoCatalogo"
                 :abrir-loja="abrirLoja"
                 :fechar-loja="fecharLoja"
                 @editar="abrirEditorDeCatalogo"

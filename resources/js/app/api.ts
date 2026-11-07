@@ -233,6 +233,9 @@ export function apiMesa(mesaId: number, atorId: number) {
         abrirLoja: (dados: { jogadores: 'todos' | number[]; categorias: string[]; raridades?: string[]; fator?: number }) =>
             requisitar<{ lojas: LojaAbertaDto[] }>(atorId, 'POST', r('jogo.loja.abrir'), dados),
         fecharLoja: (jogadores: 'todos' | number[]) => requisitar<{ lojas: LojaAbertaDto[] }>(atorId, 'DELETE', r('jogo.loja.fechar'), { jogadores }),
+        /** O mestre entrega um item do catálogo (`item` = id do livro ou `c:ID`) a um personagem, sem cobrar. */
+        entregarDoCatalogo: (dados: { personagem_id: number; item: string; qtd?: number }) =>
+            requisitar<{ campos: Record<string, unknown>; nome: string; qtd: number }>(atorId, 'POST', r('jogo.loja.entregar'), dados),
         /** Compra (o servidor confere loja aberta, categoria, preço e Belly). `item` = id do catálogo do sistema ou `c:ID` do mestre. */
         comprarNaLoja: (dados: { personagem_id: number; item: string; qtd?: number }) =>
             requisitar<{ campos: Record<string, unknown>; item: ItemDto; total: number; saldo: number }>(

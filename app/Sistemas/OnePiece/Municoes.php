@@ -56,12 +56,20 @@ final class Municoes
         if (! $tem || ! $item) {
             $erro('Você não tem essa munição.');
         }
+        $armaId = $itens[$armaItemId]['dados']['catalogo']['id'] ?? null;
+        // Munição criada à mão (`dados.municao`): serve a qualquer arma por munição e traz o próprio dado
+        $propria = $item['dados']['municao'] ?? null;
+        if (is_array($propria) && is_string($propria['dano'] ?? null)) {
+            return [
+                'item_id' => $municaoItemId, 'id' => 'c:'.$municaoItemId, 'nome' => $item['nome'], 'dano' => $propria['dano'], 'tipo' => $propria['tipoDano'] ?? '',
+                'nota' => mb_substr((string) ($propria['nota'] ?? ''), 0, 600),
+            ];
+        }
         $id = $item['dados']['catalogo']['id'] ?? null;
         $entrada = $id ? Itens::item($id) : null;
         if (! $entrada || $entrada['categoria'] !== 'municao' || ! is_string($entrada['arma']['dano'] ?? null)) {
             $erro("{$item['nome']} não é uma munição com dano.");
         }
-        $armaId = $itens[$armaItemId]['dados']['catalogo']['id'] ?? null;
         if (! in_array($id, self::daArma($armaId), true)) {
             $erro("{$entrada['nome']} não serve a {$itens[$armaItemId]['nome']}.");
         }
@@ -160,10 +168,14 @@ final class Municoes
             $servem = self::paraGastar($custo['tipo'], array_values(array_unique($aceitas)));
             $falta = $custo['quantidade'];
             $f = $p->ficha ?? [];
-            foreach ($servem as $catalogoId) {
+            // "qualquer" também gasta a munição criada à mão pelo mestre (depois das do catálogo)
+            $fontes = [...$servem, ...($custo['tipo'] === 'qualquer' ? ['*propria'] : [])];
+            foreach ($fontes as $catalogoId) {
                 foreach ($f['inventario'] ?? [] as $s => $secao) {
                     foreach ($secao['itens'] ?? [] as $i => $ref) {
-                        if ($falta <= 0 || ($itens[(int) ($ref['item_id'] ?? 0)]['dados']['catalogo']['id'] ?? null) !== $catalogoId || (int) $ref['qtd'] <= 0) {
+                        $dadosDoItem = $itens[(int) ($ref['item_id'] ?? 0)]['dados'] ?? [];
+                        $bate = $catalogoId === '*propria' ? isset($dadosDoItem['municao']) : ($dadosDoItem['catalogo']['id'] ?? null) === $catalogoId;
+                        if ($falta <= 0 || ! $bate || (int) $ref['qtd'] <= 0) {
                             continue;
                         }
                         $tira = min($falta, (int) $ref['qtd']);

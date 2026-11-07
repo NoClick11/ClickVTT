@@ -501,6 +501,11 @@ final class FichaOnePiece
         return [
             'dados.armadura.tipo' => ['required_with:dados.armadura.base', 'string', Rule::in(self::TIPOS_ARMADURA)],
             'dados.armadura.base' => ['required_with:dados.armadura.tipo', 'integer:strict', 'between:0,30'],
+            // Munição criada à mão: serve a qualquer arma por munição e dá o dado e o tipo do dano
+            'dados.municao' => ['array'],
+            'dados.municao.dano' => ['required_with:dados.municao', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)(?:d(?:[2-9]|[1-9]\d{1,2}))?$/'],
+            'dados.municao.tipoDano' => ['nullable', 'string', 'max:30'],
+            'dados.municao.nota' => ['nullable', 'string', 'max:300'],
             // Arma por munição (pistola, arco...) não tem dado: ele vem da munição escolhida ao atacar
             'dados.arma.municao' => ['boolean:strict'],
             'dados.arma.dano' => ['exclude_if:dados.arma.municao,true', 'required_with:dados.arma.atributo', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/', function (string $atributo, mixed $v, \Closure $fail) {

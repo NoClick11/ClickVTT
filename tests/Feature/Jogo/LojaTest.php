@@ -140,4 +140,24 @@ class LojaTest extends TestCase
         $this->como($c->bia)->get(route('jogo', [$c->mesa->slug, $c->bia->id]))->assertInertia(fn ($p) => $p->where('lojaDoJogador', null));
         $this->como($c->mestre)->get(route('jogo', [$c->mesa->slug, $c->mestre->id]))->assertInertia(fn ($p) => $p->has('lojasAbertas', 1)->where('lojaDoJogador', null));
     }
+
+    public function test_o_mestre_entrega_item_do_catalogo_sem_cobrar_e_sem_loja_aberta(): void
+    {
+        $c = $this->cenario();
+        $rota = route('jogo.loja.entregar', $c->mesa->id);
+        $this->como($c->ana)->postJson($rota, ['personagem_id' => $c->aria->id, 'item' => 'katana'])->assertForbidden(); // só o mestre
+        $this->como($c->mestre)->postJson($rota, ['personagem_id' => $c->beto->id, 'item' => 'katana', 'qtd' => 2])->assertOk()->assertJsonPath('qtd', 2);
+        $ficha = $c->beto->fresh()->ficha;
+        $this->assertSame(2, $ficha['inventario'][0]['itens'][0]['qtd']);
+        $this->assertSame('katana', $c->mesa->itens()->first()->catalogo_id);
+        $this->assertSame(0, (int) ($ficha['belly'] ?? 0)); // nada foi cobrado
+        $this->como($c->mestre)->postJson($rota, ['personagem_id' => $c->beto->id, 'item' => 'inventado'])->assertStatus(422);
+        $this->como($c->mestre)->postJson($rota, ['personagem_id' => 99999, 'item' => 'katana'])->assertStatus(422);
+        // item criado pelo mestre também pode ser entregue
+        $criado = $this->como($c->mestre)->postJson(route('jogo.catalogo.store', $c->mesa->id), [
+            'nome' => 'Bala Especial', 'categoria' => 'municao', 'raridade' => 'raro', 'preco' => 10, 'peso' => 0.1, 'equipavel' => false, 'requer_sintonia' => false,
+            'dados' => ['municao' => ['dano' => '2d6', 'tipoDano' => 'Fogo', 'nota' => 'Queima']],
+        ])->assertCreated();
+        $this->como($c->mestre)->postJson($rota, ['personagem_id' => $c->aria->id, 'item' => 'c:'.$criado->json('id')])->assertOk();
+    }
 }

@@ -13,10 +13,12 @@ import { ATRIBUTOS, type DadosItemOnePiece } from './regras';
 const props = defineProps<{ modelValue: Record<string, unknown> | null }>();
 const emit = defineEmits<{ 'update:modelValue': [Record<string, unknown> | null] }>();
 
-type Tipo = 'comum' | 'armadura' | 'arma';
+type Tipo = 'comum' | 'armadura' | 'arma' | 'municao';
 const inicial = (props.modelValue ?? {}) as DadosItemOnePiece;
 
-const tipo = ref<Tipo>(inicial.armadura ? 'armadura' : inicial.arma ? 'arma' : 'comum');
+const tipo = ref<Tipo>(inicial.armadura ? 'armadura' : inicial.arma ? 'arma' : inicial.municao ? 'municao' : 'comum');
+/** Munição criada à mão: serve a qualquer arma por munição; ao atacar dá o dado e o tipo do dano e gasta 1 unidade. */
+const municao = ref({ dano: inicial.municao?.dano ?? '1d6', tipoDano: inicial.municao?.tipoDano ?? '', nota: inicial.municao?.nota ?? '' });
 const armadura = ref({ tipo: inicial.armadura?.tipo ?? 'leve', base: inicial.armadura?.base ?? 11 });
 const arma = ref({
     dano: inicial.arma?.dano ?? '1d8',
@@ -94,6 +96,7 @@ const TIPOS_DE_ITEM: { id: Tipo; rotulo: string }[] = [
     { id: 'comum', rotulo: 'Comum' },
     { id: 'armadura', rotulo: 'Armadura / escudo' },
     { id: 'arma', rotulo: 'Arma' },
+    { id: 'municao', rotulo: 'Munição' },
 ];
 const TIPOS_ARMADURA = [
     { id: 'leve', rotulo: 'Leve', dica: 'CA = base + modificador de Destreza' },
@@ -110,6 +113,11 @@ const removerExtra = (i: number) => arma.value.danoExtra.splice(i, 1);
 
 function montar(): Record<string, unknown> | null {
     if (tipo.value === 'armadura') return { armadura: { tipo: armadura.value.tipo, base: Number(armadura.value.base) } };
+    if (tipo.value === 'municao') {
+        const m = municao.value;
+
+        return { municao: { dano: m.dano.trim().toLowerCase(), ...(m.tipoDano.trim() ? { tipoDano: m.tipoDano.trim() } : {}), ...(m.nota.trim() ? { nota: m.nota.trim() } : {}) } };
+    }
     if (tipo.value === 'arma') {
         const a = arma.value;
 
@@ -135,7 +143,7 @@ function montar(): Record<string, unknown> | null {
 
     return null;
 }
-watch([tipo, armadura, arma], () => emit('update:modelValue', montar()), { deep: true });
+watch([tipo, armadura, arma, municao], () => emit('update:modelValue', montar()), { deep: true });
 
 const campo =
     'w-full rounded-md border border-preto-700 bg-preto-950 px-2.5 py-1.5 text-sm text-preto-100 focus-visible:border-ouro-400 focus-visible:outline-none';
@@ -185,6 +193,29 @@ const campoLinha = campo.replace('w-full ', '');
                     :aria-label="armadura.tipo === 'escudo' ? 'Bônus de CA do escudo' : 'CA base da armadura'"
                 />
             </label>
+        </div>
+
+        <div v-if="tipo === 'municao'" class="grid gap-2 sm:grid-cols-3">
+            <label
+                ><span :class="rotulo">Dano (dados)</span
+                ><input
+                    v-model="municao.dano"
+                    type="text"
+                    maxlength="6"
+                    placeholder="1d8"
+                    spellcheck="false"
+                    :class="campo"
+                    class="font-mono"
+                    aria-label="Dado de dano da munição, ex.: 1d8"
+            /></label>
+            <label
+                ><span :class="rotulo">Tipo de dano</span
+                ><input v-model="municao.tipoDano" type="text" maxlength="30" placeholder="perfurante" :class="campo" aria-label="Tipo de dano da munição"
+            /></label>
+            <label class="sm:col-span-3"
+                ><span :class="rotulo">Efeito especial (lembrete no card)</span
+                ><input v-model="municao.nota" type="text" maxlength="300" :class="campo" aria-label="Efeito especial da munição"
+            /></label>
         </div>
 
         <div v-if="tipo === 'arma'" class="grid gap-2 sm:grid-cols-3">
@@ -434,7 +465,11 @@ const campoLinha = campo.replace('w-full ', '');
             </button>
         </div>
 
-        <p v-if="tipo === 'comum'" class="text-xs text-preto-500">Sem regras próprias; só os efeitos abaixo (se houver) valem.</p>
+        <p v-if="tipo === 'municao'" class="text-xs text-preto-500">
+            Munição criada por você serve a qualquer arma por munição (marque "Dano pela munição" na arma). Ao atacar o jogador a escolhe no
+            inventário: ela dá o dado e o tipo do dano e gasta 1 unidade.
+        </p>
+        <p v-else-if="tipo === 'comum'" class="text-xs text-preto-500">Sem regras próprias; só os efeitos abaixo (se houver) valem.</p>
         <p v-else-if="tipo === 'arma'" class="text-xs text-preto-500">
             Os bônus de acerto e de dano são valores simples (1, 2, 3...) somados ao modificador do atributo; use-os para armas +1, +2 e assim por
             diante. O d20 do ataque, igual ou acima da margem crítica, é crítico (20 por padrão; 19 ou 18 em armas específicas): o botão de dano do

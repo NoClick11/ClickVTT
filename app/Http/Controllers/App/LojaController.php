@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ItemDeCatalogo;
 use App\Models\Jogador;
 use App\Models\Mesa;
+use App\Models\Personagem;
 use App\Nucleo\Efeitos\Efeitos;
 use App\Nucleo\Loja\LojaService;
 use App\Nucleo\Sistemas\RegistroSistemas;
@@ -14,6 +15,7 @@ use App\Support\AcessoMesa;
 use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -77,6 +79,36 @@ class LojaController extends Controller
         Transmitir::enviar($mesa, 'loja-compra', ['personagem_id' => $p->id, 'jogador' => $acesso->jogador->nome, 'item' => $r['entrada']['nome'], 'qtd' => $dados['qtd'] ?? 1, 'total' => $r['total']], ['mestre']);
 
         return response()->json(['campos' => $campos, 'item' => $r['item']->paraFront(), 'total' => $r['total'], 'saldo' => $r['saldo']]);
+    }
+
+    /** O mestre entrega um item do catálogo (do livro ou criado por ele) a qualquer personagem, sem cobrar e sem precisar da loja aberta. */
+    public function entregar(Request $request, Mesa $mesa, RegistroSistemas $sistemas, LojaService $loja): JsonResponse
+    {
+        $acesso = AcessoMesa::exigirMestre($request, $mesa);
+        $sistema = $this->sistema($mesa, $sistemas);
+        $dados = $request->validate([
+            'personagem_id' => ['required', 'integer', Rule::exists('personagens', 'id')->where('mesa_id', $mesa->id)],
+            'item' => ['required', 'string', 'max:60'],
+            'qtd' => ['nullable', 'integer', 'between:1,99'],
+        ]);
+        $entrada = $loja->entrada($mesa, $sistema, $dados['item']);
+        if (! $entrada || ($entrada['tipo'] ?? 'item') !== 'item') {
+            throw ValidationException::withMessages(['item' => 'Este item não pode ser entregue (serviços e despesas não são itens).']);
+        }
+        $qtd = $dados['qtd'] ?? 1;
+        $p = DB::transaction(function () use ($mesa, $sistema, $loja, $dados, $entrada, $qtd) {
+            $p = Personagem::query()->where('mesa_id', $mesa->id)->whereKey($dados['personagem_id'])->lockForUpdate()->firstOrFail();
+            $item = $loja->materializar($mesa, $sistema, $entrada);
+            $p->ficha = $sistema->entregarNoInventario($p->ficha ?? $sistema->fichaPadrao(), $item->id, $qtd);
+            $p->save();
+
+            return $p;
+        });
+        $campos = ['inventario' => $p->ficha['inventario']];
+        $canais = ['mestre', ...$p->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
+        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => $campos, 'criacao' => $p->criacao, 'ator' => $acesso->jogador->id], $canais);
+
+        return response()->json(['campos' => $campos, 'nome' => $entrada['nome'], 'qtd' => $qtd]);
     }
 
     public function store(Request $request, Mesa $mesa, RegistroSistemas $sistemas): JsonResponse

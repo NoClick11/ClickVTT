@@ -40,8 +40,16 @@ const municoesDa = (a: { catalogoId: string | null }): PilhaDeMunicao[] => {
     const pilhas: PilhaDeMunicao[] = [];
     for (const secao of props.ficha.inventario ?? []) {
         for (const ref of secao.itens ?? []) {
-            const idDoCatalogo = (itens.value[ref.item_id]?.dados as { catalogo?: { id?: string } } | null | undefined)?.catalogo?.id;
-            if (!idDoCatalogo || ref.qtd <= 0 || !aceitas.includes(idDoCatalogo)) continue;
+            const item = itens.value[ref.item_id];
+            if (!item || ref.qtd <= 0) continue;
+            const dados = item.dados as { catalogo?: { id?: string }; municao?: { dano: string; tipoDano?: string | null } } | null | undefined;
+            if (dados?.municao) {
+                // munição criada à mão: serve a qualquer arma por munição
+                pilhas.push({ itemId: ref.item_id, nome: item.nome, qtd: ref.qtd, dano: dados.municao.dano, tipoDano: dados.municao.tipoDano ?? null });
+                continue;
+            }
+            const idDoCatalogo = dados?.catalogo?.id;
+            if (!idDoCatalogo || !aceitas.includes(idDoCatalogo)) continue;
             const entrada = itemDoCatalogo(idDoCatalogo);
             pilhas.push({ itemId: ref.item_id, nome: entrada?.nome ?? 'Munição', qtd: ref.qtd, dano: entrada?.arma?.dano ?? null, tipoDano: entrada?.arma?.tipoDano ?? null });
         }
