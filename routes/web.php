@@ -8,6 +8,7 @@ use App\Http\Controllers\App\CompanheiroController;
 use App\Http\Controllers\App\CombateController;
 use App\Http\Controllers\App\FichaController;
 use App\Http\Controllers\App\ItemController;
+use App\Http\Controllers\App\LojaController;
 use App\Http\Controllers\App\JogoController;
 use App\Http\Controllers\App\ObjetoController;
 use App\Http\Controllers\App\PaginaController;
@@ -58,6 +59,13 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
         ->middleware('throttle:20,1')->name('personagens.atributos-rolados');
     Route::post('personagens', [PersonagemDoJogoController::class, 'criar'])->middleware('throttle:30,1')->name('personagens.store');
     Route::put('personagens/{personagem}/jogadores', [PersonagemDoJogoController::class, 'atribuir'])->name('personagens.atribuir');
+    // Loja: o mestre abre/fecha (jogadores e categorias) e cria itens do catálogo; o jogador compra com a loja aberta.
+    Route::post('loja', [LojaController::class, 'abrir'])->middleware('throttle:30,1')->name('loja.abrir');
+    Route::delete('loja', [LojaController::class, 'fechar'])->middleware('throttle:30,1')->name('loja.fechar');
+    Route::post('loja/comprar', [LojaController::class, 'comprar'])->middleware('throttle:60,1')->name('loja.comprar');
+    Route::post('catalogo', [LojaController::class, 'store'])->middleware('throttle:60,1')->name('catalogo.store');
+    Route::patch('catalogo/{item}', [LojaController::class, 'update'])->middleware('throttle:60,1')->name('catalogo.update');
+    Route::delete('catalogo/{item}', [LojaController::class, 'destroy'])->name('catalogo.destroy');
     Route::post('itens', [ItemController::class, 'store'])->middleware('throttle:60,1')->name('itens.store');
     Route::patch('itens/{item}', [ItemController::class, 'update'])->middleware('throttle:60,1')->name('itens.update');
     Route::delete('itens/{item}', [ItemController::class, 'destroy'])->name('itens.destroy');

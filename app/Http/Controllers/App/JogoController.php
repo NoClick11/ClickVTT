@@ -4,6 +4,7 @@ namespace App\Http\Controllers\App;
 
 use App\Http\Controllers\Controller;
 use App\Nucleo\Combate\CombateService;
+use App\Nucleo\Loja\LojaService;
 use App\Nucleo\Combate\Pipeline;
 use App\Nucleo\Combate\SistemaDeCombate;
 use App\Models\Jogador;
@@ -70,6 +71,11 @@ class JogoController extends Controller
             'meusPersonagens' => $acesso->personagensPermitidos(),
             // Itens da mesa: o mestre vê todos; o jogador só os que aparecem nas fichas que ele controla.
             'itens' => $this->itensVisiveis($mesa, $acesso, $personagens, $sistemas),
+            // Loja: o mestre vê as lojas abertas e os itens que criou; o jogador, só a loja aberta para ele (com os itens do mestre
+            // das categorias dela). O catálogo do sistema é do módulo no front.
+            'lojasAbertas' => $mestre ? $mesa->lojasAbertas()->get()->map->paraFront()->values() : [],
+            'catalogoDoMestre' => $mestre ? $mesa->itensDeCatalogo()->orderBy('nome')->get()->map->paraFront()->values() : [],
+            'lojaDoJogador' => $mestre ? null : $this->lojaDoJogador($mesa, $acesso),
             'combate' => CombateService::normalizar($mesa->combate),
             // Janelas de reação abertas e as ofertas dos personagens que este jogador controla (para quem entra no meio de um ataque).
             'reacoes' => $pipeline->pendentesPara($mesa, $acesso),
@@ -79,6 +85,17 @@ class JogoController extends Controller
                 ->map(fn ($m) => $m->para($acesso->jogador))->filter()->values(),
             'sairUrl' => route('convite.sair', $mesa->convite_token).'?jogador='.$acesso->jogador->id,
         ]);
+    }
+
+    /** A loja aberta para este jogador (categorias, ajuste de preço e os itens criados pelo mestre nelas) ou null. */
+    private function lojaDoJogador(Mesa $mesa, AcessoMesa $acesso): ?array
+    {
+        $aberta = $mesa->lojasAbertas()->where('jogador_id', $acesso->jogador->id)->first();
+        if (! $aberta) {
+            return null;
+        }
+
+        return $aberta->paraFront() + ['itens' => app(LojaService::class)->itensProprios($mesa, $aberta->categorias)->map->paraFront()->values()->all()];
     }
 
     /** @return \Illuminate\Support\Collection<int, array> */
