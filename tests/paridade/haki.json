@@ -1,0 +1,559 @@
+[
+  {
+    "nome": "nível 7 sem Haki",
+    "nivel": 7,
+    "haki": {
+      "liberado": false,
+      "rei": false,
+      "prematuroNivel": 0,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": []
+    },
+    "esperado": {
+      "ganhosGerais": 0,
+      "gastoGeral": 0,
+      "disponiveis": 0,
+      "estagio": 0,
+      "invalido": false
+    }
+  },
+  {
+    "nome": "nível 8: 5 PA",
+    "nivel": 8,
+    "haki": {
+      "liberado": false,
+      "rei": false,
+      "prematuroNivel": 0,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": []
+    },
+    "esperado": {
+      "ganhosGerais": 5,
+      "gastoGeral": 0,
+      "disponiveis": 5,
+      "estagio": 0,
+      "invalido": false
+    }
+  },
+  {
+    "nome": "nível 10: 5 + 12 + 12",
+    "nivel": 10,
+    "haki": {
+      "liberado": false,
+      "rei": false,
+      "prematuroNivel": 0,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": []
+    },
+    "esperado": {
+      "ganhosGerais": 29,
+      "gastoGeral": 0,
+      "disponiveis": 29,
+      "estagio": 0,
+      "invalido": false
+    }
+  },
+  {
+    "nome": "Haki do Rei no 10º: Ambição Crescente +2",
+    "nivel": 10,
+    "haki": {
+      "liberado": false,
+      "rei": true,
+      "prematuroNivel": 0,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": []
+    },
+    "esperado": {
+      "ganhosGerais": 31,
+      "gastoGeral": 0,
+      "disponiveis": 31,
+      "estagio": 0,
+      "invalido": false
+    }
+  },
+  {
+    "nome": "Haki do Rei no 12º: retroativo +6",
+    "nivel": 12,
+    "haki": {
+      "liberado": false,
+      "rei": true,
+      "prematuroNivel": 0,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": []
+    },
+    "esperado": {
+      "ganhosGerais": 59,
+      "gastoGeral": 0,
+      "disponiveis": 59,
+      "estagio": 0,
+      "invalido": false
+    }
+  },
+  {
+    "nome": "despertar prematuro no 3º, jogando no 5º",
+    "nivel": 5,
+    "haki": {
+      "liberado": true,
+      "rei": false,
+      "prematuroNivel": 3,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": []
+    },
+    "esperado": {
+      "ganhosGerais": 6,
+      "gastoGeral": 0,
+      "disponiveis": 6,
+      "estagio": 0,
+      "invalido": false
+    }
+  },
+  {
+    "nome": "despertar prematuro no 3º, jogando no 9º",
+    "nivel": 9,
+    "haki": {
+      "liberado": true,
+      "rei": false,
+      "prematuroNivel": 3,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": []
+    },
+    "esperado": {
+      "ganhosGerais": 29,
+      "gastoGeral": 0,
+      "disponiveis": 29,
+      "estagio": 0,
+      "invalido": false
+    }
+  },
+  {
+    "nome": "extras do mestre",
+    "nivel": 8,
+    "haki": {
+      "liberado": false,
+      "rei": false,
+      "prematuroNivel": 0,
+      "extras": 7,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": []
+    },
+    "esperado": {
+      "ganhosGerais": 12,
+      "gastoGeral": 0,
+      "disponiveis": 12,
+      "estagio": 0,
+      "invalido": false
+    }
+  },
+  {
+    "nome": "compra acima do saldo",
+    "nivel": 8,
+    "haki": {
+      "liberado": false,
+      "rei": false,
+      "prematuroNivel": 0,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": [
+        {
+          "id": "ataque-infuso",
+          "formas": 1
+        },
+        {
+          "id": "endurecimento-defensivo",
+          "formas": 1
+        }
+      ]
+    },
+    "esperado": {
+      "ganhosGerais": 5,
+      "gastoGeral": 10,
+      "disponiveis": -5,
+      "estagio": 1,
+      "invalido": true
+    }
+  },
+  {
+    "nome": "extras cobrem a compra",
+    "nivel": 8,
+    "haki": {
+      "liberado": false,
+      "rei": false,
+      "prematuroNivel": 0,
+      "extras": 5,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": [
+        {
+          "id": "ataque-infuso",
+          "formas": 1
+        },
+        {
+          "id": "endurecimento-defensivo",
+          "formas": 1
+        }
+      ]
+    },
+    "esperado": {
+      "ganhosGerais": 10,
+      "gastoGeral": 10,
+      "disponiveis": 0,
+      "estagio": 1,
+      "invalido": false
+    }
+  },
+  {
+    "nome": "PA restritos gastos antes do saldo geral",
+    "nivel": 8,
+    "haki": {
+      "liberado": false,
+      "rei": false,
+      "prematuroNivel": 0,
+      "extras": 0,
+      "restritos": {
+        "armamento": 3,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": [
+        {
+          "id": "ataque-infuso",
+          "formas": 1
+        }
+      ]
+    },
+    "esperado": {
+      "ganhosGerais": 5,
+      "gastoGeral": 2,
+      "disponiveis": 3,
+      "estagio": 1,
+      "invalido": false
+    }
+  },
+  {
+    "nome": "afinidade desperta: +2 PA",
+    "nivel": 8,
+    "haki": {
+      "liberado": false,
+      "rei": false,
+      "prematuroNivel": 0,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "armamento",
+      "talentos": [
+        {
+          "id": "ataque-infuso",
+          "formas": 1
+        }
+      ]
+    },
+    "esperado": {
+      "ganhosGerais": 7,
+      "gastoGeral": 5,
+      "disponiveis": 2,
+      "estagio": 1,
+      "invalido": false
+    }
+  },
+  {
+    "nome": "afinidade sem despertar não dá PA",
+    "nivel": 8,
+    "haki": {
+      "liberado": false,
+      "rei": false,
+      "prematuroNivel": 0,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "armamento",
+      "talentos": []
+    },
+    "esperado": {
+      "ganhosGerais": 5,
+      "gastoGeral": 0,
+      "disponiveis": 5,
+      "estagio": 0,
+      "invalido": false
+    }
+  },
+  {
+    "nome": "estágio Treinado com 21+ PA e talento Treinado",
+    "nivel": 20,
+    "haki": {
+      "liberado": false,
+      "rei": false,
+      "prematuroNivel": 0,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": [
+        {
+          "id": "ataque-infuso",
+          "formas": 1
+        },
+        {
+          "id": "endurecimento-defensivo",
+          "formas": 1
+        },
+        {
+          "id": "antecipacao",
+          "formas": 1
+        },
+        {
+          "id": "antevisao",
+          "formas": 1
+        },
+        {
+          "id": "previsao",
+          "formas": 1
+        },
+        {
+          "id": "endurecimento-ofensivo",
+          "formas": 1
+        }
+      ]
+    },
+    "esperado": {
+      "ganhosGerais": 149,
+      "gastoGeral": 26,
+      "disponiveis": 123,
+      "estagio": 2,
+      "invalido": false
+    }
+  },
+  {
+    "nome": "talento Treinado sem o estágio",
+    "nivel": 20,
+    "haki": {
+      "liberado": false,
+      "rei": false,
+      "prematuroNivel": 0,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": [
+        {
+          "id": "ataque-infuso",
+          "formas": 1
+        },
+        {
+          "id": "endurecimento-ofensivo",
+          "formas": 1
+        }
+      ]
+    },
+    "esperado": {
+      "ganhosGerais": 149,
+      "gastoGeral": 9,
+      "disponiveis": 140,
+      "estagio": 1,
+      "invalido": true
+    }
+  },
+  {
+    "nome": "Forma Dominada sem Treinado",
+    "nivel": 20,
+    "haki": {
+      "liberado": false,
+      "rei": false,
+      "prematuroNivel": 0,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": [
+        {
+          "id": "ataque-infuso",
+          "formas": 2
+        }
+      ]
+    },
+    "esperado": {
+      "ganhosGerais": 149,
+      "gastoGeral": 10,
+      "disponiveis": 139,
+      "estagio": 1,
+      "invalido": true
+    }
+  },
+  {
+    "nome": "talento do Rei sem Haki do Rei",
+    "nivel": 20,
+    "haki": {
+      "liberado": false,
+      "rei": false,
+      "prematuroNivel": 0,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": [
+        {
+          "id": "autoridade-do-rei",
+          "formas": 1
+        }
+      ]
+    },
+    "esperado": {
+      "ganhosGerais": 149,
+      "gastoGeral": 3,
+      "disponiveis": 146,
+      "estagio": 1,
+      "invalido": true
+    }
+  },
+  {
+    "nome": "talento sem o requisito",
+    "nivel": 20,
+    "haki": {
+      "liberado": false,
+      "rei": false,
+      "prematuroNivel": 0,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": [
+        {
+          "id": "emissao-ofensiva",
+          "formas": 1
+        }
+      ]
+    },
+    "esperado": {
+      "ganhosGerais": 149,
+      "gastoGeral": 3,
+      "disponiveis": 146,
+      "estagio": 1,
+      "invalido": true
+    }
+  },
+  {
+    "nome": "haki não despertado com talentos",
+    "nivel": 7,
+    "haki": {
+      "liberado": false,
+      "rei": false,
+      "prematuroNivel": 0,
+      "extras": 0,
+      "restritos": {
+        "armamento": 0,
+        "observacao": 0,
+        "rei": 0
+      },
+      "principal": "",
+      "afinidade": "",
+      "talentos": [
+        {
+          "id": "ataque-infuso",
+          "formas": 1
+        }
+      ]
+    },
+    "esperado": {
+      "ganhosGerais": 0,
+      "gastoGeral": 5,
+      "disponiveis": -5,
+      "estagio": 1,
+      "invalido": true
+    }
+  }
+]
