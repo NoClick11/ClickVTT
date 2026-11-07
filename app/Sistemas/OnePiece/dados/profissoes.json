@@ -11,7 +11,16 @@
         "persuasao",
         "sobrevivencia"
       ],
-      "ferramenta": "Ferramentas de Adestrador"
+      "ferramenta": "Ferramentas de Adestrador",
+      "itens": [
+        "1 mochila pequena",
+        "30 rações para animais",
+        "livros de veterinária, nutrição animal e treinamento animal",
+        "chicote",
+        "apito",
+        "1 kit médico",
+        "3 kits de primeiros socorros"
+      ]
     },
     {
       "id": "arqueologo",
@@ -24,7 +33,18 @@
         "persuasao",
         "sobrevivencia"
       ],
-      "ferramenta": "Ferramentas de Arqueólogo"
+      "ferramenta": "Ferramentas de Arqueólogo",
+      "itens": [
+        "1 mochila pequena",
+        "1 lanterna",
+        "1 corda",
+        "1 tenda",
+        "livros de história, geografia e culturas antigas",
+        "1 chicote",
+        "1 porta-mapas",
+        "1 caderno e caneta",
+        "1 kit de escalada"
+      ]
     },
     {
       "id": "botanico",
@@ -37,7 +57,15 @@
         "percepcao",
         "sobrevivencia"
       ],
-      "ferramenta": "Ferramentas de Botânico"
+      "ferramenta": "Ferramentas de Botânico",
+      "itens": [
+        "1 mochila pequena",
+        "1 lupa de análise",
+        "ferramentas de coleta de plantas",
+        "livros de botânica e ecossistemas",
+        "5 frascos de armazenamento",
+        "1 pequeno estilete de poda"
+      ]
     },
     {
       "id": "cacador-de-recompensas",
@@ -50,7 +78,15 @@
         "persuasao",
         "sobrevivencia"
       ],
-      "ferramenta": "Ferramentas de Caçador de Recompensas"
+      "ferramenta": "Ferramentas de Caçador de Recompensas",
+      "itens": [
+        "1 mochila pequena",
+        "livros de comportamento e temas diversos",
+        "3 kits de primeiros socorros",
+        "2 cordas",
+        "2 pares de algemas",
+        "1 bússola ou log pose à escolha"
+      ]
     },
     {
       "id": "carpinteiro",
@@ -63,7 +99,15 @@
         "persuasao",
         "prestidigitacao"
       ],
-      "ferramenta": "Ferramentas de Carpinteiro"
+      "ferramenta": "Ferramentas de Carpinteiro",
+      "itens": [
+        "1 mochila pequena",
+        "livros de marcenaria",
+        "10 plantas de construção",
+        "1 serrote",
+        "1 martelo",
+        "1 kit de construção"
+      ]
     },
     {
       "id": "cientista",
@@ -76,7 +120,17 @@
         "prestidigitacao",
         "natureza"
       ],
-      "ferramenta": "Ferramentas de Cientista"
+      "ferramenta": "Ferramentas de Cientista",
+      "itens": [
+        "1 mochila pequena",
+        "1 kit médico",
+        "1 kit de pesquisa",
+        "1 kit de primeiros socorros",
+        "1 kit de chaves",
+        "1 kit de construção",
+        "livros científicos diversos",
+        "1 mini computador"
+      ]
     },
     {
       "id": "contrabandista",
@@ -89,7 +143,14 @@
         "persuasao",
         "provocacao"
       ],
-      "ferramenta": "Ferramentas de Contrabandista"
+      "ferramenta": "Ferramentas de Contrabandista",
+      "itens": [
+        "1 mochila pequena",
+        "1 capa ou casaco com bolsos falsos",
+        "1 kit de falsificação",
+        "1 registro codificado de contatos",
+        "1 mapa de rotas clandestinas"
+      ]
     },
     {
       "id": "cozinheiro",
@@ -102,7 +163,14 @@
         "provocacao",
         "sobrevivencia"
       ],
-      "ferramenta": "Ferramentas de Cozinheiro"
+      "ferramenta": "Ferramentas de Cozinheiro",
+      "itens": [
+        "1 mochila pequena",
+        "livros gastronômicos, receitas e nutrição",
+        "1 kit de cozinha",
+        "3 kits de temperos",
+        "1 roupa de gala"
+      ]
     },
     {
       "id": "engenheiro",
@@ -115,7 +183,15 @@
         "prestidigitacao",
         "sobrevivencia"
       ],
-      "ferramenta": "Ferramentas de Engenheiro"
+      "ferramenta": "Ferramentas de Engenheiro",
+      "itens": [
+        "1 mochila pequena",
+        "livros de engenharia mecânica, física e computação",
+        "1 martelo",
+        "1 kit de chaves",
+        "1 kit de construção",
+        "1 mini computador"
+      ]
     },
     {
       "id": "espiao",
@@ -128,7 +204,17 @@
         "percepcao",
         "prestidigitacao"
       ],
-      "ferramenta": "Ferramentas de Espião"
+      "ferramenta": "Ferramentas de Espião",
+      "itens": [
+        "1 mochila pequena",
+        "1 óculos com lente ampliadora",
+        "1 aparelho de escuta",
+        "1 caderno criptografado",
+        "1 kit de disfarce",
+        "1 kit para abrir cadeados",
+        "1 kit de falsificação",
+        "1 mini câmera"
+      ]
     },
     {
       "id": "farmaceutico",
@@ -141,7 +227,17 @@
         "natureza",
         "percepcao"
       ],
-      "ferramenta": "Ferramentas de Farmacêutico"
+      "ferramenta": "Ferramentas de Farmacêutico",
+      "itens": [
+        "1 mochila pequena",
+        "1 kit médico",
+        "1 kit de pesquisa",
+        "1 kit de primeiros socorros",
+        "1 kit de herbalismo",
+        "1 kit de venenos",
+        "livros de farmácia e biologia química",
+        "1 conjunto de reagentes básicos"
+      ]
     },
     {
       "id": "ferreiro",
@@ -154,7 +250,16 @@
         "percepcao",
         "prestidigitacao"
       ],
-      "ferramenta": "Ferramentas de Ferreiro"
+      "ferramenta": "Ferramentas de Ferreiro",
+      "itens": [
+        "1 mochila pequena",
+        "livros de metalurgia e armas",
+        "1 martelo de forja pequeno",
+        "ferramentas de metal",
+        "1 pedra de amolar",
+        "1 bigorna pequena",
+        "1 molde simples"
+      ]
     },
     {
       "id": "informante",
@@ -167,7 +272,13 @@
         "percepcao",
         "persuasao"
       ],
-      "ferramenta": "Ferramentas de Informante"
+      "ferramenta": "Ferramentas de Informante",
+      "itens": [
+        "1 mochila pequena",
+        "1 caderno codificado",
+        "1 mapa da cidade ou região de operação",
+        "ferramentas de comunicação discreta (sinalizadores, apitos, espelhos)"
+      ]
     },
     {
       "id": "inventor",
@@ -180,7 +291,14 @@
         "prestidigitacao",
         "percepcao"
       ],
-      "ferramenta": "Ferramentas de Inventor"
+      "ferramenta": "Ferramentas de Inventor",
+      "itens": [
+        "1 mochila pequena",
+        "1 kit de chaves",
+        "1 kit de construção",
+        "livros de engenharia criativa",
+        "1 caixa com peças diversas"
+      ]
     },
     {
       "id": "jornalista",
@@ -193,7 +311,14 @@
         "percepcao",
         "persuasao"
       ],
-      "ferramenta": "Ferramentas de Jornalista"
+      "ferramenta": "Ferramentas de Jornalista",
+      "itens": [
+        "1 mochila pequena",
+        "1 caderno de anotações",
+        "1 máquina fotográfica portátil",
+        "1 gravador de voz",
+        "1 livro de técnicas de entrevista"
+      ]
     },
     {
       "id": "medico",
@@ -206,7 +331,13 @@
         "prestidigitacao",
         "sobrevivencia"
       ],
-      "ferramenta": "Ferramentas de Médico"
+      "ferramenta": "Ferramentas de Médico",
+      "itens": [
+        "1 mochila pequena",
+        "livros de anatomia, medicina e bioquímica",
+        "1 kit médico",
+        "3 kits de primeiros socorros"
+      ]
     },
     {
       "id": "musico",
@@ -220,7 +351,12 @@
         "prestidigitacao",
         "provocacao"
       ],
-      "ferramenta": "Instrumento musical"
+      "ferramenta": "Instrumento musical",
+      "itens": [
+        "1 mochila pequena",
+        "livros de canto, de instrumentos e partituras",
+        "1 instrumento musical à sua escolha"
+      ]
     },
     {
       "id": "navegador",
@@ -233,7 +369,15 @@
         "persuasao",
         "sobrevivencia"
       ],
-      "ferramenta": "Ferramentas de Navegador"
+      "ferramenta": "Ferramentas de Navegador",
+      "itens": [
+        "1 mochila pequena",
+        "livros de astronomia, geografia e navegação",
+        "1 bússola à escolha (bússola, log pose, log pose de 3 agulhas)",
+        "1 compasso",
+        "1 balestilha",
+        "1 astrolábio"
+      ]
     },
     {
       "id": "psiquiatra",
@@ -246,7 +390,13 @@
         "persuasao",
         "provocacao"
       ],
-      "ferramenta": "Ferramentas de Psiquiatra"
+      "ferramenta": "Ferramentas de Psiquiatra",
+      "itens": [
+        "1 mochila pequena",
+        "livros de psicologia, psiquiatria e comportamento humano",
+        "1 caderno para anotações clínicas",
+        "1 kit médico"
+      ]
     },
     {
       "id": "timoneiro",
@@ -259,7 +409,14 @@
         "persuasao",
         "prestidigitacao"
       ],
-      "ferramenta": "Ferramentas de Timoneiro"
+      "ferramenta": "Ferramentas de Timoneiro",
+      "itens": [
+        "1 mochila pequena",
+        "livros de navegação e comportamento humano",
+        "1 bússola à escolha (bússola, log pose, log pose de 3 agulhas)",
+        "10 cordas",
+        "1 tambor"
+      ]
     }
   ]
 }

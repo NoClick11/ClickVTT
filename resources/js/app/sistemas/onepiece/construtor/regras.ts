@@ -820,7 +820,7 @@ export function camposDaCriacao(
     }
     if (profissaoInicial && e.profissao?.id !== 'nenhuma') {
         const prof = profissaoPorId(e.profissao!.id);
-        if (prof) avisos.push(`Itens iniciais de ${prof.nome} (o mestre entrega): ${prof.itens.join('; ')}.`);
+        if (prof) avisos.push(`Itens iniciais de ${prof.nome} (entram no inventário ao concluir): ${prof.itens.join('; ')}.`);
     }
     if (e.variacaoRara) avisos.push('Variação Rara: exceção absoluta, depende da aprovação do Narrador.');
     if (tracos.some((t) => t.traco.id === 'tracos-culturais'))

@@ -1153,6 +1153,8 @@ async function salvarCriacao(personagemId: number, campos: Record<string, unknow
     const resp = await api.salvarFicha(personagemId, campos, criacao);
     criacoes.value[personagemId] = resp.criacao;
     if (Object.keys(campos).length) fichas.value[personagemId] = copia(resp.ficha);
+    // concluir a criação entrega os itens iniciais da profissão: os itens novos da mesa chegam à tela
+    if (criacao.concluida) recarregar(['itens']);
 }
 /** Companheiro entregue pelo assistente (ex.: Cobra Bélica): cria o personagem e recarrega a lista. */
 async function criarCompanheiroDoConstrutor(modelo: string) {

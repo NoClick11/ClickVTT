@@ -892,7 +892,9 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1.5 text-sm 
                                 <b>{{ profissaoEscolhida.ferramenta }}</b> (proficiência) · Ofício ({{ profissaoEscolhida.nome }}) treinado
                             </p>
                             <details class="rounded-lg border border-preto-700 bg-preto-900/60 p-3 text-xs text-preto-300">
-                                <summary class="cursor-pointer font-semibold text-preto-200">Itens iniciais (o mestre entrega)</summary>
+                                <summary class="cursor-pointer font-semibold text-preto-200">
+                                    Itens iniciais (entram no inventário ao concluir)
+                                </summary>
                                 <ul class="mt-1 list-disc pl-5">
                                     <li v-for="i in profissaoEscolhida.itens" :key="i">{{ i }}</li>
                                 </ul>

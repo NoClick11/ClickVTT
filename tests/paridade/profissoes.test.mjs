@@ -48,7 +48,7 @@ test('profissões: 20 no catálogo, ids únicos, perícias e ferramentas válida
 test('profissões: o catálogo do PHP (profissoes.json) confere com os dados do TS', () => {
     assert.deepEqual(
         catalogo.profissoes,
-        PROFISSOES.map((p) => ({ id: p.id, nome: p.nome, pericias: p.pericias, ferramenta: p.ferramenta })),
+        PROFISSOES.map((p) => ({ id: p.id, nome: p.nome, pericias: p.pericias, ferramenta: p.ferramenta, itens: p.itens })),
     );
 });
 

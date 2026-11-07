@@ -45,8 +45,10 @@ class FichaController extends Controller
         $criacao = $request->has('criacao') ? $request->input('criacao') : false;
 
         // Trava a linha: duas edições simultâneas de campos diferentes não se sobrescrevem.
-        $atual = DB::transaction(function () use ($personagem, $sistema, $fichas, $campos, $criacao, $acesso, $mesa) {
+        $entregou = false;
+        $atual = DB::transaction(function () use ($personagem, $sistema, $fichas, $campos, $criacao, $acesso, $mesa, &$entregou) {
             $p = Personagem::query()->whereKey($personagem->id)->lockForUpdate()->firstOrFail();
+            $entregou = false;
             if ($campos !== []) {
                 $nova = $fichas->aplicar($sistema, $p->ficha, $campos);
                 // O sistema pode ter campos só do mestre (Haki: liberar, dar PA) e compras a conferir
@@ -58,6 +60,11 @@ class FichaController extends Controller
             }
             if ($criacao !== false) {
                 $p->criacao = $criacao === null ? null : $this->criacaoNova($p->criacao, $criacao);
+                // Concluiu a criação: os itens iniciais da profissão entram no inventário (o sistema decide quais)
+                if (is_array($criacao) && ($criacao['concluida'] ?? false) && method_exists($sistema, 'entregarItensIniciais')) {
+                    $p->ficha = $sistema->entregarItensIniciais($mesa, $p->ficha ?? $sistema->fichaPadrao());
+                    $entregou = true;
+                }
             }
             $p->save();
 
@@ -69,6 +76,13 @@ class FichaController extends Controller
         Transmitir::enviar($mesa, 'ficha', [
             'personagem_id' => $atual->id, 'campos' => $campos, 'criacao' => $atual->criacao, 'ator' => $acesso->jogador->id,
         ], $canais);
+        if ($entregou) {
+            // o inventário veio do servidor: quem abriu a ficha em outra aba o recebe
+            Transmitir::enviar($mesa, 'ficha', [
+                'personagem_id' => $atual->id, 'campos' => ['inventario' => $atual->ficha['inventario'] ?? [], 'itensIniciais' => $atual->ficha['itensIniciais'] ?? []],
+                'criacao' => $atual->criacao, 'ator' => 0,
+            ], $canais);
+        }
 
         // Os ícones de efeito no token são públicos: quem muda as condições avisa a mesa toda (só os ids, nunca a ficha).
         if (array_key_exists('condicoes', $campos)) {
