@@ -28,7 +28,15 @@ import {
 } from '../regras.ts';
 import { antecedentePorId, comAumentoDeAntecedente } from './dados/antecedentes.ts';
 import { ESPECIES, TRACO_CULTURAL } from './dados/especies.ts';
-import { atributoPrimarioDe, estiloPorId, tecnicaDoEstilo, tecnicasDoEstiloNoNivel, tracosDoEstiloNoNivel } from './dados/estilos.ts';
+import {
+    atributoPrimarioDe,
+    estiloPorId,
+    tecnicaDoEstilo,
+    tecnicasDoEstiloNoNivel,
+    tracosDoEstiloNoNivel,
+    type EquipamentoInicial,
+    type ItemInicial,
+} from './dados/estilos.ts';
 import { hbPorId, OPCOES_QUEBRADOR } from './dados/habilidades-basicas.ts';
 import { maestriaPorId } from './dados/maestrias.ts';
 import { NIVEIS_PRECONCEITO, type EspecieDados, type Movimento, type TracoDados, type VarianteDados } from './dados/tipos.ts';
@@ -118,9 +126,25 @@ export interface Escolhas {
     atributos: { metodo: MetodoAtributos; base: Record<AtributoId, number> };
     /** Os 6 valores rolados no servidor (4d6 descartando o menor); só o servidor os define. */
     rolados: number[] | null;
+    /** Os Bellys iniciais do estilo rolados no servidor (uma vez por estilo); só o servidor os define. */
+    dinheiro?: { estilo: string; dados: number[]; total: number; bellys: number; expressao: string; multiplicador: number } | null;
 }
 
 export { textoDeMovimento };
+
+/** O estilo rola os Bellys iniciais (`5d10 × 1000`)? Devolve a regra, ou null se o dinheiro é fixo ou não há. */
+export function dinheiroRoladoDoEstilo(est: { equipamentoInicial?: EquipamentoInicial }): { dados: string; multiplicador: number } | null {
+    const d = est.equipamentoInicial?.dinheiro;
+
+    return d && 'dados' in d ? d : null;
+}
+
+/** O que entra no inventário pelo estilo (pela arma favorita escolhida mais os itens fixos), para o assistente mostrar antes de concluir. */
+export function itensDoEstilo(est: { equipamentoInicial?: EquipamentoInicial }, armaFavorita: string | null | undefined): ItemInicial[] {
+    const eq = est.equipamentoInicial;
+
+    return eq ? [...(eq.porArma?.[armaFavorita ?? ''] ?? []), ...eq.itens] : [];
+}
 
 export const escolhasIniciais = (): Escolhas => ({
     modo: 'unica',
@@ -495,6 +519,7 @@ export function problemasDaEtapa(e: Escolhas, etapa: EtapaId): string[] {
             if (est.caminhos?.length && !est.caminhos.some((c) => c.id === e.estilo.caminho)) p.push('Escolha o caminho do estilo.');
             if (!est.armasFavoritas.includes(e.estilo.armaFavorita ?? '')) p.push('Escolha a arma favorita.');
             if (!est.habilidadesInatas.some((h) => h.id === e.estilo.hbInata)) p.push('Escolha a Habilidade Básica Inata.');
+            if (dinheiroRoladoDoEstilo(est) && e.dinheiro?.estilo !== est.id) p.push('Role os Bellys iniciais do estilo.');
             const pericias = e.estilo.pericias ?? [];
             if (pericias.length !== est.pericias || new Set(pericias).size !== pericias.length)
                 p.push(`Escolha ${est.pericias} perícias diferentes do estilo.`);
@@ -815,7 +840,7 @@ export function camposDaCriacao(
     };
     avisos.push(`Preconceito: ${fisico.preconceito}.`);
     if (estilo) {
-        avisos.push(`Equipamento inicial (${estilo.nome}): ${estilo.equipamento}`);
+        avisos.push(`Equipamento inicial (${estilo.nome}, entra no inventário ao concluir): ${estilo.equipamento}`);
         if (e.estilo.armaFavorita) avisos.push(`Arma favorita: ${e.estilo.armaFavorita}.`);
     }
     if (profissaoInicial && e.profissao?.id !== 'nenhuma') {

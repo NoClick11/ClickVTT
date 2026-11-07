@@ -1162,6 +1162,16 @@ async function criarCompanheiroDoConstrutor(modelo: string) {
     await api.criarCompanheiro(construtorId.value, modelo);
     recarregar(['personagens', 'meusPersonagens']);
 }
+/** Os Bellys iniciais do estilo: o servidor rola e guarda na criação; a tela mostra e guarda o resultado. */
+const rolarDinheiroDaCriacao = (personagemId: number) => async (estilo: string) => {
+    const r = await api.rolarDinheiro(personagemId, estilo);
+    criacoes.value[personagemId] = {
+        ...(criacoes.value[personagemId] ?? { etapa: 'estilo', concluida: false }),
+        dados: { ...criacoes.value[personagemId]?.dados, dinheiro: r },
+    };
+
+    return r;
+};
 const rolarAtributosDaCriacao = (personagemId: number) => async () => {
     const r = await api.rolarAtributos(personagemId);
     criacoes.value[personagemId] = {
@@ -1699,6 +1709,7 @@ function alternarPorta(id: number) {
             :criacao="criacoes[construtorPersonagem.id] ?? null"
             :salvar="(campos: Record<string, unknown>, criacao: Criacao) => salvarCriacao(construtorPersonagem!.id, campos, criacao)"
             :rolar-atributos="rolarAtributosDaCriacao(construtorPersonagem.id)"
+            :rolar-dinheiro="rolarDinheiroDaCriacao(construtorPersonagem.id)"
             :criar-companheiro="criarCompanheiroDoConstrutor"
             @update:open="construtorId = null"
         />

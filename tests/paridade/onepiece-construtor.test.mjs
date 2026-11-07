@@ -408,6 +408,8 @@ const atirador = (caminho, extra = {}) =>
         },
         especies: ['humano'],
         variantes: [null],
+        // os Bellys iniciais do Atirador (5d10 × 1000) são rolados no servidor: nos testes já vêm rolados
+        dinheiro: { estilo: 'atirador', dados: [5, 5, 5, 5, 5], total: 25, bellys: 25000, expressao: '5d10', multiplicador: 1000 },
         ...extra,
     });
 
@@ -444,7 +446,11 @@ test('Atirador: no 1º nível só vêm as características do nível; as outras 
     assert.ok(no(6).includes('Guarda Astuta: Sentido de Perigo'));
     assert.ok(!no(10).includes('Gun-Fu'));
     assert.ok(no(11).includes('Gun-Fu')); // Rei Atirador
-    assert.ok(camposDaCriacao(atirador('sniper')).campos.caracteristicas.every((c) => c.builder === 'estilo' || c.builder === 'especie' || c.builder === 'variacao' || !c.builder));
+    assert.ok(
+        camposDaCriacao(atirador('sniper')).campos.caracteristicas.every(
+            (c) => c.builder === 'estilo' || c.builder === 'especie' || c.builder === 'variacao' || !c.builder,
+        ),
+    );
 });
 
 test('Atirador: as técnicas entram pelo nível (1º: técnica de combate e auxiliar; o outro caminho só no 11º)', () => {
@@ -718,7 +724,7 @@ test('atributo primário: estilo com dois possíveis exige a escolha; com um só
     ESTILOS.push(duplo);
     try {
         const base = atirador('sniper');
-        const e = { ...base, estilo: { ...base.estilo, id: 'teste-duplo', primario: null } };
+        const e = { ...base, estilo: { ...base.estilo, id: 'teste-duplo', primario: null }, dinheiro: { ...base.dinheiro, estilo: 'teste-duplo' } };
         assert.ok(problemasDaEtapa(e, 'estilo').some((m) => m.includes('atributo primário')));
         const com = { ...e, estilo: { ...e.estilo, primario: 'for' } };
         assert.deepEqual(problemasDaEtapa(com, 'estilo'), []);
@@ -846,4 +852,49 @@ test('antecedente: uma criação salva sem o campo cai no padrão e pede a nova 
     assert.equal(e.antecedente.id, '');
     assert.ok(problemasDaEtapa(e, 'antecedente').length > 0);
     assert.equal(antecedentePorId(''), undefined);
+});
+
+// --- equipamento inicial do estilo -------------------------------------------------------------------------------------------
+import { readFileSync as lerArquivo } from 'node:fs';
+import { ESTILOS } from '../../resources/js/app/sistemas/onepiece/construtor/dados/estilos.ts';
+import { dinheiroRoladoDoEstilo, itensDoEstilo } from '../../resources/js/app/sistemas/onepiece/construtor/regras.ts';
+import { itemDoCatalogo } from '../../resources/js/app/sistemas/onepiece/itens/index.ts';
+
+test('estilos: o JSON do servidor (equipamento inicial) confere com os dados do TS e os itens existem no catálogo', () => {
+    const json = JSON.parse(lerArquivo(new URL('../../app/Sistemas/OnePiece/dados/estilos.json', import.meta.url), 'utf8'));
+    assert.deepEqual(
+        json.estilos,
+        ESTILOS.map((e) => ({ id: e.id, nome: e.nome, equipamentoInicial: e.equipamentoInicial ?? null })),
+    );
+    for (const e of ESTILOS) {
+        const eq = e.equipamentoInicial;
+        if (!eq) continue;
+        for (const i of [...Object.values(eq.porArma ?? {}).flat(), ...eq.itens])
+            assert.ok(itemDoCatalogo(i.catalogo), `${e.id}: ${i.catalogo} não existe no catálogo`);
+        for (const arma of Object.keys(eq.porArma ?? {})) assert.ok(e.armasFavoritas.includes(arma), `${e.id}: ${arma} não é arma favorita`);
+    }
+});
+
+test('Atirador: o equipamento depende da arma favorita e os Bellys são rolados (5d10 × 1000), obrigatórios para avançar o estilo', () => {
+    const est = ESTILOS.find((x) => x.id === 'atirador');
+    assert.deepEqual(itensDoEstilo(est, 'Pistola'), [
+        { catalogo: 'pistola', qtd: 2 },
+        { catalogo: 'municao-esferica', qtd: 80 },
+    ]);
+    assert.deepEqual(itensDoEstilo(est, 'Mosquete'), [
+        { catalogo: 'mosquete', qtd: 1 },
+        { catalogo: 'municao-esferica', qtd: 80 },
+    ]);
+    assert.deepEqual(itensDoEstilo(est, null), [{ catalogo: 'municao-esferica', qtd: 80 }]);
+    assert.deepEqual(dinheiroRoladoDoEstilo(est), { dados: '5d10', multiplicador: 1000 });
+    assert.equal(dinheiroRoladoDoEstilo({}), null);
+    const e = atirador('sniper', { dinheiro: null });
+    assert.ok(
+        problemasDaEtapa(e, 'estilo').some((m) => m.includes('Bellys')),
+        'sem rolar, o estilo não avança',
+    );
+    e.dinheiro = { estilo: 'atirador', dados: [3, 4, 5, 6, 7], total: 25, bellys: 25000, expressao: '5d10', multiplicador: 1000 };
+    assert.deepEqual(problemasDaEtapa(e, 'estilo'), []);
+    e.dinheiro = { ...e.dinheiro, estilo: 'outro' }; // o rolado era de outro estilo
+    assert.ok(problemasDaEtapa(e, 'estilo').some((m) => m.includes('Bellys')));
 });

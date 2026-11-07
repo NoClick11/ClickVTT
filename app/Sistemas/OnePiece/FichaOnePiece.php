@@ -82,6 +82,7 @@ final class FichaOnePiece
             'hospedado' => null,
             'aliado' => false,
             'itensIniciais' => [],
+            'dinheiroInicial' => 0,
             // Primeiros Socorros: esta criatura já recebeu o tratamento (volta no descanso longo)
             'socorrido' => false,
             // Superioridade Absoluta: bônus ao nível para zerar o alvo, +5 por criatura derrotada (máx. +15) até o fim do encontro
@@ -154,7 +155,8 @@ final class FichaOnePiece
         // NPC aliado dos jogadores (só o mestre muda): os jogadores não o atingem
         $r['aliado'] = ['boolean:strict'];
         // O que a criação entregou do inventário inicial (só o servidor mexe: refazer a criação não duplica os itens)
-        $r['itensIniciais'] = ['array', 'max:40'];
+        $r['dinheiroInicial'] = ['integer:strict', 'between:0,1000000000000'];
+        $r['itensIniciais'] = ['array', 'max:60'];
         $r['itensIniciais.*.item_id'] = ['required', 'integer:strict', 'min:1'];
         $r['itensIniciais.*.qtd'] = ['required', 'integer:strict', 'between:1,1000'];
         $r['socorrido'] = ['boolean:strict'];

@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import type { Criacao } from '@/site/types';
 import { Check, Dices, Minus, Plus } from 'lucide-vue-next';
 import { computed, reactive, ref, watch } from 'vue';
+import { itemDoCatalogo } from '../itens';
 import { FOCO_EXCLUI, profissaoPorId, PROFISSOES, SEM_PROFISSAO } from '../profissoes/dados';
 import type { ProfissoesFicha } from '../profissoes/regras';
 import { ATRIBUTOS, comSinal, modificador, PERICIAS, PERICIAS_ESCOLHIVEIS, type AtributoId, type Caracteristica, type Tecnica } from '../regras';
@@ -18,10 +19,12 @@ import {
     camposDaCriacao,
     custoDaCompra,
     DADOS_DE_VIDA,
+    dinheiroRoladoDoEstilo,
     escolhasIniciais,
     especiePorId,
     ETAPAS,
     fisicoDe,
+    itensDoEstilo,
     mesticoDaMesmaEspecie,
     pedidosDaEtapaEscolhas,
     pedidosDePericia,
@@ -58,6 +61,8 @@ const props = defineProps<{
     criacao: Criacao | null;
     salvar: (campos: Record<string, unknown>, criacao: Criacao) => Promise<void>;
     rolarAtributos: () => Promise<number[]>;
+    /** Rola os Bellys iniciais do estilo no servidor (uma vez por estilo). */
+    rolarDinheiro?: (estilo: string) => Promise<NonNullable<Escolhas['dinheiro']>>;
     /** Entrega um companheiro com ficha pronta (a mesa cria o personagem). */
     criarCompanheiro?: (modelo: string) => Promise<void>;
 }>();
@@ -79,13 +84,14 @@ watch(
         Object.assign(e, escolhasIniciais(), (props.criacao?.dados?.escolhas as Partial<Escolhas> | undefined) ?? {});
         const rolados = props.criacao?.dados?.rolados as number[] | undefined;
         e.rolados = rolados ?? null;
+        e.dinheiro = (props.criacao?.dados?.dinheiro as Escolhas['dinheiro'] | undefined) ?? null;
         etapa.value = ETAPAS.some((x) => x.id === props.criacao?.etapa) && !props.criacao?.concluida ? (props.criacao!.etapa as EtapaId) : 'especie';
         erro.value = '';
     },
     { immediate: true },
 );
 
-const escolhasSalvas = () => JSON.parse(JSON.stringify({ ...e, rolados: undefined }));
+const escolhasSalvas = () => JSON.parse(JSON.stringify({ ...e, rolados: undefined, dinheiro: undefined }));
 async function guardar(proxima: EtapaId, concluida = false, campos: Record<string, unknown> = {}) {
     ocupado.value = true;
     erro.value = '';
@@ -312,6 +318,19 @@ function ajustar(a: AtributoId, delta: number) {
     const novo = e.atributos.base[a] + delta;
     if (novo < 8 || novo > 15) return;
     e.atributos.base[a] = novo;
+}
+/** O botão dos Bellys iniciais: o servidor rola (uma vez por estilo) e a tela mostra o que saiu. */
+async function rolarDinheiroDoEstilo() {
+    if (!props.rolarDinheiro || !estiloEscolhido.value) return;
+    ocupado.value = true;
+    erro.value = '';
+    try {
+        e.dinheiro = await props.rolarDinheiro(estiloEscolhido.value.id);
+    } catch (x) {
+        erro.value = x instanceof Error ? x.message : 'Não foi possível rolar.';
+    } finally {
+        ocupado.value = false;
+    }
 }
 async function rolar() {
     ocupado.value = true;
@@ -1018,6 +1037,37 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1.5 text-sm 
                                 >
                                     {{ h.nome }}
                                 </button>
+                            </div>
+                        </div>
+                        <div v-if="estiloEscolhido.equipamentoInicial" class="grid gap-1.5 rounded-lg border border-ouro-500/30 bg-ouro-500/5 p-3">
+                            <span :class="rotulo">Equipamento inicial (entra no inventário ao concluir)</span>
+                            <p class="text-xs text-preto-300">{{ estiloEscolhido.equipamento }}</p>
+                            <ul class="flex flex-wrap gap-1.5 text-xs" aria-label="Itens que entram no inventário">
+                                <li
+                                    v-for="i in itensDoEstilo(estiloEscolhido, e.estilo.armaFavorita)"
+                                    :key="i.catalogo"
+                                    class="rounded border border-preto-700 bg-preto-900 px-2 py-0.5 text-preto-100"
+                                >
+                                    {{ i.qtd }}× {{ itemDoCatalogo(i.catalogo)?.nome ?? i.catalogo }}
+                                </li>
+                                <li v-if="!e.estilo.armaFavorita" class="text-preto-400">Escolha a arma favorita para ver as armas.</li>
+                            </ul>
+                            <div v-if="dinheiroRoladoDoEstilo(estiloEscolhido)" class="flex flex-wrap items-center gap-2">
+                                <Button
+                                    type="button"
+                                    :disabled="ocupado || e.dinheiro?.estilo === estiloEscolhido.id || !rolarDinheiro"
+                                    @click="rolarDinheiroDoEstilo"
+                                    ><Dices class="size-4" />
+                                    {{
+                                        e.dinheiro?.estilo === estiloEscolhido.id
+                                            ? 'Já rolado'
+                                            : `Rolar Bellys (${dinheiroRoladoDoEstilo(estiloEscolhido)!.dados} × ฿ ${dinheiroRoladoDoEstilo(estiloEscolhido)!.multiplicador.toLocaleString('pt-BR')})`
+                                    }}</Button
+                                >
+                                <span v-if="e.dinheiro?.estilo === estiloEscolhido.id" class="font-mono text-sm text-ouro-100" role="status"
+                                    >{{ e.dinheiro.expressao }}: {{ e.dinheiro.dados.join(' + ') }} = {{ e.dinheiro.total }} → ฿
+                                    {{ e.dinheiro.bellys.toLocaleString('pt-BR') }}</span
+                                >
                             </div>
                         </div>
                         <div class="grid gap-1">

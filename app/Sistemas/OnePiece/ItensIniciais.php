@@ -83,35 +83,64 @@ final class ItensIniciais
     }
 
     /**
-     * A ficha depois de entregar os itens da profissão inicial: tira o que uma criação anterior entregou (refazer a criação não duplica),
-     * põe os itens novos no inventário e guarda o que entregou em `itensIniciais`.
+     * A ficha depois de entregar o inventário inicial da criação: os itens da profissão, o equipamento do estilo (pela arma favorita escolhida)
+     * e os Bellys do estilo (fixos, ou os rolados no servidor). Tira antes o que uma criação anterior entregou (refazer não duplica) e guarda o que
+     * entregou em `itensIniciais` e `dinheiroInicial`.
      *
      * @param  array<string, mixed>  $ficha
+     * @param  array<string, mixed>|null  $criacao  o estado da criação (`dados.escolhas` do assistente e `dados.dinheiro` rolado no servidor)
      * @return array<string, mixed>
      */
-    public static function entregar(Mesa $mesa, OnePiece $sistema, array $ficha): array
+    public static function entregar(Mesa $mesa, OnePiece $sistema, array $ficha, ?array $criacao = null): array
     {
         foreach ($ficha['itensIniciais'] ?? [] as $antigo) {
             $ficha = self::retirar($ficha, (int) $antigo['item_id'], (int) $antigo['qtd']);
         }
+        $ficha['belly'] = max(0, (int) ($ficha['belly'] ?? 0) - (int) ($ficha['dinheiroInicial'] ?? 0));
         $entregues = [];
+        $entregar = function (array $item, string $descricao) use ($mesa, $sistema, &$ficha, &$entregues) {
+            $modelo = $item['catalogo']
+                ? app(LojaService::class)->materializar($mesa, $sistema, Itens::item($item['catalogo']))
+                : $mesa->itens()->firstOrCreate(
+                    ['catalogo_id' => 'inicial:'.Str::slug($item['nome'])],
+                    ['nome' => $item['nome'], 'descricao' => $descricao, 'peso' => 0, 'equipavel' => false, 'requer_sintonia' => false],
+                );
+            $ficha = $sistema->entregarNoInventario($ficha, $modelo->id, $item['qtd']);
+            $entregues[] = ['item_id' => $modelo->id, 'qtd' => $item['qtd']];
+        };
+
         // cada profissão da ficha entrega os seus itens (a Singularidade Pau-para-Toda-Obra tem duas profissões iniciais)
         $lista = empty($ficha['profissoes']['semProfissao']) ? ($ficha['profissoes']['lista'] ?? []) : [];
         foreach ($lista as $entrada) {
             $profissao = Profissoes::profissao((string) ($entrada['id'] ?? ''));
             foreach ($profissao['itens'] ?? [] as $texto) {
-                $item = self::ler($texto);
-                $modelo = $item['catalogo']
-                    ? app(LojaService::class)->materializar($mesa, $sistema, Itens::item($item['catalogo']))
-                    : $mesa->itens()->firstOrCreate(
-                        ['catalogo_id' => 'inicial:'.Str::slug($item['nome'])],
-                        ['nome' => $item['nome'], 'descricao' => "Item inicial da profissão {$profissao['nome']}.", 'peso' => 0, 'equipavel' => false, 'requer_sintonia' => false],
-                    );
-                $ficha = $sistema->entregarNoInventario($ficha, $modelo->id, $item['qtd']);
-                $entregues[] = ['item_id' => $modelo->id, 'qtd' => $item['qtd']];
+                $entregar(self::ler($texto), "Item inicial da profissão {$profissao['nome']}.");
             }
         }
+
+        // equipamento do estilo: o da arma favorita escolhida e os itens fixos; depois o dinheiro
+        $estilo = EstilosDeLuta::estilo((string) ($ficha['estiloId'] ?? ''));
+        $equipamento = $estilo['equipamentoInicial'] ?? null;
+        $dinheiro = 0;
+        if ($equipamento) {
+            $favorita = (string) ($criacao['dados']['escolhas']['estilo']['armaFavorita'] ?? '');
+            foreach ([...($equipamento['porArma'][$favorita] ?? []), ...($equipamento['itens'] ?? [])] as $i) {
+                $item = Itens::item($i['catalogo']);
+                if ($item) {
+                    $entregar(['qtd' => (int) $i['qtd'], 'nome' => $item['nome'], 'catalogo' => $i['catalogo']], '');
+                }
+            }
+            $d = $equipamento['dinheiro'] ?? null;
+            if (isset($d['valor'])) {
+                $dinheiro = (int) $d['valor'];
+            } elseif ($d) {
+                $rolado = $criacao['dados']['dinheiro'] ?? null;
+                $dinheiro = ($rolado['estilo'] ?? null) === $estilo['id'] ? (int) $rolado['bellys'] : 0;
+            }
+        }
+        $ficha['belly'] = min(1_000_000_000_000, (int) ($ficha['belly'] ?? 0) + $dinheiro);
         $ficha['itensIniciais'] = $entregues;
+        $ficha['dinheiroInicial'] = $dinheiro;
 
         return $ficha;
     }

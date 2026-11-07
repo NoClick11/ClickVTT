@@ -135,4 +135,88 @@ class ItensIniciaisTest extends TestCase
         // o jogador não escreve `itensIniciais` à mão (nem para esconder uma repetição)
         $this->como($c->ana)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->aria->id]), ['campos' => ['itensIniciais' => []]])->assertForbidden();
     }
+
+    private function concluirComEstilo($c, string $arma, ?Jogador $quem = null, array $extra = [])
+    {
+        return $this->como($quem ?? $c->ana)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->aria->id]), [
+            'campos' => ['estiloId' => 'atirador', 'estilo' => 'Atirador', 'estiloCaminho' => 'sniper', ...$extra],
+            'criacao' => ['etapa' => 'resumo', 'concluida' => true, 'dados' => ['escolhas' => ['estilo' => ['id' => 'atirador', 'armaFavorita' => $arma]]]],
+        ])->assertOk();
+    }
+
+    private function rolarDinheiro($c, string $estilo = 'atirador', ?Jogador $quem = null)
+    {
+        return $this->como($quem ?? $c->ana)->postJson(route('jogo.personagens.dinheiro-rolado', [$c->mesa->id, $c->aria->id]), ['estilo' => $estilo]);
+    }
+
+    public function test_o_equipamento_do_estilo_entra_pela_arma_favorita_com_a_municao_e_os_bellys_rolados(): void
+    {
+        $c = $this->cenario();
+        $r = $this->rolarDinheiro($c)->assertOk()->json();
+        $this->assertSame(5, count($r['dados']));
+        $this->assertSame(array_sum($r['dados']), $r['total']);
+        $this->assertSame($r['total'] * 1000, $r['bellys']);
+        $this->assertGreaterThanOrEqual(5000, $r['bellys']);
+        $this->assertLessThanOrEqual(50000, $r['bellys']);
+        $this->assertSame($r, $this->rolarDinheiro($c)->assertOk()->json()); // pedir de novo devolve o mesmo: ninguém rola até gostar
+
+        $this->concluirComEstilo($c, 'Pistola');
+        $inv = $this->inventario($c);
+        $this->assertSame(2, $inv['Pistola']);
+        $this->assertArrayNotHasKey('Mosquete', $inv);
+        $this->assertSame(80, $inv['Munição Esférica']);
+        $this->assertSame($r['bellys'], $c->aria->fresh()->ficha['belly']);
+        $this->assertSame($r['bellys'], $c->aria->fresh()->ficha['dinheiroInicial']);
+    }
+
+    public function test_arma_favorita_mosquete_entrega_um_mosquete_e_refazer_nao_duplica_nem_soma_dinheiro(): void
+    {
+        $c = $this->cenario();
+        $bellys = $this->rolarDinheiro($c)->assertOk()->json('bellys');
+        $this->concluirComEstilo($c, 'Pistola');
+        $this->concluirComEstilo($c, 'Mosquete'); // mudou de ideia: sai a pistola, entra o mosquete
+        $inv = $this->inventario($c);
+        $this->assertArrayNotHasKey('Pistola', $inv);
+        $this->assertSame(1, $inv['Mosquete']);
+        $this->assertSame(80, $inv['Munição Esférica']); // continua 80, não 160
+        $this->assertSame($bellys, $c->aria->fresh()->ficha['belly']); // o dinheiro também não soma duas vezes
+
+        $this->concluirComEstilo($c, 'Mosquete'); // de novo: igual
+        $this->assertSame(1, $this->inventario($c)['Mosquete']);
+        $this->assertSame($bellys, $c->aria->fresh()->ficha['belly']);
+    }
+
+    public function test_sem_rolar_nao_ganha_bellys_e_o_dinheiro_que_ja_tinha_fica(): void
+    {
+        $c = $this->cenario();
+        $this->concluirComEstilo($c, 'Pistola', extra: ['belly' => 5000]);
+        $this->assertSame(5000, $c->aria->fresh()->ficha['belly']);
+        $this->assertSame(0, $c->aria->fresh()->ficha['dinheiroInicial']);
+        $this->rolarDinheiro($c)->assertOk();
+        $bellys = $c->aria->fresh()->criacao['dados']['dinheiro']['bellys'];
+        $this->concluirComEstilo($c, 'Pistola');
+        $this->assertSame(5000 + $bellys, $c->aria->fresh()->ficha['belly']); // o que já tinha somou com o rolado
+    }
+
+    public function test_so_estilo_que_rola_dinheiro_rola_e_so_o_dono_ou_o_mestre(): void
+    {
+        $c = $this->cenario();
+        $this->rolarDinheiro($c, 'espadachim')->assertStatus(422)->assertJsonValidationErrors('estilo');
+        $this->rolarDinheiro($c, 'atirador', $c->mestre)->assertOk();
+        $outra = $c->mesa->jogadores()->create(['nome' => 'Bia', 'papel' => 'jogador', 'cor' => '#16a34a']);
+        $this->rolarDinheiro($c, 'atirador', $outra)->assertForbidden();
+        // o jogador não escreve o dinheiro entregue à mão
+        $this->como($c->ana)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->aria->id]), ['campos' => ['dinheiroInicial' => 1]])->assertForbidden();
+    }
+
+    public function test_o_assistente_nao_troca_o_dinheiro_rolado(): void
+    {
+        $c = $this->cenario();
+        $r = $this->rolarDinheiro($c)->assertOk()->json();
+        // o assistente salva as escolhas várias vezes, inclusive tentando mandar outro dinheiro: o servidor mantém o rolado
+        $this->como($c->ana)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->aria->id]), [
+            'criacao' => ['etapa' => 'estilo', 'concluida' => false, 'dados' => ['dinheiro' => ['estilo' => 'atirador', 'bellys' => 999999], 'escolhas' => []]],
+        ])->assertOk();
+        $this->assertSame($r['bellys'], $c->aria->fresh()->criacao['dados']['dinheiro']['bellys']);
+    }
 }

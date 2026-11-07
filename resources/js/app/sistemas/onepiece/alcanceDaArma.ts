@@ -18,13 +18,15 @@ export function alcanceMaximoDaArma(f: FichaOnePiece, itens: ItensPorId): Alcanc
         for (const ref of secao.itens ?? []) {
             const item = itens[ref.item_id];
             const dados = item?.dados as (DadosItemOnePiece & { catalogo?: { id: string } }) | null | undefined;
+            if (!item || !ativo(ref, item)) continue;
+            const doCatalogo = dados?.catalogo?.id ? itemDoCatalogo(dados.catalogo.id)?.arma : undefined;
             const arma = dados?.arma;
-            if (!item || !arma || !ativo(ref, item) || !armaCabe(arma, f.tamanho)) continue;
+            // arma de fogo do catálogo (dano pela munição) não tem os dados da arma na ficha, mas conta como arma equipada com o alcance do catálogo
+            if (arma ? !armaCabe(arma, f.tamanho) : !doCatalogo) continue;
             equipada = true;
             // arma antiga, de antes do campo existir: o item do catálogo completa o alcance
-            const doCatalogo = dados?.catalogo?.id ? itemDoCatalogo(dados.catalogo.id)?.arma : undefined;
             const maximo =
-                typeof arma.alcanceMaximo === 'number' ? arma.alcanceMaximo : doCatalogo ? alcanceDaArmaDoCatalogo(doCatalogo).alcanceMaximo : null;
+                typeof arma?.alcanceMaximo === 'number' ? arma.alcanceMaximo : doCatalogo ? alcanceDaArmaDoCatalogo(doCatalogo).alcanceMaximo : null;
             if (maximo === null) semAlcance ??= (item as { nome?: string }).nome ?? 'a arma';
             else melhor = Math.max(melhor ?? 0, maximo);
         }

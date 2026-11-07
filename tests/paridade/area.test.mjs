@@ -123,6 +123,7 @@ test('alcance da arma: usa o alcanceMaximo do item; arma antiga completa pelo ca
         3: item(3, 'Lança', { arma: { dano: '1d6', atributo: 'for', alcanceNormal: 3, alcanceMaximo: 3 } }),
         4: item(4, 'Mosquete antigo', { arma: { dano: '1d12', atributo: 'des', distancia: true }, catalogo: { id: 'mosquete' } }), // sem o campo: o catálogo completa (18/24)
         5: item(5, 'Pistola caseira', { arma: { dano: '1d6', atributo: 'des', distancia: true } }), // sem o campo e sem catálogo
+        6: item(6, 'Pistola', { catalogo: { id: 'pistola' } }), // arma de fogo do catálogo: dano pela munição, sem os dados da arma na ficha (9/15 m)
     };
     const com = (...ids) => ({
         tamanho: 'Médio',
@@ -135,6 +136,7 @@ test('alcance da arma: usa o alcanceMaximo do item; arma antiga completa pelo ca
     assert.deepEqual(alcanceMaximoDaArma(com(4), itens), { maximo: 24 });
     assert.match(alcanceMaximoDaArma(com(5), itens).problema, /Pistola caseira: toda arma precisa de alcance/);
     assert.deepEqual(alcanceMaximoDaArma(com(5, 1), itens), { maximo: 24 }); // uma arma sem alcance não impede a que tem
+    assert.deepEqual(alcanceMaximoDaArma(com(6), itens), { maximo: 15 }); // a arma de fogo do catálogo conta, com o alcance dele
     assert.match(alcanceMaximoDaArma({ tamanho: 'Médio', inventario: [] }, itens).problema, /Equipe uma arma/);
 });
 

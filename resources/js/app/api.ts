@@ -63,6 +63,16 @@ async function requisitar<T>(jogadorId: number, metodo: string, url: string, cor
 
 /** Cliente da API da mesa de jogo (rotas `jogo.*`). */
 /** `atorId` = jogador desta aba (vai no cabeçalho). Atenção: não confundir com o jogador-alvo de moverJogador. */
+/** Os Bellys iniciais rolados no servidor (`5d10 × 1000`). */
+export interface DinheiroRolado {
+    estilo: string;
+    dados: number[];
+    total: number;
+    bellys: number;
+    expressao: string;
+    multiplicador: number;
+}
+
 export function apiMesa(mesaId: number, atorId: number) {
     const r = (nome: string, ...params: (number | string)[]) => route(nome, [mesaId, ...params]);
 
@@ -201,6 +211,9 @@ export function apiMesa(mesaId: number, atorId: number) {
                 criacao === undefined ? { campos } : { campos, criacao },
             ),
         /** Rola (no servidor) os 6 valores de atributo da criação: 4d6 descartando o menor. Uma vez só: depois devolve os mesmos. */
+        /** Rola os Bellys iniciais do estilo no servidor (uma vez por estilo; pedir de novo devolve o mesmo resultado). */
+        rolarDinheiro: (personagemId: number, estilo: string) =>
+            requisitar<DinheiroRolado>(atorId, 'POST', r('jogo.personagens.dinheiro-rolado', personagemId), { estilo }),
         rolarAtributos: (personagemId: number) =>
             requisitar<{ rolados: number[] }>(atorId, 'POST', r('jogo.personagens.atributos-rolados', personagemId), {}),
         /** Só o mestre. */

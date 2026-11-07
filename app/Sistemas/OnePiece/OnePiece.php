@@ -27,10 +27,10 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         return Itens::paraAMesa($entrada);
     }
 
-    /** Ao concluir a criação: os itens iniciais da profissão entram no inventário (ver `ItensIniciais`). @param array<string, mixed> $ficha */
-    public function entregarItensIniciais(\App\Models\Mesa $mesa, array $ficha): array
+    /** Ao concluir a criação: o inventário inicial (profissão e estilo) e os Bellys entram na ficha (ver `ItensIniciais`). @param array<string, mixed> $ficha */
+    public function entregarItensIniciais(\App\Models\Mesa $mesa, array $ficha, ?array $criacao = null): array
     {
-        return ItensIniciais::entregar($mesa, $this, $ficha);
+        return ItensIniciais::entregar($mesa, $this, $ficha, $criacao);
     }
 
     public function entregarNoInventario(array $ficha, int $itemId, int $qtd): array
@@ -261,7 +261,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         if ($mestre) {
             return;
         }
-        if (($antes['itensIniciais'] ?? []) !== ($depois['itensIniciais'] ?? [])) {
+        if (($antes['itensIniciais'] ?? []) !== ($depois['itensIniciais'] ?? []) || (int) ($antes['dinheiroInicial'] ?? 0) !== (int) ($depois['dinheiroInicial'] ?? 0)) {
             abort(403, 'Os itens iniciais são entregues pela criação da ficha.');
         }
         if ((bool) ($antes['aliado'] ?? false) !== (bool) ($depois['aliado'] ?? false)) {

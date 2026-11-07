@@ -26,6 +26,22 @@ export interface CaminhoDoEstilo {
     descricao: string;
 }
 
+/** Um item do catálogo do Cap. 8 (id) e quantas unidades. */
+export interface ItemInicial {
+    catalogo: string;
+    qtd: number;
+}
+
+/**
+ * O equipamento inicial do estilo: entra no inventário ao concluir a criação. `porArma` depende da arma favorita escolhida ("2 pistolas ou
+ * 1 mosquete"); `itens` valem sempre; `dinheiro` é fixo (`valor`) ou rolado (`dados` × `multiplicador`, rolado no servidor por um botão).
+ */
+export interface EquipamentoInicial {
+    porArma?: Record<string, ItemInicial[]>;
+    itens: ItemInicial[];
+    dinheiro?: { valor: number } | { dados: string; multiplicador: number };
+}
+
 export interface EstiloDados {
     id: string;
     nome: string;
@@ -42,6 +58,8 @@ export interface EstiloDados {
     /** As duas Habilidades Básicas Inatas entre as quais o jogador escolhe (ids do catálogo de Habilidades Básicas). */
     habilidadesInatas: { id: string; nome: string }[];
     equipamento: string;
+    /** O mesmo equipamento em dados, para o servidor entregar no inventário (o texto acima é o do livro). */
+    equipamentoInicial?: EquipamentoInicial;
     caminhos?: CaminhoDoEstilo[];
     /** Nível em que o personagem recebe também o que não escolheu dos caminhos (Rei Atirador). */
     herdaTudoEm?: number;
@@ -89,6 +107,11 @@ export const ATIRADOR: EstiloDados = {
         { id: 'superioridade-absoluta', nome: 'Superioridade Absoluta' },
     ],
     equipamento: '2 pistolas ou 1 mosquete com 80 unidades de munição esférica e 5d10 x 1000 Bellys.',
+    equipamentoInicial: {
+        porArma: { Pistola: [{ catalogo: 'pistola', qtd: 2 }], Mosquete: [{ catalogo: 'mosquete', qtd: 1 }] },
+        itens: [{ catalogo: 'municao-esferica', qtd: 80 }],
+        dinheiro: { dados: '5d10', multiplicador: 1000 },
+    },
     caminhos: [
         {
             id: CAMINHO_SNIPER,

@@ -59,6 +59,8 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::post('personagens/{personagem}/companheiros', [CompanheiroController::class, 'criar'])->middleware('throttle:10,1')->name('personagens.companheiros');
     Route::post('personagens/{personagem}/dano', [AlvoController::class, 'dano'])->middleware('throttle:60,1')->name('personagens.dano');
     Route::post('personagens/{personagem}/condicoes', [AlvoController::class, 'condicao'])->middleware('throttle:60,1')->name('personagens.condicoes');
+    Route::post('personagens/{personagem}/criacao/dinheiro-rolado', [FichaController::class, 'rolarDinheiro'])
+        ->middleware('throttle:20,1')->name('personagens.dinheiro-rolado');
     Route::post('personagens/{personagem}/criacao/atributos-rolados', [FichaController::class, 'rolarAtributos'])
         ->middleware('throttle:20,1')->name('personagens.atributos-rolados');
     Route::post('personagens', [PersonagemDoJogoController::class, 'criar'])->middleware('throttle:30,1')->name('personagens.store');

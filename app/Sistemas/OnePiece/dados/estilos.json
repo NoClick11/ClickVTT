@@ -1,0 +1,34 @@
+{
+  "estilos": [
+    {
+      "id": "atirador",
+      "nome": "Atirador",
+      "equipamentoInicial": {
+        "porArma": {
+          "Pistola": [
+            {
+              "catalogo": "pistola",
+              "qtd": 2
+            }
+          ],
+          "Mosquete": [
+            {
+              "catalogo": "mosquete",
+              "qtd": 1
+            }
+          ]
+        },
+        "itens": [
+          {
+            "catalogo": "municao-esferica",
+            "qtd": 80
+          }
+        ],
+        "dinheiro": {
+          "dados": "5d10",
+          "multiplicador": 1000
+        }
+      }
+    }
+  ]
+}

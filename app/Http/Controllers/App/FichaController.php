@@ -5,6 +5,7 @@ namespace App\Http\Controllers\App;
 use App\Http\Controllers\Controller;
 use App\Models\Item;
 use App\Models\Mesa;
+use App\Sistemas\OnePiece\EstilosDeLuta;
 use App\Models\Personagem;
 use App\Nucleo\Rolagem\Rolador;
 use App\Nucleo\Sistemas\FichaCampos;
@@ -62,7 +63,7 @@ class FichaController extends Controller
                 $p->criacao = $criacao === null ? null : $this->criacaoNova($p->criacao, $criacao);
                 // Concluiu a criação: os itens iniciais da profissão entram no inventário (o sistema decide quais)
                 if (is_array($criacao) && ($criacao['concluida'] ?? false) && method_exists($sistema, 'entregarItensIniciais')) {
-                    $p->ficha = $sistema->entregarItensIniciais($mesa, $p->ficha ?? $sistema->fichaPadrao());
+                    $p->ficha = $sistema->entregarItensIniciais($mesa, $p->ficha ?? $sistema->fichaPadrao(), $p->criacao);
                     $entregou = true;
                 }
             }
@@ -109,6 +110,11 @@ class FichaController extends Controller
         unset($dados['rolados']);
         if (isset($atual['dados']['rolados'])) {
             $dados['rolados'] = $atual['dados']['rolados'];
+        }
+        // os Bellys rolados também são só do servidor: o assistente não troca por outro valor
+        unset($dados['dinheiro']);
+        if (isset($atual['dados']['dinheiro'])) {
+            $dados['dinheiro'] = $atual['dados']['dinheiro'];
         }
 
         return ['etapa' => $novo['etapa'], 'concluida' => (bool) ($novo['concluida'] ?? false), 'dados' => $dados];
@@ -161,5 +167,40 @@ class FichaController extends Controller
         if ($mesa->itens()->whereIn('id', $novos)->count() !== count($novos)) {
             throw ValidationException::withMessages(['campos.inventario' => 'Algum item não existe nesta mesa.']);
         }
+    }
+
+    /**
+     * Rola os Bellys iniciais do estilo (`5d10 × 1000`, no servidor, uma vez por estilo) e guarda em `criacao.dados.dinheiro`; pedir de novo devolve
+     * o mesmo resultado. Corpo: `estilo` (id do estilo de luta).
+     */
+    public function rolarDinheiro(Request $request, Mesa $mesa, Personagem $personagem, ?Rolador $rolador = null): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+        abort_unless($personagem->mesa_id === $mesa->id, 404);
+        abort_unless($acesso->podeControlar($personagem->id), 403, 'Esta ficha não é sua.');
+        $d = $request->validate(['estilo' => ['required', 'string', 'max:40']]);
+        $regra = EstilosDeLuta::dinheiroRolado($d['estilo']);
+        if (! $regra) {
+            throw ValidationException::withMessages(['estilo' => 'Este estilo não rola Bellys iniciais.']);
+        }
+
+        $resultado = DB::transaction(function () use ($personagem, $rolador, $regra, $d) {
+            $p = Personagem::query()->whereKey($personagem->id)->lockForUpdate()->firstOrFail();
+            $criacao = $p->criacao ?? ['etapa' => 'estilo', 'concluida' => false, 'dados' => []];
+            $atual = $criacao['dados']['dinheiro'] ?? null;
+            if (($atual['estilo'] ?? null) === $d['estilo']) {
+                return $atual;
+            }
+            $r = ($rolador ?? new Rolador)->rolar($regra['dados']);
+            $dados = collect($r['termos'])->firstWhere('tipo', 'dados')['resultados'] ?? [];
+            $novo = ['estilo' => $d['estilo'], 'dados' => $dados, 'total' => $r['total'], 'bellys' => $r['total'] * $regra['multiplicador'], 'expressao' => $regra['dados'], 'multiplicador' => $regra['multiplicador']];
+            $criacao['dados'] = [...($criacao['dados'] ?? []), 'dinheiro' => $novo];
+            $p->criacao = $criacao;
+            $p->save();
+
+            return $novo;
+        });
+
+        return response()->json($resultado);
     }
 }
