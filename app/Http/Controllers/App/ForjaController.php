@@ -45,11 +45,16 @@ class ForjaController extends Controller
             return [
                 'item_id' => $i->id, 'nome' => $i->nome, 'dano' => $arma['dano'] ?? null, 'tipoDano' => $arma['tipoDano'] ?? null,
                 'cortante' => str_contains(\App\Nucleo\Combate\Dano::normalizar((string) ($arma['tipoDano'] ?? '')), 'cortante'),
-                'forja' => $arma['forja'] ?? new \stdClass,
+                'forja' => $arma['forja'] ?? new \stdClass, 'melhoria' => $arma['melhoria'] ?? null, 'distancia' => (bool) ($arma['distancia'] ?? false),
             ];
         })->values();
+        // munições do inventário (para revestir 10 com Kairoseki), com a quantidade
+        $qtds = collect($alvo->ficha['inventario'] ?? [])->flatMap(fn ($s) => $s['itens'] ?? [])->groupBy('item_id')->map(fn ($g) => $g->sum('qtd'));
+        $municoes = $mesa->itens()->whereIn('id', $ids)->get()
+            ->filter(fn (Item $i) => ($i->dados['catalogo']['id'] ?? null) !== 'municao-de-kairoseki' && (isset($i->dados['municao']) || (Itens::item($i->dados['catalogo']['id'] ?? '')['categoria'] ?? '') === 'municao'))
+            ->map(fn (Item $i) => ['item_id' => $i->id, 'nome' => $i->nome, 'qtd' => (int) ($qtds[$i->id] ?? 0)])->values();
 
-        return response()->json(['armas' => $armas]);
+        return response()->json(['armas' => $armas, 'municoes' => $municoes]);
     }
 
     /** Forjar um item do catálogo: Teste (Força, Destreza ou Sabedoria) contra a CD; no sucesso gasta 1 lingote e o dinheiro e entrega. */
@@ -209,6 +214,177 @@ class ForjaController extends Controller
         return response()->json([
             'texto' => $texto, 'pf' => Ferreiro::pontos($r['fichaF']), 'camposFerreiro' => $camposF, 'camposAlvo' => $camposA, 'alvo_id' => $r['alvo']->id, 'item' => $r['copia']->paraFront(),
         ]);
+    }
+
+    /**
+     * Aprimorar/Consertar Equipamento (traço do Ferreiro): Teste CD 16 (Força, Destreza ou Sabedoria); no sucesso, UM aprimoramento por item
+     * em arma sem modificação: revestir a arma ou 10 munições com Kairoseki, criar 20 munições de 1d12 (Contundente ou Perfurante) ou ampliar
+     * as duas distâncias de arma à distância em 6 m. Custo (pago pelo ferreiro, só no sucesso): 1 lingote e ฿ 20.000 ou 20% do valor, o maior.
+     * Um 1 natural quebra o equipamento sem conserto (a arma sai do inventário do dono). A arma pode ser de QUALQUER personagem.
+     */
+    public function melhorar(Request $request, Mesa $mesa, RegistroSistemas $sistemas, LojaService $loja, Rolador $rolador): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+        $sistema = $this->sistema($mesa, $sistemas);
+        $d = $request->validate([
+            'ferreiro_id' => ['required', 'integer'],
+            'alvo_id' => ['required', 'integer', Rule::exists('personagens', 'id')->where('mesa_id', $mesa->id)],
+            'atributo' => ['required', Rule::in(['for', 'des', 'sab'])],
+            'tipo' => ['required', Rule::in(['kairoseki-arma', 'kairoseki-municao', 'municoes', 'alcance'])],
+            'item_id' => ['required_unless:tipo,municoes', 'nullable', 'integer'],
+            'tipo_dano' => ['required_if:tipo,municoes', 'nullable', Rule::in(['Contundente', 'Perfurante'])],
+        ]);
+        abort_unless($acesso->podeControlar($d['ferreiro_id']), 403, 'Esta ficha não é sua.');
+
+        $r = DB::transaction(function () use ($mesa, $sistema, $loja, $rolador, $d) {
+            $ids = array_values(array_unique([$d['ferreiro_id'], $d['alvo_id']]));
+            sort($ids);
+            $linhas = Personagem::query()->whereIn('id', $ids)->where('mesa_id', $mesa->id)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+            $ferreiro = $linhas[$d['ferreiro_id']] ?? abort(404);
+            $alvo = $linhas[$d['alvo_id']] ?? abort(404);
+            $mesmo = $alvo->id === $ferreiro->id;
+            $fichaF = $ferreiro->ficha ?? $sistema->fichaPadrao();
+            if (! Ferreiro::ehFerreiro($fichaF)) {
+                throw ValidationException::withMessages(['ferreiro' => "{$ferreiro->nome} não tem a profissão Ferreiro."]);
+            }
+            $fichaA = $mesmo ? $fichaF : ($alvo->ficha ?? $sistema->fichaPadrao());
+            $item = isset($d['item_id']) ? $mesa->itens()->find($d['item_id']) : null;
+            $erro = fn (string $m) => throw ValidationException::withMessages(['item' => $m]);
+            $arma = $item?->dados['arma'] ?? null;
+            if ($d['tipo'] !== 'municoes' && (! $item || ! in_array($item->id, $sistema->itensReferenciados($fichaA), true))) {
+                $erro('Este item não está no inventário do personagem.');
+            }
+            if (in_array($d['tipo'], ['kairoseki-arma', 'alcance'], true)) {
+                if (! is_array($arma)) {
+                    $erro('Escolha uma arma.');
+                }
+                if (! empty($arma['melhoria']) || array_diff(array_keys((array) ($arma['forja'] ?? [])), ['expertise']) !== []) { // a Expertise de fábrica da arma do catálogo não conta como modificação
+                    $erro("{$item->nome} já foi modificada: o aprimoramento é só em arma sem modificação (uma por item).");
+                }
+                if ($d['tipo'] === 'alcance' && empty($arma['distancia'])) {
+                    $erro('Só arma à distância tem as distâncias ampliadas.');
+                }
+            }
+            $ehMunicao = $item && (($item->dados['catalogo']['id'] ?? null) && (Itens::item($item->dados['catalogo']['id'])['categoria'] ?? '') === 'municao' || isset($item->dados['municao']));
+            if ($d['tipo'] === 'kairoseki-municao') {
+                if (! $ehMunicao || ($item->dados['catalogo']['id'] ?? '') === 'municao-de-kairoseki') {
+                    $erro('Escolha uma munição (que ainda não seja de Kairoseki).');
+                }
+                $tem = 0;
+                foreach ($fichaA['inventario'] ?? [] as $secao) {
+                    foreach ($secao['itens'] ?? [] as $ref) {
+                        $tem += (int) ($ref['item_id'] ?? 0) === $item->id ? (int) $ref['qtd'] : 0;
+                    }
+                }
+                if ($tem < 10) {
+                    $erro("São precisas 10 munições para revestir e {$alvo->nome} tem {$tem}.");
+                }
+            }
+            $base = $item ? $this->precoBase($mesa, $sistema, $item) : null;
+            $custo = Forja::custoEmDinheiro($d['tipo'] === 'kairoseki-municao' && $base ? $base * 10 : $base);
+            $this->exigirMateriais($mesa, $fichaF, $custo, $item?->nome ?? 'as munições');
+
+            $variaveis = $sistema->variaveisDeRolagem($fichaF, $this->itensDoInventario($mesa, $sistema, $fichaF));
+            $cd = Ferreiro::cd($fichaF);
+            $teste = $rolador->rolar("1d20+@mod.{$d['atributo']}+@prof", $variaveis);
+            $natural = \App\Nucleo\Combate\Pipeline::naturalDoD20($teste['termos']);
+            $sucesso = $teste['total'] >= $cd && $natural !== 1;
+            $quebrou = $natural === 1 && in_array($d['tipo'], ['kairoseki-arma', 'alcance'], true);
+            $resultado = $quebrou ? 'quebrou' : ($sucesso ? 'sucesso' : 'falhou');
+            $feito = '';
+            if ($quebrou) {
+                $fichaA = $this->tirarDoInventario($fichaA, $item->id, 1);
+                $fichaF = $mesmo ? $fichaA : $fichaF;
+                $fichaF = $this->gastarMateriais($mesa, $sistema, $fichaF, $custo);
+            } elseif ($sucesso) {
+                if (in_array($d['tipo'], ['kairoseki-arma', 'alcance'], true)) {
+                    $dados = $item->dados;
+                    if ($d['tipo'] === 'kairoseki-arma') {
+                        $dados['arma']['melhoria'] = 'kairoseki';
+                        $feito = "{$item->nome} revestida com Kairoseki";
+                    } else {
+                        $dados['arma']['melhoria'] = 'alcance';
+                        $dados['arma']['alcanceNormal'] = (float) $arma['alcanceNormal'] + 6;
+                        $dados['arma']['alcanceMaximo'] = (float) $arma['alcanceMaximo'] + 6;
+                        $feito = "{$item->nome} com as distâncias ampliadas em 6 m";
+                    }
+                    $copia = $mesa->itens()->create([
+                        'catalogo_id' => 'forjado:'.($item->catalogo_id ?: 'mesa').':'.bin2hex(random_bytes(3)), 'nome' => $item->nome, 'peso' => $item->peso, 'equipavel' => $item->equipavel,
+                        'requer_sintonia' => $item->requer_sintonia, 'efeitos' => $item->efeitos, 'dados' => $dados,
+                        'descricao' => trim(mb_substr((string) $item->descricao, 0, 1700)."\nAprimorada por {$ferreiro->nome}: {$feito}."),
+                    ]);
+                    $fichaA = $this->trocarNoInventario($fichaA, $item->id, $copia->id);
+                } elseif ($d['tipo'] === 'kairoseki-municao') {
+                    $fichaA = $this->tirarDoInventario($fichaA, $item->id, 10);
+                    $fichaA = $sistema->entregarNoInventario($fichaA, $loja->materializar($mesa, $sistema, Itens::item('municao-de-kairoseki'))->id, 10);
+                    $feito = "10 munições ({$item->nome}) revestidas com Kairoseki";
+                } else {
+                    $tipo = $d['tipo_dano'];
+                    $municao = $mesa->itens()->firstOrNew(['catalogo_id' => 'forjado:municao:'.mb_strtolower($tipo)]);
+                    $municao->fill([
+                        'nome' => "Munição de Ferreiro ({$tipo})", 'descricao' => "Munição forjada: 1d12 de dano {$tipo}.", 'peso' => 0.1, 'equipavel' => false,
+                        'requer_sintonia' => false, 'efeitos' => [], 'dados' => ['municao' => ['dano' => '1d12', 'tipoDano' => $tipo]],
+                    ])->save();
+                    $fichaA = $sistema->entregarNoInventario($fichaA, $municao->id, 20);
+                    $feito = "20 munições de 1d12 {$tipo}";
+                }
+                if ($mesmo) {
+                    $fichaF = $fichaA;
+                }
+                $fichaF = $this->gastarMateriais($mesa, $sistema, $fichaF, $custo);
+            }
+            if ($mesmo) {
+                $fichaA = $fichaF;
+            }
+            $ferreiro->ficha = $fichaF;
+            $ferreiro->save();
+            if (! $mesmo) {
+                $alvo->ficha = $fichaA;
+                $alvo->save();
+            }
+
+            return compact('ferreiro', 'alvo', 'fichaF', 'fichaA', 'teste', 'cd', 'resultado', 'feito', 'custo', 'item');
+        });
+
+        $nomeAlvo = $r['alvo']->id === $r['ferreiro']->id ? '' : " de {$r['alvo']->nome}";
+        $gasto = ' Gastou 1 lingote e ฿ '.number_format($r['custo'], 0, ',', '.').'.';
+        $texto = match ($r['resultado']) {
+            'sucesso' => "{$r['ferreiro']->nome} aprimora{$nomeAlvo}: {$r['feito']} (Teste {$r['teste']['total']} contra CD {$r['cd']}).{$gasto}",
+            'quebrou' => "{$r['ferreiro']->nome} tira 1 natural: {$r['item']->nome}{$nomeAlvo} quebra e não tem conserto.{$gasto}",
+            default => "{$r['ferreiro']->nome} tenta aprimorar{$nomeAlvo} e falha (Teste {$r['teste']['total']} contra CD {$r['cd']}). Nada foi gasto.",
+        };
+        $this->avisar($mesa, $acesso, $r['ferreiro'], $texto);
+        $camposF = $this->camposDaFicha($r['fichaF']);
+        $this->transmitir($mesa, $acesso, $r['ferreiro'], $camposF);
+        $camposA = $this->camposDaFicha($r['fichaA']);
+        if ($r['alvo']->id !== $r['ferreiro']->id) {
+            $this->transmitir($mesa, $acesso, $r['alvo'], $camposA);
+        }
+        Transmitir::cena($mesa, null, $acesso->jogador->id);
+
+        return response()->json(['resultado' => $r['resultado'], 'texto' => $texto, 'alvo_id' => $r['alvo']->id, 'camposFerreiro' => $camposF, 'camposAlvo' => $camposA]);
+    }
+
+    /** Tira `qtd` unidades do item do inventário (a linha some ao zerar). */
+    private function tirarDoInventario(array $ficha, int $itemId, int $qtd): array
+    {
+        foreach ($ficha['inventario'] ?? [] as $s => $secao) {
+            foreach ($secao['itens'] ?? [] as $i => $ref) {
+                if ((int) ($ref['item_id'] ?? 0) !== $itemId) {
+                    continue;
+                }
+                $resta = (int) $ref['qtd'] - $qtd;
+                if ($resta > 0) {
+                    $ficha['inventario'][$s]['itens'][$i]['qtd'] = $resta;
+                } else {
+                    array_splice($ficha['inventario'][$s]['itens'], $i, 1);
+                }
+
+                return $ficha;
+            }
+        }
+
+        return $ficha;
     }
 
     private function sistema(Mesa $mesa, RegistroSistemas $sistemas): OnePiece

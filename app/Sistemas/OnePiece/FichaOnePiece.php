@@ -508,6 +508,8 @@ final class FichaOnePiece
             'dados.municao.nota' => ['nullable', 'string', 'max:300'],
             // Arma por munição (pistola, arco...) não tem dado: ele vem da munição escolhida ao atacar
             'dados.arma.municao' => ['boolean:strict'],
+            // Aprimoramento do Ferreiro (Aprimorar/Consertar): revestida de Kairoseki ou distâncias ampliadas; só o servidor da forja o define
+            'dados.arma.melhoria' => ['nullable', 'string', Rule::in(['kairoseki', 'alcance'])],
             'dados.arma.dano' => ['exclude_if:dados.arma.municao,true', 'required_with:dados.arma.atributo', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/', function (string $atributo, mixed $v, \Closure $fail) {
                 // A forja da arma (Meito só em cortantes, Kokuto/Yoto só em Meito, Balanço exige Densidade...) é conferida junto do dano.
                 $forja = request()->input('dados.arma.forja');

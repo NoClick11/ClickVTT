@@ -84,6 +84,21 @@ class PrepararMesaE2E extends Command
 
         $atirador = $personagem('AtiradorE2E', $ana, $ficha);
         $amigo = $personagem('AmigoE2E', $bia, FichaOnePiece::padrao());   // PC de outro jogador, ao alcance: sem fogo amigo
+        // Ferreiro (do OutroE2E) com usuário de Akuma no Mi: forja a arma do Atirador e tem uma Técnica de Akuma que o Enfraquecido bloqueia
+        $lingote = $mesa->itens()->updateOrCreate(['catalogo_id' => 'lingote-de-metal'], ['nome' => 'Lingote de Metal', 'peso' => 1, 'equipavel' => false]);
+        $fichaF = FichaOnePiece::padrao();
+        $fichaF['belly'] = 500000;
+        $fichaF['atributos'] = ['for' => 30, 'des' => 30, 'con' => 10, 'sab' => 30, 'pre' => 10, 'von' => 10];
+        $fichaF['ajustes']['proficiencia'] = 4;
+        $fichaF['pp'] = ['atual' => 20, 'porNivel' => 4];
+        $fichaF['profissoes'] = ['semProfissao' => false, 'livroLido' => false, 'usados' => [], 'lista' => [['id' => 'ferreiro', 'graduacao' => 0, 'nivel' => 1]]];
+        $fichaF['forja'] = ['idade' => 0, 'laminas' => 0, 'extras' => 10, 'gastos' => 0];
+        $fichaF['inventario'] = [['secao' => 'Equipamento', 'itens' => [$ref($lingote, 3)]]];
+        $fichaF['akuma'] = [...$fichaF['akuma'], 'tipo' => 'paramecia', 'lista' => [[
+            'nome' => 'Pulso da Fruta', 'origem' => 'Akuma no Mi', 'custo' => 1, 'alcance' => 'Pessoal', 'efeito' => '1d6', 'descricao' => 'Um pulso de energia da fruta.',
+            'rolagem' => '1d6', 'tipoDano' => 'contundente', 'acao' => 'bonus',
+        ]]];
+        $ferreiro = $personagem('FerreiroE2E', $bia, $fichaF);
         $perto = $personagem('PertoE2E', null, $inimigo());               // NPC inimigo ao alcance (15 m)
         $oculto = $personagem('OcultoE2E', null, $inimigo());             // NPC inimigo ao alcance, mas na camada do Mestre
         $longe = $personagem('LongeE2E', null, $inimigo());               // NPC inimigo fora do alcance (45 m)
@@ -101,6 +116,7 @@ class PrepararMesaE2E extends Command
             'd' => $token($amigo, 'jogadores', 70 * 8),     // 12 m (aliado)
             'e' => $token($longe, 'jogadores', 70 * 30),    // 45 m
             'f' => $token($aliado, 'jogadores', 70 * 5),    // 7,5 m
+            'h' => $token($ferreiro, 'jogadores', 70 * 2),   // 3 m
             'g' => $token($fruta, 'jogadores', 70 * 6, 70), // colado ao Perto (1,5 m)
         ];
         $item = fn (string $id, $p, int $ini, string $disp) => [
@@ -115,7 +131,7 @@ class PrepararMesaE2E extends Command
 
         $this->line(json_encode([
             'token' => $mesa->convite_token, 'mesa' => $mesa->id, 'slug' => $mesa->slug,
-            'atirador' => $atirador->id, 'perto' => $perto->id, 'oculto' => $oculto->id, 'amigo' => $amigo->id, 'longe' => $longe->id, 'aliado' => $aliado->id, 'fruta' => $fruta->id,
+            'atirador' => $atirador->id, 'perto' => $perto->id, 'oculto' => $oculto->id, 'amigo' => $amigo->id, 'longe' => $longe->id, 'aliado' => $aliado->id, 'fruta' => $fruta->id, 'ferreiro' => $ferreiro->id,
         ]));
 
         return self::SUCCESS;

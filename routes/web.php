@@ -73,6 +73,7 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     // Forja do Ferreiro: criar armas do catálogo e aprimorar a arma de qualquer personagem com Pontos de Forja.
     Route::post('forja/armas', [ForjaController::class, 'armas'])->middleware('throttle:60,1')->name('forja.armas');
     Route::post('forja/criar', [ForjaController::class, 'criar'])->middleware('throttle:30,1')->name('forja.criar');
+    Route::post('forja/melhorar', [ForjaController::class, 'melhorar'])->middleware('throttle:30,1')->name('forja.melhorar');
     Route::post('forja/aprimorar', [ForjaController::class, 'aprimorar'])->middleware('throttle:30,1')->name('forja.aprimorar');
     Route::post('catalogo', [LojaController::class, 'store'])->middleware('throttle:60,1')->name('catalogo.store');
     Route::patch('catalogo/{item}', [LojaController::class, 'update'])->middleware('throttle:60,1')->name('catalogo.update');

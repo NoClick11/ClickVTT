@@ -201,4 +201,93 @@ class ForjaTest extends TestCase
         $this->como($c->ana)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->ferr->id]), ['campos' => ['meito.usados' => 0]])->assertOk();
         $rolar()->assertCreated();
     }
+
+    private function melhorar($c, array $corpo)
+    {
+        $this->app->instance(\App\Nucleo\Rolagem\Rolador::class, new \App\Nucleo\Rolagem\Rolador(fn (int $faces) => $faces)); // d20 = 20: o Teste passa sempre
+        return $this->como($c->ana)->postJson(route('jogo.forja.melhorar', $c->mesa->id), ['ferreiro_id' => $c->ferr->id, 'alvo_id' => $c->guerr->id, 'atributo' => 'for', ...$corpo]);
+    }
+
+    public function test_aprimorar_consertar_reveste_a_arma_de_outro_com_kairoseki_uma_vez_so(): void
+    {
+        $c = $this->cenario();
+        [, $katana] = $this->preparar($c);
+        $this->melhorar($c, ['tipo' => 'kairoseki-arma', 'item_id' => $katana->id])->assertOk()->assertJsonPath('resultado', 'sucesso');
+        $guerreiro = $c->guerr->fresh()->ficha;
+        $copia = $c->mesa->itens()->find($guerreiro['inventario'][0]['itens'][0]['item_id']);
+        $this->assertSame('kairoseki', $copia->dados['arma']['melhoria']); // a cópia aprimorada no inventário DELE; a original não muda
+        $this->assertArrayNotHasKey('melhoria', $katana->fresh()->dados['arma']);
+        $ferr = $c->ferr->fresh()->ficha;
+        $this->assertSame(2, $ferr['inventario'][0]['itens'][0]['qtd']);              // 1 lingote gasto
+        $this->assertSame(500000 - 20000, $ferr['belly']);                          // ฿ 20.000 (o maior)
+        $this->melhorar($c, ['tipo' => 'kairoseki-arma', 'item_id' => $copia->id])->assertStatus(422)->assertJsonValidationErrors('item'); // uma por item
+        $this->melhorar($c, ['tipo' => 'alcance', 'item_id' => $copia->id])->assertStatus(422);                                         // nem outra melhoria
+    }
+
+    public function test_aprimorar_consertar_alcance_municoes_e_revestir_municao(): void
+    {
+        $c = $this->cenario();
+        $this->preparar($c);
+        $loja = app(\App\Nucleo\Loja\LojaService::class);
+        $sis = new \App\Sistemas\OnePiece\OnePiece;
+        $mosq = $loja->materializar($c->mesa, $sis, \App\Sistemas\OnePiece\Itens::item('mosquete'));
+        $esf = $loja->materializar($c->mesa, $sis, \App\Sistemas\OnePiece\Itens::item('municao-esferica'));
+        $g = $c->guerr->fresh()->ficha;
+        $g['inventario'][0]['itens'][] = ['item_id' => $mosq->id, 'qtd' => 1, 'equipado' => false, 'sintonizado' => false];
+        $g['inventario'][0]['itens'][] = ['item_id' => $esf->id, 'qtd' => 12, 'equipado' => false, 'sintonizado' => false];
+        $c->guerr->ficha = $g;
+        $c->guerr->save();
+        $this->melhorar($c, ['tipo' => 'alcance', 'item_id' => $c->mesa->itens()->where('catalogo_id', 'katana')->first()->id])->assertStatus(422); // corpo a corpo
+        $this->melhorar($c, ['tipo' => 'alcance', 'item_id' => $mosq->id])->assertOk();
+        $nova = $c->mesa->itens()->where('catalogo_id', 'like', 'forjado:mosquete:%')->firstOrFail();
+        $this->assertEquals([$mosq->dados['arma']['alcanceNormal'] + 6, $mosq->dados['arma']['alcanceMaximo'] + 6], [$nova->dados['arma']['alcanceNormal'], $nova->dados['arma']['alcanceMaximo']]);
+        // 10 das 12 esféricas viram de Kairoseki
+        $this->melhorar($c, ['tipo' => 'kairoseki-municao', 'item_id' => $esf->id])->assertOk();
+        $qtds = collect($c->guerr->fresh()->ficha['inventario'][0]['itens'])->mapWithKeys(fn ($r) => [$c->mesa->itens()->find($r['item_id'])->catalogo_id => $r['qtd']]);
+        $this->assertSame(2, $qtds['municao-esferica']);
+        $this->assertSame(10, $qtds['municao-de-kairoseki']);
+        $this->melhorar($c, ['tipo' => 'kairoseki-municao', 'item_id' => $esf->id])->assertStatus(422); // só 2 sobraram
+        // 20 munições de 1d12 criadas do nada, entregues ao dono
+        $this->melhorar($c, ['tipo' => 'municoes', 'tipo_dano' => 'Contundente'])->assertOk();
+        $m = $c->mesa->itens()->where('catalogo_id', 'forjado:municao:contundente')->firstOrFail();
+        $this->assertSame(['dano' => '1d12', 'tipoDano' => 'Contundente'], $m->dados['municao']);
+        $this->assertSame(20, collect($c->guerr->fresh()->ficha['inventario'][0]['itens'])->firstWhere('item_id', $m->id)['qtd']);
+    }
+
+    public function test_um_natural_no_aprimoramento_quebra_a_arma_sem_conserto(): void
+    {
+        $c = $this->cenario();
+        [, $katana] = $this->preparar($c);
+        $this->app->instance(\App\Nucleo\Rolagem\Rolador::class, new \App\Nucleo\Rolagem\Rolador(fn (int $faces) => 1));
+        $this->como($c->ana)->postJson(route('jogo.forja.melhorar', $c->mesa->id), ['ferreiro_id' => $c->ferr->id, 'alvo_id' => $c->guerr->id, 'atributo' => 'for', 'tipo' => 'kairoseki-arma', 'item_id' => $katana->id])
+            ->assertOk()->assertJsonPath('resultado', 'quebrou');
+        $this->assertSame([], $c->guerr->fresh()->ficha['inventario'][0]['itens']); // a arma quebrou e saiu do inventário do dono
+        $this->assertSame(2, $c->ferr->fresh()->ficha['inventario'][0]['itens'][0]['qtd']); // os materiais foram gastos
+    }
+
+    public function test_so_ferreiro_aprimora_e_sem_lingote_ou_dinheiro_recusa(): void
+    {
+        $c = $this->cenario();
+        [$lingote, $katana] = $this->preparar($c);
+        $this->como($c->bia)->postJson(route('jogo.forja.melhorar', $c->mesa->id), ['ferreiro_id' => $c->ferr->id, 'alvo_id' => $c->guerr->id, 'atributo' => 'for', 'tipo' => 'kairoseki-arma', 'item_id' => $katana->id])->assertForbidden();
+        $f = $c->ferr->fresh()->ficha;
+        $f['inventario'] = [];
+        $c->ferr->ficha = $f;
+        $c->ferr->save();
+        $this->melhorar($c, ['tipo' => 'kairoseki-arma', 'item_id' => $katana->id])->assertStatus(422)->assertJsonValidationErrors('materiais');
+    }
+
+    public function test_a_arma_revestida_de_kairoseki_oferece_o_enfraquecido_no_acerto(): void
+    {
+        $c = $this->cenario();
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+        $arma = $c->mesa->itens()->create(['nome' => 'Espada Kairoseki', 'peso' => 1, 'equipavel' => true, 'dados' => ['arma' => ['dano' => '1d8', 'atributo' => 'for', 'tipoDano' => 'Cortante', 'proficiente' => true, 'melhoria' => 'kairoseki', 'alcanceNormal' => 1.5, 'alcanceMaximo' => 1.5]]]);
+        $f = FichaOnePiece::padrao();
+        $f['atributos']['for'] = 30;
+        $f['inventario'] = [['secao' => 'Equipamento', 'itens' => [['item_id' => $arma->id, 'qtd' => 1, 'equipado' => true, 'sintonizado' => false]]]];
+        $c->guerr->ficha = $f;
+        $c->guerr->save();
+        $r = $this->como($c->bia)->postJson(route('jogo.rolagens.store', $c->mesa->id), ['expressao' => "1d20+@arma.{$arma->id}.ataque", 'visibilidade' => 'todos', 'personagem_id' => $c->guerr->id])->assertCreated()->json();
+        $this->assertSame('kairoseki', $r['dados']['sistema']['municao']['efeito'] ?? null);
+    }
 }

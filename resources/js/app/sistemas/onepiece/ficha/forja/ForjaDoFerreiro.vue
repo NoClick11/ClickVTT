@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Hammer } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
-import type { ArmaParaForja } from '../../../../tipos-mesa';
+import type { ArmaParaForja, MunicaoParaForja } from '../../../../tipos-mesa';
 import { estilos, useFicha } from '../../contexto';
 import {
     EXPERTISES,
@@ -71,7 +71,7 @@ async function carregarArmas() {
     armaId.value = null;
     if (!servicos || !alvoId.value) return;
     try {
-        armas.value = await servicos.armasParaForja(alvoId.value);
+        armas.value = (await servicos.armasParaForja(alvoId.value)).armas;
         armaId.value = armas.value[0]?.item_id ?? null;
     } catch (e) {
         aviso.value = { tipo: 'erro', texto: e instanceof Error ? e.message : 'Não foi possível listar as armas.' };
@@ -148,6 +148,80 @@ async function aprimorar() {
     }
 }
 carregarArmas();
+
+// --- Aprimorar/Consertar Equipamento (um aprimoramento por arma sem modificação; Teste, sem Pontos de Forja)
+type TipoDeMelhoria = 'kairoseki-arma' | 'kairoseki-municao' | 'municoes' | 'alcance';
+const donoM = ref<number>(personagemId);
+const armasM = ref<ArmaParaForja[]>([]);
+const municoesM = ref<MunicaoParaForja[]>([]);
+const tipoM = ref<TipoDeMelhoria>('kairoseki-arma');
+const itemM = ref<number | null>(null);
+const danoM = ref<'Contundente' | 'Perfurante'>('Perfurante');
+const atributoM = ref<'for' | 'des' | 'sab'>('for');
+const OPCOES_M: { id: TipoDeMelhoria; rotulo: string }[] = [
+    { id: 'kairoseki-arma', rotulo: 'Revestir 1 arma com Kairoseki' },
+    { id: 'kairoseki-municao', rotulo: 'Revestir 10 munições com Kairoseki' },
+    { id: 'municoes', rotulo: 'Criar 20 munições de 1d12' },
+    { id: 'alcance', rotulo: 'Ampliar as distâncias da arma em 6 m' },
+];
+/** O que dá para escolher no tipo: armas sem modificação (à distância, para o alcance) ou munições. */
+const alvosM = computed(() =>
+    tipoM.value === 'kairoseki-municao'
+        ? municoesM.value.filter((m) => m.qtd >= 10).map((m) => ({ id: m.item_id, nome: `${m.nome} (×${m.qtd})` }))
+        : tipoM.value === 'municoes'
+          ? []
+          : armasM.value
+                .filter(
+                    (a) => !a.melhoria && Object.keys(a.forja ?? {}).every((k) => k === 'expertise') && (tipoM.value !== 'alcance' || a.distancia),
+                )
+                .map((a) => ({ id: a.item_id, nome: a.nome })),
+);
+async function carregarM() {
+    armasM.value = [];
+    municoesM.value = [];
+    if (!servicos || !donoM.value) return;
+    try {
+        const r = await servicos.armasParaForja(donoM.value);
+        armasM.value = r.armas;
+        municoesM.value = r.municoes;
+    } catch (e) {
+        aviso.value = { tipo: 'erro', texto: e instanceof Error ? e.message : 'Não foi possível listar o inventário.' };
+    }
+}
+watch(donoM, carregarM);
+watch([alvosM, tipoM], () => (itemM.value = alvosM.value.some((a) => a.id === itemM.value) ? itemM.value : (alvosM.value[0]?.id ?? null)), {
+    immediate: true,
+});
+const problemaM = computed(() =>
+    tipoM.value === 'municoes'
+        ? ''
+        : itemM.value === null
+          ? tipoM.value === 'kairoseki-municao'
+              ? 'Nenhuma pilha com 10 munições.'
+              : 'Nenhuma arma sem modificação.'
+          : '',
+);
+async function melhorar() {
+    if (!servicos || problemaM.value) return;
+    aviso.value = null;
+    ocupado.value = true;
+    try {
+        const r = await servicos.melhorar({
+            ferreiro_id: personagemId,
+            alvo_id: donoM.value,
+            atributo: atributoM.value,
+            tipo: tipoM.value,
+            ...(tipoM.value === 'municoes' ? { tipo_dano: danoM.value } : { item_id: itemM.value }),
+        });
+        aviso.value = { tipo: r.resultado === 'sucesso' ? 'ok' : 'erro', texto: r.texto };
+        await carregarM();
+    } catch (e) {
+        aviso.value = { tipo: 'erro', texto: e instanceof Error ? e.message : 'Não foi possível aprimorar.' };
+    } finally {
+        ocupado.value = false;
+    }
+}
+carregarM();
 
 const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs focus-visible:border-ouro-400 focus-visible:outline-none';
 const botao = 'rounded-md border border-ouro-500/60 px-3 py-1 text-xs font-semibold text-ouro-100 hover:bg-ouro-500/20 disabled:opacity-40';
@@ -359,6 +433,57 @@ const botao = 'rounded-md border border-ouro-500/60 px-3 py-1 text-xs font-semib
                         <span v-if="problema" class="text-amber-300">{{ problema }}</span>
                     </div>
                 </template>
+            </div>
+
+            <!-- Aprimorar/Consertar Equipamento -->
+            <div class="grid gap-2 rounded-lg border border-preto-700 bg-preto-950/60 p-2.5" aria-label="Aprimorar ou consertar equipamento">
+                <h4 :class="estilos.rotulo">Aprimorar/Consertar Equipamento (Teste CD {{ pf.cd }})</h4>
+                <p class="text-xs text-preto-400">
+                    Um aprimoramento por arma sem modificação, sem Pontos de Forja: 1 lingote e ฿ 20.000 ou 20% do valor (o maior), só se o Teste
+                    passar. Um 1 natural quebra o equipamento sem conserto. A arma ou as munições podem ser de outro personagem.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    <label class="grid gap-0.5 text-xs"
+                        >Dono
+                        <select v-model.number="donoM" :class="campo" aria-label="Dono do equipamento">
+                            <option v-for="p in servicos.personagens" :key="p.id" :value="p.id">
+                                {{ p.nome }}{{ p.id === personagemId ? ' (eu)' : '' }}
+                            </option>
+                        </select>
+                    </label>
+                    <label class="grid gap-0.5 text-xs"
+                        >Aprimoramento
+                        <select v-model="tipoM" :class="campo" aria-label="Aprimoramento">
+                            <option v-for="o in OPCOES_M" :key="o.id" :value="o.id">{{ o.rotulo }}</option>
+                        </select>
+                    </label>
+                    <label v-if="tipoM !== 'municoes'" class="grid gap-0.5 text-xs"
+                        >{{ tipoM === 'kairoseki-municao' ? 'Munição' : 'Arma' }}
+                        <select v-model.number="itemM" :class="campo" aria-label="Equipamento a aprimorar">
+                            <option v-if="!alvosM.length" :value="null">Nenhuma disponível</option>
+                            <option v-for="a in alvosM" :key="a.id" :value="a.id">{{ a.nome }}</option>
+                        </select>
+                    </label>
+                    <label v-else class="grid gap-0.5 text-xs"
+                        >Tipo de dano
+                        <select v-model="danoM" :class="campo" aria-label="Tipo de dano das munições">
+                            <option value="Perfurante">Perfurante</option>
+                            <option value="Contundente">Contundente</option>
+                        </select>
+                    </label>
+                    <label class="grid gap-0.5 text-xs"
+                        >Teste
+                        <select v-model="atributoM" :class="campo" aria-label="Atributo do Teste de aprimorar">
+                            <option value="for">Força</option>
+                            <option value="des">Destreza</option>
+                            <option value="sab">Sabedoria</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="flex flex-wrap items-center gap-3 text-xs">
+                    <button type="button" :class="botao" :disabled="ocupado || !!problemaM" @click="melhorar">Aprimorar</button>
+                    <span v-if="problemaM" class="text-amber-300">{{ problemaM }}</span>
+                </div>
             </div>
         </template>
     </section>

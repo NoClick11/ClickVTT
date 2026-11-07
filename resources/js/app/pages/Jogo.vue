@@ -438,9 +438,14 @@ function mensagemDe(e: unknown): string {
 /** Falhou ao salvar: avisa e volta ao estado do servidor. */
 function falhou(e: unknown) {
     avisar(mensagemDe(e));
-    router.reload({ only: ['objetos'] });
+    recarregar(['objetos']);
 }
-const recarregar = (only: string[]) => router.reload({ only });
+/**
+ * Recarrega só as props pedidas, em segundo plano: sem a barra de progresso do Inertia no topo (que parece recarregar a página), sem cancelar outra
+ * recarga em andamento e mantendo estado e rolagem. Todas as recargas da mesa passam por aqui.
+ */
+const recarregar = (only: string[], extra: { onSuccess?: () => void } = {}) =>
+    router.reload({ only, showProgress: false, async: true, preserveState: true, preserveScroll: true, ...extra });
 
 // --- objetos -------------------------------------------------------------------
 
@@ -1108,7 +1113,15 @@ function aplicarNaFicha(personagemId: number, campos: Record<string, unknown>) {
 }
 const servicosDaFicha = computed(() => ({
     personagens: props.personagens.map((p) => ({ id: p.id, nome: p.nome })),
-    armasParaForja: async (id: number) => (await api.armasParaForja(id)).armas,
+    armasParaForja: (id: number) => api.armasParaForja(id),
+    melhorar: async (d: Parameters<typeof api.melhorarEquipamento>[0]) => {
+        const r = await api.melhorarEquipamento(d);
+        aplicarNaFicha(d.ferreiro_id, r.camposFerreiro);
+        aplicarNaFicha(r.alvo_id, r.camposAlvo);
+        recarregar(['itens']);
+
+        return { resultado: r.resultado, texto: r.texto };
+    },
     forjar: async (d: { ferreiro_id: number; item: string; atributo: 'for' | 'des' | 'sab' }) => {
         const r = await api.forjar(d);
         aplicarNaFicha(d.ferreiro_id, r.campos);
@@ -1173,8 +1186,7 @@ const novoPersonagemAberto = ref(false);
 const criarPersonagem = (dados: { nome: string; cor: string; jogadores: number[] }) => api.criarPersonagem(dados);
 /** Depois de criar: recarrega a lista (e o que depende dela) e já abre a ficha do novo personagem. */
 function aoCriarPersonagem(personagem: Personagem) {
-    router.reload({
-        only: ['personagens', 'meusPersonagens', 'itens'],
+    recarregar(['personagens', 'meusPersonagens', 'itens'], {
         onSuccess: () => {
             abrirPersonagem(personagem.id);
             if (moduloSistema?.Construtor) construtorId.value = personagem.id; // sistema com assistente: começa por ele
@@ -1390,7 +1402,7 @@ function aoMudarCena(payload: { ator: number | null }) {
     if (payload.ator === meuId) return;
     clearTimeout(temporizadorCena);
     temporizadorCena = setTimeout(
-        () => router.reload({ only: ['objetos', 'pagina', 'paginas', 'pastas', 'jogadores', 'personagens', 'meusPersonagens', 'itens', 'mesa'] }),
+        () => recarregar(['objetos', 'pagina', 'paginas', 'pastas', 'jogadores', 'personagens', 'meusPersonagens', 'itens', 'mesa']),
         120,
     );
 }

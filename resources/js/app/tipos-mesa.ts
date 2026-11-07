@@ -81,4 +81,13 @@ export interface ArmaParaForja {
     tipoDano: string | null;
     cortante: boolean;
     forja: Record<string, unknown>;
+    /** Aprimoramento do Ferreiro já feito (revestida de Kairoseki ou distâncias ampliadas): a arma não aceita outro. */
+    melhoria?: 'kairoseki' | 'alcance' | null;
+    distancia?: boolean;
+}
+/** Munição do inventário de alguém (revestir 10 com Kairoseki). */
+export interface MunicaoParaForja {
+    item_id: number;
+    nome: string;
+    qtd: number;
 }

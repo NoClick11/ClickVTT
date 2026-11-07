@@ -8,6 +8,7 @@ import type {
     ItemDto,
     LojaAbertaDto,
     Mensagem,
+    MunicaoParaForja,
     NovoItem,
     NovoItemDeCatalogo,
     VisibilidadeRolagem,
@@ -252,7 +253,8 @@ export function apiMesa(mesaId: number, atorId: number) {
             requisitar<ItemDeCatalogoDto>(atorId, 'PATCH', r('jogo.catalogo.update', id), item),
         excluirItemDeCatalogo: (id: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.catalogo.destroy', id)),
         /** Forja do Ferreiro: as armas de um personagem, criar do catálogo (lingote + Belly + Teste) e aprimorar com Pontos de Forja. */
-        armasParaForja: (personagem_id: number) => requisitar<{ armas: ArmaParaForja[] }>(atorId, 'POST', r('jogo.forja.armas'), { personagem_id }),
+        armasParaForja: (personagem_id: number) =>
+            requisitar<{ armas: ArmaParaForja[]; municoes: MunicaoParaForja[] }>(atorId, 'POST', r('jogo.forja.armas'), { personagem_id }),
         forjar: (dados: { ferreiro_id: number; item: string; atributo: 'for' | 'des' | 'sab' }) =>
             requisitar<{ sucesso: boolean; total: number; cd: number; custo: number; texto: string; campos: Record<string, unknown> }>(
                 atorId,
@@ -260,6 +262,21 @@ export function apiMesa(mesaId: number, atorId: number) {
                 r('jogo.forja.criar'),
                 dados,
             ),
+        melhorarEquipamento: (dados: {
+            ferreiro_id: number;
+            alvo_id: number;
+            atributo: 'for' | 'des' | 'sab';
+            tipo: 'kairoseki-arma' | 'kairoseki-municao' | 'municoes' | 'alcance';
+            item_id?: number | null;
+            tipo_dano?: 'Contundente' | 'Perfurante';
+        }) =>
+            requisitar<{
+                resultado: 'sucesso' | 'falhou' | 'quebrou';
+                texto: string;
+                alvo_id: number;
+                camposFerreiro: Record<string, unknown>;
+                camposAlvo: Record<string, unknown>;
+            }>(atorId, 'POST', r('jogo.forja.melhorar'), dados),
         aprimorarArma: (dados: { ferreiro_id: number; alvo_id: number; item_id: number; melhorias: Record<string, unknown> }) =>
             requisitar<{ texto: string; alvo_id: number; camposFerreiro: Record<string, unknown>; camposAlvo: Record<string, unknown> }>(
                 atorId,

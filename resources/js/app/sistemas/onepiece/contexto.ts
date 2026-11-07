@@ -2,7 +2,7 @@ import { inject, type ComputedRef, type InjectionKey, type Ref } from 'vue';
 import type { AreaDeEfeito } from '../../nucleo/combate/area';
 import type { Efeito, Origem, Rolagem } from '../../nucleo/efeitos/efeitos';
 import type { AbrirEditorItem } from '../../nucleo/sistemas/tipos';
-import type { ArmaParaForja, ItemDto } from '../../tipos-mesa';
+import type { ArmaParaForja, ItemDto, MunicaoParaForja } from '../../tipos-mesa';
 import type { AcaoCaracteristica, ArmaAtiva, AtributoId, DuracaoDaTecnica, EfeitoDeCondicao } from './regras';
 
 /**
@@ -109,7 +109,16 @@ export interface UsoDeTecnica {
 export interface ServicosDaFicha {
     /** Todos os personagens da mesa (o ferreiro aprimora a arma de qualquer um). */
     personagens: { id: number; nome: string }[];
-    armasParaForja: (personagemId: number) => Promise<ArmaParaForja[]>;
+    armasParaForja: (personagemId: number) => Promise<{ armas: ArmaParaForja[]; municoes: MunicaoParaForja[] }>;
+    /** Aprimorar/Consertar Equipamento: um aprimoramento por item, com Teste; quebra no 1 natural. */
+    melhorar: (dados: {
+        ferreiro_id: number;
+        alvo_id: number;
+        atributo: 'for' | 'des' | 'sab';
+        tipo: 'kairoseki-arma' | 'kairoseki-municao' | 'municoes' | 'alcance';
+        item_id?: number | null;
+        tipo_dano?: 'Contundente' | 'Perfurante';
+    }) => Promise<{ resultado: 'sucesso' | 'falhou' | 'quebrou'; texto: string }>;
     forjar: (dados: { ferreiro_id: number; item: string; atributo: 'for' | 'des' | 'sab' }) => Promise<{ sucesso: boolean; texto: string }>;
     aprimorar: (dados: { ferreiro_id: number; alvo_id: number; item_id: number; melhorias: Record<string, unknown> }) => Promise<{ texto: string }>;
 }

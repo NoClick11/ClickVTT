@@ -393,6 +393,92 @@ try {
     await mestre.waitForTimeout(600);
     confere(await mestre.getByLabel('Uso 1').first().isEnabled(), 'para o mestre, a bolinha de uso continua habilitada');
     await mestre.getByLabel('Fechar ficha').click();
+
+    etapa('12. O Ferreiro (de outro jogador) aprimora a arma do Atirador: revestir com Kairoseki e ampliar o alcance');
+    const outro = await entrar('OutroE2E');
+    const abrirFichaDe = async (page, nome) => {
+        await abrirAba(page, 'Personagens');
+        await page.getByLabel(`Abrir a ficha de ${nome}`).click();
+        await page.waitForTimeout(1200);
+    };
+    await abrirFichaDe(outro, 'FerreiroE2E');
+    await outro.getByText('Profissões', { exact: true }).first().click();
+    await outro.waitForTimeout(600);
+    const bloco = outro.getByLabel('Aprimorar ou consertar equipamento');
+    await bloco.scrollIntoViewIfNeeded();
+    await bloco.getByLabel('Dono do equipamento').selectOption({ label: 'AtiradorE2E' });
+    await outro.waitForTimeout(800);
+    const armasDoAtirador = (await bloco.getByLabel('Equipamento a aprimorar').locator('option').allInnerTexts()).join(' | ');
+    confere(
+        /Mosquete/.test(armasDoAtirador) && /Canhão/.test(armasDoAtirador),
+        'o Ferreiro vê as armas do inventário do Atirador (de outra pessoa)',
+        armasDoAtirador,
+    );
+    const antes12 = artisan('e2e:estado');
+    await bloco.getByLabel('Aprimoramento').selectOption('kairoseki-arma');
+    await bloco.getByLabel('Equipamento a aprimorar').selectOption({ label: 'Mosquete' });
+    await bloco.getByRole('button', { name: 'Aprimorar', exact: true }).click();
+    await outro.waitForTimeout(1800);
+    s = artisan('e2e:estado');
+    const quebrou = (await outro.getByText(/tira 1 natural/).count()) > 0; // 1 natural (5%): a regra do livro quebra a arma sem conserto
+    if (quebrou)
+        confere(
+            !s.armas_atirador.some((a) => a.nome === 'Mosquete'),
+            'servidor: 1 natural, o Mosquete quebrou e saiu do inventário (regra do livro; rode de novo para ver o revestimento)',
+        );
+    else
+        confere(
+            s.armas_atirador.some((a) => a.nome === 'Mosquete' && a.melhoria === 'kairoseki'),
+            'servidor: o Mosquete do Atirador ficou revestido de Kairoseki',
+            JSON.stringify(s.armas_atirador),
+        );
+    confere(
+        s.ferreiro.lingotes === antes12.ferreiro.lingotes - 1 && s.ferreiro.belly < antes12.ferreiro.belly,
+        'servidor: o Ferreiro gastou 1 lingote e dinheiro',
+        JSON.stringify(s.ferreiro),
+    );
+    confere((await outro.getByText(/Gastou 1 lingote/).count()) > 0, 'a ficha do Ferreiro mostra o resultado');
+    const sobraram = (await bloco.getByLabel('Equipamento a aprimorar').locator('option').allInnerTexts()).join(' | ');
+    confere(!/Mosquete/.test(sobraram), 'o Mosquete já aprimorado (ou quebrado) sai da lista (uma melhoria por arma)', sobraram);
+    await bloco.getByLabel('Aprimoramento').selectOption('alcance');
+    await bloco.getByLabel('Equipamento a aprimorar').selectOption({ label: 'Canhão' });
+    const alcanceAntes = s.armas_atirador.find((a) => a.nome === 'Canhão')?.alcanceMaximo;
+    await bloco.getByRole('button', { name: 'Aprimorar', exact: true }).click();
+    await outro.waitForTimeout(1800);
+    s = artisan('e2e:estado');
+    const canhao = s.armas_atirador.find((a) => a.nome === 'Canhão');
+    if (!canhao) console.log('  (1 natural: o Canhão quebrou; rode de novo para ver o alcance ampliado)');
+    else
+        confere(
+            canhao?.alcanceMaximo === alcanceAntes + 6 && canhao?.melhoria === 'alcance',
+            'servidor: o alcance máximo do Canhão subiu 6 m',
+            JSON.stringify(canhao),
+        );
+    await outro.getByLabel('Fechar ficha').click();
+
+    etapa('13. Enfraquecido bloqueia as Técnicas da aba Akuma no Mi');
+    await abrirFichaDe(outro, 'FerreiroE2E');
+    await outro.getByText('Akuma no Mi', { exact: true }).first().click();
+    await outro.waitForTimeout(600);
+    const pulso = outro.getByRole('button', { name: /^Usar Pulso da Fruta/ });
+    confere(await pulso.isEnabled(), 'sem a condição, "Usar Pulso da Fruta" está habilitado');
+    await outro.getByLabel('Fechar ficha').click();
+    await mirar(mestre, [731, 575]);
+    await mestre.locator('select', { hasText: 'Aplicar efeito' }).first().selectOption({ label: 'Enfraquecido' });
+    await mestre.getByRole('button', { name: 'Aplicar', exact: true }).click();
+    await mestre.waitForTimeout(1500);
+    s = artisan('e2e:estado');
+    confere(s.ferreiro.condicoes.includes('enfraquecido'), 'servidor: o Ferreiro recebeu Enfraquecido', JSON.stringify(s.ferreiro.condicoes));
+    await abrirFichaDe(outro, 'FerreiroE2E');
+    await outro.getByText('Akuma no Mi', { exact: true }).first().click();
+    await outro.waitForTimeout(600);
+    const bloqueado = outro.getByRole('button', { name: /^Usar Pulso da Fruta/ });
+    confere(await bloqueado.isDisabled(), 'com Enfraquecido, "Usar Pulso da Fruta" fica desabilitado');
+    confere(
+        /Enfraquecido/.test((await bloqueado.getAttribute('title')) ?? ''),
+        'o motivo diz "Enfraquecido"',
+        (await bloqueado.getAttribute('title')) ?? '',
+    );
 } catch (e) {
     falhas++;
     console.log(`\n  ✖ o roteiro parou: ${e.message.split('\n')[0]}`);
