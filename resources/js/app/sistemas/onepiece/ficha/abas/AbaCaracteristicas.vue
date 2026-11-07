@@ -6,10 +6,10 @@ import { clonar } from '../../../../nucleo/ficha/caminho';
 import { formatoDeResumo } from '../../alvos';
 import { estilos, useFicha } from '../../contexto';
 import EditorCaracteristicaDialog from '../../EditorCaracteristicaDialog.vue';
-import { comBuffAlternado, usosMax, type AcaoCaracteristica, type Caracteristica, type FichaOnePiece } from '../../regras';
+import { comBuffAlternado, expandirRolagem, usosMax, type AcaoCaracteristica, type Caracteristica, type FichaOnePiece } from '../../regras';
 
 const props = defineProps<{ ficha: FichaOnePiece }>();
-const { editar, salvar, calc, rolar, rodada, acao: executarAcao, acoes } = useFicha();
+const { editar, salvar, calc, rolar, rodada, acao: executarAcao, acoes, modoDe } = useFicha();
 /** Ligar uma característica gasta a categoria de ação dela (se tiver): só liga se puder agir agora. */
 const podeLigar = (c: Caracteristica) => (c.ativa ? { ok: true } : acoes.pode(c.acao));
 
@@ -61,8 +61,27 @@ async function usarAlternativo(i: number) {
     });
 }
 /** Botão de ação (condição, hospedar): gasta a categoria dele e só então age. */
-async function agirComAcao(a: AcaoCaracteristica) {
-    if (await acoes.gastar(a.acao)) executarAcao(a);
+async function agirComAcao(a: AcaoCaracteristica, i: number) {
+    const c = props.ficha.caracteristicas[i];
+    if (a.usa && (!c.usos || c.usos.atual <= 0)) return;
+    if (!(await acoes.gastar(a.acao))) return;
+    if (a.usa && c.usos) mudar((l) => (l[i] = { ...c, usos: { ...c.usos!, atual: c.usos!.atual - 1 } }));
+    const f = props.ficha;
+    if (a.tipo === 'recuperar' && a.rolagem && a.recurso) {
+        const recurso = a.recurso; // pv | pp
+        rolar(expandirRolagem(a.rolagem, calc.value, a.passo), `${c.nome}`, (total) => {
+            const max = calc.value[`${recurso}.max`];
+            const atual = recurso === 'pv' ? f.pv.atual : f.pp.atual;
+            salvar({ [`${recurso}.atual`]: Math.min(max, atual + total) });
+        });
+    } else if (a.tipo === 'rolar' && a.rolagem) {
+        const modo = a.vantagemAlvo ? modoDe(a.vantagemAlvo) : null;
+        const expr =
+            modo === 'vantagem' ? a.rolagem.replace(/^1d20/, '2d20kh1') : modo === 'desvantagem' ? a.rolagem.replace(/^1d20/, '2d20kl1') : a.rolagem;
+        rolar(expr, c.nome);
+    } else if (a.tipo === 'deslocar' || a.tipo === 'socorrer' || a.tipo === 'condicao' || a.tipo === 'hospedar') {
+        executarAcao(a);
+    }
 }
 /** Dado extra de dano (Poder Maligno): rola 1 dado à escolha; até o 12º nível o mesmo dano volta em você, sem defesa. */
 const dadoEscolhido = ref('d6');
@@ -236,7 +255,7 @@ function aoSalvar(c: Caracteristica) {
                                 v-else
                                 type="button"
                                 class="rounded-md border border-ouro-500/50 px-2 py-0.5 text-xs font-semibold text-ouro-100 transition hover:bg-ouro-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
-                                :disabled="!acoes.pode(a.acao).ok"
+                                :disabled="!acoes.pode(a.acao).ok || (a.usa && (!c.usos || c.usos.atual <= 0))"
                                 :title="
                                     acoes.pode(a.acao).ok
                                         ? a.alvo === 'mirado'
@@ -244,7 +263,7 @@ function aoSalvar(c: Caracteristica) {
                                             : 'Age sobre você'
                                         : acoes.pode(a.acao).motivo
                                 "
-                                @click="agirComAcao(a)"
+                                @click="agirComAcao(a, i)"
                             >
                                 {{ a.rotulo }}
                             </button>

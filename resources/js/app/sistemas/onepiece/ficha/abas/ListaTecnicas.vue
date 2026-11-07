@@ -4,7 +4,8 @@ import { clonar } from '../../../../nucleo/ficha/caminho';
 import CampoNumero from '../../../../nucleo/ui/CampoNumero.vue';
 import CampoTexto from '../../../../nucleo/ui/CampoTexto.vue';
 import { estilos, useFicha } from '../../contexto';
-import { camposDoGastoDePP, type FichaOnePiece, type Tecnica } from '../../regras';
+import { camposDoGastoDePP, expandirRolagem, type FichaOnePiece, type Tecnica } from '../../regras';
+import CriadorDeTecnicas from '../criador/CriadorDeTecnicas.vue';
 
 /**
  * Lista de técnicas que gastam pontos de poder. Serve às Técnicas (`tecnicas.lista`) e aos poderes da Akuma no Mi
@@ -19,11 +20,13 @@ const props = defineProps<{
     vazio: string;
     tom: 'sky' | 'violet';
 }>();
-const { editar, salvar, rolar, acoes } = useFicha();
+const { editar, salvar, rolar, acoes, calc } = useFicha();
 /** A categoria que usar a técnica gasta no combate: a dela ou a poderosa (que só serve para técnicas). */
 const CATEGORIAS = computed(() => acoes.todas());
 const categoria = (t: Tecnica) => t.acao ?? 'poderosa';
 const permitida = (t: Tecnica) => acoes.pode(categoria(t), true);
+
+const criando = ref(false);
 
 const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs focus-visible:border-ouro-400 focus-visible:outline-none';
 const cor =
@@ -48,7 +51,13 @@ async function usar(t: Tecnica) {
     if (!(await acoes.gastar(categoria(t), true))) return;
     salvar(campos);
     // Com tipo de dano preenchido a rolagem é um dano: o card do chat oferece "Aplicar" ao alvo, respeitando resistências.
-    if (t.rolagem.trim()) rolar(t.rolagem.trim(), t.nome, undefined, t.tipoDano?.trim() ? { tipo: t.tipoDano.trim() } : undefined);
+    if (t.rolagem.trim())
+        rolar(
+            expandirRolagem(t.rolagem.trim(), calc.value, 'tecnica'),
+            t.nome,
+            undefined,
+            t.tipoDano?.trim() ? { tipo: t.tipoDano.trim() } : undefined,
+        );
 }
 
 /** Liga ou desliga a reação da técnica: ligar já a põe na categoria Reação (se não tinha outra). */
@@ -89,7 +98,18 @@ function adicionar() {
 <template>
     <div class="grid gap-3">
         <section :class="estilos.cartao" aria-label="Lista">
-            <h3 :class="estilos.titulo">{{ titulo }}</h3>
+            <div class="flex items-center justify-between gap-2">
+                <h3 :class="estilos.titulo">{{ titulo }}</h3>
+                <button
+                    type="button"
+                    class="mr-3 rounded border px-2.5 py-1 text-xs font-semibold"
+                    :class="cor.botao"
+                    title="Monta a técnica pelos efeitos do livro e só deixa criar o que o seu nível permite"
+                    @click="criando = true"
+                >
+                    Criar técnica
+                </button>
+            </div>
             <ul class="divide-y divide-preto-800/70 text-sm">
                 <li v-for="(t, i) in lista" :key="i" class="px-3 py-2">
                     <!-- Jogar: cartão da técnica com o botão Usar. Editar: campos para mudar tudo. -->
@@ -325,5 +345,6 @@ function adicionar() {
             </datalist>
             <button type="submit" class="rounded bg-ouro-500 px-3 text-xs font-semibold text-preto-950 hover:bg-ouro-400">Adicionar</button>
         </form>
+        <CriadorDeTecnicas v-model:open="criando" :ficha="ficha" :destino="caminho === 'akuma.lista' ? 'akuma' : 'estilo'" />
     </div>
 </template>

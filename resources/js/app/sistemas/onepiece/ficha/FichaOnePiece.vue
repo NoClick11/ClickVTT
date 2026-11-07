@@ -1,16 +1,21 @@
 <script setup lang="ts">
-import { Apple, Backpack, Flame, ListChecks, Settings, Skull } from 'lucide-vue-next';
+import { Apple, Backpack, Flame, GraduationCap, Hammer, ListChecks, Settings, Skull, Sparkles, Waves } from 'lucide-vue-next';
 import { computed, inject, provide, ref, type Component, type ComputedRef } from 'vue';
 import type { AbrirEditorItem, PersonagemFicha } from '../../../nucleo/sistemas/tipos';
 import type { ItemDto } from '../../../tipos-mesa';
 import { CHAVE_FICHA } from '../contexto';
+import { abaDoHakiVisivel } from '../haki/regras';
 import { analisar, armasAtivas, modoDaRolagem, type AcaoCaracteristica, type FichaOnePiece } from '../regras';
 import AbaAkuma from './abas/AbaAkuma.vue';
 import AbaCaracteristicas from './abas/AbaCaracteristicas.vue';
 import AbaDetalhes from './abas/AbaDetalhes.vue';
+import AbaHaki from './abas/AbaHaki.vue';
+import AbaIndividualidades from './abas/AbaIndividualidades.vue';
 import AbaInventario from './abas/AbaInventario.vue';
+import AbaProfissoes from './abas/AbaProfissoes.vue';
 import AbaRecompensa from './abas/AbaRecompensa.vue';
 import AbaTecnicas from './abas/AbaTecnicas.vue';
+import AbaTreinamentos from './abas/AbaTreinamentos.vue';
 import FichaAtributos from './FichaAtributos.vue';
 import FichaCabecalho from './FichaCabecalho.vue';
 import FichaLateral from './FichaLateral.vue';
@@ -103,15 +108,33 @@ provide(CHAVE_FICHA, {
     },
 });
 
-type AbaId = 'detalhes' | 'inventario' | 'caracteristicas' | 'tecnicas' | 'akuma' | 'recompensa';
-const abas: { id: AbaId; rotulo: string; icone: Component }[] = [
+type AbaId =
+    | 'detalhes'
+    | 'inventario'
+    | 'caracteristicas'
+    | 'tecnicas'
+    | 'akuma'
+    | 'haki'
+    | 'treinamentos'
+    | 'profissoes'
+    | 'individualidades'
+    | 'recompensa';
+const todasAsAbas: { id: AbaId; rotulo: string; icone: Component }[] = [
     { id: 'detalhes', rotulo: 'Detalhes', icone: Settings },
     { id: 'inventario', rotulo: 'Inventário', icone: Backpack },
     { id: 'caracteristicas', rotulo: 'Características', icone: ListChecks },
     { id: 'tecnicas', rotulo: 'Técnicas', icone: Flame },
     { id: 'akuma', rotulo: 'Akuma no Mi', icone: Apple },
+    { id: 'haki', rotulo: 'Haki', icone: Waves },
+    { id: 'profissoes', rotulo: 'Profissões', icone: Hammer },
+    { id: 'treinamentos', rotulo: 'Treinamentos', icone: GraduationCap },
+    { id: 'individualidades', rotulo: 'Singularidades', icone: Sparkles },
     { id: 'recompensa', rotulo: 'Recompensa', icone: Skull },
 ];
+/** A aba Haki só aparece ao jogador depois do despertar (8º nível ou liberada pelo mestre); o mestre a vê sempre. */
+const abas = computed(() =>
+    todasAsAbas.filter((a) => a.id !== 'haki' || abaDoHakiVisivel(props.ficha.haki, Number(props.ficha.nivel), props.mestre)),
+);
 const aba = ref<AbaId>('detalhes');
 const conteudo: Record<AbaId, Component> = {
     detalhes: AbaDetalhes,
@@ -119,6 +142,10 @@ const conteudo: Record<AbaId, Component> = {
     caracteristicas: AbaCaracteristicas,
     tecnicas: AbaTecnicas,
     akuma: AbaAkuma,
+    haki: AbaHaki,
+    profissoes: AbaProfissoes,
+    treinamentos: AbaTreinamentos,
+    individualidades: AbaIndividualidades,
     recompensa: AbaRecompensa,
 };
 </script>

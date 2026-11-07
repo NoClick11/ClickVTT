@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { clonar } from '../../../../nucleo/ficha/caminho';
 import CampoNumero from '../../../../nucleo/ui/CampoNumero.vue';
 import CampoTexto from '../../../../nucleo/ui/CampoTexto.vue';
 import LinhaRolavel from '../../../../nucleo/ui/LinhaRolavel.vue';
 import { estilos, useFicha } from '../../contexto';
+import { nomeDoOficio, temOficio } from '../../profissoes/regras';
 import { ATRIBUTOS, comSinal, PERICIAS, type AtributoId, type FichaOnePiece, type Proficiencia } from '../../regras';
 
 const props = defineProps<{ ficha: FichaOnePiece }>();
 const { editar, calc, salvar, d20, modoDe } = useFicha();
+/** O Ofício só aparece com uma profissão (ou no modo Editar) e leva o nome dela. */
+const periciasVisiveis = computed(() => PERICIAS.filter((p) => p.id !== 'oficio' || temOficio(props.ficha) || editar.value));
+const nomeDa = (p: { id: string; nome: string }) => (p.id === 'oficio' ? nomeDoOficio(props.ficha) : p.nome);
 
 const sigla = (a: AtributoId) => ATRIBUTOS.find((x) => x.id === a)!.sigla;
 const prof = (id: string) => (props.ficha.pericias[id] ?? 0) as Proficiencia;
@@ -79,12 +83,12 @@ const cartao = estilos.cartao;
                     >
                 </h3>
                 <ul class="p-1.5 text-sm">
-                    <li v-for="p in PERICIAS" :key="p.id">
+                    <li v-for="p in periciasVisiveis" :key="p.id">
                         <LinhaRolavel
-                            :rotulo="p.nome"
+                            :rotulo="nomeDa(p)"
                             :ativa="!editar"
                             :modo="modoDe(`pericia.${p.id}`)"
-                            @rolar="d20($event, `pericia.${p.id}`, p.nome)"
+                            @rolar="d20($event, `pericia.${p.id}`, nomeDa(p))"
                         >
                             <component
                                 :is="editar ? 'button' : 'span'"
@@ -92,19 +96,19 @@ const cartao = estilos.cartao;
                                 class="flex size-3.5 shrink-0 items-center justify-center rounded-full border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
                                 :class="[bolinha(prof(p.id)), editar ? 'cursor-pointer' : '']"
                                 :title="rotuloProf(prof(p.id))"
-                                :aria-label="`${p.nome}: ${rotuloProf(prof(p.id))}`"
+                                :aria-label="`${nomeDa(p)}: ${rotuloProf(prof(p.id))}`"
                                 @click="ciclarPericia(p.id)"
                             >
                                 <span v-if="prof(p.id) === 2" class="size-1.5 rounded-full bg-preto-950" />
                             </component>
                             <span class="w-8 shrink-0 text-[10px] font-semibold uppercase text-preto-500">{{ sigla(p.atributo) }}</span>
-                            <span class="min-w-0 flex-1 truncate" :class="prof(p.id) ? 'text-preto-100' : 'text-preto-300'">{{ p.nome }}</span>
+                            <span class="min-w-0 flex-1 truncate" :class="prof(p.id) ? 'text-preto-100' : 'text-preto-300'">{{ nomeDa(p) }}</span>
                             <CampoNumero
                                 v-if="editar"
                                 :model-value="ficha.ajustes?.pericias?.[p.id] ?? 0"
                                 :min="-20"
                                 :max="20"
-                                :aria-label="`Ajuste de ${p.nome}`"
+                                :aria-label="`Ajuste de ${nomeDa(p)}`"
                                 title="Ajuste manual"
                                 :class="estilos.ajuste"
                                 @salvar="salvar({ [`ajustes.pericias.${p.id}`]: $event })"

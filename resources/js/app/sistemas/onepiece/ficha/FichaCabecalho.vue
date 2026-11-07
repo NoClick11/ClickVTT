@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
-import { Coffee, Moon, Star, WandSparkles } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { ArrowUpCircle, Coffee, Moon, Star, WandSparkles } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 import type { PersonagemFicha } from '../../../nucleo/sistemas/tipos';
 import CampoNumero from '../../../nucleo/ui/CampoNumero.vue';
 import CampoTexto from '../../../nucleo/ui/CampoTexto.vue';
 import { estilos, useFicha } from '../contexto';
 import { camposDoDescanso, type FichaOnePiece, type TipoDescanso } from '../regras';
+import SubirDeNivel from './SubirDeNivel.vue';
 
 const props = defineProps<{ ficha: FichaOnePiece; personagem: PersonagemFicha }>();
 const emit = defineEmits<{ 'update:editar': [boolean]; construtor: [] }>();
 const { editar, calc, salvar } = useFicha();
 
+const subindo = ref(false);
 const xpPct = computed(() => Math.min(100, Math.round((props.ficha.xp.atual / calc.value['xp.proximo']) * 100)));
 
 /**
@@ -113,6 +115,16 @@ function descansar(tipo: TipoDescanso) {
                     ><WandSparkles class="size-4"
                 /></Button>
                 <Button
+                    v-if="ficha.estiloId && ficha.nivel < 20"
+                    size="icon"
+                    variant="outline"
+                    class="size-9 border-preto-700 text-preto-300 hover:text-ouro-200"
+                    title="Subir de nível: Habilidade Básica, AVA, PV, PP e técnicas do estilo"
+                    aria-label="Subir de nível"
+                    @click="subindo = true"
+                    ><ArrowUpCircle class="size-4"
+                /></Button>
+                <Button
                     size="icon"
                     variant="outline"
                     class="size-9 border-preto-700 text-preto-300 hover:text-ouro-200"
@@ -187,5 +199,6 @@ function descansar(tipo: TipoDescanso) {
                 >
             </div>
         </div>
+        <SubirDeNivel v-model:open="subindo" :ficha="ficha" />
     </header>
 </template>

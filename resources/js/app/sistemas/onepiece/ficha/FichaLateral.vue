@@ -268,6 +268,28 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                     :class="estilos.num"
                     @salvar="salvar({ 'pv.temp': $event })"
             /></label>
+            <label v-if="(calc['escudo.max'] ?? 0) > 0" class="mt-1 flex items-center justify-between gap-1 text-xs text-sky-300"
+                >Pontos de Escudo
+                <span class="flex items-center gap-1">
+                    <CampoNumero
+                        :model-value="ficha.pv.escudo ?? 0"
+                        :min="0"
+                        :max="calc['escudo.max']"
+                        aria-label="Pontos de Escudo"
+                        :class="estilos.num"
+                        @salvar="salvar({ 'pv.escudo': $event })"
+                    />
+                    <span class="text-preto-400">/ {{ calc['escudo.max'] }}</span>
+                    <button
+                        type="button"
+                        class="rounded border border-sky-400/50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-100 hover:bg-sky-500/20"
+                        title="Renova os Pontos de Escudo (10 minutos fora de combate; também renovam ao fim do encontro)"
+                        @click="salvar({ 'pv.escudo': calc['escudo.max'] })"
+                    >
+                        Renovar
+                    </button>
+                </span>
+            </label>
         </section>
 
         <!-- ataques (como no Foundry): a linha inteira da arma é o botão que rola o ataque; o dano vem depois, pelos botões do
