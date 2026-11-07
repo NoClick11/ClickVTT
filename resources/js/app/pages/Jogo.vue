@@ -821,11 +821,13 @@ async function escolherAreaDaFicha(personagemId: number, area: AreaDeEfeito): Pr
 
 /**
  * Usar uma Técnica (a ficha só monta o pedido; tudo roda aqui, então fechar a janela da ficha no meio não perde nada):
+ * 0. fecha a janela da ficha (o mapa fica livre);
  * 1. com área, marca-a no mapa antes de qualquer custo (o mais perto vira o alvo mirado);
  * 2. gasta a ação e os PP;
  * 3. ataque: rola 1d20+ataque no alvo (o card oferece o dano); Salvaguarda: abre o card coletivo; senão rola o dano.
  */
 async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
+    fecharFicha(personagemId); // a ficha sai da frente: o jogador mira e acompanha o resultado no mapa e no chat
     try {
         let alvos: number[] | null = null;
         if (uso.area) {
