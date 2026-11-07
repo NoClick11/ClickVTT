@@ -4,11 +4,14 @@ import { clonar } from '../../../../nucleo/ficha/caminho';
 import CampoNumero from '../../../../nucleo/ui/CampoNumero.vue';
 import CampoTexto from '../../../../nucleo/ui/CampoTexto.vue';
 import { estilos, useFicha } from '../../contexto';
+import { alcanceComKokuto, USOS_DA_SAIJO } from '../../itens/forja';
 import {
     camposDoGastoDePP,
     comDadosDaMeito as comDadosExtras,
     dadosExtrasDeMeito,
     expandirRolagem,
+    kokutoEquipada,
+    saijoEquipada,
     type FichaOnePiece,
     type Tecnica,
 } from '../../regras';
