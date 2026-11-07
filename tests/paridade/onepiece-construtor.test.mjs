@@ -424,6 +424,7 @@ test('Atirador: PV d8, salvaguardas DES e SAB, 3 perícias, atributo primário e
     const { campos } = camposDaCriacao(e);
     assert.equal(campos['dadosVida.tipo'], 'd8');
     assert.equal(campos.atributoPrimario, 'des');
+    assert.equal(campos['tecnicas.atributo'], 'des'); // CD e ataque das técnicas pelo atributo principal
     assert.ok(['des', 'sab'].every((s) => campos.salvaguardas.includes(s)));
     for (const p of ['acrobacia', 'percepcao', 'sorte']) assert.ok(campos[`pericias.${p}`] >= 1);
     assert.deepEqual(campos.habilidadesBasicas, [{ id: 'mira-treinada', nivel: 1, opcao: 'inata' }]);

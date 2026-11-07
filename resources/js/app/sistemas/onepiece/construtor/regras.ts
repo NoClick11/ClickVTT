@@ -776,6 +776,8 @@ export function camposDaCriacao(
         ...(estilo
             ? {
                   atributoPrimario: atributoPrimarioDe(estilo, e.estilo.primario) ?? estilo.atributosPrimarios[0],
+                  // a CD e o ataque das técnicas usam o atributo principal do estilo
+                  'tecnicas.atributo': atributoPrimarioDe(estilo, e.estilo.primario) ?? estilo.atributosPrimarios[0],
                   estiloId: estilo.id,
                   estiloCaminho: e.estilo.caminho ?? '',
                   proficienciasArmas: [...new Set([...(atual.proficienciasArmas ?? []), ...estilo.proficiencias])],
