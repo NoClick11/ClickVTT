@@ -1,0 +1,315 @@
+{
+  "categorias": [
+    {
+      "id": "s",
+      "nome": "Categoria S",
+      "atributo": 20
+    },
+    {
+      "id": "a",
+      "nome": "Categoria A",
+      "atributo": 19
+    },
+    {
+      "id": "b",
+      "nome": "Categoria B",
+      "atributo": 18
+    },
+    {
+      "id": "c",
+      "nome": "Categoria C",
+      "atributo": 17
+    }
+  ],
+  "propriedades": [
+    {
+      "id": "corporal",
+      "nome": "Corporal",
+      "atributos": [
+        "for",
+        "con"
+      ]
+    },
+    {
+      "id": "criacao",
+      "nome": "Criação",
+      "atributos": [
+        "pre",
+        "sab"
+      ]
+    },
+    {
+      "id": "espaco-temporal",
+      "nome": "Espaço-Temporal",
+      "atributos": [
+        "sab",
+        "des"
+      ]
+    },
+    {
+      "id": "extracorporal",
+      "nome": "Extracorporal",
+      "atributos": [
+        "von",
+        "pre"
+      ]
+    },
+    {
+      "id": "manipulacao",
+      "nome": "Manipulação",
+      "atributos": [
+        "des",
+        "von"
+      ]
+    },
+    {
+      "id": "transformacao",
+      "nome": "Transformação",
+      "atributos": [
+        "con",
+        "for"
+      ]
+    }
+  ],
+  "despertares": [
+    "aprimorador",
+    "transmutador",
+    "holista"
+  ],
+  "mpEspeciais": [
+    {
+      "id": "arauto-do-desastre",
+      "restricao": "logia"
+    },
+    {
+      "id": "dano-extremo",
+      "restricao": "logia"
+    },
+    {
+      "id": "dano-implacavel",
+      "restricao": "categoria"
+    },
+    {
+      "id": "destruidor",
+      "restricao": "categoria"
+    },
+    {
+      "id": "invulnerabilidade-parcial",
+      "restricao": ""
+    },
+    {
+      "id": "potencializador-ofensivo",
+      "restricao": ""
+    },
+    {
+      "id": "habilidade-refinada",
+      "restricao": ""
+    },
+    {
+      "id": "potencializacao-elemental",
+      "restricao": "logia-ou-desperto"
+    },
+    {
+      "id": "orbes",
+      "restricao": ""
+    }
+  ],
+  "comuns": [
+    "andar-no-gelo",
+    "audicao-agucada",
+    "camuflagem",
+    "corpo-minusculo",
+    "couro-farpado",
+    "cuspir-veneno",
+    "deslocamento-animal",
+    "ecolocalizacao",
+    "escalada-aracnidea",
+    "escalador",
+    "escavador",
+    "especialidade-animal",
+    "faro-agucado",
+    "habilidade-animal",
+    "inflar",
+    "luz-propria",
+    "multiplos-membros",
+    "pele-escorregadia",
+    "percepcao-as-cegas",
+    "prender-a-respiracao",
+    "soltar-tinta",
+    "visao-agucada",
+    "visao-noturna",
+    "voo"
+  ],
+  "especificos": [
+    "ataque-de-mergulho",
+    "planar",
+    "sobrevoo",
+    "agarrar-com-a-cauda",
+    "bote",
+    "postura-animal",
+    "cabeca-dura",
+    "corpo-inerte",
+    "duro-de-matar",
+    "poder-de-tracao",
+    "casco-protetor",
+    "chifre-garra",
+    "regeneracao",
+    "corpo-resistente",
+    "sanguinario",
+    "saude-animal",
+    "surto-de-adrenalina",
+    "resistencia-animal"
+  ],
+  "ancestrais": [
+    "animal-grande",
+    "criatura-robusta",
+    "investida-atropeladora",
+    "monstro-de-cerco",
+    "pele-resistente",
+    "recuperacao-acelerada"
+  ],
+  "repetiveis": {
+    "especialidade-animal": 2,
+    "corpo-resistente": 2
+  },
+  "modelos": [
+    {
+      "id": "arm-point",
+      "grau": 1
+    },
+    {
+      "id": "brain-point",
+      "grau": 4
+    },
+    {
+      "id": "claw-point",
+      "grau": 5
+    },
+    {
+      "id": "guard-point",
+      "grau": 2
+    },
+    {
+      "id": "heavy-point",
+      "grau": null
+    },
+    {
+      "id": "horn-point",
+      "grau": 4
+    },
+    {
+      "id": "jump-point",
+      "grau": 1
+    },
+    {
+      "id": "kung-fu-point",
+      "grau": null
+    },
+    {
+      "id": "light-point",
+      "grau": null
+    },
+    {
+      "id": "poison-point",
+      "grau": 3
+    },
+    {
+      "id": "scale-point",
+      "grau": 4
+    },
+    {
+      "id": "tail-point",
+      "grau": 3
+    },
+    {
+      "id": "wing-point",
+      "grau": 2
+    }
+  ],
+  "limitesDeTracos": {
+    "comum-geral-normal": {
+      "comuns": 3,
+      "especificos": 5,
+      "ancestrais": 0,
+      "extra": 0,
+      "troca": 0
+    },
+    "comum-geral-desperto": {
+      "comuns": 3,
+      "especificos": 5,
+      "ancestrais": 0,
+      "extra": 0,
+      "troca": 0
+    },
+    "comum-predador-normal": {
+      "comuns": 3,
+      "especificos": 3,
+      "ancestrais": 0,
+      "extra": 0,
+      "troca": 0
+    },
+    "comum-predador-desperto": {
+      "comuns": 3,
+      "especificos": 3,
+      "ancestrais": 0,
+      "extra": 0,
+      "troca": 0
+    },
+    "ancestral-geral-normal": {
+      "comuns": 3,
+      "especificos": 5,
+      "ancestrais": 1,
+      "extra": 0,
+      "troca": 3
+    },
+    "ancestral-geral-desperto": {
+      "comuns": 3,
+      "especificos": 5,
+      "ancestrais": 1,
+      "extra": 0,
+      "troca": 3
+    },
+    "ancestral-predador-normal": {
+      "comuns": 3,
+      "especificos": 3,
+      "ancestrais": 1,
+      "extra": 0,
+      "troca": 3
+    },
+    "ancestral-predador-desperto": {
+      "comuns": 3,
+      "especificos": 3,
+      "ancestrais": 1,
+      "extra": 0,
+      "troca": 3
+    },
+    "mitica-geral-normal": {
+      "comuns": 2,
+      "especificos": 2,
+      "ancestrais": 1,
+      "extra": 0,
+      "troca": 0
+    },
+    "mitica-geral-desperto": {
+      "comuns": 2,
+      "especificos": 2,
+      "ancestrais": 1,
+      "extra": 1,
+      "troca": 0
+    },
+    "mitica-predador-normal": {
+      "comuns": 2,
+      "especificos": 2,
+      "ancestrais": 1,
+      "extra": 0,
+      "troca": 0
+    },
+    "mitica-predador-desperto": {
+      "comuns": 2,
+      "especificos": 2,
+      "ancestrais": 1,
+      "extra": 1,
+      "troca": 0
+    }
+  }
+}
