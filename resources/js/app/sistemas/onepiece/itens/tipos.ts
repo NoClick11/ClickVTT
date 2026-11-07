@@ -107,6 +107,8 @@ export interface DadosDeArmaDoCatalogo {
     cone?: number;
     /** Efeito ao obter um acerto crítico natural (só com proficiência na arma). */
     expertise?: string;
+    /** A mesma expertise como dado estruturado (`forja.ts`): o card do crítico rola o dano extra dela. */
+    expertiseId?: string;
     /** Marcial: dano = dano desarmado + 1 passo. */
     marcial?: boolean;
     /** Dano segundo a munição usada. */

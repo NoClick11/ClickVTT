@@ -1,0 +1,191 @@
+{
+  "meito": [
+    {
+      "id": "wazamono",
+      "nome": "Wazamono",
+      "pf": 2,
+      "danoMinimo": "1d6",
+      "bonusAtaque": 0,
+      "margem": 20,
+      "dadosDeTecnica": 1,
+      "texto": "Causa no mínimo 1d6 de dano Cortante. Ao executar uma Técnica que tenha arma(s) cortante(s) como requisito, +1 dado adicional (dobrado em críticos), que só ajuda a Técnica a alcançar o máximo de dano possível."
+    },
+    {
+      "id": "ryo-wazamono",
+      "nome": "Ryo Wazamono",
+      "pf": 4,
+      "danoMinimo": "1d8",
+      "bonusAtaque": 1,
+      "margem": 20,
+      "dadosDeTecnica": 2,
+      "texto": "Causa no mínimo 1d8 de dano Cortante; +1 nas jogadas de acerto (comum) corpo a corpo (prevalece o maior entre armas similares); +2 dados adicionais nas Técnicas com arma cortante como requisito (dobrados em críticos; só ajudam a alcançar o máximo da Técnica)."
+    },
+    {
+      "id": "o-wazamono",
+      "nome": "Ô Wazamono",
+      "pf": 6,
+      "danoMinimo": "1d10",
+      "bonusAtaque": 2,
+      "margem": 19,
+      "dadosDeTecnica": 3,
+      "texto": "Causa no mínimo 1d10 de dano Cortante; +2 nos acertos (comum) corpo a corpo (prevalece o maior); margem de acerto crítico 19-20 nos ataques corpo a corpo; +3 dados adicionais nas Técnicas com arma cortante como requisito (dobrados em críticos; só ajudam a alcançar o máximo da Técnica)."
+    },
+    {
+      "id": "saijo-o-wazamono",
+      "nome": "Saijo Ô Wazamono",
+      "pf": 10,
+      "danoMinimo": "1d12",
+      "bonusAtaque": 3,
+      "margem": 18,
+      "dadosDeTecnica": 4,
+      "texto": "Causa no mínimo 1d12 de dano Cortante; +3 nos acertos (comum) corpo a corpo (prevalece o maior); margem de crítico 18-20; ao executar uma Técnica com arma cortante como requisito, role a jogada de dano duas vezes e fique com a maior (até 3 vezes, recuperadas em um descanso longo); +4 dados adicionais nas Técnicas (dobrados em críticos; só ajudam a alcançar o máximo da Técnica)."
+    }
+  ],
+  "yoto": [
+    {
+      "id": "ataque-amaldicoado",
+      "nome": "Ataque Amaldiçoado",
+      "texto": "Uma vez por dia, ao fazer uma jogada de ataque (comum) corpo a corpo com esta arma, o Narrador pode considerar o ataque como um erro crítico."
+    },
+    {
+      "id": "aura-amaldicoada",
+      "nome": "Aura Amaldiçoada",
+      "texto": "A aura ameaçadora alerta as criaturas: a primeira jogada de ataque (comum) contra uma criatura, dentro de um encontro, é feita com desvantagem."
+    },
+    {
+      "id": "azar-mortal",
+      "nome": "Azar Mortal",
+      "texto": "Uma vez por dia, ao receber uma jogada de ataque (comum) enquanto empunha ou carrega esta arma, o Narrador pode considerar o ataque como um acerto crítico."
+    },
+    {
+      "id": "devoradora-espiritual",
+      "nome": "Devoradora Espiritual",
+      "texto": "Apenas um usuário de Haki do Armamento no \"Estágio Perito\" consegue atacar com esta arma sem ter a vitalidade absorvida e sem evitar que o ataque aconteça."
+    },
+    {
+      "id": "sede-de-sangue",
+      "nome": "Sede de Sangue",
+      "texto": "Ao causar dano em uma criatura com esta espada, você não pode escolher não matá-la. Se tirar a arma da bainha sem deixar sangue fresco banhar a lâmina, você recebe 1d12 de dano Psíquico."
+    }
+  ],
+  "expertises": [
+    {
+      "id": "sangramento",
+      "texto": "A criatura atingida recebe a condição \"Sangramento\"."
+    },
+    {
+      "id": "proxima-falha",
+      "texto": "A próxima jogada de ataque (comum) feita contra você, até o final do seu próximo turno, falha."
+    },
+    {
+      "id": "cr-mais-2",
+      "texto": "Você recebe +2 na Classe de Resistência, até o início do seu próximo turno."
+    },
+    {
+      "id": "maximizar",
+      "texto": "Os dados de dano da arma são maximizados.",
+      "maximizar": true
+    },
+    {
+      "id": "empoderado",
+      "texto": "Você recebe a condição \"Empoderado\", até o final do seu próximo turno."
+    },
+    {
+      "id": "area-cortante",
+      "texto": "Você causa 1d6 de dano Cortante em todas as criaturas a até 3 metros de você.",
+      "dados": "1d6",
+      "tipoDano": "Cortante"
+    },
+    {
+      "id": "critico-16",
+      "texto": "Sua próxima jogada de ataque (comum), até o final do seu próximo turno, tem margem de acerto crítico 16-20."
+    },
+    {
+      "id": "salvaguarda-des",
+      "texto": "A próxima Salvaguarda de Destreza recebe sucesso automático, até o fim do encontro de combate."
+    },
+    {
+      "id": "pv-temporarios",
+      "texto": "Você recebe 20 Pontos de Vida temporários, que duram até o início do seu próximo turno."
+    },
+    {
+      "id": "acerto-mais-3",
+      "texto": "A sua próxima jogada de ataque (comum ou Técnicas), até o final do seu próximo turno, recebe +3 de acerto."
+    },
+    {
+      "id": "caido",
+      "texto": "A criatura atingida recebe a condição \"Caído\"."
+    },
+    {
+      "id": "empurrar-ou-1d8",
+      "texto": "Ao final do cálculo de dano, empurre a criatura por 6 metros ou adicione 1d8 de dano Contundente adicional.",
+      "dados": "1d8",
+      "tipoDano": "Contundente"
+    },
+    {
+      "id": "contundente-1d12",
+      "texto": "Ao final do cálculo de dano, adicione 1d12 de dano Contundente.",
+      "dados": "1d12",
+      "tipoDano": "Contundente"
+    },
+    {
+      "id": "deslocamento-6",
+      "texto": "Você recebe +6 metros de deslocamento, até o fim do seu próximo turno."
+    },
+    {
+      "id": "dois-ataques",
+      "texto": "Caso tenha errado uma ou mais jogadas de ataque (comum ou Técnicas) no turno atual, você recebe 2 jogadas de ataque (comum) adicionais que causam apenas o dano da arma/munição."
+    },
+    {
+      "id": "enfurecido",
+      "texto": "A criatura atingida recebe a condição \"Enfurecido\", até o final do próximo turno da criatura."
+    },
+    {
+      "id": "incapacitado",
+      "texto": "A criatura atingida recebe a condição \"Incapacitado\", até o final do próximo turno da criatura."
+    },
+    {
+      "id": "puxar-ou-1d8",
+      "texto": "Ao final do cálculo de dano, puxe a criatura para 1,5 metro de você ou adicione 1d8 de dano adicional.",
+      "dados": "1d8"
+    },
+    {
+      "id": "metade-da-cr",
+      "texto": "Ao final do cálculo de dano, adicione pontos de dano extra em um valor igual à metade da CR do alvo."
+    },
+    {
+      "id": "deslocamento-metade",
+      "texto": "A criatura atingida tem seu deslocamento reduzido pela metade, até o final do próximo turno dela."
+    },
+    {
+      "id": "impedido",
+      "texto": "A criatura atingida recebe a condição \"Impedido\", até o final do próximo turno da criatura."
+    }
+  ],
+  "custo": {
+    "expertise": 1,
+    "supremacia": 2,
+    "densidade": 1,
+    "dureza": 1,
+    "balanco": 2,
+    "fio": 2
+  },
+  "maxExpertises": 2,
+  "tiposFisicos": [
+    "contundente",
+    "cortante",
+    "perfurante"
+  ],
+  "passosDoFio": [
+    "1",
+    "1d4",
+    "1d6",
+    "1d8",
+    "1d10",
+    "1d12",
+    "2d6",
+    "3d6"
+  ],
+  "maxFio": 7,
+  "kokuto": "Espada Kokuto (lâmina negra, extremamente rara mesmo entre as Meito): em Técnicas com arma cortante como requisito, criaturas na área que façam Salvaguarda para sofrer metade ou todo o dano têm desvantagem nela; alcance em Linha: mínimo 15 m (ou +9 m se já tiver 15 m ou mais); em Cone: mínimo 9 m (ou +6 m se já tiver 9 m ou mais); em Esfera ou Cilindro: mínimo 6 m (ou +3 m se já tiver 6 m ou mais)."
+}
