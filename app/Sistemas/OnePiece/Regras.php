@@ -59,6 +59,32 @@ final class Regras
         };
     }
 
+    /** A característica vale neste nível? Sem `nivelMin`/`nivelMax` vale sempre. */
+    public static function ativaNoNivel(array $c, int $nivel): bool
+    {
+        return $nivel >= (int) ($c['nivelMin'] ?? 1) && $nivel <= (int) ($c['nivelMax'] ?? 99);
+    }
+
+    /** Os tamanhos de dado, em ordem, para o "aumento em um passo" (1d4 → 1d6 → 1d8 → 1d10 → 1d12). */
+    public const DEGRAUS = [4, 6, 8, 10, 12];
+
+    /**
+     * Sobe os dados da expressão `$passos` degraus (`1d8` + 1 → `1d10`; no 1d12 para). Só os dados `NdM` mudam; números e
+     * variáveis ficam. Espelha `degrau` em `regras.ts`.
+     */
+    public static function degrau(string $expressao, int $passos): string
+    {
+        if ($passos <= 0) {
+            return $expressao;
+        }
+
+        return (string) preg_replace_callback('/(\d+)d(\d+)/i', function (array $m) use ($passos) {
+            $i = array_search((int) $m[2], self::DEGRAUS, true);
+
+            return $i === false ? $m[0] : $m[1].'d'.self::DEGRAUS[min(count(self::DEGRAUS) - 1, $i + $passos)];
+        }, $expressao);
+    }
+
     /**
      * Efeitos ativos da ficha: itens (na ordem do inventário), características (ativas ou passivas, na ordem salva),
      * condições, depois os ajustes manuais (soma).
@@ -79,8 +105,12 @@ final class Regras
             }
         }
 
-        // Características com buffs: a passiva sempre vale; a ativa, só ligada (ex.: Fúria, Aura de Proteção)
+        // Características com buffs: a passiva sempre vale; a ativa, só ligada (ex.: Fúria, Aura de Proteção).
+        // Uma característica de nível (`nivelMin`/`nivelMax`, ex.: as faixas das Habilidades Básicas) só vale dentro da faixa.
         foreach ($f['caracteristicas'] ?? [] as $c) {
+            if (! self::ativaNoNivel($c, (int) ($f['nivel'] ?? 1))) {
+                continue;
+            }
             $vale = ($c['tipo'] ?? 'passiva') === 'passiva' || ($c['ativa'] ?? false) === true;
             if ($vale && ! empty($c['efeitos'])) {
                 array_push($efeitos, ...Efeitos::deFonte((string) ($c['nome'] ?? 'Característica'), $c['efeitos']));
@@ -147,8 +177,11 @@ final class Regras
         foreach (FichaOnePiece::ATRIBUTOS as $a) {
             $base["teste.{$a}"] = $mod[$a];
         }
+        // Haki Treinado (21+ PA distribuídos) dá proficiência na perícia Haki
+        $estagioHaki = Haki::estagio($f);
         foreach (FichaOnePiece::PERICIAS as $p => $atributo) {
-            $base["pericia.{$p}"] = $mod[$atributo] + ($f['pericias'][$p] ?? 0) * $prof;
+            $nivelProf = $p === 'haki' && $estagioHaki >= 2 ? max(1, $f['pericias'][$p] ?? 0) : ($f['pericias'][$p] ?? 0);
+            $base["pericia.{$p}"] = $mod[$atributo] + $nivelProf * $prof;
         }
         $conjuracao = $mod[$f['tecnicas']['atributo']];
         $base['iniciativa'] = $mod['des'];
@@ -160,12 +193,22 @@ final class Regras
         $base['carga.max'] = 15 * $r['atributos.for'];
         $base['pv.max'] = $f['pv']['max'] ?? 0;
         $base['pp.max'] = $nivel * ($f['pp']['porNivel'] ?? 4);
+        // Pontos de Escudo (Endurecimento Defensivo): o máximo vem dos efeitos; sem o talento é 0
+        $base['escudo.max'] = 0;
         // Alcance corpo a corpo e deslocamentos em decímetros (15 = 1,5 m): efeitos e fórmulas só trabalham com inteiros.
         $base['alcance.corpo'] = 15;
         foreach (['normal', 'nado', 'escalada', 'voo'] as $tipo) {
             $base["movimento.{$tipo}"] = (int) round(($f['movimento'][$tipo] ?? 0) * 10);
         }
         $base['dano.distancia.pct'] = 100;
+        // Passos de dado (Mira Treinada, Força Magnífica, Perito em Técnicas...), margem de crítico por tipo de arma e ataque desarmado
+        foreach (['corpo', 'distancia', 'desarmado', 'tecnica'] as $p) {
+            $base["passo.{$p}"] = 0;
+        }
+        $base['margem.corpo'] = 20;
+        $base['margem.distancia'] = 20;
+        $base['ataque.desarmado'] = $prof + $mod['for'];
+        $base['dano.desarmado'] = $mod['for'];
 
         // Fase 3: efeitos sobre os valores-base (as fórmulas veem a fase 2)
         $variaveis = $r + $base;
@@ -196,7 +239,8 @@ final class Regras
                 $id = (int) $ref['item_id'];
                 $r["arma.{$id}.ataque"] = $mAtaque + (($arma['proficiente'] ?? false) ? $prof : 0) + $bonusAtaque + $r['ataque.arma'];
                 $r["arma.{$id}.dano"] = $mDano + $bonusDano + $r['dano.arma'];
-                $r["arma.{$id}.margem"] = $arma['margemCritica'] ?? 20; // d20 puro igual ou maior que isto é crítico
+                // d20 puro igual ou maior que isto é crítico: a margem da arma ou a do tipo (Crítico Marcial: 19), a menor
+                $r["arma.{$id}.margem"] = min($arma['margemCritica'] ?? 20, $r[($arma['distancia'] ?? false) ? 'margem.distancia' : 'margem.corpo']);
             }
         }
 
@@ -287,7 +331,7 @@ final class Regras
             }
         }
 
-        $dados = self::dadosDeDano($ficha, $itens, $arma);
+        $dados = self::dadosDeDano($ficha, $itens, $arma, $variaveis);
         if ($dados !== [] && isset($variaveis["arma.{$arma}.dano"]) && ($meta['destaque'] ?? null) !== 'falha') {
             $nome = (string) ($itens[$arma]['nome'] ?? 'Arma');
             $bonus = $variaveis["arma.{$arma}.dano"];
@@ -326,14 +370,16 @@ final class Regras
      * @param  array<int, array>  $itens
      * @return list<string>
      */
-    public static function dadosDeDano(array $f, array $itens, int $itemId): array
+    public static function dadosDeDano(array $f, array $itens, int $itemId, array $variaveis = []): array
     {
         $arma = $itens[$itemId]['dados']['arma'] ?? null;
         if (! is_array($arma) || ! is_string($arma['dano'] ?? null)) {
             return [];
         }
 
-        $dados = [$arma['dano']];
+        // O dado da arma sobe os degraus do tipo dela (corpo a corpo ou à distância); os extras não
+        $passos = (int) ($variaveis[($arma['distancia'] ?? false) ? 'passo.distancia' : 'passo.corpo'] ?? 0);
+        $dados = [self::degrau($arma['dano'], $passos)];
         foreach ($arma['danoExtra'] ?? [] as $extra) {
             if (Efeitos::dadosValidos($extra['dados'] ?? null)) {
                 $dados[] = $extra['dados'];

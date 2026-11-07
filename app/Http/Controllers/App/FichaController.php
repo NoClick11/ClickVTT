@@ -49,6 +49,10 @@ class FichaController extends Controller
             $p = Personagem::query()->whereKey($personagem->id)->lockForUpdate()->firstOrFail();
             if ($campos !== []) {
                 $nova = $fichas->aplicar($sistema, $p->ficha, $campos);
+                // O sistema pode ter campos só do mestre (Haki: liberar, dar PA) e compras a conferir
+                if (method_exists($sistema, 'conferirFicha')) {
+                    $sistema->conferirFicha($p->ficha ?? $sistema->fichaPadrao(), $nova, $acesso->ehMestre());
+                }
                 $this->conferirItensNovos($mesa, $sistema->itensReferenciados($p->ficha ?? $sistema->fichaPadrao()), $sistema->itensReferenciados($nova), $acesso->ehMestre());
                 $p->ficha = $nova;
             }

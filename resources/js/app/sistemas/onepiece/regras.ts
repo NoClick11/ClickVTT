@@ -16,7 +16,14 @@ import {
     type Origem,
     type Rolagem,
 } from '../../nucleo/efeitos/efeitos.ts';
+import { avaliar } from '../../nucleo/efeitos/formula.ts';
+import type { AkumaFicha } from './akuma/regras.ts';
 import { condicaoPorId } from './condicoes.ts';
+import type { EscolhasDaTecnica } from './criador/regras.ts';
+import { estagio as estagioDoHaki, type HakiFicha } from './haki/calculo.ts';
+import type { IndividualidadesFicha } from './individualidades/regras.ts';
+import type { ProfissoesFicha } from './profissoes/regras.ts';
+import type { TreinamentoFicha } from './treinamentos/regras.ts';
 
 export type AtributoId = 'for' | 'des' | 'con' | 'sab' | 'pre' | 'von';
 
@@ -49,7 +56,12 @@ export const PERICIAS: { id: string; nome: string; atributo: AtributoId }[] = [
     { id: 'percepcao', nome: 'Percepção', atributo: 'von' },
     { id: 'sobrenatural', nome: 'Sobrenatural', atributo: 'von' },
     { id: 'sorte', nome: 'Sorte', atributo: 'von' },
+    /** A perícia da Profissão (cap. 4): vem treinada com a profissão e soma a proficiência em Testes de QUALQUER atributo ligados a ela. */
+    { id: 'oficio', nome: 'Ofício', atributo: 'sab' },
 ];
+
+/** As perícias que se escolhem livremente (Foco, antecedente, estilo...): o Ofício só vem da Profissão. */
+export const PERICIAS_ESCOLHIVEIS = PERICIAS.filter((p) => p.id !== 'oficio');
 
 /** 0 = sem proficiência, 1 = proficiente, 2 = especialista. */
 export type Proficiencia = 0 | 1 | 2;
@@ -133,7 +145,10 @@ export type ItensPorId = Record<number, ItemParaCalculo>;
 export interface ReacaoDeCombate {
     gatilho: 'ataque_declarado';
     alcance: 'si' | 'aliado' | 'ambos';
-    defesa?: number;
+    /** Bônus na defesa de quem foi atacado: número ou fórmula da ficha de quem reage (`@prof-floor(@prof/2)`). */
+    defesa?: number | string;
+    /** Categoria que a reação gasta (padrão: reação; Aparar Aprimorado gasta livre). */
+    categoria?: CategoriaDeAcao;
     /** Valor ou dados (`1d8`) curados em quem foi atacado. */
     cura?: string;
 }
@@ -142,7 +157,21 @@ export interface AcaoCaracteristica {
     rotulo: string;
     /** Categoria de ação que o botão gasta no combate (nenhuma = não gasta). */
     acao?: CategoriaDeAcao;
-    tipo: 'condicao' | 'hospedar' | 'dadoExtra';
+    tipo: 'condicao' | 'hospedar' | 'dadoExtra' | 'recuperar' | 'rolar' | 'deslocar' | 'gastar' | 'socorrer';
+    /** `recuperar`: o recurso que a rolagem devolve. */
+    recurso?: 'pp' | 'pv';
+    /** `recuperar` e `rolar`: a expressão (pode usar `@variaveis`, ex.: `1d8+@prof`). */
+    rolagem?: string;
+    /** `deslocar`: quantas vezes o deslocamento do turno é somado ao turno (2 = recuar o dobro). */
+    fator?: number;
+    /** O botão gasta 1 uso da característica. */
+    usa?: boolean;
+    /** `rolar`/`recuperar`: sobe os dados desta rolagem pelos passos do alvo `passo.<x>` (ex.: `desarmado`). */
+    passo?: 'corpo' | 'distancia' | 'desarmado' | 'tecnica';
+    /** `socorrer`: só encerra as condições (sem cura nem PV temporários); vale quantas vezes quiser. */
+    soCondicoes?: boolean;
+    /** `rolar`: efeito cujo vantagem vale para esta rolagem (ex.: `concentracao`). */
+    vantagemAlvo?: string;
     alvo?: 'proprio' | 'mirado';
     condicao?: string;
     /** Salvaguarda do alvo (atributo e CD) contra a condição. */
@@ -157,13 +186,24 @@ export interface Caracteristica {
     origem: string;
     tipo: 'ativa' | 'passiva';
     /** `porProf`: o máximo acompanha o bônus de proficiência (ver `usosMax`); `max` guarda o último valor calculado. */
-    usos?: { atual: number; max: number; porProf?: boolean; porNivel?: boolean };
+    usos?: {
+        atual: number;
+        max: number;
+        porProf?: boolean;
+        porNivel?: boolean;
+        /** Máximo por fórmula (`2*@nivel`, `1+floor(@nivel/2)`): vale a cada nível. */ formula?: string;
+    };
     /** Texto da característica (regras, restrições). */
     descricao?: string;
     /** Quem criou: o assistente de criação marca `especie`/`variacao`, para refazer o passo sem duplicar. */
-    builder?: 'especie' | 'variacao';
+    builder?: 'especie' | 'variacao' | 'estilo' | 'maestria' | 'haki' | 'treinamento' | 'antecedente' | 'profissao' | 'akuma' | 'individualidade';
     /** Categoria de ação que ligar/usar a característica gasta no combate (nenhuma = não gasta). */
     acao?: CategoriaDeAcao;
+    /** Faixa de nível em que a característica vale (as Habilidades Básicas mudam com o nível). */
+    nivelMin?: number;
+    nivelMax?: number;
+    /** De qual Habilidade Básica ela vem (id do catálogo). */
+    hb?: string;
     /** Reação a um ataque (a característica com usos gasta um). */
     reacao?: ReacaoDeCombate;
     /** Etiquetas de combate mostradas na ficha (ex.: "Alcança alvos Enormes"). */
@@ -206,7 +246,9 @@ export interface Tecnica {
     /** Reação: usada quando alguém é atacado (fora do turno), a si ou a um aliado. */
     reacao?: ReacaoDeCombate;
     /** Quem criou: o assistente de criação marca `especie`, para refazer o passo sem duplicar. */
-    builder?: 'especie';
+    builder?: 'especie' | 'estilo' | 'maestria' | 'treinamento' | 'criador' | 'akuma';
+    /** Escolhas do Criador de Técnicas (o servidor refaz o custo e os limites a partir delas). */
+    criador?: EscolhasDaTecnica;
 }
 
 /** Tipo da Akuma no Mi ('' = sem fruta definida). */
@@ -248,6 +290,23 @@ export interface FichaOnePiece {
     movimento: { normal: number; nado: number; escalada: number; voo: number };
     /** Traços de Ancestralidade (Zoan) em texto livre, até o catálogo existir. */
     ancestralidade: string;
+    /** Primeiros Socorros: esta criatura já recebeu o tratamento (volta no descanso longo). */
+    socorrido: boolean;
+    /** Atributo primário do estilo de combate (Defesa Aprimorada, Defesa Ofensiva...). */
+    atributoPrimario: AtributoId;
+    /** Haki (cap. 7): PA, tipos liberados, Haki Principal e os talentos comprados. */
+    haki: HakiFicha;
+    /** Treinamentos (cap. 5.7): PT, pedidos em andamento e os aprendidos. */
+    treinamento: TreinamentoFicha;
+    /** Profissões (cap. 4): a do 1º nível, graduações e os avanços já usados. */
+    profissoes: ProfissoesFicha;
+    individualidades: IndividualidadesFicha;
+    maestria: string;
+    tracosDeMaestria: { id: string; nivel: number }[];
+    estiloId: string;
+    estiloCaminho: string;
+    /** Habilidades Básicas escolhidas (id, nível em que vieram e a opção, no Quebrador de Regras). */
+    habilidadesBasicas: { id: string; nivel: number; opcao?: string }[];
     /** Anão com Hóspede Feérico: id do personagem em cujo espaço ele está. */
     hospedado: number | null;
     /** Recompensa pela cabeça do personagem, em Belly. */
@@ -258,7 +317,7 @@ export interface FichaOnePiece {
     salvaguardas: AtributoId[];
     pericias: Partial<Record<string, Proficiencia>>;
     deslocamento: string;
-    pv: { atual: number; max: number; temp: number };
+    pv: { atual: number; max: number; temp: number; escudo?: number };
     /** Pontos de poder: o recurso das técnicas. O máximo é `nivel × porNivel` (mais efeitos); volta no descanso longo. */
     pp: { atual: number; porNivel: number };
     dadosVida: { restantes: number; tipo: string };
@@ -278,7 +337,7 @@ export interface FichaOnePiece {
     duracoes?: Record<string, { turnos: number; aoDano: boolean }>;
     caracteristicas: Caracteristica[];
     /** A Akuma no Mi: tipo, despertar e os poderes da fruta (mesmo formato das técnicas, gastam os mesmos PP). O nome é `fruta`. */
-    akuma: { tipo: TipoAkuma; despertada: boolean; lista: Tecnica[] };
+    akuma: AkumaFicha;
     /** Técnicas do personagem; `atributo` é o que define a CD e o ataque delas. */
     tecnicas: { atributo: AtributoId; lista: Tecnica[] };
     ajustes: Ajustes;
@@ -296,6 +355,34 @@ export function textoDeMovimento(m: { normal: number; nado: number; escalada: nu
     ]
         .filter(Boolean)
         .join(' · ');
+}
+
+/** A característica vale neste nível? Sem `nivelMin`/`nivelMax` vale sempre. Espelha `Regras::ativaNoNivel`. */
+export const ativaNoNivel = (c: { nivelMin?: number; nivelMax?: number }, nivel: number): boolean =>
+    nivel >= (c.nivelMin ?? 1) && nivel <= (c.nivelMax ?? 99);
+
+/** Os tamanhos de dado, em ordem, para o "aumento em um passo" (1d4 → 1d6 → 1d8 → 1d10 → 1d12). */
+export const DEGRAUS = [4, 6, 8, 10, 12];
+
+/** Sobe os dados da expressão `passos` degraus (`1d8` + 1 → `1d10`; no 1d12 para). Só os dados `NdM` mudam. Espelha `Regras::degrau`. */
+export function degrau(expressao: string, passos: number): string {
+    if (passos <= 0) return expressao;
+
+    return expressao.replace(/(\d+)d(\d+)/gi, (todo, n: string, faces: string) => {
+        const i = DEGRAUS.indexOf(Number(faces));
+
+        return i < 0 ? todo : `${n}d${DEGRAUS[Math.min(DEGRAUS.length - 1, i + passos)]}`;
+    });
+}
+
+/**
+ * Rolagem de um botão da ficha: `{fórmula}` vira o número (aceita `floor`, `min`, `max` e `@variaveis`: `{@nivel+floor(@prof/2)}`)
+ * e `passo` sobe os dados pelos passos que os efeitos dão (`passo.desarmado`...).
+ */
+export function expandirRolagem(expressao: string, variaveis: Record<string, number>, passo?: string): string {
+    const numerica = expressao.replace(/\{([^}]*)\}/g, (_, f: string) => String(avaliar(f, variaveis)));
+
+    return degrau(numerica, passo ? Math.max(0, Math.floor(variaveis[`passo.${passo}`] ?? 0)) : 0);
 }
 
 export const modificador = (valor: number): number => Math.floor((valor - 10) / 2);
@@ -342,6 +429,7 @@ export function efeitosAtivos(f: FichaOnePiece, itens: ItensPorId): Efeito[] {
 
     // Características com buffs: a passiva sempre vale; a ativa, só ligada (ex.: Fúria, Aura de Proteção)
     for (const c of f.caracteristicas ?? []) {
+        if (!ativaNoNivel(c, Number(f.nivel))) continue;
         const vale = (c.tipo ?? 'passiva') === 'passiva' || c.ativa === true;
         if (vale && c.efeitos?.length) efeitos.push(...deFonte(c.nome ?? 'Característica', c.efeitos));
     }
@@ -411,7 +499,11 @@ export function analisar(f: FichaOnePiece, itens: ItensPorId = {}): Analise {
     for (const { id } of ATRIBUTOS) base[`salv.${id}`] = mod[id] + (f.salvaguardas.includes(id) ? prof : 0);
     // Teste de atributo: o modificador (os efeitos somam bônus, ex.: Força Colossal; o botão do atributo rola `@teste.<atr>`)
     for (const { id } of ATRIBUTOS) base[`teste.${id}`] = mod[id];
-    for (const p of PERICIAS) base[`pericia.${p.id}`] = mod[p.atributo] + (f.pericias[p.id] ?? 0) * prof;
+    // Haki Treinado (21+ PA distribuídos) dá proficiência na perícia Haki
+    const hakiTreinado = f.haki ? estagioDoHaki(f.haki) >= 2 : false;
+    for (const p of PERICIAS)
+        base[`pericia.${p.id}`] =
+            mod[p.atributo] + (p.id === 'haki' && hakiTreinado ? Math.max(1, f.pericias[p.id] ?? 0) : (f.pericias[p.id] ?? 0)) * prof;
     const conjuracao = mod[f.tecnicas.atributo];
     base.iniciativa = mod.des;
     base.ca = 10 + mod.des;
@@ -422,10 +514,18 @@ export function analisar(f: FichaOnePiece, itens: ItensPorId = {}): Analise {
     base['carga.max'] = 15 * r['atributos.for'];
     base['pv.max'] = f.pv?.max ?? 0;
     base['pp.max'] = nivel * (f.pp?.porNivel ?? 4);
+    // Pontos de Escudo (Endurecimento Defensivo): o máximo vem dos efeitos; sem o talento é 0
+    base['escudo.max'] = 0;
     // Alcance corpo a corpo e deslocamentos em decímetros (15 = 1,5 m): efeitos e fórmulas só trabalham com inteiros.
     base['alcance.corpo'] = 15;
     for (const tipo of ['normal', 'nado', 'escalada', 'voo'] as const) base[`movimento.${tipo}`] = Math.round((f.movimento?.[tipo] ?? 0) * 10);
     base['dano.distancia.pct'] = 100;
+    // Passos de dado (Mira Treinada, Força Magnífica, Perito em Técnicas...), margem de crítico por tipo de arma e ataque desarmado
+    for (const p of ['corpo', 'distancia', 'desarmado', 'tecnica']) base[`passo.${p}`] = 0;
+    base['margem.corpo'] = 20;
+    base['margem.distancia'] = 20;
+    base['ataque.desarmado'] = prof + mod.for;
+    base['dano.desarmado'] = mod.for;
 
     // Fase 3: efeitos sobre os valores-base
     const variaveis = { ...r, ...base };
@@ -447,7 +547,8 @@ export function analisar(f: FichaOnePiece, itens: ItensPorId = {}): Analise {
             const bonusDano = arma.bonusDano ?? arma.bonusMagico ?? 0;
             r[`arma.${ref.item_id}.ataque`] = mAtaque + (arma.proficiente ? prof : 0) + bonusAtaque + r['ataque.arma'];
             r[`arma.${ref.item_id}.dano`] = mDano + bonusDano + r['dano.arma'];
-            r[`arma.${ref.item_id}.margem`] = arma.margemCritica ?? 20; // d20 puro igual ou maior que isto é crítico
+            // d20 puro igual ou maior que isto é crítico: a margem da arma ou a do tipo (Crítico Marcial: 19), a menor
+            r[`arma.${ref.item_id}.margem`] = Math.min(arma.margemCritica ?? 20, r[arma.distancia ? 'margem.distancia' : 'margem.corpo']);
         }
     }
 
@@ -505,11 +606,12 @@ export function modoDaRolagem(efeitos: Efeito[], variavel: string): Rolagem {
  * (efeitos de modo `dados` em `dano.arma`: Ataque Furtivo, itens, características). Espelha `Regras::dadosDeDano`.
  * Vazio se o item não é arma.
  */
-export function dadosDeDano(f: FichaOnePiece, itens: ItensPorId, itemId: number): string[] {
+export function dadosDeDano(f: FichaOnePiece, itens: ItensPorId, itemId: number, valores: Record<string, number> = {}): string[] {
     const arma = (itens[itemId]?.dados as DadosItemOnePiece | null | undefined)?.arma;
     if (!arma || typeof arma.dano !== 'string') return [];
 
-    const dados = [arma.dano];
+    // O dado da arma sobe os degraus do tipo dela (corpo a corpo ou à distância); os extras não
+    const dados = [degrau(arma.dano, valores[arma.distancia ? 'passo.distancia' : 'passo.corpo'] ?? 0)];
     for (const extra of arma.danoExtra ?? []) if (dadosValidos(extra.dados)) dados.push(extra.dados);
     for (const e of efeitosAtivos(f, itens)) if (e.modo === 'dados' && casa(e.alvo, 'dano.arma') && dadosValidos(e.valor)) dados.push(e.valor);
 
@@ -546,7 +648,7 @@ export function armasAtivas(f: FichaOnePiece, itens: ItensPorId, valores: Record
             armas.push({
                 itemId: ref.item_id,
                 nome: item.nome ?? 'Arma',
-                dano: dadosDeDano(f, itens, ref.item_id).join('+'),
+                dano: dadosDeDano(f, itens, ref.item_id, valores).join('+'),
                 tipoDano: arma.tipoDano ?? null,
                 ataque: valores[`arma.${ref.item_id}.ataque`],
                 danoBonus: valores[`arma.${ref.item_id}.dano`],
@@ -591,6 +693,13 @@ export function bonusProficiencia(f: FichaOnePiece): number {
 
 /** Máximo de usos de uma característica: fixo, igual ao bônus de proficiência (`usos.porProf`) ou ao nível (`usos.porNivel`). */
 export function usosMax(c: Caracteristica, prof: number, nivel = 0): number {
+    if (c.usos?.formula) {
+        try {
+            return Math.max(0, Math.floor(avaliar(c.usos.formula, { nivel, prof })));
+        } catch {
+            return c.usos.max;
+        }
+    }
     if (c.usos?.porNivel) return Math.max(0, nivel);
 
     return c.usos?.porProf ? Math.max(0, prof) : (c.usos?.max ?? 0);
@@ -669,6 +778,7 @@ export function camposDoDescanso(
             'dadosVida.restantes': Math.min(f.nivel, f.dadosVida.restantes + Math.max(1, Math.floor(f.nivel / 2))),
             exaustao: Math.max(0, f.exaustao - 1),
             'pp.atual': ppMax,
+            socorrido: false,
         });
     }
 

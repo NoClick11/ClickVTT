@@ -3,6 +3,7 @@
 namespace App\Sistemas\OnePiece;
 
 use App\Nucleo\Efeitos\Efeitos;
+use App\Nucleo\Efeitos\Formula;
 use Illuminate\Validation\Rule;
 
 /**
@@ -20,6 +21,8 @@ final class FichaOnePiece
         'historia' => 'sab', 'investigacao' => 'sab', 'medicina' => 'sab', 'natureza' => 'sab', 'sobrevivencia' => 'sab',
         'atuacao' => 'pre', 'enganacao' => 'pre', 'intimidacao' => 'pre', 'persuasao' => 'pre', 'provocacao' => 'pre',
         'haki' => 'von', 'intuicao' => 'von', 'percepcao' => 'von', 'sobrenatural' => 'von', 'sorte' => 'von',
+        // a perícia da Profissão (cap. 4): treinada com a profissão, soma a proficiência em Testes de qualquer atributo ligados a ela
+        'oficio' => 'sab',
     ];
 
     /** Pontos de poder ganhos por nível: 4, ou 5 com certas características. */
@@ -52,10 +55,10 @@ final class FichaOnePiece
     {
         return [
             // numéricos (soma, base, mín., máx.)
-            'ca', 'iniciativa', 'cd', 'ataque', 'ataque.arma', 'dano.arma', 'carga.max', 'pv.max',
+            'ca', 'iniciativa', 'cd', 'ataque', 'ataque.arma', 'dano.arma', 'carga.max', 'pv.max', 'escudo.max',
             'salv.*', 'pericia.*', 'atributos.*', 'pp.max', 'dano.tecnica',
             // alcance corpo a corpo e deslocamentos (em decímetros: 15 = 1,5 m) e a fração do dano das armas à distância (100 = inteiro)
-            'alcance.corpo', 'movimento.*', 'movimento.normal', 'movimento.nado', 'movimento.escalada', 'movimento.voo', 'dano.distancia.pct',
+            'alcance.corpo', 'passo.corpo', 'passo.distancia', 'passo.desarmado', 'passo.tecnica', 'margem.corpo', 'margem.distancia', 'ataque.desarmado', 'dano.desarmado', 'concentracao', 'movimento.*', 'movimento.normal', 'movimento.nado', 'movimento.escalada', 'movimento.voo', 'dano.distancia.pct',
             // só para vantagem/desvantagem: testes de atributo e de ferramenta (os demais alvos de rolagem são os de cima)
             'teste.*', 'ferramenta.*', ...array_map(fn ($a) => "teste.{$a}", self::ATRIBUTOS),
             ...array_map(fn ($a) => "salv.{$a}", self::ATRIBUTOS),
@@ -77,13 +80,30 @@ final class FichaOnePiece
             'ancestralidade' => '',
             // Anão com Hóspede Feérico: id do personagem em cujo espaço ele está (null = em lugar nenhum).
             'hospedado' => null,
+            // Primeiros Socorros: esta criatura já recebeu o tratamento (volta no descanso longo)
+            'socorrido' => false,
+            // Superioridade Absoluta: bônus ao nível para zerar o alvo, +5 por criatura derrotada (máx. +15) até o fim do encontro
+            'bonusExecucao' => 0,
+            // Atributo primário do estilo de combate (Defesa Aprimorada, Defesa Ofensiva...) e as Habilidades Básicas escolhidas
+            'atributoPrimario' => 'for',
+            // Estilo do catálogo e caminho escolhido (o assistente "Subir de nível" lê daqui)
+            'estiloId' => '',
+            // Maestria aprendida (uma só) e os Traços de Maestria já escolhidos, com o nível em que vieram
+            'haki' => Haki::padrao(),
+            'treinamento' => Treinamentos::padrao(),
+            'profissoes' => Profissoes::padrao(),
+            'individualidades' => Individualidades::padrao(),
+            'maestria' => '',
+            'tracosDeMaestria' => [],
+            'estiloCaminho' => '',
+            'habilidadesBasicas' => [],
             'recompensa' => 0,
             'belly' => 0,
             'atributos' => $porChave(self::ATRIBUTOS, 10),
             'salvaguardas' => [],
             'pericias' => $porChave(array_keys(self::PERICIAS), 0),
             'deslocamento' => '9 m',
-            'pv' => ['atual' => 0, 'max' => 0, 'temp' => 0],
+            'pv' => ['atual' => 0, 'max' => 0, 'temp' => 0, 'escudo' => 0],
             'pp' => ['atual' => 0, 'porNivel' => 4],
             'dadosVida' => ['restantes' => 1, 'tipo' => 'd8'],
             'exaustao' => 0,
@@ -97,7 +117,7 @@ final class FichaOnePiece
             'caracteristicas' => [],
             'tecnicas' => ['atributo' => 'von', 'lista' => []],
             // A Akuma no Mi: o nome é `fruta`; os poderes têm o mesmo formato das técnicas e gastam os mesmos PP.
-            'akuma' => ['tipo' => '', 'despertada' => false, 'lista' => []],
+            'akuma' => Akuma::padrao(),
             // Ajustes manuais somados aos valores derivados (Regras::calcular): bônus de itens, técnicas, efeitos...
             'ajustes' => [
                 'proficiencia' => 0, 'ca' => 0, 'iniciativa' => 0, 'cd' => 0, 'ataque' => 0, 'cargaMax' => 0,
@@ -126,6 +146,69 @@ final class FichaOnePiece
         }
         $r['ancestralidade'] = ['string', 'max:2000'];
         $r['hospedado'] = ['nullable', 'integer:strict', 'min:1'];
+        $r['socorrido'] = ['boolean:strict'];
+        $r['bonusExecucao'] = ['integer:strict', 'between:0,15'];
+        $r['atributoPrimario'] = ['string', Rule::in(self::ATRIBUTOS)];
+        $r['estiloId'] = ['nullable', 'string', 'max:40'];
+        // Haki: `liberado`, `rei`, `prematuroNivel`, `extras` e `restritos` só o mestre grava (FichaController); o resto é do dono
+        $r['haki'] = ['array'];
+        foreach (['liberado', 'rei'] as $c) {
+            $r["haki.{$c}"] = ['boolean:strict'];
+        }
+        $r['haki.prematuroNivel'] = $inteiro(0, 20);
+        $r['haki.extras'] = $inteiro(-999, 999);
+        $r['haki.restritos'] = ['array'];
+        foreach (Haki::TIPOS as $t) {
+            $r["haki.restritos.{$t}"] = $inteiro(0, 999);
+        }
+        $r['haki.principal'] = ['nullable', 'string', Rule::in(['', 'armamento', 'observacao'])];
+        $r['haki.afinidade'] = ['nullable', 'string', Rule::in(['', ...Haki::TIPOS])];
+        $r['haki.talentos'] = ['array', 'max:60'];
+        $r['haki.talentos.*.id'] = ['required', 'string', 'max:40'];
+        $r['haki.talentos.*.formas'] = ['required', 'integer:strict', 'between:1,3'];
+        // Treinamentos: `extras` e `aprendidos` só o mestre grava; o dono faz pedidos (FichaController)
+        $r['treinamento'] = ['array'];
+        $r['treinamento.extras'] = $inteiro(-999, 999);
+        $r['treinamento.codigo'] = ['nullable', 'string', 'max:40'];
+        $r['treinamento.aprendidos'] = ['array', 'max:60'];
+        $r['treinamento.aprendidos.*.id'] = ['required', 'string', 'max:50'];
+        $r['treinamento.aprendidos.*.nivel'] = ['required', 'integer:strict', 'between:1,20'];
+        $r['treinamento.aprendidos.*.opcao'] = ['nullable', 'string', 'max:30'];
+        $r['treinamento.pedidos'] = ['array', 'max:20'];
+        $r['treinamento.pedidos.*.id'] = ['required', 'string', 'max:50'];
+        $r['treinamento.pedidos.*.opcao'] = ['nullable', 'string', 'max:30'];
+        $r['treinamento.pedidos.*.dias'] = ['required', 'integer:strict', 'between:0,60'];
+        // Profissões: o dono escolhe a do 1º nível e usa os avanços (5/10/15/20); o resto é do mestre (OnePiece::conferirFicha)
+        // Individualidades (regra opcional): Singularidades e Defeitos; o servidor confere espaços, pares e o que é do mestre.
+        $r['individualidades'] = ['array'];
+        $r['individualidades.variaveis'] = ['boolean:strict'];
+        $r['individualidades.extras'] = [...$inteiro(0, 20)];
+        $r['individualidades.travada'] = ['boolean:strict'];
+        foreach (['singularidades', 'defeitos'] as $grupo) {
+            $r["individualidades.{$grupo}"] = ['array', 'max:30'];
+            $r["individualidades.{$grupo}.*.id"] = ['required', 'string', 'max:40'];
+            $r["individualidades.{$grupo}.*.escolha"] = ['nullable', 'string', 'max:80'];
+        }
+        $r['profissoes'] = ['array'];
+        $r['profissoes.semProfissao'] = ['boolean:strict'];
+        $r['profissoes.livroLido'] = ['boolean:strict'];
+        $r['profissoes.lista'] = ['array', 'max:5'];
+        $r['profissoes.lista.*.id'] = ['required', 'string', 'max:40'];
+        $r['profissoes.lista.*.graduacao'] = ['required', 'integer:strict', 'between:0,3'];
+        $r['profissoes.lista.*.nivel'] = ['required', 'integer:strict', 'between:1,20'];
+        $r['profissoes.lista.*.secundaria'] = ['boolean:strict'];
+        $r['profissoes.usados'] = ['array', 'max:4'];
+        $r['profissoes.usados.*'] = ['integer:strict', Rule::in(Profissoes::NIVEIS)];
+        $r['maestria'] = ['nullable', 'string', 'max:40'];
+        $r['tracosDeMaestria'] = ['array', 'max:3'];
+        $r['tracosDeMaestria.*.id'] = ['required', 'string', 'max:40'];
+        $r['tracosDeMaestria.*.nivel'] = ['required', 'integer:strict', 'between:1,20'];
+        $r['estiloCaminho'] = ['nullable', 'string', 'max:40'];
+        // Habilidades Básicas escolhidas: id, nível em que veio e, no Quebrador de Regras, a opção escolhida (lista trocada por inteiro)
+        $r['habilidadesBasicas'] = ['array', 'max:30'];
+        $r['habilidadesBasicas.*.id'] = ['required', 'string', 'max:40'];
+        $r['habilidadesBasicas.*.nivel'] = ['required', 'integer:strict', 'between:1,20'];
+        $r['habilidadesBasicas.*.opcao'] = ['nullable', 'string', 'max:40'];
         $r['recompensa'] = $inteiro(0, 1_000_000_000_000);
         $r['belly'] = $inteiro(0, 1_000_000_000_000);
         foreach (self::ATRIBUTOS as $a) {
@@ -137,7 +220,7 @@ final class FichaOnePiece
             $r["pericias.{$p}"] = ['integer:strict', Rule::in([0, 1, 2])];
         }
         $r['deslocamento'] = $texto;
-        foreach (['atual', 'max', 'temp'] as $c) {
+        foreach (['atual', 'max', 'temp', 'escudo'] as $c) {
             $r["pv.{$c}"] = $inteiro(0, 9999);
         }
         $r['dadosVida.restantes'] = $inteiro(0, 40);
@@ -189,13 +272,18 @@ final class FichaOnePiece
         $r['caracteristicas.*.usos.max'] = $inteiro(0, 999);
         // Máximo igual ao bônus de proficiência (o front recalcula).
         $r['caracteristicas.*.usos.porProf'] = ['nullable', 'boolean'];
+        $r['caracteristicas.*.usos.formula'] = ['nullable', 'string', 'max:60'];
         // Máximo igual ao nível do personagem (Heat, Electro...).
         $r['caracteristicas.*.usos.porNivel'] = ['nullable', 'boolean'];
         $r['caracteristicas.*.descricao'] = ['nullable', 'string', 'max:4000'];
         // Quem criou: o assistente de criação marca `especie`/`variacao` para refazer o passo sem duplicar.
-        $r['caracteristicas.*.builder'] = ['nullable', 'string', Rule::in(['especie', 'variacao'])];
+        $r['caracteristicas.*.builder'] = ['nullable', 'string', Rule::in(['especie', 'variacao', 'estilo', 'maestria', 'haki', 'treinamento', 'antecedente', 'profissao', 'akuma', 'individualidade'])];
         // Etiquetas de combate mostradas na ficha (ex.: "Alcança alvos Enormes", "Ignora terreno difícil").
         // Categoria de ação que ligar/usar a característica gasta (nenhuma = não gasta ação).
+        // Faixa de nível em que a característica vale (as Habilidades Básicas mudam com o nível) e de qual HB ela vem
+        $r['caracteristicas.*.nivelMin'] = ['nullable', 'integer:strict', 'between:1,20'];
+        $r['caracteristicas.*.nivelMax'] = ['nullable', 'integer:strict', 'between:1,20'];
+        $r['caracteristicas.*.hb'] = ['nullable', 'string', 'max:40'];
         $r['caracteristicas.*.acao'] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];
         $r['caracteristicas.*.acoes.*.acao'] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];
         $r['caracteristicas.*.etiquetas'] = ['nullable', 'array', 'max:8'];
@@ -210,7 +298,15 @@ final class FichaOnePiece
         // rolar um dado extra de dano.
         $r['caracteristicas.*.acoes'] = ['nullable', 'array', 'max:6'];
         $r['caracteristicas.*.acoes.*.rotulo'] = ['required', 'string', 'max:60'];
-        $r['caracteristicas.*.acoes.*.tipo'] = ['required', 'string', Rule::in(['condicao', 'hospedar', 'dadoExtra'])];
+        $r['caracteristicas.*.acoes.*.tipo'] = ['required', 'string', Rule::in(['condicao', 'hospedar', 'dadoExtra', 'recuperar', 'rolar', 'deslocar', 'gastar', 'socorrer'])];
+        // Campos dos tipos novos: o que recupera (PP ou PV), a rolagem, o fator do deslocamento, se gasta 1 uso e qual efeito dá a vantagem
+        $r['caracteristicas.*.acoes.*.recurso'] = ['nullable', 'string', Rule::in(['pp', 'pv'])];
+        $r['caracteristicas.*.acoes.*.rolagem'] = ['nullable', 'string', 'max:60'];
+        $r['caracteristicas.*.acoes.*.fator'] = ['nullable', 'integer:strict', 'between:1,4'];
+        $r['caracteristicas.*.acoes.*.usa'] = ['nullable', 'boolean'];
+        $r['caracteristicas.*.acoes.*.passo'] = ['nullable', 'string', Rule::in(['corpo', 'distancia', 'desarmado', 'tecnica'])];
+        $r['caracteristicas.*.acoes.*.soCondicoes'] = ['nullable', 'boolean'];
+        $r['caracteristicas.*.acoes.*.vantagemAlvo'] = ['nullable', 'string', 'max:30'];
         $r['caracteristicas.*.acoes.*.alvo'] = ['nullable', 'string', Rule::in(['proprio', 'mirado'])];
         $r['caracteristicas.*.acoes.*.condicao'] = ['nullable', 'string', Rule::in(Condicoes::ids())];
         $r['caracteristicas.*.acoes.*.atributo'] = ['nullable', 'string', Rule::in(self::ATRIBUTOS)];
@@ -239,13 +335,18 @@ final class FichaOnePiece
         // Categoria de ação que a técnica gasta (padrão: poderosa).
         $r['tecnicas.lista.*.acao'] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];
         // Quem criou a técnica: o assistente de criação marca `especie` para refazer o passo sem duplicar.
-        $r['tecnicas.lista.*.builder'] = ['nullable', 'string', Rule::in(['especie'])];
+        $r['tecnicas.lista.*.builder'] = ['nullable', 'string', Rule::in(['especie', 'estilo', 'maestria', 'treinamento', 'criador', 'akuma'])];
 
         // Reação (usada fora do turno, ex.: ao ser atacado): gatilho, a quem serve, bônus na defesa e cura.
         foreach (['tecnicas.lista.*', 'akuma.lista.*', 'caracteristicas.*'] as $base) {
             $r["{$base}.reacao.gatilho"] = ['nullable', 'string', Rule::in(['ataque_declarado'])];
             $r["{$base}.reacao.alcance"] = ['nullable', 'string', Rule::in(['si', 'aliado', 'ambos'])];
-            $r["{$base}.reacao.defesa"] = ['nullable', 'integer:strict', 'between:-20,20'];
+            $r["{$base}.reacao.defesa"] = ['nullable', function (string $atributo, mixed $v, \Closure $fail) {
+                if (! (is_int($v) && $v >= -20 && $v <= 20) && ! (is_string($v) && Formula::sintaxeValida($v))) {
+                    $fail('A defesa da reação é um número de -20 a 20 ou uma fórmula válida.');
+                }
+            }];
+            $r["{$base}.reacao.categoria"] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];
             $r["{$base}.reacao.cura"] = ['nullable', 'string', 'regex:/^\d{1,3}$|^\d{1,2}d\d{1,3}$/'];
         }
 
@@ -261,7 +362,62 @@ final class FichaOnePiece
         $r['akuma.lista.*.rolagem'] = ['present', 'string', 'max:100'];
         $r['akuma.lista.*.tipoDano'] = ['nullable', 'string', 'max:30'];
         $r['akuma.lista.*.acao'] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];
-        $r['akuma.lista.*.builder'] = ['nullable', 'string', Rule::in(['especie'])];
+        $r['akuma.lista.*.builder'] = ['nullable', 'string', Rule::in(['especie', 'criador', 'akuma'])];
+        $r['akuma.usuario'] = ['string', Rule::in(['simples', 'avancado'])];
+        $r['akuma.categoria'] = ['string', Rule::in(['', 's', 'a', 'b', 'c'])];
+        $r['akuma.propriedades'] = ['array', 'max:6'];
+        $r['akuma.propriedades.*'] = ['string', Rule::in(['corporal', 'criacao', 'espaco-temporal', 'extracorporal', 'manipulacao', 'transformacao'])];
+        $r['akuma.zoan'] = ['string', Rule::in(['', 'comum', 'ancestral', 'mitica'])];
+        $r['akuma.predador'] = ['boolean:strict'];
+        $r['akuma.despertar'] = ['string', Rule::in(['', 'aprimorador', 'transmutador', 'holista'])];
+        $r['akuma.aspecto'] = ['string', Rule::in(['padrao', 'uso-alternativo', 'mp'])];
+        $r['akuma.mpEspeciais'] = ['array', 'max:9'];
+        $r['akuma.mpEspeciais.*'] = ['string', 'max:40'];
+        foreach (['comuns', 'especificos', 'ancestrais'] as $grupo) {
+            $r["akuma.tracos.{$grupo}"] = ['array', 'max:12'];
+            $r["akuma.tracos.{$grupo}.*"] = ['string', 'max:40'];
+        }
+        $r['akuma.points'] = ['array', 'max:8'];
+        $r['akuma.points.*.ponto'] = ['required', ...$inteiro(1, 5)];
+        $r['akuma.points.*.modelo'] = ['required', 'string', 'max:30'];
+        $r['akuma.points.*.genialidade'] = ['nullable', ...$inteiro(1, 7)];
+
+        // Escolhas do Criador de Técnicas: o servidor refaz o custo e os limites a partir delas (`Criador::conferir`).
+        foreach (['tecnicas.lista.*.criador', 'akuma.lista.*.criador'] as $c) {
+            $r[$c] = ['nullable', 'array'];
+            $r["{$c}.tipo"] = ['required_with:'.$c, 'string', Rule::in(['combate', 'auxiliar', 'mp'])];
+            $r["{$c}.grau"] = ['required_with:'.$c, ...$inteiro(0, 7)];
+            $r["{$c}.forma"] = ['required_with:'.$c, 'string', Rule::in(['base', 'aperfeicoada', 'alternativa'])];
+            $r["{$c}.grauOriginal"] = ['nullable', ...$inteiro(1, 7)];
+            $r["{$c}.origem.tipo"] = ['required_with:'.$c, 'string', Rule::in(['nivel', 'genialidade', 'point', 'aspecto'])];
+            $r["{$c}.origem.ponto"] = ['nullable', ...$inteiro(1, 5)];
+            $r["{$c}.origem.genialidade"] = ['nullable', ...$inteiro(1, 7)];
+            $r["{$c}.origem.indice"] = ['nullable', ...$inteiro(1, 7)];
+            $r["{$c}.alvo"] = ['required_with:'.$c, 'string', Rule::in(['unico', 'area'])];
+            $r["{$c}.modoDoDano"] = ['required_with:'.$c, 'string', Rule::in(['ataque', 'salvaguarda_metade', 'salvaguarda_nada'])];
+            $r["{$c}.dados"] = ['required_with:'.$c, ...$inteiro(0, 14)];
+            $r["{$c}.intensificado"] = ['boolean:strict'];
+            $r["{$c}.formaDeAlcance"] = ['required_with:'.$c, 'string', Rule::in(['pessoal', 'toque', 'linha', 'esfera', 'cone'])];
+            $r["{$c}.alcance"] = ['required_with:'.$c, 'numeric', 'min:0', 'max:100'];
+            $r["{$c}.acao"] = ['required_with:'.$c, 'string', Rule::in(['poderosa', 'bonus', 'reacao'])];
+            $r["{$c}.ataque"] = ['boolean:strict'];
+            $r["{$c}.salvaguarda"] = ['boolean:strict'];
+            $r["{$c}.tipoDano"] = ['nullable', 'string', 'max:30'];
+            $r["{$c}.ativacao"] = ['nullable', 'string', Rule::in(['passiva', 'inacao', 'bonus', 'reacao', 'poderosa'])];
+            $r["{$c}.efeitos"] = ['array', 'max:30'];
+            $r["{$c}.efeitos.*.id"] = ['required', 'string', 'max:40'];
+            $r["{$c}.efeitos.*.params"] = ['nullable', 'array'];
+            $r["{$c}.efeitos.*.params.*"] = ['nullable', function (string $atributo, mixed $v, \Closure $fail) {
+                if (! is_int($v) && ! is_float($v) && ! is_bool($v) && ! (is_string($v) && mb_strlen($v) <= 20)) {
+                    $fail('Parâmetro de efeito inválido.');
+                }
+            }];
+            $r["{$c}.efeitos.*.prolongada"] = ['boolean:strict'];
+            $r["{$c}.efeitos.*.minutos"] = ['nullable', ...$inteiro(1, 10)];
+            $r["{$c}.efeitos.*.condicoes"] = ['nullable', 'array', 'max:3'];
+            $r["{$c}.efeitos.*.condicoes.*"] = ['string', 'max:30'];
+            $r["{$c}.efeitos.*.condicaoProlongada"] = ['nullable', 'string', 'max:30'];
+        }
 
         foreach (['proficiencia', 'ca', 'iniciativa', 'cd', 'ataque'] as $c) {
             $r["ajustes.{$c}"] = $inteiro(-20, 20);
