@@ -36,6 +36,8 @@ class EstadoMesaE2E extends Command
             'pp' => $atirador?->ficha['pp']['atual'] ?? null,
             'pv' => ['perto' => $pv('PertoE2E'), 'oculto' => $pv('OcultoE2E'), 'amigo' => $pv('AmigoE2E'), 'longe' => $pv('LongeE2E'), 'aliado' => $pv('AliadoE2E')],
             'qtds' => $qtds,
+            'vigia' => collect($c['ativas'] ?? [])->where('tipo', 'vigia')->map(fn ($a) => ['rodadas' => $a['rodadas'], 'zona' => $a['zona']])->values()->all(),
+            'vigia_cards' => $mesa->mensagens()->where('tipo', 'gatilho')->get()->filter(fn ($m) => $m->dados['vigia'] ?? false)->map(fn ($m) => ['alvo' => $m->dados['alvo']['nome'], 'motivo' => $m->dados['motivo'], 'estado' => $m->dados['estado'], 'salvaguarda' => $m->dados['salvaguarda']['passou'] ?? null])->values()->all(),
             'ferreiro' => (function () use ($mesa) {
                 $f = Personagem::query()->where('mesa_id', $mesa->id)->where('nome', 'FerreiroE2E')->first()?->ficha ?? [];
                 $lingotes = 0;

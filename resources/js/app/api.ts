@@ -184,6 +184,12 @@ export function apiMesa(mesaId: number, atorId: number) {
             dano: { expressao: string; tipo: string | null };
             opcoes?: object[];
         }) => requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.tecnicas-ativas.ativar'), dados),
+        /** Vigília (Overwatch): marca a esfera (centro em pixels do mapa) dentro do alcance da arma de fogo. */
+        ativarVigia: (dados: { personagem_id: number; nome: string; rodadas: number; concentracao: boolean; x: number; y: number; raio: number }) =>
+            requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.tecnicas-ativas.vigia'), dados),
+        /** Ação bônus: move o centro da esfera até 6 m. */
+        moverVigia: (id: string, x: number, y: number) =>
+            requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.tecnicas-ativas.mover', id), { x, y }),
         encerrarTecnicaAtiva: (id: string) => requisitar<{ combate: Combate }>(atorId, 'DELETE', r('jogo.combate.tecnicas-ativas.encerrar', id)),
         /** Card do gatilho: rola o ataque, escolhe o efeito do acerto ou ignora. */
         gatilhoAtacar: (mensagemId: number) => requisitar<Mensagem>(atorId, 'POST', r('jogo.gatilhos.atacar', mensagemId), {}),

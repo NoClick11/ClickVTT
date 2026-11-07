@@ -211,4 +211,143 @@ class TecnicaAtivaTest extends TestCase
         $this->como($c->mestre)->postJson(route('jogo.combate.comando', $c->mesa->id), ['comando' => 'remover', 'item_id' => 'a'])->assertOk();
         $this->assertSame([], $c->mesa->fresh()->combate['ativas']);
     }
+
+    // --- Vigília (Overwatch) -----------------------------------------------------------------------------------------------------
+
+    /** O Atirador equipa um mosquete com 5 munições esféricas (alcance 24 m). */
+    private function armar($c): void
+    {
+        $loja = app(\App\Nucleo\Loja\LojaService::class);
+        $sis = new \App\Sistemas\OnePiece\OnePiece;
+        $mosq = $loja->materializar($c->mesa, $sis, \App\Sistemas\OnePiece\Itens::item('mosquete'));
+        $esf = $loja->materializar($c->mesa, $sis, \App\Sistemas\OnePiece\Itens::item('municao-esferica'));
+        $f = $c->atirador->fresh()->ficha;
+        $f['inventario'] = [['secao' => 'Equipamento', 'itens' => [
+            ['item_id' => $mosq->id, 'qtd' => 1, 'equipado' => true, 'sintonizado' => false],
+            ['item_id' => $esf->id, 'qtd' => 5, 'equipado' => false, 'sintonizado' => false],
+        ]]];
+        $c->atirador->ficha = $f;
+        $c->atirador->save();
+        $c->esf = $esf;
+    }
+
+    private function vigia($c, float $x = 700, float $y = 0, array $extra = [])
+    {
+        return $this->como($c->ana)->postJson(route('jogo.combate.tecnicas-ativas.vigia', $c->mesa->id), [
+            'personagem_id' => $c->atirador->id, 'nome' => 'Overwatch', 'rodadas' => 10, 'concentracao' => true, 'x' => $x, 'y' => $y, 'raio' => 3, ...$extra,
+        ]);
+    }
+
+    public function test_a_vigilia_marca_a_esfera_dentro_do_alcance_da_arma(): void
+    {
+        $c = $this->cenario();
+        $this->vigia($c)->assertStatus(422); // sem arma de fogo
+        $this->armar($c);
+        $this->vigia($c, 700, 0, ['raio' => 5])->assertStatus(422);       // raio máximo 3 m
+        $this->vigia($c, 2100, 0)->assertStatus(422);                     // 45 m: além dos 24 m do mosquete
+        $this->vigia($c, 700, 0)->assertOk();
+        $z = $c->mesa->fresh()->combate['ativas'][0];
+        $this->assertSame('vigia', $z['tipo']);
+        $this->assertEquals([700.0, 0.0, 3.0], [$z['zona']['x'], $z['zona']['y'], $z['zona']['raio']]);
+        // não é do atirador: recusa
+        $this->como($c->mestre); // o mestre pode, mas outro jogador não
+    }
+
+    public function test_quem_age_dentro_da_esfera_dispara_o_ataque_e_quem_esta_fora_nao(): void
+    {
+        $c = $this->cenario();
+        $this->armar($c);
+        $this->vigia($c, 700, 0)->assertOk(); // esfera em volta do Perto
+        $combate = app(\App\Nucleo\Combate\CombateService::class);
+        $acesso = fn ($j) => \App\Support\AcessoMesa::class;
+        // o Perto age (Ação) dentro da esfera
+        $this->como($c->mestre)->postJson(route('jogo.combate.acao', $c->mesa->id), ['personagem_id' => $c->perto->id, 'categoria' => 'padrao'])->assertOk();
+        $g = $this->gatilhos($c);
+        $this->assertCount(1, $g);
+        $this->assertTrue($g[0]->dados['vigia']);
+        $this->assertSame('age', $g[0]->dados['motivo']);
+        $this->assertSame('Perto', $g[0]->dados['alvo']['nome']);
+        // o Longe (45 m) age fora da esfera: nada
+        $this->como($c->mestre)->postJson(route('jogo.combate.acao', $c->mesa->id), ['personagem_id' => $c->longe->id, 'categoria' => 'padrao'])->assertOk();
+        $this->assertCount(1, $this->gatilhos($c));
+        // ação livre não conta; e um card pendente por criatura
+        $this->como($c->mestre)->postJson(route('jogo.combate.acao', $c->mesa->id), ['personagem_id' => $c->perto->id, 'categoria' => 'bonus'])->assertOk();
+        $this->assertCount(1, $this->gatilhos($c));
+    }
+
+    public function test_quem_se_move_dentro_da_esfera_dispara_e_o_atirador_que_anda_encerra(): void
+    {
+        $c = $this->cenario();
+        $this->armar($c);
+        $this->vigia($c, 700, 0)->assertOk();
+        $tokenPerto = $c->mesa->paginas()->first()->objetos()->where('personagem_id', $c->perto->id)->first();
+        // de fora da esfera (Longe) para dentro: dispara
+        $tokenLonge = $c->mesa->paginas()->first()->objetos()->where('personagem_id', $c->longe->id)->first();
+        $this->como($c->mestre)->patchJson(route('jogo.objetos.update', [$c->mesa->id, $tokenLonge->id]), ['x' => 770, 'y' => 0])->assertOk();
+        $g = $this->gatilhos($c);
+        $this->assertCount(1, $g);
+        $this->assertSame(['Longe', 'se move'], [$g[0]->dados['alvo']['nome'], $g[0]->dados['motivo']]);
+        // o atirador anda: a Vigília acaba
+        $tokenAtirador = $c->mesa->paginas()->first()->objetos()->where('personagem_id', $c->atirador->id)->first();
+        $this->como($c->mestre)->patchJson(route('jogo.objetos.update', [$c->mesa->id, $tokenAtirador->id]), ['x' => 70, 'y' => 0])->assertOk();
+        $this->assertSame([], $c->mesa->fresh()->combate['ativas']);
+    }
+
+    public function test_o_ataque_da_vigilia_gasta_1_municao_rola_dano_e_a_salvaguarda_encerra_o_turno(): void
+    {
+        $c = $this->cenario(desDoAtirador: 30, caDoAlvo: 5);
+        $this->armar($c);
+        $f = $c->perto->ficha; // CON 1: a Salvaguarda falha sempre contra a CD do atirador
+        $f['atributos']['con'] = 1;
+        $f['ajustes']['ca'] = -30;
+        $c->perto->ficha = $f;
+        $c->perto->save();
+        $this->vigia($c, 700, 0)->assertOk();
+        // é a vez do Perto: ele age e é atingido
+        $this->turno($c);
+        $this->como($c->mestre)->postJson(route('jogo.combate.acao', $c->mesa->id), ['personagem_id' => $c->perto->id, 'categoria' => 'padrao'])->assertOk();
+        $g = $this->gatilhos($c)->first();
+        $this->app->instance(\App\Nucleo\Rolagem\Rolador::class, new \App\Nucleo\Rolagem\Rolador(fn (int $faces) => $faces === 20 ? 10 : 3)); // d20 = 10 (acerta e a Con falha), dados = 3
+        $r = $this->como($c->ana)->postJson(route('jogo.gatilhos.atacar', [$c->mesa->id, $g->id]))->assertOk()->json();
+        $this->assertSame('resolvido', $r['dados']['estado']);
+        $this->assertTrue($r['dados']['ataque']['acerto']);
+        $this->assertLessThan(200, $c->perto->fresh()->ficha['pv']['atual']);               // o dano da arma com a munição foi aplicado
+        $this->assertFalse($r['dados']['salvaguarda']['passou']);
+        $qtd = collect($c->atirador->fresh()->ficha['inventario'][0]['itens'])->firstWhere('item_id', $c->esf->id)['qtd'];
+        $this->assertSame(4, $qtd);                                                         // 1 munição por ataque
+        $this->assertNotSame('b', $c->mesa->fresh()->combate['atual']);                     // falhou na Con: o turno do Perto acabou
+    }
+
+    public function test_sem_municao_o_ataque_da_vigilia_e_recusado(): void
+    {
+        $c = $this->cenario();
+        $this->armar($c);
+        $f = $c->atirador->fresh()->ficha;
+        $f['inventario'][0]['itens'] = [$f['inventario'][0]['itens'][0]]; // só o mosquete
+        $c->atirador->ficha = $f;
+        $c->atirador->save();
+        $this->vigia($c, 700, 0)->assertOk();
+        $this->como($c->mestre)->postJson(route('jogo.combate.acao', $c->mesa->id), ['personagem_id' => $c->perto->id, 'categoria' => 'padrao'])->assertOk();
+        $g = $this->gatilhos($c)->first();
+        $this->como($c->ana)->postJson(route('jogo.gatilhos.atacar', [$c->mesa->id, $g->id]))->assertStatus(422)->assertJsonValidationErrors('municao');
+        $this->assertSame('pendente', $g->fresh()->dados['estado']);
+    }
+
+    public function test_mover_a_esfera_custa_a_acao_bonus_ate_6_m_e_nao_encerra_a_vigilia(): void
+    {
+        $c = $this->cenario();
+        $this->armar($c);
+        $this->vigia($c, 700, 0)->assertOk();
+        $id = $c->mesa->fresh()->combate['ativas'][0]['id'];
+        $rota = route('jogo.combate.tecnicas-ativas.mover', [$c->mesa->id, $id]);
+        $this->como($c->ana)->postJson($rota, ['x' => 700 + 70 * 5, 'y' => 0])->assertStatus(422); // 7,5 m: passa dos 6 m
+        $this->como($c->ana)->postJson($rota, ['x' => 700 + 70 * 4, 'y' => 0])->assertOk();       // 6 m
+        $z = $c->mesa->fresh()->combate['ativas'][0];
+        $this->assertEquals(980.0, $z['zona']['x']);
+        $this->assertSame(1, $c->mesa->fresh()->combate['itens'][0]['acoes']['bonus']);              // gastou a Ação bônus
+        $this->como($c->ana)->postJson($rota, ['x' => 700, 'y' => 0])->assertStatus(422);           // a Ação bônus já foi usada neste turno
+        // qualquer outra atividade (uma Ação) encerra
+        $this->como($c->ana)->postJson(route('jogo.combate.acao', $c->mesa->id), ['personagem_id' => $c->atirador->id, 'categoria' => 'padrao'])->assertOk();
+        $this->assertSame([], $c->mesa->fresh()->combate['ativas']);
+    }
 }

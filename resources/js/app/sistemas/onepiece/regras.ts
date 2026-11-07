@@ -275,7 +275,16 @@ export interface DuracaoDaTecnica {
     rodadas: number;
     concentracao?: boolean;
     opcoes?: OpcaoDeAcerto[];
+    /** Vigília (Overwatch): uma esfera de `raio` m no mapa, movida até `mover` m por Ação bônus; dispara quando uma criatura age ou se move nela. */
+    vigia?: { raio: number; mover: number };
 }
+
+/** A Vigília do Overwatch para fichas que guardaram a Técnica antes de ela trazer os dados (mesma regra do livro). */
+export const VIGIA_DO_OVERWATCH: DuracaoDaTecnica = { rodadas: 10, concentracao: true, vigia: { raio: 3, mover: 6 } };
+
+/** A duração da Técnica: a que a ficha guarda, ou a do Overwatch do Atirador (por nome) quando a ficha é antiga. */
+export const duracaoDaTecnica = (t: { nome: string; builder?: string; duracao?: DuracaoDaTecnica }): DuracaoDaTecnica | undefined =>
+    t.duracao ?? (t.nome === 'Overwatch' && t.builder === 'estilo' ? VIGIA_DO_OVERWATCH : undefined);
 
 export interface TesteDaTecnica {
     tipo: 'ataque' | 'salvaguarda' | 'automatico';

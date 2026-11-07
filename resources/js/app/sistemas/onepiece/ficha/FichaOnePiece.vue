@@ -73,8 +73,9 @@ const acoesDoCombate = inject<{
     gastar: (personagemId: number, categoria: string | undefined, tecnica?: boolean) => Promise<boolean>;
     ataque: (personagemId: number, ataquesPorAcao: number) => { ok: boolean; motivo?: string; feitos: number; max: number; extras: number };
     darExtras: ((personagemId: number, n: number) => Promise<void>) | null;
-    ativas: (personagemId: number) => { id: string; nome: string; rodadas: number; concentracao: boolean }[];
+    ativas: (personagemId: number) => { id: string; nome: string; rodadas: number; concentracao: boolean; tipo?: 'vigia' }[];
     encerrarAtiva: ((id: string) => Promise<void>) | null;
+    moverVigia?: ((personagemId: number, id: string) => void) | null;
 }>('acoesDoCombate', {
     categorias: computed(() => []),
     pode: () => ({ ok: true }),
@@ -83,6 +84,7 @@ const acoesDoCombate = inject<{
     darExtras: null,
     ativas: () => [],
     encerrarAtiva: null,
+    moverVigia: null,
 });
 
 provide(CHAVE_FICHA, {
@@ -110,6 +112,7 @@ provide(CHAVE_FICHA, {
         darExtras: acoesDoCombate.darExtras ? (n) => acoesDoCombate.darExtras!(props.personagem.id, n) : null,
         ativas: () => acoesDoCombate.ativas(props.personagem.id),
         encerrarAtiva: acoesDoCombate.encerrarAtiva,
+        moverVigia: acoesDoCombate.moverVigia ? (id) => acoesDoCombate.moverVigia!(props.personagem.id, id) : null,
         todas: () => acoesDoCombate.categorias.value,
     },
     // Shift = vantagem, Ctrl/Alt = desvantagem (manual vence); sem tecla, valem os efeitos dos itens.

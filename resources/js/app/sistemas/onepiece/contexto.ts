@@ -34,8 +34,10 @@ export interface ContextoFicha {
         /** Ataques extras do turno (Tempestade de Balas, Alvo Travado...): soma `n` ao limite; null = fora do combate. */
         darExtras: ((n: number) => Promise<void>) | null;
         /** As Técnicas ativas deste personagem (com as rodadas que faltam) e como encerrar uma. */
-        ativas: () => { id: string; nome: string; rodadas: number; concentracao: boolean }[];
+        ativas: () => { id: string; nome: string; rodadas: number; concentracao: boolean; tipo?: 'vigia' }[];
         encerrarAtiva: ((id: string) => Promise<void>) | null;
+        /** Ação bônus: marca no mapa o novo centro da esfera da Vigília (até 6 m). */
+        moverVigia: ((id: string) => void) | null;
         /** Todas as categorias do sistema (id e nome), para os seletores de edição. */
         todas: () => { id: string; nome: string }[];
     };
@@ -103,6 +105,8 @@ export interface UsoDeTecnica {
     camposDosPP: Record<string, unknown>;
     /** Técnica de arma de fogo: o servidor gasta a munição do Requisito (lê o custo da Técnica salva, pelo nome). */
     municao?: { tecnica: string };
+    /** Vigília (Overwatch): marcar a esfera no mapa (raio e alcance máximo da arma, em metros) e a Ação bônus de mover; `bloqueio` = por que não dá. */
+    vigia?: { raio: number; mover: number; maximo: number; bloqueio?: string };
 }
 
 /** O que a mesa oferece à ficha além de salvar e rolar (a ficha nunca fala com a API): a forja do Ferreiro. */

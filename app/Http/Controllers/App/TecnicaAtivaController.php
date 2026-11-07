@@ -88,6 +88,164 @@ class TecnicaAtivaController extends Controller
         return response()->json(['combate' => $depois]);
     }
 
+    /** O maior alcance (m) das armas de fogo equipadas: até onde a esfera da Vigília pode ser marcada ("Arma, Linha"). */
+    private function alcanceDaArmaDeFogo(Mesa $mesa, mixed $sistema, Personagem $p): float
+    {
+        $ficha = $p->fichaCompleta($sistema);
+        $ids = $sistema->itensReferenciados($ficha);
+        $itens = $ids ? $mesa->itens()->whereIn('id', $ids)->get()->mapWithKeys(fn ($i) => [$i->id => $i->paraFront()])->all() : [];
+        $maior = 0.0;
+        foreach ($ficha['inventario'] ?? [] as $secao) {
+            foreach ($secao['itens'] ?? [] as $ref) {
+                $item = $itens[(int) ($ref['item_id'] ?? 0)] ?? null;
+                if ($item && ($item['dados']['arma']['municao'] ?? false) && Regras::ativo($ref, $item)) {
+                    $maior = max($maior, (float) ($item['dados']['arma']['alcanceMaximo'] ?? 0));
+                }
+            }
+        }
+
+        return $maior;
+    }
+
+    /**
+     * Ativa a Vigília (Overwatch): uma esfera de até 3 m de raio marcada no mapa, dentro do alcance da arma de fogo. Dura até 1 minuto com
+     * concentração. Dispara quando uma criatura age ou se move dentro dela.
+     */
+    public function ativarVigia(Request $request, Mesa $mesa, CombateService $combate, RegistroSistemas $sistemas): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+        $d = $request->validate([
+            'personagem_id' => ['required', 'integer', Rule::in($acesso->personagensPermitidos())],
+            'nome' => ['required', 'string', 'max:120'],
+            'rodadas' => ['required', 'integer', 'between:1,99'],
+            'concentracao' => ['nullable', 'boolean'],
+            'x' => ['required', 'numeric'],
+            'y' => ['required', 'numeric'],
+            'raio' => ['required', 'numeric', 'between:0.5,3'],
+        ]);
+        $sistema = $sistemas->resolver($mesa->sistema->slug);
+        abort_unless($sistema instanceof SistemaDeCombate, 422, 'Este sistema não tem combate.');
+        $atirador = $mesa->personagens()->findOrFail($d['personagem_id']);
+        $token = \App\Models\Objeto::query()->where('tipo', 'token')->where('personagem_id', $atirador->id)->first();
+        if (! $token || ! $token->pagina) {
+            throw ValidationException::withMessages(['x' => 'Coloque o seu token no mapa para marcar a esfera.']);
+        }
+        $alcance = $this->alcanceDaArmaDeFogo($mesa, $sistema, $atirador);
+        if ($alcance <= 0) {
+            throw ValidationException::withMessages(['x' => 'Equipe uma arma de fogo (mosquete): a esfera usa o alcance dela.']);
+        }
+        $distancia = \App\Nucleo\Combate\Movimento::metros((float) $d['x'] - ($token->x + $token->largura / 2), (float) $d['y'] - ($token->y + $token->altura / 2), $token->pagina);
+        if ($distancia > $alcance + \App\Nucleo\Combate\Movimento::FOLGA) {
+            throw ValidationException::withMessages(['x' => "A esfera passa do alcance da arma ({$alcance} m)."]);
+        }
+        $zona = ['pagina_id' => $token->pagina_id, 'x' => (float) $d['x'], 'y' => (float) $d['y'], 'raio' => (float) $d['raio']];
+
+        $depois = DB::transaction(function () use ($mesa, $d, $zona) {
+            $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
+            $c = CombateService::normalizar($m->combate);
+            if ($c['fase'] !== 'em_curso' || ! collect($c['itens'])->contains(fn ($i) => $i['personagem_id'] === $d['personagem_id'])) {
+                throw ValidationException::withMessages(['personagem_id' => 'A Vigília dura vários turnos: use-a com o combate em curso.']);
+            }
+            // a mesma Técnica reinicia; a concentração só vale para uma Técnica por vez
+            $c['ativas'] = array_values(array_filter($c['ativas'], fn ($a) => ! ($a['personagem_id'] === $d['personagem_id'] && ($a['nome'] === $d['nome'] || $a['concentracao']))));
+            $c['ativas'][] = TecnicasAtivas::novaVigia($d['personagem_id'], $d['nome'], (int) $d['rodadas'], (bool) ($d['concentracao'] ?? true), $zona);
+            $m->forceFill(['combate' => $c])->save();
+
+            return $c;
+        });
+
+        Transmitir::enviar($mesa, 'combate', ['combate' => $depois, 'ator' => $acesso->jogador->id], ['mesa']);
+        AplicarDano::postar($mesa, $acesso, Visibilidade::mensagem($atirador->id), "{$atirador->nome} ativa {$d['nome']}: esfera de {$d['raio']} m por {$d['rodadas']} rodadas (concentração). Quem age ou se move dentro dela pode ser atingido.");
+
+        return response()->json(['combate' => $depois]);
+    }
+
+    /** Ação bônus: move o centro da esfera da Vigília até 6 m. */
+    public function moverVigia(Request $request, Mesa $mesa, string $ativa, CombateService $combate): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+        $d = $request->validate(['x' => ['required', 'numeric'], 'y' => ['required', 'numeric']]);
+        $atual = collect(CombateService::normalizar($mesa->combate)['ativas'])->firstWhere('id', $ativa);
+        abort_unless($atual && ($atual['tipo'] ?? '') === 'vigia', 404, 'Esta Vigília não está ativa.');
+        abort_unless($acesso->podeControlar($atual['personagem_id']), 403, 'Esta Técnica não é sua.');
+        $pagina = \App\Models\Pagina::findOrFail($atual['zona']['pagina_id']);
+        $metros = \App\Nucleo\Combate\Movimento::metros((float) $d['x'] - (float) $atual['zona']['x'], (float) $d['y'] - (float) $atual['zona']['y'], $pagina);
+        if ($metros > 6 + \App\Nucleo\Combate\Movimento::FOLGA) {
+            throw ValidationException::withMessages(['x' => 'A esfera só anda até 6 m por ação bônus.']);
+        }
+        // gasta a Ação bônus (recusa se não puder agir agora); mover a esfera é a única atividade que não encerra a Vigília
+        $combate->gastar($mesa, $acesso, $atual['personagem_id'], 'bonus', true, null, manterVigia: true);
+
+        $depois = DB::transaction(function () use ($mesa, $ativa, $d) {
+            $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
+            $c = CombateService::normalizar($m->combate);
+            foreach ($c['ativas'] as $i => $a) {
+                if ($a['id'] === $ativa) {
+                    $c['ativas'][$i]['zona']['x'] = (float) $d['x'];
+                    $c['ativas'][$i]['zona']['y'] = (float) $d['y'];
+                }
+            }
+            $m->forceFill(['combate' => $c])->save();
+
+            return $c;
+        });
+        Transmitir::enviar($mesa, 'combate', ['combate' => $depois, 'ator' => $acesso->jogador->id], ['mesa']);
+
+        return response()->json(['combate' => $depois]);
+    }
+
+    /**
+     * O ataque (comum) da Vigília: gasta 1 munição, rola o ataque da arma de fogo contra a defesa de quem agiu e, no acerto, o dano da arma com a
+     * munição; quem foi atingido faz Salvaguarda de Constituição contra a CD do atirador e, se falhar, encerra o turno logo após o dano.
+     *
+     * @param  array<string, mixed>  $a
+     * @param  array<string, mixed>  $dados
+     * @param  list<array>  $aplicados
+     * @return array<string, mixed>
+     */
+    private function atacarDaVigia(Mesa $mesa, mixed $sistema, Rolador $rolador, AplicarDano $aplicar, Personagem $atacante, Personagem $alvo, array $a, array $dados, array &$aplicados, ?int &$encerraTurnoDe): array
+    {
+        $gasto = \App\Sistemas\OnePiece\Municoes::gastarPorAtaque($mesa, $atacante, $sistema); // 422 sem arma ou sem munição, sem gastar nada
+        $ficha = $atacante->fresh()->fichaCompleta($sistema);
+        $ids = $sistema->itensReferenciados($ficha);
+        $itens = $ids ? $mesa->itens()->whereIn('id', $ids)->get()->mapWithKeys(fn ($i) => [$i->id => $i->paraFront()])->all() : [];
+        $vars = $sistema->variaveisDeRolagem($ficha, $itens);
+        $armaId = $gasto['arma_id'];
+        $r = $rolador->rolar("1d20+@arma.{$armaId}.ataque", $vars);
+        $natural = Pipeline::naturalDoD20($r['termos']);
+        $defesa = $sistema->defesa($sistema->variaveisDeRolagem($alvo->fichaCompleta($sistema), []));
+        $critico = $natural !== null && $natural >= 20;
+        $acerto = $natural !== 1 && ($critico || $r['total'] >= $defesa);
+        $dados['ataque'] = ['total' => $r['total'], 'termos' => $r['termos'], 'defesa' => $defesa, 'acerto' => $acerto, 'critico' => $critico && $acerto, 'falha' => $natural === 1];
+        $dados['municao'] = $gasto['municao']['nome'];
+        if (! $acerto) {
+            $dados['estado'] = 'errou';
+
+            return $dados;
+        }
+        $termos = Regras::dadosDeDano($ficha, $itens, $armaId, $vars, $gasto['municao']);
+        $expr = implode('+', $termos)."+@arma.{$armaId}.dano";
+        $expr = $critico ? Regras::dobrarDadosDaExpressao($expr) : $expr;
+        $tipo = ($gasto['municao']['tipo'] ?? '') ?: ($itens[$armaId]['dados']['arma']['tipoDano'] ?? null);
+        $dano = $rolador->rolar($expr, $vars);
+        $res = $aplicar->aplicar($mesa, $alvo->id, $sistema, $dano['total'], $tipo, [], $atacante->id);
+        $aplicados[] = $res;
+        $dados['estado'] = 'resolvido';
+        $dados['dano'] = ['expressao' => $dano['expressao'], 'total' => $dano['total'], 'final' => $res['calculo']['final'], 'modo' => $res['calculo']['modo'], 'tipo' => $tipo, 'termos' => $dano['termos']];
+        // Salvaguarda de Constituição do atingido contra a CD do atirador: se falhar, o turno dele acaba
+        if (isset($vars['cd'])) {
+            $s = $rolador->rolar('1d20+@salv.con', $sistema->variaveisDeRolagem($alvo->fichaCompleta($sistema), []));
+            $passou = $s['total'] >= (int) $vars['cd'];
+            $dados['salvaguarda'] = ['atributo' => 'con', 'total' => $s['total'], 'termos' => $s['termos'], 'cd' => (int) $vars['cd'], 'passou' => $passou];
+            if (! $passou) {
+                $encerraTurnoDe = $alvo->id;
+            }
+        }
+
+        return $dados;
+    }
+
+
     /** Encerra a Técnica ativa (quem a usou ou o mestre). */
     public function encerrar(Request $request, Mesa $mesa, string $ativa): JsonResponse
     {
@@ -110,20 +268,28 @@ class TecnicaAtivaController extends Controller
     }
 
     /** O jogador clica: rola o ataque (1d20 + ataque) contra a defesa de quem começou o turno; no acerto rola e aplica o dano. */
-    public function atacar(Request $request, Mesa $mesa, Mensagem $mensagem, RegistroSistemas $sistemas, Rolador $rolador, AplicarDano $aplicar): JsonResponse
+    public function atacar(Request $request, Mesa $mesa, Mensagem $mensagem, RegistroSistemas $sistemas, Rolador $rolador, AplicarDano $aplicar, CombateService $combate): JsonResponse
     {
         $acesso = AcessoMesa::exigir($request, $mesa);
         $sistema = $sistemas->resolver($mesa->sistema->slug);
         abort_unless($sistema instanceof SistemaDeCombate, 422, 'Este sistema não tem combate.');
 
         $aplicados = [];
-        $m = DB::transaction(function () use ($mesa, $mensagem, $acesso, $sistema, $rolador, $aplicar, &$aplicados) {
+        $encerraTurnoDe = null;
+        $m = DB::transaction(function () use ($mesa, $mensagem, $acesso, $sistema, $rolador, $aplicar, &$aplicados, &$encerraTurnoDe) {
             $m = $this->travar($mesa, $mensagem, $acesso, 'pendente');
             $dados = $m->dados;
             $a = $this->ativa($mesa, $dados['ativa_id']);
             $atacante = Personagem::query()->where('mesa_id', $mesa->id)->findOrFail($dados['atacante']['personagem_id']);
             $alvo = Personagem::query()->where('mesa_id', $mesa->id)->findOrFail($dados['alvo']['personagem_id']);
             Equipes::exigirPodeAtingir($mesa, $atacante->id, $alvo->id);
+            if (($a['tipo'] ?? '') === 'vigia') {
+                $dados = $this->atacarDaVigia($mesa, $sistema, $rolador, $aplicar, $atacante, $alvo, $a, $dados, $aplicados, $encerraTurnoDe);
+                $m->dados = $dados;
+                $m->save();
+
+                return $m;
+            }
             $vars = $sistema->variaveisDeRolagem($atacante->fichaCompleta($sistema), []);
             $r = $rolador->rolar('1d20+@ataque', $vars);
             $natural = Pipeline::naturalDoD20($r['termos']);
@@ -151,6 +317,15 @@ class TecnicaAtivaController extends Controller
             $aplicar->avisar($mesa, $acesso, 'todos', $res, postar: false);
         }
         EntregarMensagem::para($mesa, $m, $acesso, substitui: true);
+        // Vigília: quem falha na Salvaguarda encerra o turno logo após sofrer o dano (se o turno é dele)
+        if ($encerraTurnoDe !== null) {
+            $c = CombateService::normalizar($mesa->fresh()->combate);
+            $atual = collect($c['itens'])->firstWhere('id', $c['atual']);
+            if (($atual['personagem_id'] ?? null) === $encerraTurnoDe && $c['fase'] === 'em_curso') {
+                $combate->executar($mesa, $acesso, 'turno', ['sentido' => 'proximo'], interno: true);
+                AplicarDano::postar($mesa, $acesso, 'todos', "{$m->dados['alvo']['nome']} falhou na Salvaguarda e encerra o turno.");
+            }
+        }
 
         return response()->json($m->para($acesso->jogador));
     }

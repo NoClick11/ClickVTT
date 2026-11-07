@@ -100,6 +100,8 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::post('personagens/{personagem}/socorros', [AlvoController::class, 'socorros'])->middleware('throttle:30,1')->name('personagens.socorros');
     Route::post('combate/disparada', [CombateController::class, 'disparada'])->middleware('throttle:60,1')->name('combate.disparada');
     Route::post('combate/tecnicas-ativas', [TecnicaAtivaController::class, 'ativar'])->middleware('throttle:30,1')->name('combate.tecnicas-ativas.ativar');
+    Route::post('combate/tecnicas-ativas/vigia', [TecnicaAtivaController::class, 'ativarVigia'])->middleware('throttle:30,1')->name('combate.tecnicas-ativas.vigia');
+    Route::post('combate/tecnicas-ativas/{ativa}/mover', [TecnicaAtivaController::class, 'moverVigia'])->middleware('throttle:30,1')->name('combate.tecnicas-ativas.mover');
     Route::delete('combate/tecnicas-ativas/{ativa}', [TecnicaAtivaController::class, 'encerrar'])->middleware('throttle:30,1')->name('combate.tecnicas-ativas.encerrar');
     Route::post('gatilhos/{mensagem}/atacar', [TecnicaAtivaController::class, 'atacar'])->middleware('throttle:60,1')->name('gatilhos.atacar');
     Route::post('gatilhos/{mensagem}/escolher', [TecnicaAtivaController::class, 'escolher'])->middleware('throttle:60,1')->name('gatilhos.escolher');

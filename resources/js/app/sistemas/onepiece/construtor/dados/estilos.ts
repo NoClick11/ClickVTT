@@ -729,6 +729,8 @@ const DURACOES_DO_ATIRADOR: Record<string, DuracaoDaTecnica> = {
             { id: 'acao', rotulo: 'Impedi-la de realizar a ação neste turno', efeito: { tipo: 'sem_acao' } },
         ],
     },
+    // Até 1 minuto, concentração: a esfera dispara um ataque (comum) quando uma criatura age ou se move nela; a Ação bônus a move até 6 m
+    Overwatch: { rodadas: 10, concentracao: true, vigia: { raio: 3, mover: 6 } },
 };
 for (const t of ATIRADOR.tecnicas) if (DURACOES_DO_ATIRADOR[t.nome]) t.duracao = DURACOES_DO_ATIRADOR[t.nome];
 

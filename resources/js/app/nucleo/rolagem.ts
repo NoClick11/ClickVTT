@@ -193,6 +193,11 @@ export interface DadosDoGatilho {
     ataque?: { total: number; termos: TermoRolagem[]; defesa: number; acerto: boolean; critico: boolean; falha: boolean };
     dano?: { expressao: string; total: number; final: number; modo: string; tipo: string | null; termos: TermoRolagem[] };
     escolha?: { id: string; texto: string };
+    /** Vigília (Overwatch): o gatilho foi a criatura agir ou se mover na esfera; o ataque gastou a munição e o atingido fez a Salvaguarda de Constituição. */
+    vigia?: boolean;
+    motivo?: 'age' | 'se move';
+    municao?: string;
+    salvaguarda?: { atributo: string; total: number; cd: number; passou: boolean; termos: TermoRolagem[] };
 }
 
 export const dadosDoGatilho = (m: { dados: unknown }): DadosDoGatilho => m.dados as DadosDoGatilho;

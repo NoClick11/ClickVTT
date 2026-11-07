@@ -31,6 +31,9 @@ export interface TecnicaAtiva {
     concentracao: boolean;
     /** Alcance em metros. */
     alcance: number;
+    /** Vigília (Overwatch): uma esfera no mapa; o centro em pixels, o raio em metros. */
+    tipo?: 'vigia';
+    zona?: { pagina_id: number; x: number; y: number; raio: number };
 }
 
 export interface Combate {

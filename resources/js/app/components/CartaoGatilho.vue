@@ -30,7 +30,11 @@ const natural = computed(() => {
         <div class="py-2.5 pl-4 pr-3">
             <header class="min-w-0">
                 <h4 class="truncate font-serif text-[15px] font-semibold leading-tight text-ouro-50">{{ d.rotulo }}</h4>
-                <p class="mt-0.5 text-[11px] text-preto-300">
+                <p v-if="d.vigia" class="mt-0.5 text-[11px] text-preto-300">
+                    <strong class="text-preto-100">{{ d.alvo.nome }}</strong> {{ d.motivo === 'se move' ? 'se move' : 'age' }} dentro da esfera:
+                    {{ d.atacante.nome }} pode atacar antes que complete (1 munição; faltam {{ d.rodadas }} rodada{{ d.rodadas === 1 ? '' : 's' }})
+                </p>
+                <p v-else class="mt-0.5 text-[11px] text-preto-300">
                     Início do turno de <strong class="text-preto-100">{{ d.alvo.nome }}</strong
                     >: {{ d.atacante.nome }} pode atacar (faltam {{ d.rodadas }} rodada{{ d.rodadas === 1 ? '' : 's' }})
                 </p>
@@ -84,6 +88,18 @@ const natural = computed(() => {
                         ><span v-if="d.dano.final !== d.dano.total" class="opacity-70"> (de {{ d.dano.total }})</span></span
                     >
                 </div>
+                <div
+                    v-if="d.salvaguarda"
+                    class="mt-1.5 rounded-md border px-2.5 py-1.5 text-xs"
+                    :class="
+                        d.salvaguarda.passou ? 'border-green-400/40 bg-green-500/10 text-green-100' : 'border-red-400/50 bg-red-500/10 text-red-100'
+                    "
+                    role="status"
+                >
+                    Salvaguarda de Constituição de {{ d.alvo.nome }}: {{ d.salvaguarda.total }} contra CD {{ d.salvaguarda.cd }} —
+                    <strong>{{ d.salvaguarda.passou ? 'passou' : 'falhou: encerra o turno' }}</strong>
+                </div>
+                <p v-if="d.municao" class="mt-1 text-[11px] text-preto-400">Munição gasta: {{ d.municao }}</p>
                 <div v-if="d.estado === 'acertou'" class="mt-2 grid gap-1.5">
                     <template v-if="meu">
                         <p class="text-[11px] text-preto-300">Escolha o efeito:</p>

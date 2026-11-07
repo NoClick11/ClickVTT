@@ -20,6 +20,10 @@ const props = defineProps<{
     movimento?: { objetoId: number; usado: number; total: number; limitar: boolean } | null;
     /** Gabarito de área da Técnica em uso: a forma, o tamanho e o token (id do objeto) de onde parte; null = sem gabarito. */
     gabarito?: { area: AreaDeEfeito; origem: number; excluir?: number[] } | null;
+    /** Marcar o centro de uma esfera (Vigília): de onde parte (pixels), alcance máximo e raio (metros); null = desligado. */
+    ponto?: { de: { x: number; y: number }; maximo: number; raio: number } | null;
+    /** Esferas persistentes no mapa (Vigília), visíveis para todos. */
+    zonas?: { id: string; x: number; y: number; raio: number; cor: string }[];
 }>();
 
 const emit = defineEmits<{
@@ -35,6 +39,7 @@ const emit = defineEmits<{
     menuObjeto: [id: number, tela: { x: number; y: number }];
     mirar: [id: number | null];
     gabarito: [personagemIds: number[] | null];
+    ponto: [ponto: { x: number; y: number } | null];
 }>();
 
 const host = ref<HTMLDivElement | null>(null);
@@ -59,6 +64,7 @@ onMounted(async () => {
             menuObjeto: (id, tela) => emit('menuObjeto', id, tela),
             mirar: (id) => emit('mirar', id),
             gabarito: (ids) => emit('gabarito', ids),
+            ponto: (p) => emit('ponto', p),
         },
     });
     await nova.iniciar(host.value!);
@@ -76,6 +82,8 @@ onMounted(async () => {
     nova.setAlvo(props.alvoId ?? null);
     nova.setMovimento(props.movimento ?? null);
     nova.setGabarito(props.gabarito ?? null);
+    nova.setPonto(props.ponto ?? null);
+    nova.setZonas(props.zonas ?? []);
 });
 
 onBeforeUnmount(() => {
@@ -102,6 +110,15 @@ watch(
 watch(
     () => props.gabarito,
     (g) => cena?.setGabarito(g ?? null),
+);
+watch(
+    () => props.ponto,
+    (p) => cena?.setPonto(p ?? null),
+);
+watch(
+    () => props.zonas,
+    (z) => cena?.setZonas(z ?? []),
+    { deep: true },
 );
 watch(
     () => props.alvoId,

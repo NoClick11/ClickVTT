@@ -82,10 +82,10 @@ final class CombateService
      * @param  array<string, mixed>  $d
      * @return array<string, mixed> o estado novo
      */
-    public function executar(Mesa $mesa, AcessoMesa $acesso, string $comando, array $d): array
+    public function executar(Mesa $mesa, AcessoMesa $acesso, string $comando, array $d, bool $interno = false): array
     {
         $mestreApenas = $comando !== 'iniciativa';
-        abort_if($mestreApenas && ! $acesso->ehMestre(), 403, 'Só o mestre controla o combate.');
+        abort_if($mestreApenas && ! $interno && ! $acesso->ehMestre(), 403, 'Só o mestre controla o combate.');
 
         $antes = null;
         $depois = DB::transaction(function () use ($mesa, $acesso, $comando, $d, &$antes) {
@@ -116,13 +116,14 @@ final class CombateService
      *
      * @return array<string, mixed> o estado (já transmitido se mudou)
      */
-    public function gastar(Mesa $mesa, AcessoMesa $acesso, int $personagemId, string $categoria, bool $tecnica = false, ?int $ataquesPorAcao = null): array
+    public function gastar(Mesa $mesa, AcessoMesa $acesso, int $personagemId, string $categoria, bool $tecnica = false, ?int $ataquesPorAcao = null, bool $manterVigia = false): array
     {
         abort_unless($acesso->podeControlar($personagemId), 403, 'Este personagem não é seu.');
         $sistema = $this->sistemas->resolver($mesa->sistema->slug);
         $cats = $sistema instanceof SistemaDeCombate ? collect($sistema->categoriasDeAcao())->keyBy('id') : collect();
         $mudou = false;
-        $depois = DB::transaction(function () use ($mesa, $acesso, $personagemId, $categoria, $tecnica, $ataquesPorAcao, $cats, &$mudou) {
+        $novaAcao = false; // gastou uma Ação nova (não foi só mais um ataque da mesma Ação)
+        $depois = DB::transaction(function () use ($mesa, $acesso, $personagemId, $categoria, $tecnica, $ataquesPorAcao, $cats, &$mudou, &$novaAcao) {
             $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
             $c = self::normalizar($m->combate);
             $k = collect($c['itens'])->search(fn ($i) => $i['personagem_id'] === $personagemId);
@@ -174,11 +175,16 @@ final class CombateService
             }
             $m->forceFill(['combate' => $c])->save();
             $mudou = true;
+            $novaAcao = true;
 
             return $c;
         });
         if ($mudou) {
             Transmitir::enviar($mesa, 'combate', ['combate' => $depois, 'ator' => $acesso->jogador->id], ['mesa']);
+        }
+        // Vigília (Overwatch): quem age dentro da esfera dispara o ataque do atirador; o atirador que age encerra a dele
+        if ($novaAcao) {
+            TecnicasAtivas::aoAgir($mesa, $acesso, $personagemId, $categoria, $manterVigia);
         }
 
         return $depois;

@@ -233,6 +233,7 @@ provide('acoesDoCombate', {
         avaliarAtaque(combate.value, categoriasAcao.value, personagemId, props.mestre, ataquesPorAcao),
     /** As Técnicas ativas do personagem (Quick Draw...) e como encerrar uma. */
     ativas: (personagemId: number) => combate.value.ativas.filter((a) => a.personagem_id === personagemId),
+    moverVigia: (personagemId: number, id: string) => void moverVigia(personagemId, id),
     encerrarAtiva: async (id: string) => {
         try {
             combate.value = normalizarCombate((await api.encerrarTecnicaAtiva(id)).combate);
@@ -839,6 +840,52 @@ const escolherNaArea = (area: AreaDeEfeito, origem: number, excluir: number[]) =
         resolverGabarito = resolver;
         gabarito.value = { area, origem, excluir };
     });
+// Vigília (Overwatch): marcar o centro da esfera no mapa (limitada ao alcance) e as esferas ativas, visíveis para todos.
+const pontoAtivo = ref<{ de: { x: number; y: number }; maximo: number; raio: number } | null>(null);
+let resolverPonto: ((p: { x: number; y: number } | null) => void) | null = null;
+function aoPonto(p: { x: number; y: number } | null) {
+    pontoAtivo.value = null;
+    resolverPonto?.(p);
+    resolverPonto = null;
+}
+const escolherPonto = (cfg: { de: { x: number; y: number }; maximo: number; raio: number }) =>
+    new Promise<{ x: number; y: number } | null>((resolver) => {
+        resolverPonto?.(null);
+        resolverPonto = resolver;
+        pontoAtivo.value = cfg;
+    });
+const centroDoToken = (personagemId: number) => {
+    const t = objetos.value.find((o) => o.tipo === 'token' && o.personagem_id === personagemId);
+
+    return t ? { x: t.x + t.largura / 2, y: t.y + t.altura / 2 } : null;
+};
+const zonasDaCena = computed(() =>
+    combate.value.ativas
+        .filter((a) => a.zona && a.zona.pagina_id === props.pagina?.id)
+        .map((a) => ({
+            id: a.id,
+            x: a.zona!.x,
+            y: a.zona!.y,
+            raio: a.zona!.raio,
+            cor: props.personagens.find((p) => p.id === a.personagem_id)?.cor ?? '#fb923c',
+        })),
+);
+/** Ação bônus: a ficha fecha e o jogador marca no mapa o novo centro da esfera (até 6 m do atual). */
+async function moverVigia(personagemId: number, id: string) {
+    const a = combate.value.ativas.find((x) => x.id === id);
+    if (!a?.zona) return;
+    fecharFicha(personagemId);
+    try {
+        avisar('Marque o novo centro da esfera: clique para confirmar, Esc cancela.');
+        const novo = await escolherPonto({ de: { x: a.zona.x, y: a.zona.y }, maximo: 6, raio: a.zona.raio });
+        erro.value = null;
+        if (!novo) return;
+        combate.value = normalizarCombate((await api.moverVigia(id, novo.x, novo.y)).combate);
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+
 /** Fogo amigo da mesa (o mestre liga): sem ele, jogador só acerta NPC não aliado e NPC só acerta jogador. */
 const fogoAmigo = ref(props.mesa.fogo_amigo ?? false);
 watch(
@@ -907,6 +954,32 @@ async function escolherAreaDaFicha(personagemId: number, area: AreaDeEfeito): Pr
 async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
     fecharFicha(personagemId); // a ficha sai da frente: o jogador mira e acompanha o resultado no mapa e no chat
     try {
+        // Vigília (Overwatch): marca a esfera no mapa (dentro do alcance da arma), gasta a ação e os PP e fica ativa
+        if (uso.duracao?.vigia && uso.vigia) {
+            if (!emCurso(combate.value)) return avisar('A Vigília dura vários turnos: use-a com o combate em curso.');
+            if (uso.vigia.bloqueio) return avisar(uso.vigia.bloqueio);
+            const de = centroDoToken(personagemId);
+            if (!de) return avisar('Coloque o seu token no mapa para marcar a esfera.');
+            avisar('Marque a esfera no mapa: clique para confirmar, Esc cancela.');
+            const centro = await escolherPonto({ de, maximo: uso.vigia.maximo, raio: uso.vigia.raio });
+            erro.value = null;
+            if (!centro) return;
+            if (!(await gastarAcaoDoCombate(personagemId, uso.categoria, true))) return;
+            if (uso.municao) await api.gastarMunicaoDaTecnica(personagemId, uso.municao.tecnica);
+            const r = await api.ativarVigia({
+                personagem_id: personagemId,
+                nome: uso.nome,
+                rodadas: uso.duracao.rodadas,
+                concentracao: !!uso.duracao.concentracao,
+                x: centro.x,
+                y: centro.y,
+                raio: uso.vigia.raio,
+            });
+            salvarFicha(personagemId, uso.camposDosPP);
+            combate.value = normalizarCombate(r.combate);
+
+            return;
+        }
         // Técnica com duração (Quick Draw): com o combate em curso ela fica ativa e o ataque vem no início do turno de cada criatura ao alcance
         // (sem marcar área agora). Fora do combate, vale como uma Técnica de uso único.
         if (uso.duracao && emCurso(combate.value) && uso.dano) {
@@ -1531,6 +1604,8 @@ function alternarPorta(id: number) {
                     :alvo-id="alvoObjetoId"
                     :movimento="movimentoDaCena"
                     :gabarito="gabarito"
+                    :ponto="pontoAtivo"
+                    :zonas="zonasDaCena"
                     :camada="camada"
                     :ferramenta="ferramenta"
                     :mestre="mestre"
@@ -1544,6 +1619,7 @@ function alternarPorta(id: number) {
                     @selecao="selecionadosIds = $event"
                     @mirar="miraManual($event)"
                     @gabarito="aoGabarito"
+                    @ponto="aoPonto"
                     @alterar="aoAlterar"
                     @zoom="escala = $event"
                     @criar-luz="criarLuz"

@@ -384,6 +384,9 @@ final class FichaOnePiece
             $r["{$base}.duracao"] = ['nullable', 'array'];
             $r["{$base}.duracao.rodadas"] = ['required_with:'.$base.'.duracao', 'integer:strict', 'between:1,99'];
             $r["{$base}.duracao.concentracao"] = ['nullable', 'boolean:strict'];
+            $r["{$base}.duracao.vigia"] = ['nullable', 'array'];
+            $r["{$base}.duracao.vigia.raio"] = ['required_with:'.$base.'.duracao.vigia', 'numeric', 'between:0.5,3'];
+            $r["{$base}.duracao.vigia.mover"] = ['required_with:'.$base.'.duracao.vigia', 'numeric', 'between:0,6'];
             $r["{$base}.duracao.opcoes"] = ['nullable', 'array', 'max:6'];
             $r["{$base}.duracao.opcoes.*.id"] = ['required', 'string', 'max:30'];
             $r["{$base}.duracao.opcoes.*.rotulo"] = ['required', 'string', 'max:120'];

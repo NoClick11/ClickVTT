@@ -94,4 +94,6 @@ export interface CenaEventos {
     mirar: (id: number | null) => void;
     /** O gabarito de área foi confirmado (ids dos personagens dentro dele) ou cancelado (`null`). */
     gabarito: (personagemIds: number[] | null) => void;
+    /** Ponto marcado no mapa para uma esfera (Vigília): o centro em pixels do mundo, ou null (Esc). */
+    ponto: (ponto: { x: number; y: number } | null) => void;
 }

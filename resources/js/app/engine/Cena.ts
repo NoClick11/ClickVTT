@@ -45,6 +45,7 @@ export class Cena {
     private selecaoG = new Graphics();
     private reguaG = new Graphics();
     private gabaritoG = new Graphics();
+    private zonasG = new Graphics();
     private desenhoG = new Graphics();
     private reguaTexto = new Text({
         text: '',
@@ -70,6 +71,9 @@ export class Cena {
     private movimento: { objetoId: number; usado: number; total: number; limitar: boolean } | null = null;
     /** Gabarito de área em uso (Técnica de área): a forma segue o cursor a partir do token de quem usa; um clique confirma. */
     private gabarito: { area: AreaDeEfeito; origem: number; excluir?: number[] } | null = null;
+    /** Marcar o centro de uma esfera (Vigília): segue o cursor, limitada a `maximo` m do ponto `de`; um clique confirma. */
+    private ponto: { de: { x: number; y: number }; maximo: number; raio: number } | null = null;
+    private zonas: { id: string; x: number; y: number; raio: number; cor: string }[] = [];
     /** Tecla T apertada: o próximo clique em um token o mira (qualquer ferramenta). */
     private teclaMirar = false;
 
@@ -120,7 +124,7 @@ export class Cena {
             this.mundo.addChild(c);
             if (id === 'mapa') this.mundo.addChild(this.grade);
         }
-        this.overlay.addChild(this.selecaoG, this.reguaG, this.gabaritoG, this.desenhoG, this.reguaTexto);
+        this.overlay.addChild(this.zonasG, this.selecaoG, this.reguaG, this.gabaritoG, this.desenhoG, this.reguaTexto);
         this.reguaTexto.visible = false;
         this.mundo.addChild(this.overlay);
 
@@ -145,6 +149,7 @@ export class Cena {
         const trocou = this.pagina?.id !== pagina.id;
         this.pagina = pagina;
         this.redesenharPagina();
+        this.desenharZonas();
         if (trocou || ajustar) this.ajustarVista();
     }
 
@@ -202,6 +207,64 @@ export class Cena {
         this.reguaTexto.visible = false;
         for (const v of this.visuais.values()) v.definirAlvo(v.dto.id === this.alvoId);
         this.atualizarCursor();
+    }
+
+    /** Liga a marcação do centro de uma esfera (`de` e centro em pixels do mundo; `maximo` e `raio` em metros), ou a desliga (`null`). */
+    setPonto(p: { de: { x: number; y: number }; maximo: number; raio: number } | null): void {
+        this.ponto = p;
+        this.gabaritoG.clear();
+        this.reguaTexto.visible = false;
+        this.atualizarCursor();
+    }
+
+    /** Esferas persistentes no mapa (Vigília): visíveis para todos, na cor de quem as marcou. */
+    setZonas(zonas: { id: string; x: number; y: number; raio: number; cor: string }[]): void {
+        this.zonas = zonas;
+        this.desenharZonas();
+    }
+
+    private desenharZonas(): void {
+        const g = this.zonasG.clear();
+        const mpp = this.metrosPorPixel();
+        for (const z of this.zonas) {
+            const cor = Number.parseInt(z.cor.replace('#', ''), 16) || 0xfb923c;
+            g.circle(z.x, z.y, z.raio / mpp)
+                .fill({ color: cor, alpha: 0.14 })
+                .stroke({ color: cor, width: 2, alpha: 0.9, pixelLine: true });
+        }
+    }
+
+    /** O ponto sob o cursor, preso ao alcance máximo a partir de `de`. */
+    private pontoLimitado(cursor: { x: number; y: number }): { x: number; y: number; metros: number } | null {
+        if (!this.ponto) return null;
+        const mpp = this.metrosPorPixel();
+        const dx = cursor.x - this.ponto.de.x;
+        const dy = cursor.y - this.ponto.de.y;
+        const dist = Math.hypot(dx, dy) * mpp;
+        const k = dist > this.ponto.maximo ? this.ponto.maximo / dist : 1;
+
+        return { x: this.ponto.de.x + dx * k, y: this.ponto.de.y + dy * k, metros: Math.min(dist, this.ponto.maximo) };
+    }
+
+    private desenharPonto(cursor: { x: number; y: number }): void {
+        const r = this.pontoLimitado(cursor);
+        const g = this.gabaritoG.clear();
+        if (!r || !this.ponto) return;
+        const mpp = this.metrosPorPixel();
+        const estilo = { color: 0xfb923c, width: 2, alpha: 0.95, pixelLine: true };
+        g.circle(this.ponto.de.x, this.ponto.de.y, this.ponto.maximo / mpp).stroke({ ...estilo, alpha: 0.35 }); // o alcance
+        g.circle(r.x, r.y, this.ponto.raio / mpp)
+            .fill({ color: 0xfb923c, alpha: 0.22 })
+            .stroke(estilo);
+        this.reguaTexto.text = `${formatar(r.metros)} m (máx. ${formatar(this.ponto.maximo)} m) · esfera de ${formatar(this.ponto.raio)} m`;
+        this.reguaTexto.scale.set(1 / this.mundo.scale.x);
+        this.reguaTexto.position.set(cursor.x + 12 / this.mundo.scale.x, cursor.y - 24 / this.mundo.scale.x);
+        this.reguaTexto.visible = true;
+    }
+
+    private confirmarPonto(cursor: { x: number; y: number }): void {
+        const r = this.pontoLimitado(cursor);
+        if (r) this.opcoes.eventos.ponto({ x: r.x, y: r.y });
     }
 
     private metrosPorPixel(): number {
@@ -687,6 +750,7 @@ export class Cena {
             }
             if (e.key === 'Escape') {
                 if (this.gabarito) this.opcoes.eventos.gabarito(null);
+                if (this.ponto) this.opcoes.eventos.ponto(null);
                 this.limparRegua();
                 this.selecionar(null);
             }
@@ -723,6 +787,10 @@ export class Cena {
         if (e.button !== 0) return;
         if (this.gabarito) {
             this.confirmarGabarito(p);
+            return;
+        }
+        if (this.ponto) {
+            this.confirmarPonto(p);
             return;
         }
 
@@ -812,6 +880,10 @@ export class Cena {
         const p = this.paraMundo(tela.x, tela.y);
         if (this.gabarito && this.modo !== 'pan') {
             this.desenharGabarito(p);
+            return;
+        }
+        if (this.ponto && this.modo !== 'pan') {
+            this.desenharPonto(p);
             return;
         }
 
@@ -1089,7 +1161,10 @@ export class Cena {
         if (!this.pronto) return;
         const emPan = this.espaco || this.ferramenta === 'mover';
         const padrao =
-            this.teclaMirar || this.gabarito || ['mirar', 'regua', 'luz', 'parede', 'porta', 'janela', 'pintar'].includes(this.ferramenta)
+            this.teclaMirar ||
+            this.gabarito ||
+            this.ponto ||
+            ['mirar', 'regua', 'luz', 'parede', 'porta', 'janela', 'pintar'].includes(this.ferramenta)
                 ? 'crosshair'
                 : this.ferramenta === 'texto'
                   ? 'text'

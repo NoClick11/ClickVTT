@@ -198,6 +198,70 @@ final class Municoes
         });
     }
 
+    /**
+     * Gasta 1 munição do atirador para UM ataque da Vigília (Overwatch: "1 munição por ataque") e devolve a escolhida no formato de `escolhida`,
+     * junto da arma de fogo equipada que atira. Ordem: esférica, perfurante, outras do catálogo e, por último, as criadas à mão (nunca a de
+     * Kairoseki sozinha). Sem arma de fogo equipada ou sem munição: 422 e nada é gasto.
+     *
+     * @return array{arma_id: int, municao: array{item_id: int, id: string, nome: string, dano: string, tipo: string, nota: string}}
+     */
+    public static function gastarPorAtaque(Mesa $mesa, Personagem $p, mixed $sistema): array
+    {
+        $erro = fn (string $m) => throw ValidationException::withMessages(['municao' => $m]);
+
+        return DB::transaction(function () use ($mesa, $p, $sistema, $erro) {
+            $p = Personagem::query()->whereKey($p->id)->where('mesa_id', $mesa->id)->lockForUpdate()->firstOrFail();
+            $ficha = $p->fichaCompleta($sistema);
+            $ids = $sistema->itensReferenciados($ficha);
+            $itens = $ids ? $mesa->itens()->whereIn('id', $ids)->get()->mapWithKeys(fn ($i) => [$i->id => $i->paraFront()])->all() : [];
+            $armaId = null;
+            $aceitas = [];
+            foreach ($ficha['inventario'] ?? [] as $secao) {
+                foreach ($secao['itens'] ?? [] as $ref) {
+                    $item = $itens[(int) ($ref['item_id'] ?? 0)] ?? null;
+                    if ($item && ($item['dados']['arma']['municao'] ?? false) && Regras::ativo($ref, $item)) {
+                        $armaId ??= (int) $item['id'];
+                        $aceitas = [...$aceitas, ...self::daArma($item['dados']['catalogo']['id'] ?? null)];
+                    }
+                }
+            }
+            if ($armaId === null) {
+                $erro('Equipe uma arma de fogo (mosquete) para atirar.');
+            }
+            $f = $p->ficha ?? [];
+            $fontes = [...self::paraGastar('qualquer', array_values(array_unique($aceitas))), '*propria'];
+            foreach ($fontes as $catalogoId) {
+                foreach ($f['inventario'] ?? [] as $s => $secao) {
+                    foreach ($secao['itens'] ?? [] as $i => $ref) {
+                        $item = $itens[(int) ($ref['item_id'] ?? 0)] ?? null;
+                        $dadosDoItem = $item['dados'] ?? [];
+                        $bate = $catalogoId === '*propria' ? isset($dadosDoItem['municao']) : ($dadosDoItem['catalogo']['id'] ?? null) === $catalogoId;
+                        if (! $item || ! $bate || (int) $ref['qtd'] <= 0) {
+                            continue;
+                        }
+                        if ($catalogoId === '*propria') {
+                            $m = ['item_id' => (int) $item['id'], 'id' => 'c:'.$item['id'], 'nome' => $item['nome'], 'dano' => $dadosDoItem['municao']['dano'], 'tipo' => $dadosDoItem['municao']['tipoDano'] ?? '', 'nota' => ''];
+                        } else {
+                            $e = Itens::item($catalogoId);
+                            $m = ['item_id' => (int) $item['id'], 'id' => $catalogoId, 'nome' => $e['nome'], 'dano' => $e['arma']['dano'], 'tipo' => $e['arma']['tipoDano'], 'nota' => ''];
+                        }
+                        if ((int) $ref['qtd'] - 1 > 0) {
+                            $f['inventario'][$s]['itens'][$i]['qtd'] = (int) $ref['qtd'] - 1;
+                        } else {
+                            array_splice($f['inventario'][$s]['itens'], $i, 1);
+                        }
+                        $p->ficha = $f;
+                        $p->save();
+                        self::avisar($mesa, $p);
+
+                        return ['arma_id' => $armaId, 'municao' => $m];
+                    }
+                }
+            }
+            $erro('Sem munição para atirar: a Vigília gasta 1 por ataque.');
+        });
+    }
+
     private static function avisar(Mesa $mesa, Personagem $p): void
     {
         $canais = ['mestre', ...$p->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];

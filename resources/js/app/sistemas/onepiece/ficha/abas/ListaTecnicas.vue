@@ -15,6 +15,7 @@ import {
     camposDoGastoDePP,
     comDadosDaMeito as comDadosExtras,
     dadosExtrasDeMeito,
+    duracaoDaTecnica,
     expandirRolagem,
     kokutoEquipada,
     saijoEquipada,
@@ -136,7 +137,8 @@ function usar(t: Tecnica) {
         ...(teste ? { teste: { tipo: teste.tipo, atributo: teste.atributo, aoPassar: teste.aoPassar, aplica: teste.aplica } } : {}),
         desvantagem: !!teste?.desvantagem || (kokuto.value && !!t.armaCortante),
         area: areaComLimite(ampliado?.mudou ? ampliado.texto : t.alcance),
-        ...(t.duracao ? { duracao: t.duracao } : {}),
+        ...(duracaoDaTecnica(t) ? { duracao: duracaoDaTecnica(t) } : {}),
+        ...(duracaoDaTecnica(t)?.vigia ? { vigia: vigiaDoUso(t) } : {}),
         dano: expressao ? { expressao, tipo: t.tipoDano?.trim() || null } : null,
         ...(teste?.secundaria ? { secundaria: teste.secundaria } : {}),
         modoAtaque: modoDe('ataque') === 'vantagem' ? 'vantagem' : modoDe('ataque') === 'desvantagem' ? 'desvantagem' : null,
@@ -187,6 +189,14 @@ const alternarGrupo = (chave: string) => {
 
 /** A Técnica está ativa no combate (Quick Draw...)? Mostra as rodadas que faltam e deixa encerrar. */
 const ativaDe = (t: Tecnica) => acoes.ativas().find((a) => a.nome === rotuloDoUso(t) || a.nome === t.nome) ?? null;
+
+/** Vigília (Overwatch): o raio da esfera, o quanto a Ação bônus a move e até onde a arma de fogo equipada alcança (sem arma: bloqueada). */
+function vigiaDoUso(t: Tecnica) {
+    const v = duracaoDaTecnica(t)!.vigia!;
+    const r = alcanceMaximoDaArma(props.ficha, itens.value);
+
+    return { raio: v.raio, mover: v.mover, maximo: 'maximo' in r ? r.maximo : 0, ...('problema' in r ? { bloqueio: r.problema } : {}) };
+}
 
 /** A área da Técnica; "Arma, Cone/Linha/Esfera" não passa do alcance máximo da arma equipada (sem arma ou sem alcance cadastrado, fica bloqueada). */
 function areaComLimite(alcance: string) {
@@ -295,6 +305,15 @@ function adicionar() {
                                             :title="`Ativa no combate: faltam ${ativaDe(t)!.rodadas} rodada${ativaDe(t)!.rodadas === 1 ? '' : 's'}`"
                                             >ativa · {{ ativaDe(t)!.rodadas }} rod.</span
                                         >
+                                        <button
+                                            v-if="ativaDe(t)?.tipo === 'vigia' && acoes.moverVigia"
+                                            type="button"
+                                            class="ml-1 rounded border border-amber-400/50 px-1.5 py-0.5 align-middle text-[10px] font-normal text-amber-200 hover:bg-amber-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                                            title="Ação bônus: move o centro da esfera até 6 m"
+                                            @click="acoes.moverVigia(ativaDe(t)!.id)"
+                                        >
+                                            mover esfera
+                                        </button>
                                         <button
                                             v-if="ativaDe(t) && acoes.encerrarAtiva"
                                             type="button"

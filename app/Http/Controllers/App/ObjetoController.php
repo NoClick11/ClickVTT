@@ -120,6 +120,7 @@ class ObjetoController extends Controller
             $dados = $request->validate(['x' => ['required', 'numeric'], 'y' => ['required', 'numeric']]);
         }
 
+        $de = ['x' => (float) $objeto->x, 'y' => (float) $objeto->y];
         // Token em combate: o que andou entra no deslocamento do turno; quem não é o mestre trava no limite (como a régua).
         if ($objeto->tipo === 'token' && isset($dados['x'], $dados['y']) && CombateService::emCurso($mesa)) {
             $r = app(CombateService::class)->registrarMovimento($mesa, $objeto, (float) $dados['x'], (float) $dados['y'], ! $acesso->ehMestre());
@@ -129,6 +130,10 @@ class ObjetoController extends Controller
 
         $objeto->update($dados);
         Transmitir::cena($mesa, $objeto->pagina_id, $acesso->jogador->id, $this->soMestre($objeto));
+        // Vigília (Overwatch): quem se move dentro da esfera dispara o ataque do atirador; o atirador que anda a encerra
+        if ($objeto->tipo === 'token' && isset($dados['x'], $dados['y']) && ($de['x'] !== (float) $dados['x'] || $de['y'] !== (float) $dados['y'])) {
+            \App\Nucleo\Combate\TecnicasAtivas::aoMover($mesa, $acesso, $objeto, $de, ['x' => (float) $dados['x'], 'y' => (float) $dados['y']]);
+        }
 
         return response()->json($objeto->paraFront());
     }
