@@ -16,4 +16,5 @@ export const modulo: ModuloSistema = {
     atributos: ATRIBUTOS.map((a) => ({ id: a.id, sigla: a.sigla })),
     condicoes: CONDICOES.map((c) => ({ id: c.id, nome: c.nome, descricao: c.descricao })),
     Construtor: defineAsyncComponent(() => import('./construtor/ConstrutorFicha.vue')),
+    CatalogoDeItens: defineAsyncComponent(() => import('./itens/CatalogoDeItens.vue')),
 };

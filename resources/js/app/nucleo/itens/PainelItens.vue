@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { Plus } from 'lucide-vue-next';
+import { BookOpen, Plus } from 'lucide-vue-next';
 import type { ItemDto } from '../../tipos-mesa';
 import { resumoEfeito, type FormatoResumo } from '../efeitos/resumo';
 import { MIME_ITEM } from './arrastar';
 
 /** Catálogo de itens da mesa (só o mestre): lista, cria e abre o editor. */
-defineProps<{ itens: ItemDto[]; formato?: FormatoResumo }>();
-const emit = defineEmits<{ editar: [itemId: number | null] }>();
+defineProps<{ itens: ItemDto[]; formato?: FormatoResumo; temCatalogo?: boolean }>();
+const emit = defineEmits<{ editar: [itemId: number | null]; catalogo: [] }>();
 /** Arrastar o item para a janela de uma ficha o entrega ao personagem. */
 function arrastar(e: DragEvent, itemId: number) {
     if (!e.dataTransfer) return;
@@ -21,6 +21,14 @@ const peso = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2
     <div class="flex min-h-0 flex-1 flex-col text-sm text-preto-100">
         <div class="flex shrink-0 items-center justify-between gap-2 border-b border-preto-800 px-3 py-2">
             <p class="text-xs text-preto-400">{{ itens.length }} {{ itens.length === 1 ? 'item' : 'itens' }} na mesa · arraste para uma ficha</p>
+            <button
+                v-if="temCatalogo"
+                type="button"
+                class="flex items-center gap-1 rounded-md border border-ouro-500/60 px-2.5 py-1 text-xs font-semibold text-ouro-100 hover:bg-ouro-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-300"
+                @click="emit('catalogo')"
+            >
+                <BookOpen class="size-3.5" /> Catálogo
+            </button>
             <button
                 type="button"
                 class="flex items-center gap-1 rounded-md bg-ouro-500 px-2.5 py-1 text-xs font-semibold text-preto-950 hover:bg-ouro-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-300"

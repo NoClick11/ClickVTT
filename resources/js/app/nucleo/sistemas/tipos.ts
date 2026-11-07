@@ -74,6 +74,11 @@ export interface ModuloSistema {
      * abrir o assistente emitindo `construtor`.
      */
     Construtor?: Component;
+    /**
+     * Catálogo de itens do sistema (opcional, só o mestre): recebe `open`, `itens` (os da mesa) e `adicionar(item)`, que cria o item
+     * na mesa; emite `update:open`. A loja usará o mesmo catálogo.
+     */
+    CatalogoDeItens?: Component;
     /** Condições do sistema (id, nome, descrição), oferecidas no painel do alvo mirado. */
     condicoes?: { id: string; nome: string; descricao: string }[];
     /** Atributos do sistema (id e sigla), para a salvaguarda do alvo ao aplicar condições. */

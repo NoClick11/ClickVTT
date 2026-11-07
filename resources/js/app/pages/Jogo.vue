@@ -692,6 +692,7 @@ const itensDaMesa = computed(() => [
 
 // Editor do mestre (diálogo único; abre pela aba Itens ou pelo inventário de uma ficha).
 const editorAberto = ref(false);
+const catalogoAberto = ref(false);
 const itemEditando = ref<ItemDto | null>(null);
 let aoSalvarItem: ((item: ItemDto) => void) | undefined;
 const abrirEditorItem: AbrirEditorItem = (itemId, aoSalvar) => {
@@ -1208,7 +1209,13 @@ function alternarPorta(id: number) {
                         />
                     </template>
                     <template v-if="mestre" #itens>
-                        <PainelItens :itens="itensDaMesa" :formato="moduloSistema?.formatoDeResumo" @editar="abrirEditorItem" />
+                        <PainelItens
+                            :itens="itensDaMesa"
+                            :formato="moduloSistema?.formatoDeResumo"
+                            :tem-catalogo="!!moduloSistema?.CatalogoDeItens"
+                            @editar="abrirEditorItem"
+                            @catalogo="catalogoAberto = true"
+                        />
                     </template>
                 </BarraLateral>
 
@@ -1330,6 +1337,13 @@ function alternarPorta(id: number) {
             <ConfigPaginaDialog v-model:open="configAberta" :pagina="configPagina" :erro="configErro" @salvar="salvarConfig" />
             <NovoPersonagemDialog v-model:open="novoPersonagemAberto" :jogadores="jogadores" :criar="criarPersonagem" @criado="aoCriarPersonagem" />
             <AtribuirJogadoresDialog v-model:open="atribuicaoAberta" :personagem="atribuindo" :jogadores="jogadores" @salvar="salvarAtribuicao" />
+            <component
+                :is="moduloSistema.CatalogoDeItens"
+                v-if="moduloSistema?.CatalogoDeItens"
+                v-model:open="catalogoAberto"
+                :itens="itensDaMesa"
+                :adicionar="(item: NovoItem) => salvarItem(item, null)"
+            />
             <EditorItemDialog
                 v-model:open="editorAberto"
                 :item="itemEditando"
