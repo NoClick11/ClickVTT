@@ -7,6 +7,7 @@ use App\Http\Controllers\App\EventoDeCombateController;
 use App\Http\Controllers\App\CompanheiroController;
 use App\Http\Controllers\App\CombateController;
 use App\Http\Controllers\App\FichaController;
+use App\Http\Controllers\App\ForjaController;
 use App\Http\Controllers\App\ItemController;
 use App\Http\Controllers\App\LojaController;
 use App\Http\Controllers\App\JogoController;
@@ -63,6 +64,10 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::post('loja', [LojaController::class, 'abrir'])->middleware('throttle:30,1')->name('loja.abrir');
     Route::delete('loja', [LojaController::class, 'fechar'])->middleware('throttle:30,1')->name('loja.fechar');
     Route::post('loja/comprar', [LojaController::class, 'comprar'])->middleware('throttle:60,1')->name('loja.comprar');
+    // Forja do Ferreiro: criar armas do catálogo e aprimorar a arma de qualquer personagem com Pontos de Forja.
+    Route::post('forja/armas', [ForjaController::class, 'armas'])->middleware('throttle:60,1')->name('forja.armas');
+    Route::post('forja/criar', [ForjaController::class, 'criar'])->middleware('throttle:30,1')->name('forja.criar');
+    Route::post('forja/aprimorar', [ForjaController::class, 'aprimorar'])->middleware('throttle:30,1')->name('forja.aprimorar');
     Route::post('catalogo', [LojaController::class, 'store'])->middleware('throttle:60,1')->name('catalogo.store');
     Route::patch('catalogo/{item}', [LojaController::class, 'update'])->middleware('throttle:60,1')->name('catalogo.update');
     Route::delete('catalogo/{item}', [LojaController::class, 'destroy'])->name('catalogo.destroy');

@@ -93,6 +93,7 @@ final class FichaOnePiece
             'treinamento' => Treinamentos::padrao(),
             'profissoes' => Profissoes::padrao(),
             'individualidades' => Individualidades::padrao(),
+            'forja' => Ferreiro::padrao(),
             'maestria' => '',
             'tracosDeMaestria' => [],
             'estiloCaminho' => '',
@@ -180,6 +181,11 @@ final class FichaOnePiece
         $r['treinamento.pedidos.*.opcao'] = ['nullable', 'string', 'max:30'];
         $r['treinamento.pedidos.*.dias'] = ['required', 'integer:strict', 'between:0,60'];
         // Profissões: o dono escolhe a do 1º nível e usa os avanços (5/10/15/20); o resto é do mestre (OnePiece::conferirFicha)
+        // Pontos de Forja do Ferreiro: idade, lâminas comuns e PF dados são do mestre; os PF gastos e as lâminas, da forja (servidor).
+        $r['forja'] = ['array'];
+        foreach (['idade', 'laminas', 'extras', 'gastos'] as $campo) {
+            $r["forja.{$campo}"] = ['integer:strict', 'between:-999,100000'];
+        }
         // Individualidades (regra opcional): Singularidades e Defeitos; o servidor confere espaços, pares e o que é do mestre.
         $r['individualidades'] = ['array'];
         $r['individualidades.variaveis'] = ['boolean:strict'];
@@ -335,6 +341,8 @@ final class FichaOnePiece
         $r['tecnicas.lista.*.tipoDano'] = ['nullable', 'string', 'max:30'];
         // Categoria de ação que a técnica gasta (padrão: poderosa).
         $r['tecnicas.lista.*.acao'] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];
+        $r['tecnicas.lista.*.armaCortante'] = ['boolean:strict'];
+        $r['akuma.lista.*.armaCortante'] = ['boolean:strict'];
         // Quem criou a técnica: o assistente de criação marca `especie` para refazer o passo sem duplicar.
         $r['tecnicas.lista.*.builder'] = ['nullable', 'string', Rule::in(['especie', 'estilo', 'maestria', 'treinamento', 'criador', 'akuma'])];
 
@@ -446,7 +454,15 @@ final class FichaOnePiece
         return [
             'dados.armadura.tipo' => ['required_with:dados.armadura.base', 'string', Rule::in(self::TIPOS_ARMADURA)],
             'dados.armadura.base' => ['required_with:dados.armadura.tipo', 'integer:strict', 'between:0,30'],
-            'dados.arma.dano' => ['required_with:dados.arma.atributo', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/'],
+            'dados.arma.dano' => ['required_with:dados.arma.atributo', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/', function (string $atributo, mixed $v, \Closure $fail) {
+                // A forja da arma (Meito só em cortantes, Kokuto/Yoto só em Meito, Balanço exige Densidade...) é conferida junto do dano.
+                $forja = request()->input('dados.arma.forja');
+                if (is_array($forja)) {
+                    foreach (Forja::problemas($forja, str_contains(\App\Nucleo\Combate\Dano::normalizar((string) request()->input('dados.arma.tipoDano')), 'cortante')) as $p) {
+                        $fail($p);
+                    }
+                }
+            }],
             'dados.arma.atributo' => ['required_with:dados.arma.dano', 'string', Rule::in([...self::ATRIBUTOS, 'acuidade'])],
             // Atributo do dano; sem ele, o dano usa o mesmo do ataque. `nenhum` = dano sem modificador (mão secundária).
             'dados.arma.atributoDano' => ['nullable', 'string', Rule::in([...self::ATRIBUTOS, 'acuidade', 'nenhum'])],
@@ -468,6 +484,16 @@ final class FichaOnePiece
             'dados.arma.distancia' => ['boolean:strict'],
             'dados.arma.tamanho' => ['nullable', 'string', Rule::in(['padrao', 'gigante'])],
             'dados.arma.margemCritica' => ['integer:strict', 'between:10,20'], // d20 puro igual ou maior é crítico (padrão 20)
+            // Forja da arma (Meito, Kokuto, Yoto, Expertise e melhorias de Pontos de Forja); o conteúdo é conferido por `Forja::problemas`.
+            'dados.arma.forja.meito' => ['nullable', 'string', Rule::in(Forja::ids('meito'))],
+            'dados.arma.forja.kokuto' => ['boolean:strict'],
+            'dados.arma.forja.yoto' => ['nullable', 'string', Rule::in(Forja::ids('yoto'))],
+            'dados.arma.forja.expertise' => ['array', 'max:2'],
+            'dados.arma.forja.expertise.*' => ['string', Rule::in(Forja::ids('expertises'))],
+            'dados.arma.forja.densidade' => ['nullable', 'string', Rule::in(Forja::catalogo()['tiposFisicos'])],
+            'dados.arma.forja.dureza' => ['boolean:strict'],
+            'dados.arma.forja.balanco' => ['boolean:strict'],
+            'dados.arma.forja.fio' => ['integer:strict', 'between:0,'.Forja::catalogo()['maxFio']],
             // De onde o item veio no catálogo (`itens/` do sistema): a loja e a conferência de preço usam este id.
             'dados.catalogo.id' => ['nullable', 'string', 'max:60'],
         ];

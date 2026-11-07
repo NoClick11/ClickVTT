@@ -260,6 +260,10 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         if (empty($antes['akuma']['despertada']) && ! empty($depois['akuma']['despertada'])) {
             abort(403, 'Só o mestre desperta a Akuma no Mi.');
         }
+        // Pontos de Forja: o jogador nunca os altera à mão (a forja gasta e conta as lâminas no servidor; o mestre dá os PF).
+        if (($antes['forja'] ?? Ferreiro::padrao()) != ($depois['forja'] ?? Ferreiro::padrao())) {
+            abort(403, 'Só o mestre ou a própria forja alteram os Pontos de Forja.');
+        }
         Akuma::conferir($antes, $depois);
         Individualidades::conferir($antes, $depois);
         Criador::conferirGenialidades($depois);
