@@ -88,6 +88,8 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::post('mensagens', [ChatController::class, 'texto'])->middleware('throttle:60,1')->name('mensagens.store');
     Route::post('rolagens', [ChatController::class, 'rolar'])->middleware('throttle:60,1')->name('rolagens.store');
     Route::post('tecnicas/salvaguarda', [TecnicaController::class, 'abrir'])->middleware('throttle:30,1')->name('tecnicas.salvaguarda.abrir');
+    Route::post('tecnicas/municao', [TecnicaController::class, 'gastarMunicao'])->middleware('throttle:60,1')->name('tecnicas.municao.gastar');
+    Route::post('tecnicas/municao/{mensagem}/efeito', [TecnicaController::class, 'efeitoDaMunicao'])->middleware('throttle:30,1')->name('tecnicas.municao.efeito');
     Route::post('tecnicas/salvaguarda/{mensagem}/rolar', [TecnicaController::class, 'rolar'])->middleware('throttle:120,1')->name('tecnicas.salvaguarda.rolar');
     Route::post('combate', [CombateController::class, 'comando'])->middleware('throttle:120,1')->name('combate.comando');
     Route::post('combate/eventos/{evento}/reagir', [EventoDeCombateController::class, 'reagir'])->middleware('throttle:60,1')->name('combate.eventos.reagir');

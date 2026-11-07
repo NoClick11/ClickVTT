@@ -101,6 +101,8 @@ export interface UsoDeTecnica {
     /** A categoria de ação que a Técnica gasta no combate e os campos dos PP gastos (`pp.atual` já descontado). */
     categoria: string | undefined;
     camposDosPP: Record<string, unknown>;
+    /** Técnica de arma de fogo: o servidor gasta a munição do Requisito (lê o custo da Técnica salva, pelo nome). */
+    municao?: { tecnica: string };
 }
 
 /** O que a mesa oferece à ficha além de salvar e rolar (a ficha nunca fala com a API): a forja do Ferreiro. */

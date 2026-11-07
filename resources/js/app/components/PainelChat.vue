@@ -26,6 +26,7 @@ const emit = defineEmits<{
     aplicarDano: [mensagem: Mensagem];
     rolarSalvaguarda: [mensagem: Mensagem, personagemId: number];
     pedirSalvaguarda: [mensagem: Mensagem];
+    efeitoDaMunicao: [mensagem: Mensagem];
     gatilhoAtacar: [mensagem: Mensagem];
     gatilhoEscolher: [mensagem: Mensagem, opcao: string];
     gatilhoIgnorar: [mensagem: Mensagem];
@@ -142,6 +143,7 @@ const hora = (m: Mensagem) => (m.criada_em ? new Date(m.criada_em).toLocaleTimeS
                         @acao="(msg, acao) => emit('acao', msg, acao)"
                         @aplicar-dano="(msg) => emit('aplicarDano', msg)"
                         @pedir-salvaguarda="(msg) => emit('pedirSalvaguarda', msg)"
+                        @efeito-da-municao="(msg) => emit('efeitoDaMunicao', msg)"
                     />
                 </div>
             </li>

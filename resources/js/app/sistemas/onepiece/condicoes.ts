@@ -210,6 +210,13 @@ export const CONDICOES: Condicao[] = [
         efeitos: [],
     },
     {
+        id: 'enfraquecido',
+        nome: 'Enfraquecido',
+        descricao:
+            'Condição do One Piece: o usuário de Akuma no Mi não consegue usar os poderes da fruta (as Técnicas de Akuma no Mi ficam bloqueadas). Vem do Kairoseki; sai quando a duração acaba.',
+        efeitos: [],
+    },
+    {
         id: 'sangramento',
         nome: 'Sangramento',
         descricao: 'Condição do One Piece: a criatura perde sangue. As regras completas estão no livro; encerrada por Primeiros Socorros.',

@@ -2,9 +2,23 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { CATALOGO_DE_ITENS, CATEGORIAS, RARIDADES, itemDoCatalogo, itensDaCategoria } from '../../resources/js/app/sistemas/onepiece/itens/index.ts';
-import { MUNICOES_DA_ARMA, municoesDaArma, TODAS_AS_MUNICOES } from '../../resources/js/app/sistemas/onepiece/itens/municoes.ts';
-import { buscarNoCatalogo, dadosDoSistema, itemParaAMesa, pesoFormatado, precoDeCompra, precoDeVenda, precoFormatado } from '../../resources/js/app/sistemas/onepiece/itens/regras.ts';
+import { CATALOGO_DE_ITENS, CATEGORIAS, itemDoCatalogo, itensDaCategoria, RARIDADES } from '../../resources/js/app/sistemas/onepiece/itens/index.ts';
+import {
+    custoDeMunicaoDaTecnica,
+    MUNICOES_DA_ARMA,
+    municoesDaArma,
+    municoesParaGastar,
+    TODAS_AS_MUNICOES,
+} from '../../resources/js/app/sistemas/onepiece/itens/municoes.ts';
+import {
+    buscarNoCatalogo,
+    dadosDoSistema,
+    itemParaAMesa,
+    pesoFormatado,
+    precoDeCompra,
+    precoDeVenda,
+    precoFormatado,
+} from '../../resources/js/app/sistemas/onepiece/itens/regras.ts';
 
 const catalogo = JSON.parse(readFileSync(new URL('../../app/Sistemas/OnePiece/dados/itens.json', import.meta.url), 'utf8'));
 
@@ -20,7 +34,10 @@ test('itens: ids únicos, categorias válidas, preços e pesos coerentes', () =>
     const cats = new Set(CATEGORIAS.map((c) => c.id));
     for (const i of CATALOGO_DE_ITENS) {
         assert.ok(cats.has(i.categoria), i.id);
-        assert.ok(RARIDADES.some((r) => r.id === i.raridade), i.id);
+        assert.ok(
+            RARIDADES.some((r) => r.id === i.raridade),
+            i.id,
+        );
         assert.ok(i.preco === null ? !!i.precoTexto || i.id === 'vida-miseravel' || i.id === 'municao-para-estilingue' : i.preco >= 0, i.id);
         assert.ok(i.peso >= 0, i.id);
         assert.ok(i.descricao.length > 5, i.id);
@@ -113,7 +130,14 @@ test('itens: compra, venda (metade em bom estado) e Mercado Negro até 100 vezes
 
 test('itens: conversão para o item da mesa (arma, escudo, vínculo com o catálogo)', () => {
     const katana = itemParaAMesa(itemDoCatalogo('katana'));
-    assert.deepEqual(katana.dados.arma, { dano: '1d6', atributo: 'acuidade', tipoDano: 'Cortante', alcanceNormal: 1.5, alcanceMaximo: 1.5, forja: { expertise: ['maximizar'] } });
+    assert.deepEqual(katana.dados.arma, {
+        dano: '1d6',
+        atributo: 'acuidade',
+        tipoDano: 'Cortante',
+        alcanceNormal: 1.5,
+        alcanceMaximo: 1.5,
+        forja: { expertise: ['maximizar'] },
+    });
     assert.deepEqual(katana.dados.catalogo, { id: 'katana' });
     assert.equal(katana.peso, 1.2);
     assert.equal(katana.equipavel, true);
@@ -141,4 +165,16 @@ test('a munição de cada arma confere com o servidor e todas existem no catálo
     }
     assert.deepEqual(municoesDaArma('arco'), ['flecha']);
     assert.deepEqual(municoesDaArma(null), TODAS_AS_MUNICOES); // arma sem item do catálogo: qualquer munição
+});
+
+test('munição que a Técnica gasta: lida do Requisito, igual ao PHP (MunicaoTest)', () => {
+    assert.deepEqual(custoDeMunicaoDaTecnica('x. Requisito: arma favorita, 8 munições (qualquer). Ataque combinado: impossível.'), {
+        quantidade: 8,
+        tipo: 'qualquer',
+    });
+    assert.deepEqual(custoDeMunicaoDaTecnica('Requisito: arma favorita, 2 munições (esférica).'), { quantidade: 2, tipo: 'esferica' });
+    assert.deepEqual(custoDeMunicaoDaTecnica('Requisito: arma favorita, 1 munição (perfurante).'), { quantidade: 1, tipo: 'perfurante' });
+    assert.equal(custoDeMunicaoDaTecnica('Sem requisito de munição.'), null);
+    assert.deepEqual(municoesParaGastar('qualquer', municoesDaArma('pistola')), ['municao-esferica', 'municao-perfurante']); // nunca a de Kairoseki
+    assert.deepEqual(municoesParaGastar('perfurante', municoesDaArma('pistola')), ['municao-perfurante']);
 });

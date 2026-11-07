@@ -100,8 +100,95 @@ final class Municoes
 
             return $p;
         });
+        self::avisar($mesa, $p); // ator 0: quem atacou também aplica (o inventário mudou no servidor)
+    }
+
+    /** A munição que a Técnica gasta ("Requisito: ..., 8 munições (qualquer)"); null = não gasta. Espelha `custoDeMunicaoDaTecnica` do TS. @return array{quantidade: int, tipo: string}|null */
+    public static function custoDaTecnica(string $descricao): ?array
+    {
+        if (! preg_match('/Requisito:[^.]*?(\d+)\s+muni[çc](?:ão|ões)\s*\((qualquer|esférica|perfurante)\)/iu', $descricao, $m)) {
+            return null;
+        }
+        $tipo = mb_strtolower($m[2]);
+
+        return ['quantidade' => (int) $m[1], 'tipo' => $tipo === 'esférica' ? 'esferica' : $tipo];
+    }
+
+    /** Ids de munição que servem ao tipo, na ordem de gasto (a de Kairoseki nunca é gasta sozinha). @param list<string> $aceitas @return list<string> */
+    public static function paraGastar(string $tipo, array $aceitas): array
+    {
+        $ordem = ['municao-esferica', 'municao-perfurante'];
+        if ($tipo === 'esferica' || $tipo === 'perfurante') {
+            return array_values(array_filter($aceitas, fn ($id) => $id === "municao-{$tipo}"));
+        }
+
+        return array_values([...array_filter($ordem, fn ($id) => in_array($id, $aceitas, true)), ...array_filter($aceitas, fn ($id) => ! in_array($id, $ordem, true) && $id !== 'municao-de-kairoseki')]);
+    }
+
+    /**
+     * Gasta a munição de uma Técnica do inventário do personagem: só munição que a arma de fogo EQUIPADA aceita, do tipo pedido, em quantidade
+     * inteira (falta = 422 e nada é gasto). O custo sai da descrição da Técnica SALVA na ficha (o cliente só diz o nome).
+     *
+     * @return array{quantidade: int}|null null = a Técnica não gasta munição
+     */
+    public static function gastarDaTecnica(Mesa $mesa, Personagem $p, mixed $sistema, string $nomeDaTecnica): ?array
+    {
+        $erro = fn (string $m) => throw ValidationException::withMessages(['municao' => $m]);
+
+        return DB::transaction(function () use ($mesa, $p, $sistema, $nomeDaTecnica, $erro) {
+            $p = Personagem::query()->whereKey($p->id)->where('mesa_id', $mesa->id)->lockForUpdate()->firstOrFail();
+            $ficha = $p->fichaCompleta($sistema);
+            $tecnica = collect([...($ficha['tecnicas']['lista'] ?? []), ...($ficha['akuma']['lista'] ?? [])])->firstWhere('nome', $nomeDaTecnica);
+            $custo = $tecnica ? self::custoDaTecnica((string) ($tecnica['descricao'] ?? '')) : null;
+            if (! $custo) {
+                return null;
+            }
+            $ids = $sistema->itensReferenciados($ficha);
+            $itens = $ids ? $mesa->itens()->whereIn('id', $ids)->get()->mapWithKeys(fn ($i) => [$i->id => $i->paraFront()])->all() : [];
+            $aceitas = [];
+            foreach ($ficha['inventario'] ?? [] as $secao) {
+                foreach ($secao['itens'] ?? [] as $ref) {
+                    $item = $itens[(int) ($ref['item_id'] ?? 0)] ?? null;
+                    if ($item && ($item['dados']['arma']['municao'] ?? false) && Regras::ativo($ref, $item)) {
+                        $aceitas = [...$aceitas, ...self::daArma($item['dados']['catalogo']['id'] ?? null)];
+                    }
+                }
+            }
+            if (! $aceitas) {
+                $erro('Equipe uma arma de fogo para usar esta Técnica.');
+            }
+            $servem = self::paraGastar($custo['tipo'], array_values(array_unique($aceitas)));
+            $falta = $custo['quantidade'];
+            $f = $p->ficha ?? [];
+            foreach ($servem as $catalogoId) {
+                foreach ($f['inventario'] ?? [] as $s => $secao) {
+                    foreach ($secao['itens'] ?? [] as $i => $ref) {
+                        if ($falta <= 0 || ($itens[(int) ($ref['item_id'] ?? 0)]['dados']['catalogo']['id'] ?? null) !== $catalogoId || (int) $ref['qtd'] <= 0) {
+                            continue;
+                        }
+                        $tira = min($falta, (int) $ref['qtd']);
+                        $f['inventario'][$s]['itens'][$i]['qtd'] = (int) $ref['qtd'] - $tira;
+                        $falta -= $tira;
+                    }
+                }
+            }
+            if ($falta > 0) {
+                $erro("Faltam {$falta} de {$custo['quantidade']} munições para usar {$nomeDaTecnica}.");
+            }
+            foreach ($f['inventario'] as $s => $secao) {
+                $f['inventario'][$s]['itens'] = array_values(array_filter($secao['itens'] ?? [], fn ($r) => (int) $r['qtd'] > 0));
+            }
+            $p->ficha = $f;
+            $p->save();
+            self::avisar($mesa, $p);
+
+            return ['quantidade' => $custo['quantidade']];
+        });
+    }
+
+    private static function avisar(Mesa $mesa, Personagem $p): void
+    {
         $canais = ['mestre', ...$p->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
-        // ator 0: quem atacou também aplica (o inventário mudou no servidor)
         Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => ['inventario' => $p->ficha['inventario'] ?? []], 'criacao' => $p->criacao, 'ator' => 0], $canais);
     }
 }

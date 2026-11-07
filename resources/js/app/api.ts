@@ -123,6 +123,12 @@ export function apiMesa(mesaId: number, atorId: number) {
                 ...(acao ? { acao } : {}),
                 ...(municaoItemId ? { municao_item_id: municaoItemId } : {}),
             }),
+        /** Técnica de arma de fogo: gasta a munição do Requisito (o servidor lê o custo da Técnica salva). */
+        gastarMunicaoDaTecnica: (personagemId: number, tecnica: string) =>
+            requisitar<{ gasto: { quantidade: number } | null }>(atorId, 'POST', r('jogo.tecnicas.municao.gastar'), { personagem_id: personagemId, tecnica }),
+        /** Efeito da munição de um ataque que acertou: Kairoseki (Enfraquecido) ou Bola Explosiva (Salvaguarda em área). */
+        efeitoDaMunicao: (mensagemId: number, dados: { alvo_id?: number | null; alvos?: number[] }) =>
+            requisitar<Mensagem>(atorId, 'POST', r('jogo.tecnicas.municao.efeito', mensagemId), dados),
         /** Técnica de Salvaguarda: abre o card no chat com os alvos da área (a CD e o dano saem do servidor). */
         abrirSalvaguarda: (dados: {
             personagem_id: number;

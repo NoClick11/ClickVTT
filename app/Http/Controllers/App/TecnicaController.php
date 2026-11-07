@@ -101,6 +101,119 @@ class TecnicaController extends Controller
         return response()->json($mensagem->para($acesso->jogador), 201);
     }
 
+    /** A Técnica de arma de fogo gasta a munição do Requisito (o servidor lê o custo da Técnica salva na ficha). */
+    public function gastarMunicao(Request $request, Mesa $mesa, RegistroSistemas $sistemas): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+        $d = $request->validate([
+            'personagem_id' => ['required', 'integer', Rule::in($acesso->personagensPermitidos())],
+            'tecnica' => ['required', 'string', 'max:120'],
+        ]);
+        $sistema = $sistemas->resolver($mesa->sistema->slug) ?? throw ValidationException::withMessages(['sistema' => 'Este sistema não tem ficha.']);
+        $personagem = $mesa->personagens()->findOrFail($d['personagem_id']);
+
+        return response()->json(['gasto' => \App\Sistemas\OnePiece\Municoes::gastarDaTecnica($mesa, $personagem, $sistema, $d['tecnica'])]);
+    }
+
+    /**
+     * O efeito da munição de um ataque que acertou (o card oferece o botão): Kairoseki dá Enfraquecido a quem usa Akuma no Mi até o fim do
+     * próximo turno dele; Bola Explosiva abre a Salvaguarda de Destreza CD 16 (3d6 de Fogo, metade se passar) de quem está na área de 1,5 m.
+     * Uma vez por ataque; o ataque tem de ter acertado (ou não ter alvo resolvido). O cliente só diz o alvo e quem está na área.
+     */
+    public function efeitoDaMunicao(Request $request, Mesa $mesa, Mensagem $mensagem, RegistroSistemas $sistemas, AplicarCondicao $condicoes): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+        abort_unless($mensagem->mesa_id === $mesa->id && $mensagem->tipo === 'rolagem' && $mensagem->personagem_id, 404);
+        abort_unless($acesso->podeControlar((int) $mensagem->personagem_id), 403, 'Este ataque não é seu.');
+        $d = $request->validate([
+            'alvo_id' => ['nullable', 'integer', Rule::exists('personagens', 'id')->where('mesa_id', $mesa->id)],
+            'alvos' => ['nullable', 'array', 'max:30'],
+            'alvos.*' => ['integer', 'distinct', Rule::exists('personagens', 'id')->where('mesa_id', $mesa->id)],
+        ]);
+        $sistema = $sistemas->resolver($mesa->sistema->slug) ?? throw ValidationException::withMessages(['sistema' => 'Este sistema não tem ficha.']);
+        $erro = fn (string $m) => throw ValidationException::withMessages(['efeito' => $m]);
+
+        $resposta = DB::transaction(function () use ($mesa, $mensagem, $d, $sistema, $acesso, $condicoes, $erro) {
+            $m = Mensagem::query()->whereKey($mensagem->id)->lockForUpdate()->firstOrFail();
+            $dados = $m->dados;
+            $municao = $dados['sistema']['municao'] ?? null;
+            $efeito = $municao['efeito'] ?? null;
+            if (! $efeito) {
+                $erro('Esta munição não tem efeito especial.');
+            }
+            if ($municao['usado'] ?? false) {
+                $erro('O efeito desta munição já foi usado.');
+            }
+            $res = $dados['sistema']['resolucao'] ?? null;
+            if ($res && ($res['estado'] ?? null) === 'aguardando') {
+                $erro('Espere o alvo reagir: o ataque ainda não foi resolvido.');
+            }
+            if ($res && ! ($res['acerto'] ?? false)) {
+                $erro('O ataque errou: a munição não faz efeito.');
+            }
+            if (($dados['sistema']['destaque'] ?? null) === 'falha') {
+                $erro('O ataque falhou: a munição não faz efeito.');
+            }
+            $alvoId = (int) ($res['alvo_id'] ?? $d['alvo_id'] ?? 0);
+            if (! $alvoId) {
+                $erro('Mire o alvo atingido.');
+            }
+            $atacante = Personagem::query()->where('mesa_id', $mesa->id)->findOrFail($m->personagem_id);
+            Equipes::exigirPodeAtingir($mesa, $atacante->id, $alvoId, 'alvo_id');
+            if (! $acesso->ehMestre() && Visibilidade::oculto($alvoId)) {
+                $erro('Esse alvo não está à vista.');
+            }
+            $alvo = Personagem::query()->where('mesa_id', $mesa->id)->findOrFail($alvoId);
+            $saida = ['efeito' => $efeito];
+
+            if ($efeito === 'kairoseki') {
+                $f = $alvo->fichaCompleta($sistema);
+                if (($f['akuma']['tipo'] ?? '') === '') {
+                    $erro("{$alvo->nome} não usa Akuma no Mi: a Kairoseki não faz efeito.");
+                }
+                $c = $condicoes->aplicar($alvo->id, $sistema, 'enfraquecido', 1);
+                $saida['condicao'] = $c;
+                $saida['texto'] = match ($c['situacao']) {
+                    'aplicada' => "{$alvo->nome} foi atingido por Kairoseki: perde os poderes da Akuma no Mi e fica Enfraquecido até o fim do próximo turno.",
+                    'imune' => "{$alvo->nome} é imune a {$c['nome']}.",
+                    default => 'A condição Enfraquecido não existe neste sistema.',
+                };
+            } else {
+                $alvos = array_values(array_unique([...($d['alvos'] ?? []), $alvoId]));
+                foreach ($alvos as $id) {
+                    Equipes::exigirPodeAtingir($mesa, $atacante->id, (int) $id, 'alvos');
+                    if (! $acesso->ehMestre() && Visibilidade::oculto((int) $id)) {
+                        $erro('Alguém na área não está à vista.');
+                    }
+                }
+                $saida['explosao'] = $alvos;
+            }
+            $dados['sistema']['municao']['usado'] = true;
+            $m->dados = $dados;
+            $m->save();
+            $saida['mensagem'] = $m;
+            $saida['atacante'] = $atacante;
+
+            return $saida;
+        });
+
+        $m = $resposta['mensagem'];
+        EntregarMensagem::para($mesa, $m, $acesso, substitui: true);
+        if (($resposta['efeito'] ?? '') === 'kairoseki') {
+            if ($resposta['condicao']['situacao'] === 'aplicada') {
+                Duracoes::transmitir($mesa, $resposta['condicao']['p'], $resposta['condicao']['campos'], true);
+            }
+            AplicarDano::postar($mesa, $acesso, 'todos', $resposta['texto']);
+        } else {
+            $this->criar($mesa, $acesso, $resposta['atacante'], [
+                'nome' => 'Bola Explosiva', 'atributo' => 'des', 'desvantagem' => false, 'cd' => 16, 'aoPassar' => 'metade',
+                'dano' => ['expressao' => '3d6', 'tipo' => 'Fogo'], 'efeito' => null, 'aplica' => null, 'secundaria' => null,
+            ], $resposta['explosao']);
+        }
+
+        return response()->json($m->para($acesso->jogador));
+    }
+
     /** Um alvo rola a Salvaguarda (o dono do personagem, ou o mestre). Com o último, o dano é rolado e aplicado. */
     public function rolar(Request $request, Mesa $mesa, Mensagem $mensagem, RegistroSistemas $sistemas, Rolador $rolador, AplicarDano $aplicar, AplicarCondicao $condicoes): JsonResponse
     {

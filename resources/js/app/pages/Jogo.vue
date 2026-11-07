@@ -796,7 +796,10 @@ type RolagemDaFicha = [
 ];
 
 /** Rolagem vinda da ficha: as `@variáveis` são resolvidas no servidor pela ficha salva do personagem. */
-async function rolarDaFicha(personagemId: number, ...[expressao, rotulo, aoRolar, dano, acao, alvoPersonagemId, tecnica, municaoItemId]: RolagemDaFicha) {
+async function rolarDaFicha(
+    personagemId: number,
+    ...[expressao, rotulo, aoRolar, dano, acao, alvoPersonagemId, tecnica, municaoItemId]: RolagemDaFicha
+) {
     try {
         const m = await api.rolar(expressao, 'todos', personagemId, rotulo, dano, acao, alvoPersonagemId, tecnica, municaoItemId);
         aoNovaMensagem(m);
@@ -896,6 +899,7 @@ async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
         // (sem marcar área agora). Fora do combate, vale como uma Técnica de uso único.
         if (uso.duracao && emCurso(combate.value) && uso.dano) {
             if (!(await gastarAcaoDoCombate(personagemId, uso.categoria, true))) return;
+            if (uso.municao) await api.gastarMunicaoDaTecnica(personagemId, uso.municao.tecnica);
             const r = await api.ativarTecnica({
                 personagem_id: personagemId,
                 nome: uso.nome,
@@ -919,6 +923,7 @@ async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
         // sem área, a Salvaguarda vale para o alvo mirado: confere antes de gastar
         if (teste?.tipo === 'salvaguarda' && !alvos && !alvoPersonagem.value) return avisar('Mire um alvo.');
         if (!(await gastarAcaoDoCombate(personagemId, uso.categoria, true))) return;
+        if (uso.municao) await api.gastarMunicaoDaTecnica(personagemId, uso.municao.tecnica); // sem munição o servidor recusa e os PP não são gastos
         salvarFicha(personagemId, uso.camposDosPP);
 
         if (teste?.tipo === 'salvaguarda' && teste.atributo) {
@@ -1005,6 +1010,36 @@ async function pedirSalvaguardaDoEfeito(mensagem: Mensagem) {
                 ...(t.secundaria.aplica ? { aplica: t.secundaria.aplica } : {}),
             }),
         );
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+
+/**
+ * Efeito da munição de um ataque que acertou. Kairoseki: o servidor dá Enfraquecido ao alvo se ele usar Akuma no Mi. Bola Explosiva: a explosão
+ * de 1,5 m é marcada no mapa em volta do alvo atingido (clique confirma, Esc cancela) e quem está dentro rola a Salvaguarda de Destreza CD 16.
+ */
+async function efeitoDaMunicaoDoChat(mensagem: Mensagem) {
+    const efeito = mensagem.dados?.sistema?.municao?.efeito;
+    const alvoId = mensagem.dados?.sistema?.resolucao?.alvo_id ?? alvoPersonagem.value?.id ?? null;
+    const personagemId = mensagem.autor?.personagem_id;
+    if (!efeito || !personagemId) return;
+    if (!alvoId) return avisar('Mire o alvo atingido.');
+    try {
+        if (efeito === 'kairoseki') {
+            aoNovaMensagem(await api.efeitoDaMunicao(mensagem.id, { alvo_id: alvoId }), true);
+            recarregar(['personagens']);
+
+            return;
+        }
+        const token = objetos.value.find((o) => o.tipo === 'token' && o.personagem_id === alvoId);
+        if (!token) return avisar('O alvo precisa ter token no mapa para marcar a explosão.');
+        avisar('Marque a explosão no mapa: clique para confirmar, Esc cancela.');
+        // o raio de 1,5 m parte do alvo atingido; quem o atirador não pode atingir (aliados, sem fogo amigo) fica de fora
+        const naArea = await escolherNaArea({ forma: 'esfera', metros: 1.5 }, token.id, protegidosDe(personagemId));
+        erro.value = null;
+        if (naArea === null) return;
+        aoNovaMensagem(await api.efeitoDaMunicao(mensagem.id, { alvo_id: alvoId, alvos: naArea.filter((id) => id !== alvoId) }), true);
     } catch (e) {
         avisar(mensagemDe(e));
     }
@@ -1594,6 +1629,7 @@ function alternarPorta(id: number) {
                             @gatilho-ignorar="(m: Mensagem) => agirNoGatilho(m, () => api.gatilhoIgnorar(m.id))"
                             @rolar-salvaguarda="rolarSalvaguarda"
                             @pedir-salvaguarda="pedirSalvaguardaDoEfeito"
+                            @efeito-da-municao="efeitoDaMunicaoDoChat"
                             @acao="rolarAcaoDoChat"
                             @aplicar-dano="aplicarDanoDoChat"
                         />

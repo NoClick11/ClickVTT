@@ -382,7 +382,9 @@ final class Regras
             // O tipo do dano da arma segue com o botão: a rolagem de dano carrega o tipo para o dano aplicado respeitar resistências.
             $tipoDano = ($municao['tipo'] ?? $itens[$arma]['dados']['arma']['tipoDano'] ?? null) ?: null;
             if ($municao) {
-                $meta['municao'] = ['nome' => $municao['nome'], 'nota' => $municao['nota']];
+                $meta['municao'] = ['id' => $municao['id'], 'nome' => $municao['nome'], 'nota' => $municao['nota'],
+                    // o que a munição faz ao acertar: o card oferece o botão (Enfraquecido, explosão)
+                    ...(in_array($municao['id'], ['bola-explosiva', 'municao-de-kairoseki'], true) ? ['efeito' => $municao['id'] === 'bola-explosiva' ? 'explosao' : 'kairoseki'] : [])];
             }
             // Arma à distância do anão (Armas Reduzidas): o dano TOTAL sai pela metade (fator aplicado no dano aplicado ao alvo).
             $fator = ($itens[$arma]['dados']['arma']['distancia'] ?? false) ? max(0, (int) ($variaveis['dano.distancia.pct'] ?? 100)) / 100 : 1;

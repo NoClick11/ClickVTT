@@ -139,4 +139,105 @@ class MunicaoTest extends TestCase
             }
         }
     }
+
+    private function tecnicaComMunicao($c, string $descricao = 'Disparos. Requisito: arma favorita, 3 munições (qualquer). Ataque combinado: possível.'): void
+    {
+        $f = $c->p->fresh()->ficha;
+        $f['tecnicas']['lista'] = [['nome' => 'Tiro Duplo', 'descricao' => $descricao, 'custo' => 1, 'rolagem' => '', 'origem' => '1º Grau', 'alcance' => '', 'tipoDano' => '', 'acao' => 'poderosa']];
+        $c->p->ficha = $f;
+        $c->p->save();
+    }
+
+    public function test_o_custo_de_municao_da_tecnica_sai_do_requisito(): void
+    {
+        $this->assertSame(['quantidade' => 8, 'tipo' => 'qualquer'], Municoes::custoDaTecnica('x. Requisito: arma favorita, 8 munições (qualquer). Ataque combinado: impossível.'));
+        $this->assertSame(['quantidade' => 2, 'tipo' => 'esferica'], Municoes::custoDaTecnica('Requisito: arma favorita, 2 munições (esférica).'));
+        $this->assertSame(['quantidade' => 1, 'tipo' => 'perfurante'], Municoes::custoDaTecnica('Requisito: arma favorita, 1 munição (perfurante).'));
+        $this->assertNull(Municoes::custoDaTecnica('Sem requisito de munição.'));
+        $this->assertSame(['municao-esferica', 'municao-perfurante'], Municoes::paraGastar('qualquer', Municoes::daArma('pistola')));
+    }
+
+    public function test_a_tecnica_de_arma_de_fogo_gasta_a_municao_do_requisito(): void
+    {
+        $c = $this->cenario();
+        $this->tecnicaComMunicao($c);
+        $corpo = ['personagem_id' => $c->p->id, 'tecnica' => 'Tiro Duplo'];
+        // 2 esféricas + 1 perfurante = 3: gasta tudo, esférica primeiro
+        $this->como($c->ana)->postJson(route('jogo.tecnicas.municao.gastar', $c->mesa->id), $corpo)->assertOk()->assertJsonPath('gasto.quantidade', 3);
+        $this->assertSame(0, $this->qtd($c, $c->esferica->id));
+        $this->assertSame(0, $this->qtd($c, $c->perfurante->id));
+        // sem munição suficiente: recusa e não mexe em nada
+        $this->como($c->ana)->postJson(route('jogo.tecnicas.municao.gastar', $c->mesa->id), $corpo)->assertStatus(422)->assertJsonValidationErrors('municao');
+        $this->assertSame(5, $this->qtd($c, $c->flecha->id)); // flecha não serve à pistola e nunca é gasta
+    }
+
+    public function test_a_tecnica_recusa_sem_arma_de_fogo_equipada_e_nao_gasta_sem_requisito(): void
+    {
+        $c = $this->cenario();
+        $this->tecnicaComMunicao($c);
+        $f = $c->p->fresh()->ficha;
+        $f['inventario'][0]['itens'][0]['equipado'] = false; // pistola guardada
+        $c->p->ficha = $f;
+        $c->p->save();
+        $this->como($c->ana)->postJson(route('jogo.tecnicas.municao.gastar', $c->mesa->id), ['personagem_id' => $c->p->id, 'tecnica' => 'Tiro Duplo'])->assertStatus(422);
+        $this->assertSame(2, $this->qtd($c, $c->esferica->id));
+        $this->tecnicaComMunicao($c, 'Golpe sem munição.');
+        $this->como($c->ana)->postJson(route('jogo.tecnicas.municao.gastar', $c->mesa->id), ['personagem_id' => $c->p->id, 'tecnica' => 'Tiro Duplo'])->assertOk()->assertJsonPath('gasto', null);
+        $this->assertSame(2, $this->qtd($c, $c->esferica->id));
+    }
+
+    /** Grava na mensagem do ataque o efeito da munição, para testar o botão sem depender do d20. */
+    private function ataqueComEfeito($c, string $catalogoId, array $extra = []): \App\Models\Mensagem
+    {
+        return $c->mesa->mensagens()->create([
+            'jogador_id' => $c->ana->id, 'personagem_id' => $c->p->id, 'tipo' => 'rolagem', 'visibilidade' => 'todos', 'texto' => '1d20',
+            'dados' => ['expressao' => '1d20', 'termos' => [], 'total' => 15, 'sistema' => [
+                'municao' => ['id' => $catalogoId, 'nome' => 'x', 'nota' => 'n', 'efeito' => $catalogoId === 'bola-explosiva' ? 'explosao' : 'kairoseki'],
+                ...$extra,
+            ]],
+        ]);
+    }
+
+    public function test_a_kairoseki_enfraquece_so_quem_usa_akuma_e_so_uma_vez(): void
+    {
+        $c = $this->cenario();
+        $usuario = $c->mesa->personagens()->create(['nome' => 'Fruta', 'cor' => '#ef4444']);
+        $f = FichaOnePiece::padrao();
+        $f['akuma']['tipo'] = 'paramecia';
+        $usuario->ficha = $f;
+        $usuario->save();
+        $comum = $c->mesa->personagens()->create(['nome' => 'Comum', 'cor' => '#ef4444']);
+        $m = $this->ataqueComEfeito($c, 'municao-de-kairoseki');
+        $rota = route('jogo.tecnicas.municao.efeito', [$c->mesa->id, $m->id]);
+
+        $this->como($c->ana)->postJson($rota, ['alvo_id' => $comum->id])->assertStatus(422)->assertJsonValidationErrors('efeito'); // sem Akuma
+        $this->como($c->ana)->postJson($rota, ['alvo_id' => $usuario->id])->assertOk();
+        $this->assertContains('enfraquecido', $usuario->fresh()->ficha['condicoes']);
+        $this->assertSame(1, $usuario->fresh()->ficha['duracoes']['enfraquecido']['turnos']);
+        $this->como($c->ana)->postJson($rota, ['alvo_id' => $usuario->id])->assertStatus(422); // já usada
+    }
+
+    public function test_o_efeito_exige_acerto_e_ser_o_dono_do_ataque(): void
+    {
+        $c = $this->cenario();
+        $alvo = $c->mesa->personagens()->create(['nome' => 'Alvo', 'cor' => '#ef4444']);
+        $errou = $this->ataqueComEfeito($c, 'bola-explosiva', ['resolucao' => ['estado' => 'resolvido', 'acerto' => false, 'alvo_id' => $alvo->id]]);
+        $this->como($c->ana)->postJson(route('jogo.tecnicas.municao.efeito', [$c->mesa->id, $errou->id]))->assertStatus(422);
+        $acertou = $this->ataqueComEfeito($c, 'bola-explosiva', ['resolucao' => ['estado' => 'resolvido', 'acerto' => true, 'alvo_id' => $alvo->id]]);
+        $outra = $c->mesa->jogadores()->create(['nome' => 'Bia', 'papel' => 'jogador', 'cor' => '#16a34a']);
+        $this->como($outra)->postJson(route('jogo.tecnicas.municao.efeito', [$c->mesa->id, $acertou->id]))->assertForbidden();
+    }
+
+    public function test_a_bola_explosiva_abre_a_salvaguarda_fixa_de_quem_esta_na_area(): void
+    {
+        $c = $this->cenario();
+        $alvo = $c->mesa->personagens()->create(['nome' => 'Alvo', 'cor' => '#ef4444']);
+        $perto = $c->mesa->personagens()->create(['nome' => 'Perto', 'cor' => '#ef4444']);
+        $m = $this->ataqueComEfeito($c, 'bola-explosiva', ['resolucao' => ['estado' => 'resolvido', 'acerto' => true, 'alvo_id' => $alvo->id]]);
+        $this->como($c->ana)->postJson(route('jogo.tecnicas.municao.efeito', [$c->mesa->id, $m->id]), ['alvos' => [$perto->id]])->assertOk();
+        $card = $c->mesa->mensagens()->where('tipo', 'tecnica')->firstOrFail();
+        $this->assertSame(16, $card->dados['tecnica']['cd']); // CD fixa do livro, não a do atacante
+        $this->assertSame(['3d6', 'Fogo'], [$card->dados['tecnica']['dano']['expressao'], $card->dados['tecnica']['dano']['tipo']]);
+        $this->assertEqualsCanonicalizing([$alvo->id, $perto->id], array_column($card->dados['alvos'], 'personagem_id')); // o atingido e quem está perto
+    }
 }

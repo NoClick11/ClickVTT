@@ -19,3 +19,32 @@ export const TODAS_AS_MUNICOES: string[] = [...new Set(Object.values(MUNICOES_DA
 /** As munições (ids do catálogo) que a arma aceita; `armaCatalogoId` vazio = arma criada à mão, que aceita qualquer munição do catálogo. */
 export const municoesDaArma = (armaCatalogoId: string | null | undefined): string[] =>
     armaCatalogoId && armaCatalogoId in MUNICOES_DA_ARMA ? MUNICOES_DA_ARMA[armaCatalogoId] : armaCatalogoId ? [] : TODAS_AS_MUNICOES;
+
+// --- munição que uma Técnica gasta ----------------------------------------------------------------------------------------------
+// As Técnicas de arma de fogo trazem no Requisito "N munições (tipo)": usar a Técnica gasta N unidades desse tipo do inventário.
+export type TipoDeMunicaoDaTecnica = 'qualquer' | 'esferica' | 'perfurante';
+export interface CustoDeMunicao {
+    quantidade: number;
+    tipo: TipoDeMunicaoDaTecnica;
+}
+
+/** Lê "Requisito: arma favorita, 8 munições (qualquer)" da descrição da Técnica; null = não gasta munição. Espelha `Municoes::custoDaTecnica`. */
+export function custoDeMunicaoDaTecnica(descricao: string): CustoDeMunicao | null {
+    const m = /Requisito:[^.]*?(\d+)\s+muni[çc](?:ão|ões)\s*\((qualquer|esférica|perfurante)\)/i.exec(descricao);
+    if (!m) return null;
+    const tipo = m[2].toLowerCase();
+
+    return { quantidade: Number(m[1]), tipo: tipo === 'esférica' ? 'esferica' : (tipo as TipoDeMunicaoDaTecnica) };
+}
+
+/**
+ * Os ids de munição que servem a um tipo, na ordem em que são gastas: o tipo pedido; "qualquer" gasta esférica, perfurante e depois as outras
+ * (a de Kairoseki nunca é gasta sem o jogador escolher, ela é cara e tem efeito). `aceitas` = o que a arma equipada aceita.
+ */
+export function municoesParaGastar(tipo: TipoDeMunicaoDaTecnica, aceitas: string[]): string[] {
+    const ordem = ['municao-esferica', 'municao-perfurante'];
+    if (tipo === 'esferica') return aceitas.filter((id) => id === 'municao-esferica');
+    if (tipo === 'perfurante') return aceitas.filter((id) => id === 'municao-perfurante');
+
+    return [...ordem.filter((id) => aceitas.includes(id)), ...aceitas.filter((id) => !ordem.includes(id) && id !== 'municao-de-kairoseki')];
+}

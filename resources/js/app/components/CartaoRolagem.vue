@@ -14,6 +14,7 @@ const emit = defineEmits<{
     acao: [mensagem: Mensagem, acao: AcaoDaRolagem];
     aplicarDano: [mensagem: Mensagem];
     pedirSalvaguarda: [mensagem: Mensagem];
+    efeitoDaMunicao: [mensagem: Mensagem];
 }>();
 
 const dados = computed(() => props.mensagem.dados!);
@@ -39,6 +40,14 @@ const secundaria = computed(() => {
     const r = resolucao.value;
 
     return !r || (r.estado === 'resolvido' && r.acerto) ? t.secundaria : null;
+});
+/** A munição do ataque tem efeito (Kairoseki, Bola Explosiva) e o ataque acertou (ou não tem alvo resolvido): oferece o botão, uma vez. */
+const efeitoDaMunicao = computed(() => {
+    const m = dados.value.sistema?.municao;
+    if (!props.podeAgir || !m?.efeito || m.usado || dados.value.sistema?.destaque === 'falha') return null;
+    const r = resolucao.value;
+
+    return !r || (r.estado === 'resolvido' && r.acerto) ? m.efeito : null;
 });
 const marca = computed(() => (dados.value.sistema?.destaque === 'falha' ? 'Falha crítica' : 'Crítico!'));
 
@@ -152,6 +161,21 @@ const estiloBotao = (a: AcaoDaRolagem, indice: number) =>
                     <span class="flex-1">{{ aplicado ? 'Dano aplicado' : alvoNome ? `Aplicar a ${alvoNome}` : 'Mire um alvo para aplicar' }}</span>
                     <span v-if="dano.tipo" class="rounded bg-preto-950/60 px-1.5 text-[10px] uppercase">{{ dano.tipo }}</span>
                     <span class="font-mono text-[11px] opacity-80">{{ dados.total }}</span>
+                </button>
+            </div>
+
+            <div v-if="efeitoDaMunicao" class="mt-3 border-t border-preto-700/60 pt-2.5">
+                <button
+                    type="button"
+                    class="flex w-full items-center gap-2 rounded-md border border-red-400/60 bg-red-500/10 px-2.5 py-1.5 text-left text-xs font-semibold text-red-100 transition hover:bg-red-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                    :title="
+                        efeitoDaMunicao === 'kairoseki'
+                            ? 'Aplica Enfraquecido ao alvo se ele usar Akuma no Mi, até o fim do próximo turno dele'
+                            : 'Marca a explosão de 1,5 m no mapa: quem está na área faz Salvaguarda de Destreza CD 16 (3d6 de Fogo, metade se passar)'
+                    "
+                    @click="emit('efeitoDaMunicao', mensagem)"
+                >
+                    {{ efeitoDaMunicao === 'kairoseki' ? 'Aplicar Enfraquecido (Kairoseki)' : 'Explodir: Salvaguarda de Destreza CD 16' }}
                 </button>
             </div>
 

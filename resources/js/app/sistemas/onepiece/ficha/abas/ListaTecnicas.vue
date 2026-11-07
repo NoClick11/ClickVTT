@@ -8,7 +8,9 @@ import { alcanceMaximoDaArma } from '../../alcanceDaArma';
 import { areaDoAlcance } from '../../area';
 import { estilos, useFicha } from '../../contexto';
 import { alcanceComKokuto, USOS_DA_SAIJO } from '../../itens/forja';
+import { custoDeMunicaoDaTecnica, municoesDaArma, municoesParaGastar } from '../../itens/municoes';
 import {
+    ativo,
     ATRIBUTOS,
     camposDoGastoDePP,
     comDadosDaMeito as comDadosExtras,
@@ -58,6 +60,35 @@ function mudar(fn: (lista: Tecnica[]) => void) {
 
 const podeUsar = (t: Tecnica) => props.ficha.pp.atual >= t.custo;
 
+/** Quantas unidades de munição do inventário a arma de fogo equipada gasta neste tipo (esférica, perfurante ou qualquer). */
+function municaoQueTem(tipo: 'qualquer' | 'esferica' | 'perfurante'): number {
+    const aceitas = new Set<string>();
+    for (const secao of props.ficha.inventario ?? [])
+        for (const ref of secao.itens ?? []) {
+            const item = itens.value[ref.item_id];
+            const dados = item?.dados as { arma?: { municao?: boolean }; catalogo?: { id?: string } } | null | undefined;
+            if (item && dados?.arma?.municao && ativo(ref, item)) municoesDaArma(dados.catalogo?.id).forEach((id) => aceitas.add(id));
+        }
+    const servem = municoesParaGastar(tipo, [...aceitas]);
+    let total = 0;
+    for (const secao of props.ficha.inventario ?? [])
+        for (const ref of secao.itens ?? []) {
+            const id = (itens.value[ref.item_id]?.dados as { catalogo?: { id?: string } } | null | undefined)?.catalogo?.id;
+            if (id && servem.includes(id)) total += ref.qtd;
+        }
+
+    return total;
+}
+/** O que impede de usar a Técnica além dos PP e da ação: munição que falta (arma de fogo) ou os poderes da Akuma no Mi anulados (Enfraquecido). */
+function bloqueio(t: Tecnica): string | null {
+    if (props.tom === 'violet' && props.ficha.condicoes?.includes('enfraquecido')) return 'Enfraquecido: os poderes da Akuma no Mi estão anulados.';
+    const custo = custoDeMunicaoDaTecnica(t.descricao ?? '');
+    if (!custo) return null;
+    const tem = municaoQueTem(custo.tipo);
+
+    return tem >= custo.quantidade ? null : `Faltam munições: ${t.nome} gasta ${custo.quantidade} (${custo.tipo}) e a arma equipada tem ${tem}.`;
+}
+
 // --- Saijo Ô Wazamono (rolar o dano duas vezes, 3 usos) e Espada Kokuto (alcance maior; desvantagem nas Salvaguardas)
 const saijo = computed(() => saijoEquipada(props.ficha, itens.value));
 const kokuto = computed(() => kokutoEquipada(props.ficha, itens.value));
@@ -90,6 +121,7 @@ const comDadosDaMeito = (expressao: string, t: Tecnica): string =>
  * Sem PP suficiente não faz nada.
  */
 function usar(t: Tecnica) {
+    if (bloqueio(t)) return;
     const campos = camposDoGastoDePP(props.ficha, t.custo);
     if (!campos) return;
     const expressao = t.rolagem.trim()
@@ -109,6 +141,7 @@ function usar(t: Tecnica) {
         modoAtaque: modoDe('ataque') === 'vantagem' ? 'vantagem' : modoDe('ataque') === 'desvantagem' ? 'desvantagem' : null,
         categoria: categoria(t),
         camposDosPP: campos,
+        ...(custoDeMunicaoDaTecnica(t.descricao ?? '') ? { municao: { tecnica: t.nome } } : {}),
     });
 }
 
@@ -312,15 +345,17 @@ function adicionar() {
                                     </label>
                                     <button
                                         type="button"
-                                        :disabled="!podeUsar(t) || !permitida(t).ok"
+                                        :disabled="!podeUsar(t) || !permitida(t).ok || !!bloqueio(t)"
                                         class="mt-1 rounded-md border px-3 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 disabled:cursor-not-allowed disabled:opacity-40"
                                         :class="cor.botao"
                                         :title="
                                             !permitida(t).ok
                                                 ? permitida(t).motivo
-                                                : podeUsar(t)
-                                                  ? `Gasta ${t.custo} PP e a ${acoes.rotulo(categoria(t)).toLowerCase()}${t.rolagem ? ' e rola ' + t.rolagem : ''}`
-                                                  : `Pontos de poder insuficientes (${ficha.pp.atual} de ${t.custo})`
+                                                : bloqueio(t)
+                                                  ? bloqueio(t)
+                                                  : podeUsar(t)
+                                                    ? `Gasta ${t.custo} PP e a ${acoes.rotulo(categoria(t)).toLowerCase()}${t.rolagem ? ' e rola ' + t.rolagem : ''}`
+                                                    : `Pontos de poder insuficientes (${ficha.pp.atual} de ${t.custo})`
                                         "
                                         :aria-label="`Usar ${t.nome}, custo ${t.custo} pontos de poder`"
                                         @click="usar(t)"
