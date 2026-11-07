@@ -401,8 +401,15 @@ async function executarAcao(personagemId: number, acao: AcaoCaracteristica) {
 
 // Efeitos ativos de cada personagem (ícones no token). Vêm públicos do servidor e mudam ao vivo (evento `status`).
 const statusPorPersonagem = ref<Record<number, string[]>>({});
+/** Põe `alvo` igual a `novo` mexendo só no que mudou (quem não mudou mantém a identidade: nada é redesenhado à toa). */
+function sincronizarPorId<T>(alvo: Record<number, T>, novo: Record<number, T>) {
+    for (const id of Object.keys(alvo)) if (!(id in novo)) delete alvo[Number(id)];
+    for (const [id, valor] of Object.entries(novo)) {
+        if (!(id in alvo) || JSON.stringify(alvo[Number(id)]) !== JSON.stringify(valor)) alvo[Number(id)] = valor;
+    }
+}
 function sincronizarStatus() {
-    statusPorPersonagem.value = Object.fromEntries(props.personagens.map((p) => [p.id, [...(p.status ?? [])]]));
+    sincronizarPorId(statusPorPersonagem.value, Object.fromEntries(props.personagens.map((p) => [p.id, [...(p.status ?? [])]])));
 }
 sincronizarStatus();
 watch(() => props.personagens, sincronizarStatus, { deep: true });
@@ -713,7 +720,7 @@ const fichas = ref<Record<number, Record<string, unknown>>>({});
 function sincronizarFichas() {
     const novas: Record<number, Record<string, unknown>> = {};
     for (const p of props.personagens) if (p.ficha) novas[p.id] = copia(p.ficha);
-    fichas.value = novas;
+    sincronizarPorId(fichas.value, novas); // só as fichas que mudaram de verdade são trocadas: as janelas abertas não piscam a cada recarga
 }
 sincronizarFichas();
 watch(() => props.personagens, sincronizarFichas, { deep: true });
@@ -1066,7 +1073,8 @@ async function abrirLoja(dados: { jogadores: 'todos' | number[]; categorias: str
 /** O mestre entrega um item do catálogo a um personagem; a ficha dele se atualiza pelo broadcast. */
 async function entregarDoCatalogo(personagemId: number, item: string, qtd: number) {
     const r = await api.entregarDoCatalogo({ personagem_id: personagemId, item, qtd });
-    recarregar(['personagens']);
+    aplicarNaFicha(personagemId, r.campos); // o inventário novo entra na ficha aberta sem recarregar a lista de personagens
+    recarregar(['itens']); // o item materializado da mesa (a ficha precisa dele para mostrar o nome)
 
     return r;
 }
@@ -1198,7 +1206,7 @@ function aoCriarPersonagem(personagem: Personagem) {
 // O progresso da criação (etapa e escolhas) fica salvo no servidor, por personagem, para retomar depois.
 const criacoes = ref<Record<number, Criacao | null>>({});
 function sincronizarCriacoes() {
-    criacoes.value = Object.fromEntries(props.personagens.map((p) => [p.id, p.criacao ?? null]));
+    sincronizarPorId(criacoes.value, Object.fromEntries(props.personagens.map((p) => [p.id, p.criacao ?? null])));
 }
 sincronizarCriacoes();
 watch(() => props.personagens, sincronizarCriacoes, { deep: true });

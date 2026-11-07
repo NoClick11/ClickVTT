@@ -24,6 +24,12 @@ class HandleInertiaRequests extends Middleware
      */
     public function version(Request $request): ?string
     {
+        // Em desenvolvimento (servidor do Vite no ar, `public/hot`) o front vem do Vite, não de `public/build`: um `npm run build` com a mesa aberta
+        // mudaria o hash do manifest e o Inertia recarregaria a página inteira na próxima ação. Em produção o hash segue valendo (deploy novo = recarrega).
+        if (app()->environment('local', 'testing') && file_exists(public_path('hot'))) {
+            return 'dev';
+        }
+
         return parent::version($request);
     }
 

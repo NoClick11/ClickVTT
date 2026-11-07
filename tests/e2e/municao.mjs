@@ -250,6 +250,11 @@ try {
     await abrirAba(mestre, 'Itens');
     await mestre.getByRole('button', { name: 'Catálogo', exact: true }).first().click();
     await mestre.waitForTimeout(800);
+    // um `npm run build` com a mesa aberta muda o hash do manifest: em desenvolvimento isso NÃO pode recarregar a página inteira na próxima ação
+    const manifesto = path.join(process.cwd(), 'public/build/manifest.json');
+    const manifestoOriginal = fs.existsSync(manifesto) ? fs.readFileSync(manifesto, 'utf8') : null;
+    await mestre.evaluate(() => (window.__marca = 'viva'));
+    if (manifestoOriginal !== null) fs.writeFileSync(manifesto, `${manifestoOriginal}\n`);
     await mestre.getByLabel('Personagem que recebe').selectOption({ label: 'AtiradorE2E' });
     await mestre
         .getByRole('searchbox')
@@ -261,6 +266,8 @@ try {
     await mestre.getByRole('button', { name: /^Dar$/ }).first().click();
     await mestre.waitForTimeout(1500);
     confere((await mestre.getByText(/entregue a AtiradorE2E/).count()) > 0, 'a janela confirma "entregue a AtiradorE2E"');
+    if (manifestoOriginal !== null) fs.writeFileSync(manifesto, manifestoOriginal);
+    confere((await mestre.evaluate(() => window.__marca)) === 'viva', 'dar um item não recarrega a página inteira (nem com um build novo por baixo)');
     s = artisan('e2e:estado');
     confere(s.qtds.daito === 2, 'servidor: o Atirador recebeu 2 Daito', JSON.stringify(s.qtds));
     await mestre.keyboard.press('Escape');
