@@ -14,8 +14,15 @@ import EfeitosDialog from '../EfeitosDialog.vue';
 import { camposDoDadoDeVida, comSinal, DADOS_DE_VIDA, hakiDesligado, textoDeMovimento, type FichaOnePiece } from '../regras';
 
 const props = defineProps<{ ficha: FichaOnePiece; personagem: PersonagemFicha }>();
-const { editar, calc, salvar, rolar, d20, modoDe, armas, origens, acoes } = useFicha();
-const ataquePermitido = computed(() => acoes.pode('padrao'));
+const { editar, calc, salvar, rolar, d20, modoDe, armas, origens, acoes, rodada } = useFicha();
+/** Ataques com arma: o 1º gasta a Ação; os seguintes valem até o limite (Ataque Extra e afins, mais os extras do turno). */
+const ataquesDaAcao = (distancia: boolean) =>
+    Math.max(1, (calc.value['ataques.acao'] ?? 1) + (distancia ? (calc.value['ataques.distancia'] ?? 0) : 0));
+const ataquePermitido = (a: { distancia: boolean }) => acoes.ataque(ataquesDaAcao(a.distancia));
+/** O contador do turno (a melhor arma é a referência: a de distância soma o Engatilhado). */
+const contador = computed(() => acoes.ataque(Math.max(...armas.value.map((a) => ataquesDaAcao(a.distancia)), ataquesDaAcao(false))));
+/** Só com o combate em curso o contador de ataques do turno faz sentido. */
+const emCombate = computed(() => rodada.value !== null);
 
 const pvPct = computed(() => (calc.value['pv.max'] > 0 ? Math.max(0, Math.min(100, (props.ficha.pv.atual / calc.value['pv.max']) * 100)) : 0));
 const pvCor = computed(() => (pvPct.value > 50 ? '#22c55e' : pvPct.value > 25 ? '#eab308' : '#ef4444'));
@@ -305,6 +312,39 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                     >alcance {{ alcanceCorpo }}</span
                 >
             </p>
+            <div
+                v-if="emCombate"
+                class="mb-1.5 flex items-center gap-1.5 rounded-md border border-preto-700 bg-preto-900/60 px-2 py-1 text-[11px] text-preto-300"
+                role="status"
+                :title="`Ataques com arma neste turno: o 1º gasta a Ação; os outros valem até ${contador.max} (${contador.max - contador.extras} da Ação + ${contador.extras} extra${contador.extras === 1 ? '' : 's'}).`"
+            >
+                <span>Ataques no turno</span>
+                <span class="font-semibold tabular-nums" :class="contador.feitos >= contador.max ? 'text-red-300' : 'text-ouro-200'"
+                    >{{ contador.feitos }}/{{ contador.max }}</span
+                >
+                <span v-if="contador.extras" class="text-sky-300">(+{{ contador.extras }} extra{{ contador.extras === 1 ? '' : 's' }})</span>
+                <span v-if="acoes.darExtras" class="ml-auto flex gap-1">
+                    <button
+                        v-if="contador.extras"
+                        type="button"
+                        class="rounded border border-preto-700 px-1.5 hover:border-ouro-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                        title="Tirar um ataque extra"
+                        aria-label="Tirar um ataque extra"
+                        @click="acoes.darExtras(-1)"
+                    >
+                        −1
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded border border-sky-400/50 px-1.5 text-sky-200 hover:bg-sky-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                        title="Ganhar um ataque extra neste turno (Tempestade de Balas, Alvo Travado, Ataques Múltiplos...)"
+                        aria-label="Ganhar um ataque extra neste turno"
+                        @click="acoes.darExtras(1)"
+                    >
+                        +1 ataque extra
+                    </button>
+                </span>
+            </div>
             <ul v-if="etiquetas.length" class="mb-1.5 flex flex-wrap gap-1" aria-label="Traços de combate">
                 <li v-for="t in etiquetas" :key="t" class="rounded border border-sky-400/40 bg-sky-500/10 px-1.5 py-0.5 text-[10px] text-sky-200">
                     {{ t }}
@@ -317,11 +357,11 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                         type="button"
                         class="group flex min-h-12 w-full items-center gap-2.5 rounded-lg border border-preto-700 bg-gradient-to-br from-preto-800/70 to-preto-950 px-2 py-1.5 text-left transition hover:border-ouro-400 hover:from-ouro-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                         :aria-label="`Atacar com ${a.nome}: ${comSinal(a.ataque)} para acertar, dano ${a.dano}${a.danoBonus ? comSinal(a.danoBonus) : ''}`"
-                        :disabled="!ataquePermitido.ok"
+                        :disabled="!ataquePermitido(a).ok"
                         :title="
-                            ataquePermitido.ok
-                                ? `Clique para atacar com ${a.nome} (gasta a ${acoes.rotulo('padrao').toLowerCase()}). Shift = vantagem, Ctrl = desvantagem.`
-                                : ataquePermitido.motivo
+                            ataquePermitido(a).ok
+                                ? `Clique para atacar com ${a.nome} (${ataquePermitido(a).feitos > 0 ? 'ataque ' + (ataquePermitido(a).feitos + 1) + ' de ' + ataquePermitido(a).max : 'gasta a ' + acoes.rotulo('padrao').toLowerCase()}). Shift = vantagem, Ctrl = desvantagem.`
+                                : ataquePermitido(a).motivo
                         "
                         @click="d20($event, `arma.${a.itemId}.ataque`, a.nome, { categoria: 'padrao' })"
                     >

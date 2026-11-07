@@ -152,6 +152,9 @@ export function apiMesa(mesaId: number, atorId: number) {
         /** Gasta uma ação do personagem no combate (o servidor recusa com o motivo se não pode agir agora). */
         gastarAcao: (personagemId: number, categoria: string, tecnica = false) =>
             requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.acao'), { personagem_id: personagemId, categoria, tecnica }),
+        /** Ataques extras do turno (Tempestade de Balas, Alvo Travado...): soma `n` (pode ser negativo) ao limite de ataques do personagem. */
+        ataquesExtras: (personagemId: number, n: number) =>
+            requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.ataques-extras'), { personagem_id: personagemId, n }),
         /** Entrega um companheiro com ficha pronta ao personagem (ex.: Cobra Bélica); pedir de novo devolve o mesmo. */
         criarCompanheiro: (personagemId: number, modelo: string) =>
             requisitar<{ id: number; criado: boolean }>(atorId, 'POST', r('jogo.personagens.companheiros', personagemId), { modelo }),

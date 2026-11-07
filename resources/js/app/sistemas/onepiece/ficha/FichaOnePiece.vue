@@ -70,7 +70,15 @@ const acoesDoCombate = inject<{
     categorias: ComputedRef<{ id: string; nome: string }[]>;
     pode: (personagemId: number, categoria: string | undefined, tecnica?: boolean) => { ok: boolean; motivo?: string };
     gastar: (personagemId: number, categoria: string | undefined, tecnica?: boolean) => Promise<boolean>;
-}>('acoesDoCombate', { categorias: computed(() => []), pode: () => ({ ok: true }), gastar: async () => true });
+    ataque: (personagemId: number, ataquesPorAcao: number) => { ok: boolean; motivo?: string; feitos: number; max: number; extras: number };
+    darExtras: ((personagemId: number, n: number) => Promise<void>) | null;
+}>('acoesDoCombate', {
+    categorias: computed(() => []),
+    pode: () => ({ ok: true }),
+    gastar: async () => true,
+    ataque: (_id, ataquesPorAcao) => ({ ok: true, feitos: 0, max: ataquesPorAcao, extras: 0 }),
+    darExtras: null,
+});
 
 provide(CHAVE_FICHA, {
     editar,
@@ -93,6 +101,8 @@ provide(CHAVE_FICHA, {
         pode: (categoria, tecnica) => acoesDoCombate.pode(props.personagem.id, categoria, tecnica),
         gastar: (categoria, tecnica) => acoesDoCombate.gastar(props.personagem.id, categoria, tecnica),
         rotulo: (categoria) => acoesDoCombate.categorias.value.find((c) => c.id === categoria)?.nome ?? '',
+        ataque: (ataquesPorAcao) => acoesDoCombate.ataque(props.personagem.id, ataquesPorAcao),
+        darExtras: acoesDoCombate.darExtras ? (n) => acoesDoCombate.darExtras!(props.personagem.id, n) : null,
         todas: () => acoesDoCombate.categorias.value,
     },
     // Shift = vantagem, Ctrl/Alt = desvantagem (manual vence); sem tecla, valem os efeitos dos itens.

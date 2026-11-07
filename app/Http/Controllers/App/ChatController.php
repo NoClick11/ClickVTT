@@ -80,11 +80,10 @@ class ChatController extends Controller
             'tecnica.secundaria.aplica.aoDano' => ['nullable', 'boolean'],
         ]);
 
-        if (isset($dados['acao']) && ! empty($dados['personagem_id'])) {
-            $combate->gastar($mesa, $acesso, $dados['personagem_id'], $dados['acao']['categoria'], (bool) ($dados['acao']['tecnica'] ?? false));
-        }
-
         [$sistema, $variaveis, $itens, $ficha] = $this->variaveis($mesa, $dados['personagem_id'] ?? null, $sistemas);
+        if (isset($dados['acao']) && ! empty($dados['personagem_id'])) {
+            $combate->gastar($mesa, $acesso, $dados['personagem_id'], $dados['acao']['categoria'], (bool) ($dados['acao']['tecnica'] ?? false), $this->ataquesPorAcao($dados['expressao'], $variaveis, $itens));
+        }
         try {
             $resultado = $rolador->rolar($dados['expressao'], $variaveis);
         } catch (RolagemInvalida $e) {
@@ -171,6 +170,23 @@ class ChatController extends Controller
         }
 
         return $meta;
+    }
+
+    /**
+     * Quantos ataques a Ação "Atacar" dá a quem rola um ataque com arma (`@arma.N.ataque`): 1 mais o Ataque Extra e afins
+     * (`ataques.acao`) e, em arma à distância, os extras à distância (`ataques.distancia`). null = não é um ataque com arma (não conta).
+     *
+     * @param  array<string, int|float>  $variaveis
+     * @param  array<int, array>  $itens
+     */
+    private function ataquesPorAcao(string $expressao, array $variaveis, array $itens): ?int
+    {
+        if (! preg_match('/@arma\.(\d+)\.ataque/', $expressao, $m)) {
+            return null;
+        }
+        $distancia = (bool) ($itens[(int) $m[1]]['dados']['arma']['distancia'] ?? false);
+
+        return max(1, (int) ($variaveis['ataques.acao'] ?? 1) + ($distancia ? (int) ($variaveis['ataques.distancia'] ?? 0) : 0));
     }
 
     /** A rolagem é um ataque (usa a variável de ataque: `@ataque` ou `@arma.<id>.ataque`)? */

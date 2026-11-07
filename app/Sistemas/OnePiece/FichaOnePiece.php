@@ -58,7 +58,7 @@ final class FichaOnePiece
             'ca', 'iniciativa', 'cd', 'ataque', 'ataque.arma', 'dano.arma', 'carga.max', 'pv.max', 'escudo.max',
             'salv.*', 'pericia.*', 'atributos.*', 'pp.max', 'dano.tecnica',
             // alcance corpo a corpo e deslocamentos (em decímetros: 15 = 1,5 m) e a fração do dano das armas à distância (100 = inteiro)
-            'alcance.corpo', 'passo.corpo', 'passo.distancia', 'passo.desarmado', 'passo.tecnica', 'margem.corpo', 'margem.distancia', 'ataque.desarmado', 'dano.desarmado', 'concentracao', 'movimento.*', 'movimento.normal', 'movimento.nado', 'movimento.escalada', 'movimento.voo', 'dano.distancia.pct',
+            'alcance.corpo', 'passo.corpo', 'passo.distancia', 'passo.desarmado', 'passo.tecnica', 'margem.corpo', 'margem.distancia', 'ataques.acao', 'ataques.distancia', 'ataque.desarmado', 'dano.desarmado', 'concentracao', 'movimento.*', 'movimento.normal', 'movimento.nado', 'movimento.escalada', 'movimento.voo', 'dano.distancia.pct',
             // só para vantagem/desvantagem: testes de atributo e de ferramenta (os demais alvos de rolagem são os de cima)
             'teste.*', 'ferramenta.*', ...array_map(fn ($a) => "teste.{$a}", self::ATRIBUTOS),
             ...array_map(fn ($a) => "salv.{$a}", self::ATRIBUTOS),

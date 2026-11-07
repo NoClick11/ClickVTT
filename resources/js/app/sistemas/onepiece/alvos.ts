@@ -45,6 +45,9 @@ export const ALVOS_DE_EFEITO: AlvoEfeitoOnePiece[] = [
     { id: 'dano.distancia.pct', rotulo: 'Dano de armas à distância (%)', modos: NUMERICOS },
     // passos de dado, margem de crítico por tipo de arma, ataque desarmado e teste de concentração
     ...(['corpo', 'distancia', 'desarmado', 'tecnica'] as const).map((t) => ({ id: `passo.${t}`, rotulo: `Passos de dado: ${t}`, modos: NUMERICOS })),
+    // ataques da Ação "Atacar" (base 1): Ataque Extra soma 1; os extras à distância só valem para armas à distância
+    { id: 'ataques.acao', rotulo: 'Ataques por Ação Atacar', modos: NUMERICOS },
+    { id: 'ataques.distancia', rotulo: 'Ataques extras à distância (Ação Atacar)', modos: NUMERICOS },
     { id: 'margem.corpo', rotulo: 'Margem de crítico (corpo a corpo)', modos: NUMERICOS },
     { id: 'margem.distancia', rotulo: 'Margem de crítico (à distância)', modos: NUMERICOS },
     { id: 'ataque.desarmado', rotulo: 'Ataque desarmado', modos: AMBOS },

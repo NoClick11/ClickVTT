@@ -55,3 +55,38 @@ export function avaliarAcao(
 
 /** O nome da categoria para mostrar (`padrao` → "Ação"). */
 export const rotuloDaAcao = (categorias: CategoriaAcao[], id: string | undefined): string => categorias.find((c) => c.id === id)?.nome ?? '';
+
+export interface AvaliacaoDeAtaque extends Avaliacao {
+    /** Ataques feitos neste turno com a Ação "Atacar". */
+    feitos: number;
+    /** O limite de ataques do turno: os da Ação (Ataque Extra e afins) mais os extras do turno. */
+    max: number;
+    extras: number;
+}
+
+/**
+ * Pode atacar com uma arma agora? O 1º ataque gasta a Ação; os seguintes valem até `ataquesPorAcao` (+ extras do turno) sem gastar outra.
+ * Espelha `CombateService::gastar` com `ataquesPorAcao`. Fora do combate em curso (ou para o mestre) nada é limitado.
+ */
+export function avaliarAtaque(
+    c: Combate,
+    categorias: CategoriaAcao[],
+    personagemId: number | null,
+    mestre: boolean,
+    ataquesPorAcao: number,
+): AvaliacaoDeAtaque {
+    const item = c.itens.find((i) => i.personagem_id === personagemId);
+    const feitos = item?.acoes.ataques ?? 0;
+    const extras = item?.acoes.extras ?? 0;
+    const max = Math.max(1, ataquesPorAcao) + extras;
+    const base = { feitos, max, extras };
+    if (!emCurso(c) || !item || mestre) return { ok: true, ...base };
+    if (itemAtual(c)?.id !== item.id) return { ok: false, motivo: 'Não é o seu turno: fora dele só dá para usar reações.', ...base };
+    if (feitos > 0) {
+        return feitos < max
+            ? { ok: true, ...base }
+            : { ok: false, motivo: `Você já fez seus ${max} ataque${max > 1 ? 's' : ''} neste turno.`, ...base };
+    }
+
+    return { ...avaliarAcao(c, categorias, personagemId, 'padrao', mestre), ...base };
+}

@@ -29,6 +29,10 @@ export interface ContextoFicha {
         pode: (categoria: string | undefined, tecnica?: boolean) => { ok: boolean; motivo?: string };
         gastar: (categoria: string | undefined, tecnica?: boolean) => Promise<boolean>;
         rotulo: (categoria: string | undefined) => string;
+        /** Pode atacar com arma agora? Os ataques feitos no turno, o limite (por Ação + extras) e o motivo se não puder. */
+        ataque: (ataquesPorAcao: number) => { ok: boolean; motivo?: string; feitos: number; max: number; extras: number };
+        /** Ataques extras do turno (Tempestade de Balas, Alvo Travado...): soma `n` ao limite; null = fora do combate. */
+        darExtras: ((n: number) => Promise<void>) | null;
         /** Todas as categorias do sistema (id e nome), para os seletores de edição. */
         todas: () => { id: string; nome: string }[];
     };

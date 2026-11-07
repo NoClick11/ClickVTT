@@ -1,7 +1,7 @@
 // Economia de ações: a tela liga e desliga botões pelas mesmas regras do servidor (CombateService::gastar).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { avaliarAcao, rotuloDaAcao, usos } from '../../resources/js/app/nucleo/combate/acoes.ts';
+import { avaliarAcao, avaliarAtaque, rotuloDaAcao, usos } from '../../resources/js/app/nucleo/combate/acoes.ts';
 import { camposDaCriacao, escolhasIniciais } from '../../resources/js/app/sistemas/onepiece/construtor/regras.ts';
 
 const CATEGORIAS = [
@@ -76,4 +76,26 @@ test('o assistente marca a categoria de ação de cada traço de combate', () =>
     const mink = camposDaCriacao(feito({ especies: ['mink'], variantes: ['agil'] })).campos;
     assert.equal(mink.caracteristicas.find((c) => c.nome === 'Instintos Animalescos').acoes[0].acao, 'livre');
     assert.equal(mink.caracteristicas.find((c) => c.nome === 'Forma Sulong').acao, 'padrao');
+});
+
+test('ataques com arma: o 1º gasta a Ação, os seguintes valem até o limite (Ataque Extra) mais os extras do turno', () => {
+    const atacar = (c, p, porAcao, mestre = false) => avaliarAtaque(c, CATEGORIAS, p, mestre, porAcao);
+    // sem ataque feito: vale a Ação normal
+    assert.deepEqual(atacar(combate('a', [item('a', 1), item('b', 2)]), 1, 2), { ok: true, feitos: 0, max: 2, extras: 0 });
+    // 1 ataque feito de 2: o 2º sai sem outra Ação; com 2 de 2 acabou
+    const um = combate('a', [item('a', 1, { padrao: 1, ataques: 1 })]);
+    assert.equal(atacar(um, 1, 2).ok, true);
+    const dois = combate('a', [item('a', 1, { padrao: 1, ataques: 2 })]);
+    const fim = atacar(dois, 1, 2);
+    assert.equal(fim.ok, false);
+    assert.match(fim.motivo, /já fez seus 2 ataques/);
+    // os extras do turno (Tempestade de Balas: +2) somam ao limite
+    assert.deepEqual(atacar(combate('a', [item('a', 1, { padrao: 1, ataques: 2, extras: 2 })]), 1, 2), { ok: true, feitos: 2, max: 4, extras: 2 });
+    // sem Ataque Extra (1 por Ação): o 2º é recusado
+    assert.equal(atacar(um, 1, 1).ok, false);
+    // a Ação gasta em outra coisa (sem ataques feitos) não vira ataque grátis
+    assert.equal(atacar(combate('a', [item('a', 1, { padrao: 1 })]), 1, 2).ok, false);
+    // não é o turno; o mestre nunca é limitado
+    assert.equal(atacar(combate('b', [item('a', 1, { padrao: 1, ataques: 1 }), item('b', 2)]), 1, 2).ok, false);
+    assert.equal(atacar(dois, 1, 2, true).ok, true);
 });

@@ -570,6 +570,9 @@ export function analisar(f: FichaOnePiece, itens: ItensPorId = {}): Analise {
     for (const p of ['corpo', 'distancia', 'desarmado', 'tecnica']) base[`passo.${p}`] = 0;
     base['margem.corpo'] = 20;
     base['margem.distancia'] = 20;
+    // Ataques da Ação "Atacar": 1 + Ataque Extra e afins; os extras à distância só valem para armas à distância
+    base['ataques.acao'] = 1;
+    base['ataques.distancia'] = 0;
     base['ataque.desarmado'] = prof + mod.for;
     base['dano.desarmado'] = mod.for;
 
@@ -690,6 +693,8 @@ export interface ArmaAtiva {
     etiquetas: string[];
     /** Expertise da arma (ids), que vale no acerto crítico quando há proficiência. */
     expertise: string[];
+    /** Arma à distância: os ataques extras à distância (Engatilhado) valem só nela. */
+    distancia: boolean;
 }
 
 /** Uma arma equipada com a forja pedida (Saijo Ô Wazamono, Espada Kokuto). Espelha `Regras::saijoEquipada`. */
@@ -759,6 +764,7 @@ export function armasAtivas(f: FichaOnePiece, itens: ItensPorId, valores: Record
                 margem: valores[`arma.${ref.item_id}.margem`],
                 etiquetas: etiquetasDaForja(arma.forja),
                 expertise: arma.proficiente ? (arma.forja?.expertise ?? []) : [],
+                distancia: !!arma.distancia,
             });
         }
     }

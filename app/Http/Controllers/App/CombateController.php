@@ -95,4 +95,16 @@ class CombateController extends Controller
 
         return response()->json(['combate' => $combate->gastar($mesa, $acesso, $dados['personagem_id'], $dados['categoria'], (bool) ($dados['tecnica'] ?? false))]);
     }
+
+    /** Ataques extras do turno (Tempestade de Balas, Alvo Travado...): soma `n` ao limite de ataques do personagem neste turno. */
+    public function ataquesExtras(Request $request, Mesa $mesa, CombateService $combate): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+        $dados = $request->validate([
+            'personagem_id' => ['required', 'integer', Rule::exists('personagens', 'id')->where('mesa_id', $mesa->id)],
+            'n' => ['required', 'integer', 'between:-10,10'],
+        ]);
+
+        return response()->json(['combate' => $combate->darAtaquesExtras($mesa, $acesso, $dados['personagem_id'], $dados['n'])]);
+    }
 }

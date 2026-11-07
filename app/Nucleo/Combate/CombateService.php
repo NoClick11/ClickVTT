@@ -110,13 +110,13 @@ final class CombateService
      *
      * @return array<string, mixed> o estado (já transmitido se mudou)
      */
-    public function gastar(Mesa $mesa, AcessoMesa $acesso, int $personagemId, string $categoria, bool $tecnica = false): array
+    public function gastar(Mesa $mesa, AcessoMesa $acesso, int $personagemId, string $categoria, bool $tecnica = false, ?int $ataquesPorAcao = null): array
     {
         abort_unless($acesso->podeControlar($personagemId), 403, 'Este personagem não é seu.');
         $sistema = $this->sistemas->resolver($mesa->sistema->slug);
         $cats = $sistema instanceof SistemaDeCombate ? collect($sistema->categoriasDeAcao())->keyBy('id') : collect();
         $mudou = false;
-        $depois = DB::transaction(function () use ($mesa, $acesso, $personagemId, $categoria, $tecnica, $cats, &$mudou) {
+        $depois = DB::transaction(function () use ($mesa, $acesso, $personagemId, $categoria, $tecnica, $ataquesPorAcao, $cats, &$mudou) {
             $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
             $c = self::normalizar($m->combate);
             $k = collect($c['itens'])->search(fn ($i) => $i['personagem_id'] === $personagemId);
@@ -126,6 +126,27 @@ final class CombateService
             $cfg = $cats[$categoria];
             $item = $c['itens'][$k];
             $usos = (int) ($item['acoes'][$categoria] ?? 0);
+            // Ataque com arma (Ação "Atacar"): o 1º gasta a Ação; os seguintes valem até o limite de ataques por Ação (Ataque Extra) mais os
+            // extras do turno, sem gastar outra Ação. O contador `ataques` zera sozinho a cada turno (junto das demais ações).
+            if ($ataquesPorAcao !== null && $categoria === 'padrao') {
+                $feitos = (int) ($item['acoes']['ataques'] ?? 0);
+                if ($feitos > 0) {
+                    $max = $ataquesPorAcao + (int) ($item['acoes']['extras'] ?? 0);
+                    if (! $acesso->ehMestre()) {
+                        if (($cfg['soNoTurno'] ?? false) && $c['atual'] !== $item['id']) {
+                            throw ValidationException::withMessages(['acao' => 'Não é o seu turno: fora dele só dá para usar reações.']);
+                        }
+                        if ($feitos >= $max) {
+                            throw ValidationException::withMessages(['acao' => "Você já fez seus {$max} ataque".($max > 1 ? 's' : '').' neste turno.']);
+                        }
+                    }
+                    $c['itens'][$k]['acoes']['ataques'] = $feitos + 1;
+                    $m->forceFill(['combate' => $c])->save();
+                    $mudou = true;
+
+                    return $c;
+                }
+            }
             if (! $acesso->ehMestre()) {
                 $motivo = null;
                 if (($cfg['soNoTurno'] ?? false) && $c['atual'] !== $item['id']) {
@@ -142,6 +163,9 @@ final class CombateService
                 }
             }
             $c['itens'][$k]['acoes'][$categoria] = $usos + 1;
+            if ($ataquesPorAcao !== null && $categoria === 'padrao') {
+                $c['itens'][$k]['acoes']['ataques'] = 1;
+            }
             $m->forceFill(['combate' => $c])->save();
             $mudou = true;
 
@@ -150,6 +174,38 @@ final class CombateService
         if ($mudou) {
             Transmitir::enviar($mesa, 'combate', ['combate' => $depois, 'ator' => $acesso->jogador->id], ['mesa']);
         }
+
+        return $depois;
+    }
+
+    /**
+     * Ataques extras do turno (Tempestade de Balas, Alvo Travado, Ataques Múltiplos...): somam ao limite de ataques da Ação. Só no turno do
+     * personagem (o mestre sempre). `n` pode ser negativo para desfazer; o total nunca fica abaixo de 0.
+     */
+    public function darAtaquesExtras(Mesa $mesa, AcessoMesa $acesso, int $personagemId, int $n): array
+    {
+        abort_unless($acesso->podeControlar($personagemId), 403, 'Este personagem não é seu.');
+        $depois = DB::transaction(function () use ($mesa, $acesso, $personagemId, $n) {
+            $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
+            $c = self::normalizar($m->combate);
+            $k = collect($c['itens'])->search(fn ($i) => $i['personagem_id'] === $personagemId);
+            if ($c['fase'] !== 'em_curso' || $k === false) {
+                throw ValidationException::withMessages(['acao' => 'Só dá para ganhar ataques extras com o combate em curso.']);
+            }
+            if (! $acesso->ehMestre() && $c['atual'] !== $c['itens'][$k]['id']) {
+                throw ValidationException::withMessages(['acao' => 'Não é o seu turno.']);
+            }
+            $extras = max(0, (int) ($c['itens'][$k]['acoes']['extras'] ?? 0) + $n);
+            if ($extras > 0) {
+                $c['itens'][$k]['acoes']['extras'] = $extras;
+            } else {
+                unset($c['itens'][$k]['acoes']['extras']);
+            }
+            $m->forceFill(['combate' => $c])->save();
+
+            return $c;
+        });
+        Transmitir::enviar($mesa, 'combate', ['combate' => $depois, 'ator' => $acesso->jogador->id], ['mesa']);
 
         return $depois;
     }
@@ -310,6 +366,9 @@ final class CombateService
                 $i['acoes'][$categoria]--;
                 if ($i['acoes'][$categoria] === 0) {
                     unset($i['acoes'][$categoria]);
+                    if ($categoria === 'padrao') {
+                        unset($i['acoes']['ataques'], $i['acoes']['extras']); // a Ação devolvida leva os ataques dela
+                    }
                 }
             }
 

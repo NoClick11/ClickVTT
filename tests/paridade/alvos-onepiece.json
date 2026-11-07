@@ -3,6 +3,8 @@
     "ataque",
     "ataque.arma",
     "ataque.desarmado",
+    "ataques.acao",
+    "ataques.distancia",
     "atributos.*",
     "atributos.con",
     "atributos.des",

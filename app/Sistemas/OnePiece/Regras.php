@@ -213,6 +213,9 @@ final class Regras
         }
         $base['margem.corpo'] = 20;
         $base['margem.distancia'] = 20;
+        // Ataques da Ação "Atacar": 1 + Ataque Extra e afins; os extras à distância só valem para armas à distância
+        $base['ataques.acao'] = 1;
+        $base['ataques.distancia'] = 0;
         $base['ataque.desarmado'] = $prof + $mod['for'];
         $base['dano.desarmado'] = $mod['for'];
 

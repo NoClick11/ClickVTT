@@ -308,6 +308,7 @@ export const ATIRADOR: EstiloDados = {
             nivelMin: 7,
             descricao: 'Você pode atacar duas vezes, em vez de uma, ao usar a ação "Atacar" no seu turno.',
             etiquetas: ['Ação Atacar: 2 ataques'],
+            efeitos: [{ alvo: 'ataques.acao', modo: 'soma', valor: 1 }],
         },
         {
             id: 'contagem-de-balas',
@@ -362,6 +363,7 @@ export const ATIRADOR: EstiloDados = {
             nivelMin: 19,
             descricao: 'Você recebe 2 jogadas de ataque (comum) à distância adicionais na característica "Ataque Extra".',
             etiquetas: ['Ataque Extra: +2 ataques à distância'],
+            efeitos: [{ alvo: 'ataques.distancia', modo: 'soma', valor: 2 }],
         },
         {
             id: 'next-level',

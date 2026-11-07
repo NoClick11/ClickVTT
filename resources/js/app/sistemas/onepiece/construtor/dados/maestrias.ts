@@ -167,7 +167,14 @@ export const MAESTRIAS: Maestria[] = [
                 'corpo-forjado-ignicao',
                 'Corpo Forjado: Ignição',
                 'Com uma ação bônus o orbe de fogo se extingue e você fica mais veloz (não vale junto de "Labareda"): 1 ataque adicional por rodada com a ação "Atacar"; deslocamento 15 m; dano de Fogo ignora resistências (metade contra invulnerabilidade, sem redução nem PV temporários); pode trocar dados de Técnicas para Fogo (mantendo 1 do tipo original); vantagem no 1º ataque (comum) do turno. Dura quanto quiser.',
-                { tipo: 'ativa', acao: 'bonus', efeitos: [{ alvo: 'movimento.normal', modo: 'min', valor: 150 }] },
+                {
+                    tipo: 'ativa',
+                    acao: 'bonus',
+                    efeitos: [
+                        { alvo: 'movimento.normal', modo: 'min', valor: 150 },
+                        { alvo: 'ataques.acao', modo: 'soma', valor: 1 }, // 1 ataque adicional com a ação "Atacar"
+                    ],
+                },
             ),
             t(
                 'corpo-forjado-labareda',

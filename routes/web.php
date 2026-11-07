@@ -92,6 +92,7 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::post('combate/deslocamento', [CombateController::class, 'deslocamento'])->middleware('throttle:60,1')->name('combate.deslocamento');
     Route::post('personagens/{personagem}/socorros', [AlvoController::class, 'socorros'])->middleware('throttle:30,1')->name('personagens.socorros');
     Route::post('combate/disparada', [CombateController::class, 'disparada'])->middleware('throttle:60,1')->name('combate.disparada');
+    Route::post('combate/ataques-extras', [CombateController::class, 'ataquesExtras'])->middleware('throttle:60,1')->name('combate.ataques-extras');
     Route::post('combate/acao', [CombateController::class, 'acao'])->middleware('throttle:240,1')->name('combate.acao');
     Route::post('broadcasting/auth', BroadcastAuthController::class)->name('broadcasting.auth');
 });

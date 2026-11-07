@@ -39,7 +39,7 @@ import {
     type PaginaDto,
     type TipoParede,
 } from '../engine/tipos';
-import { avaliarAcao, type CategoriaAcao } from '../nucleo/combate/acoes';
+import { avaliarAcao, avaliarAtaque, type CategoriaAcao } from '../nucleo/combate/acoes';
 import type { AreaDeEfeito } from '../nucleo/combate/area';
 import { emCurso, itemAtual, normalizar as normalizarCombate, podeAgirAgora, rodadaParaFicha, semIniciativaDe } from '../nucleo/combate/estado';
 import { totalDoTurno } from '../nucleo/combate/movimento';
@@ -227,6 +227,17 @@ provide('acoesDoCombate', {
         avaliarAcao(combate.value, categoriasAcao.value, personagemId, categoria, props.mestre, tecnica),
     /** Gasta a ação no servidor; false (com aviso do motivo) se não pôde. Fora do combate em curso não faz nada e libera. */
     gastar: (personagemId: number, categoria: string | undefined, tecnica = false) => gastarAcaoDoCombate(personagemId, categoria, tecnica),
+    /** Ataque com arma: o 1º gasta a Ação, os seguintes valem até o limite de ataques (por Ação + extras do turno). */
+    ataque: (personagemId: number, ataquesPorAcao: number) =>
+        avaliarAtaque(combate.value, categoriasAcao.value, personagemId, props.mestre, ataquesPorAcao),
+    /** Ataques extras do turno: só com o combate em curso. */
+    darExtras: async (personagemId: number, n: number) => {
+        try {
+            combate.value = normalizarCombate((await api.ataquesExtras(personagemId, n)).combate);
+        } catch (e) {
+            avisar(mensagemDe(e));
+        }
+    },
 });
 
 /** Em combate, só o token de quem está no turno se move (o servidor também recusa); o mestre controla todos. */
@@ -771,6 +782,9 @@ async function rolarDaFicha(personagemId: number, ...[expressao, rotulo, aoRolar
         if (m.dados) aoRolar?.(m.dados.total);
     } catch (e) {
         avisar(mensagemDe(e));
+    } finally {
+        // a rolagem gastou ação no servidor (ou foi recusada): traz o estado do combate para o contador de ataques e os botões
+        if (acao) recarregar(['combate']);
     }
 }
 
