@@ -130,6 +130,9 @@ export function apiMesa(mesaId: number, atorId: number) {
                 personagem_id: personagemId,
                 tecnica,
             }),
+        /** Efeito de Técnica que a mesa comanda (botão do card): Execução, Zona do Atirador, Headshot, Covering, Mira Cruel, redução extra. */
+        efeitoEspecial: (mensagemId: number, efeito: string, alvoId?: number | null) =>
+            requisitar<Mensagem>(atorId, 'POST', r('jogo.tecnicas.especial', mensagemId), { efeito, ...(alvoId ? { alvo_id: alvoId } : {}) }),
         /** Efeito da munição de um ataque que acertou: Kairoseki (Enfraquecido) ou Bola Explosiva (Salvaguarda em área). */
         efeitoDaMunicao: (mensagemId: number, dados: { alvo_id?: number | null; alvos?: number[] }) =>
             requisitar<Mensagem>(atorId, 'POST', r('jogo.tecnicas.municao.efeito', mensagemId), dados),

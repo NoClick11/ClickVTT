@@ -88,6 +88,8 @@ export interface EfeitoSecundario {
 /** Uma Técnica sendo usada, com tudo que a mesa precisa para executá-la sem voltar à ficha. */
 export interface UsoDeTecnica {
     nome: string;
+    /** O nome da Técnica na ficha (`nome` pode trazer o sufixo da Saijo/Kokuto): o servidor identifica efeitos pelo nome da ficha. */
+    nomeBase?: string;
     /** Como acerta: ataque, Salvaguarda da área, automática; ausente = só rola o dano. */
     teste?: { tipo: 'ataque' | 'salvaguarda' | 'automatico'; atributo?: AtributoId; aoPassar?: 'metade' | 'nada'; aplica?: EfeitoDeCondicao };
     /** Desvantagem na Salvaguarda de quem está na área (a do livro ou a da Kokuto). */

@@ -1036,10 +1036,19 @@ async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
                 undefined,
                 undefined,
                 alvoDoAtaque.value,
-                { nome: uso.nome, dano: uso.dano, ...(uso.secundaria ? { secundaria: uso.secundaria } : {}) },
+                { nome: uso.nomeBase ?? uso.nome, dano: uso.dano, ...(uso.secundaria ? { secundaria: uso.secundaria } : {}) },
             );
         } else if (uso.dano) {
-            await rolarDaFicha(personagemId, uso.dano.expressao, uso.nome, undefined, uso.dano.tipo ? { tipo: uso.dano.tipo } : undefined);
+            await rolarDaFicha(
+                personagemId,
+                uso.dano.expressao,
+                uso.nome,
+                undefined,
+                uso.dano.tipo ? { tipo: uso.dano.tipo } : undefined,
+                undefined,
+                undefined,
+                { nome: uso.nomeBase ?? uso.nome },
+            );
         }
     } catch (e) {
         avisar(mensagemDe(e));
@@ -1095,6 +1104,17 @@ async function pedirSalvaguardaDoEfeito(mensagem: Mensagem) {
                 ...(t.secundaria.aplica ? { aplica: t.secundaria.aplica } : {}),
             }),
         );
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+
+/** Efeito de Técnica que a mesa comanda (Execução, Headshot, Covering...): o servidor confere e aplica; o card se atualiza. */
+async function efeitoEspecialDoChat(mensagem: Mensagem, efeito: string) {
+    const alvoId = mensagem.dados?.sistema?.resolucao?.alvo_id ?? alvoPersonagem.value?.id ?? null;
+    try {
+        aoNovaMensagem(await api.efeitoEspecial(mensagem.id, efeito, alvoId), true);
+        recarregar(['personagens']); // dano, condições e PV temporários mudam as fichas
     } catch (e) {
         avisar(mensagemDe(e));
     }
@@ -1734,6 +1754,7 @@ function alternarPorta(id: number) {
                             @rolar-salvaguarda="rolarSalvaguarda"
                             @pedir-salvaguarda="pedirSalvaguardaDoEfeito"
                             @efeito-da-municao="efeitoDaMunicaoDoChat"
+                            @especial="efeitoEspecialDoChat"
                             @acao="rolarAcaoDoChat"
                             @aplicar-dano="aplicarDanoDoChat"
                         />

@@ -66,6 +66,8 @@ export interface MarcasDoSistema {
     destaque?: 'critico' | 'falha';
     /** Andamento do ataque contra um alvo: janela de reação aberta (`aguardando`) ou resolvido (acertou ou errou). */
     resolucao?: Resolucao;
+    /** Defesa Improvisada: a redução rolada (6d8, mais 2d8 por PP gasto, até 20d8). */
+    reducao?: { dados: number; total: number };
     /** Munição gasta neste ataque (arma por munição); `nota` traz o efeito especial (explosiva, kairoseki). */
     municao?: { id?: string; nome: string; nota: string; efeito?: 'explosao' | 'kairoseki'; usado?: boolean };
     /** Esta rolagem é um dano que pode ser aplicado a um alvo (o tipo pode ser nulo). */
@@ -75,6 +77,8 @@ export interface MarcasDoSistema {
     /** Ataque de uma Técnica: o nome e a Salvaguarda do efeito (condição), que o card oferece pedir ao alvo atingido. */
     tecnica?: {
         nome: string;
+        /** Efeitos que a mesa comanda neste ataque (Execução, Headshot, Covering...): o servidor decide quais botões existem. */
+        especiais?: { id: string; rotulo: string }[];
         secundaria?: { atributo: string; desvantagem?: boolean; efeito: string; aplica?: { condicao: string; turnos?: number; aoDano?: boolean } };
     };
     /** Expertise da arma no acerto crítico (efeitos para o jogador e o Narrador aplicarem). */

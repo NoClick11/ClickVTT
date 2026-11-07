@@ -192,6 +192,15 @@
         "efeitos": []
     },
     {
+        "id": "covering",
+        "nome": "Fogo Cadenciado",
+        "descricao": "Condição do One Piece: o Fogo Cadenciado do Atirador pesa sobre a criatura. A próxima jogada de ataque dela (comum ou Técnicas) tem desvantagem, até o fim do próximo turno dela.",
+        "efeitos": [
+            { "alvo": "ataque", "modo": "desvantagem" },
+            { "alvo": "ataque.arma", "modo": "desvantagem" }
+        ]
+    },
+    {
         "id": "sangramento",
         "nome": "Sangramento",
         "descricao": "Condição do One Piece: a criatura perde sangue. As regras completas estão no livro; encerrada por Primeiros Socorros.",

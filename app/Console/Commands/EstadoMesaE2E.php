@@ -36,6 +36,7 @@ class EstadoMesaE2E extends Command
             'pp' => $atirador?->ficha['pp']['atual'] ?? null,
             'pv' => ['perto' => $pv('PertoE2E'), 'oculto' => $pv('OcultoE2E'), 'amigo' => $pv('AmigoE2E'), 'longe' => $pv('LongeE2E'), 'aliado' => $pv('AliadoE2E')],
             'qtds' => $qtds,
+            'atirador' => ['pv_temp' => $atirador?->ficha['pv']['temp'] ?? 0, 'execucao_usos' => collect($atirador?->ficha['caracteristicas'] ?? [])->first(fn ($c) => str_contains($c['nome'] ?? '', 'Execução Perfeita'))['usos']['atual'] ?? null],
             'vigia' => collect($c['ativas'] ?? [])->where('tipo', 'vigia')->map(fn ($a) => ['rodadas' => $a['rodadas'], 'zona' => $a['zona']])->values()->all(),
             'vigia_cards' => $mesa->mensagens()->where('tipo', 'gatilho')->get()->filter(fn ($m) => $m->dados['vigia'] ?? false)->map(fn ($m) => ['alvo' => $m->dados['alvo']['nome'], 'motivo' => $m->dados['motivo'], 'estado' => $m->dados['estado'], 'salvaguarda' => $m->dados['salvaguarda']['passou'] ?? null])->values()->all(),
             'ferreiro' => (function () use ($mesa) {
@@ -52,7 +53,7 @@ class EstadoMesaE2E extends Command
             // as armas do Atirador (depois de aprimoradas pelo Ferreiro): melhoria e alcance máximo
             'armas_atirador' => collect($atirador?->ficha['inventario'][0]['itens'] ?? [])->map(fn ($r) => $mesa->itens()->find($r['item_id']))
                 ->filter(fn ($i) => $i && isset($i->dados['arma']))->map(fn ($i) => ['nome' => $i->nome, 'melhoria' => $i->dados['arma']['melhoria'] ?? null, 'alcanceMaximo' => $i->dados['arma']['alcanceMaximo'] ?? null])->values()->all(),
-            'condicoes' => ['fruta' => $condicoes('FrutaE2E'), 'perto' => $condicoes('PertoE2E')],
+            'condicoes' => ['fruta' => $condicoes('FrutaE2E'), 'perto' => $condicoes('PertoE2E'), 'aliado' => $condicoes('AliadoE2E')],
             'duracoes_fruta' => Personagem::query()->where('mesa_id', $mesa->id)->where('nome', 'FrutaE2E')->first()?->ficha['duracoes'] ?? [],
             'cards' => $cards,
             'pv_fruta' => $pv('FrutaE2E'),
