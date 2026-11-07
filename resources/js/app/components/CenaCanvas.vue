@@ -19,7 +19,7 @@ const props = defineProps<{
     /** Deslocamento do turno do token que se move (metros), com a régua do arrasto; null = sem limite medido. */
     movimento?: { objetoId: number; usado: number; total: number; limitar: boolean } | null;
     /** Gabarito de área da Técnica em uso: a forma, o tamanho e o token (id do objeto) de onde parte; null = sem gabarito. */
-    gabarito?: { area: AreaDeEfeito; origem: number } | null;
+    gabarito?: { area: AreaDeEfeito; origem: number; excluir?: number[] } | null;
 }>();
 
 const emit = defineEmits<{

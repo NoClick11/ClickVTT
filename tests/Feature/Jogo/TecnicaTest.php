@@ -37,7 +37,7 @@ class TecnicaTest extends TestCase
             return $p;
         };
         $atirador = $personagem('Atirador', ['von' => $vonDoAtacante], $ana);
-        $alvoA = $personagem('Alvo A', ['des' => $desDosAlvos], $bia);
+        $alvoA = $personagem('Alvo A', ['des' => $desDosAlvos], null); // NPC: sem fogo amigo, jogador não machuca jogador
         $alvoB = $personagem('Alvo B', ['des' => $desDosAlvos], null);
 
         return (object) compact('mesa', 'mestre', 'ana', 'bia', 'atirador', 'alvoA', 'alvoB');
@@ -69,10 +69,10 @@ class TecnicaTest extends TestCase
         $this->assertSame(20, $r['dados']['tecnica']['cd']);
         $this->assertCount(2, $r['dados']['alvos']);
 
-        $r = $this->rolar($c, $r['id'], $c->bia, $c->alvoA->id)->assertOk()->json();
+        $r = $this->rolar($c, $r['id'], $c->mestre, $c->alvoA->id)->assertOk()->json();
         $this->assertSame('aguardando', $r['dados']['estado']);
         $this->assertSame(100, $c->alvoA->fresh()->ficha['pv']['atual'], 'sem dano até todos rolarem');
-        $this->rolar($c, $r['id'], $c->bia, $c->alvoA->id)->assertStatus(422); // não rola duas vezes
+        $this->rolar($c, $r['id'], $c->mestre, $c->alvoA->id)->assertStatus(422); // não rola duas vezes
 
         $r = $this->rolar($c, $r['id'], $c->mestre, $c->alvoB->id)->assertOk()->json(); // o mestre rola pelo NPC
         $this->assertSame('resolvido', $r['dados']['estado']);
@@ -89,14 +89,14 @@ class TecnicaTest extends TestCase
     {
         $c = $this->cenario(1, 30); // CD 5; os alvos (Des 30, mod +10) passam sempre
         $r = $this->abrir($c)->assertCreated()->json();
-        $this->rolar($c, $r['id'], $c->bia, $c->alvoA->id)->assertOk();
+        $this->rolar($c, $r['id'], $c->mestre, $c->alvoA->id)->assertOk();
         $r = $this->rolar($c, $r['id'], $c->mestre, $c->alvoB->id)->assertOk()->json();
         $this->assertSame(5, $r['dados']['alvos'][0]['final']); // 10 / 2
         $this->assertSame(95, $c->alvoA->fresh()->ficha['pv']['atual']);
 
         $c2 = $this->cenario(1, 30);
         $r = $this->abrir($c2, ['ao_passar' => 'nada'])->assertCreated()->json();
-        $this->rolar($c2, $r['id'], $c2->bia, $c2->alvoA->id)->assertOk();
+        $this->rolar($c2, $r['id'], $c2->mestre, $c2->alvoA->id)->assertOk();
         $this->rolar($c2, $r['id'], $c2->mestre, $c2->alvoB->id)->assertOk();
         $this->assertSame(100, $c2->alvoA->fresh()->ficha['pv']['atual']);
     }
@@ -116,7 +116,7 @@ class TecnicaTest extends TestCase
     {
         $c = $this->cenario(30, 1);
         $r = $this->abrir($c, ['secundaria' => ['atributo' => 'con', 'efeito' => 'Sangramento']])->assertCreated()->json();
-        $this->rolar($c, $r['id'], $c->bia, $c->alvoA->id)->assertOk();
+        $this->rolar($c, $r['id'], $c->mestre, $c->alvoA->id)->assertOk();
         $this->rolar($c, $r['id'], $c->mestre, $c->alvoB->id)->assertOk();
         $segunda = $c->mesa->mensagens()->where('tipo', 'tecnica')->orderByDesc('id')->first();
         $this->assertSame('Death Blossom: efeito', $segunda->dados['rotulo']);
@@ -159,7 +159,7 @@ class TecnicaTest extends TestCase
     {
         $c = $this->cenario(30, 1); // quem falha: todos
         $r = $this->abrir($c, ['dano' => null, 'aplica' => ['condicao' => 'caido'], 'ao_passar' => 'nada'])->assertCreated()->json();
-        $this->rolar($c, $r['id'], $c->bia, $c->alvoA->id)->assertOk();
+        $this->rolar($c, $r['id'], $c->mestre, $c->alvoA->id)->assertOk();
         $r = $this->rolar($c, $r['id'], $c->mestre, $c->alvoB->id)->assertOk()->json();
         $this->assertSame('aplicada', $r['dados']['alvos'][0]['condicao']['situacao']);
         $this->assertContains('caido', $c->alvoA->fresh()->ficha['condicoes']);
@@ -172,11 +172,11 @@ class TecnicaTest extends TestCase
         $c2->alvoA->ficha = $f;
         $c2->alvoA->save();
         $r = $this->abrir($c2, ['secundaria' => ['atributo' => 'con', 'efeito' => 'Atordoado', 'aplica' => ['condicao' => 'atordoado', 'turnos' => 1]]])->assertCreated()->json();
-        $this->rolar($c2, $r['id'], $c2->bia, $c2->alvoA->id)->assertOk();
+        $this->rolar($c2, $r['id'], $c2->mestre, $c2->alvoA->id)->assertOk();
         $this->rolar($c2, $r['id'], $c2->mestre, $c2->alvoB->id)->assertOk();
         $segunda = $c2->mesa->mensagens()->where('tipo', 'tecnica')->orderByDesc('id')->first();
         $this->assertSame(['condicao' => 'atordoado', 'turnos' => 1], $segunda->dados['tecnica']['aplica']);
-        $this->rolar($c2, $segunda->id, $c2->bia, $c2->alvoA->id)->assertOk(); // Con 1: a CD 20 não passa
+        $this->rolar($c2, $segunda->id, $c2->mestre, $c2->alvoA->id)->assertOk(); // Con 1: a CD 20 não passa
         $this->rolar($c2, $segunda->id, $c2->mestre, $c2->alvoB->id)->assertOk(); // o card resolve quando todos rolam
         $ficha = $c2->alvoA->fresh()->ficha;
         $this->assertContains('atordoado', $ficha['condicoes']);

@@ -23,7 +23,7 @@ class AlvoTest extends TestCase
         $aria = $mesa->personagens()->create(['nome' => 'Aria', 'cor' => '#0ea5e9']);
         $aria->jogadores()->attach($ana);
         $alvo = $mesa->personagens()->create(['nome' => 'Lunar', 'cor' => '#ef4444']);
-        $alvo->jogadores()->attach($bia);
+        // o alvo é um NPC: sem fogo amigo, jogador não machuca jogador
         $mesa->paginas()->create(['nome' => 'P', 'ordem' => 1]);
 
         return (object) compact('mesa', 'mestre', 'ana', 'bia', 'aria', 'alvo');
@@ -36,7 +36,7 @@ class AlvoTest extends TestCase
 
     private function ficha($c, array $campos): void
     {
-        $this->como($c->bia)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->alvo->id]), ['campos' => $campos])->assertOk();
+        $this->como($c->mestre)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->alvo->id]), ['campos' => $campos])->assertOk();
     }
 
     /** Uma rolagem de dano de 1d4 (a mensagem é criada pela rota de rolagem, com o tipo). */

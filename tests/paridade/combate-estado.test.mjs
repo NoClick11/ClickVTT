@@ -68,3 +68,28 @@ test('mover na ordem troca com o vizinho e não faz nada nas pontas', () => {
     assert.deepEqual(ordemAoMover(c, 'a', -1), ['a', 'b', 'c']);
     assert.deepEqual(ordemAoMover(c, 'c', 1), ['a', 'b', 'c']);
 });
+
+// --- sem fogo amigo ----------------------------------------------------------------------------------------------------------
+import { equipeDe, mesmoLado } from '../../resources/js/app/nucleo/combate/equipes.ts';
+
+test('equipes: fora do combate PC é dos jogadores e NPC dos inimigos; em combate vale a disposição', () => {
+    const pcs = new Set([1, 2]);
+    const temJogador = (id) => pcs.has(id);
+    const semCombate = combate('inativo', null, []);
+    assert.equal(equipeDe(semCombate, 1, true), 'jogadores');
+    assert.equal(equipeDe(semCombate, 9, false), 'inimigos');
+    assert.equal(mesmoLado(semCombate, 1, 2, temJogador), true); // jogador x jogador
+    assert.equal(mesmoLado(semCombate, 8, 9, temJogador), true); // NPC x NPC
+    assert.equal(mesmoLado(semCombate, 1, 9, temJogador), false); // jogador x NPC pode
+    assert.equal(mesmoLado(semCombate, 1, 1, temJogador), false); // a si mesmo não conta como "outro"
+
+    const c = combate('em_curso', 'a', [
+        { ...item('a', 1, 20), disposicao: 'jogadores' },
+        { ...item('b', 8, 10), disposicao: 'aliado' },
+        { ...item('c', 9, 5), disposicao: 'inimigo' },
+    ]);
+    assert.equal(equipeDe(c, 8, false), 'jogadores'); // NPC aliado dos jogadores
+    assert.equal(mesmoLado(c, 1, 8, temJogador), true);
+    assert.equal(mesmoLado(c, 8, 9, temJogador), false);
+    assert.equal(mesmoLado(c, 9, 9, temJogador), false);
+});

@@ -184,13 +184,16 @@ class ReacaoTest extends TestCase
         $this->ficha($c, $c->ana, $c->aria, ['pp.atual' => 4, 'tecnicas.lista' => [[
             'nome' => 'Esquiva', 'origem' => '', 'custo' => 1, 'alcance' => '', 'efeito' => '', 'rolagem' => '', 'descricao' => '', 'acao' => 'reacao', 'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'si', 'defesa' => 2],
         ]]]);
-        $this->como($c->mestre)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->orc->id]), ['campos' => ['pp.atual' => 5, 'tecnicas.lista' => [[
+        // o Bruno passa para o lado dos inimigos (a Aria só é atacada por quem é do outro lado) e tem a proteção para aliados dele
+        $itens = collect(\App\Nucleo\Combate\CombateService::normalizar(\App\Models\Mesa::find($c->mesa->id)->combate)['itens']);
+        $this->cmd($c, 'definir_disposicao', ['item_id' => $itens->firstWhere('nome', 'Bruno')['id'], 'disposicao' => 'inimigo']);
+        $this->como($c->mestre)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->bruno->id]), ['campos' => ['pp.atual' => 5, 'tecnicas.lista' => [[
             'nome' => 'Cobrir', 'origem' => '', 'custo' => 1, 'alcance' => '', 'efeito' => '', 'rolagem' => '', 'descricao' => '', 'acao' => 'reacao', 'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'ambos', 'defesa' => 5],
         ]]]])->assertOk();
-        $this->como($c->mestre)->postJson(route('jogo.rolagens.store', $c->mesa->id), ['expressao' => '10+@ataque', 'visibilidade' => 'todos', 'personagem_id' => $c->bruno->id, 'alvo_personagem_id' => $c->aria->id])->assertCreated();
+        $this->como($c->mestre)->postJson(route('jogo.rolagens.store', $c->mesa->id), ['expressao' => '10+@ataque', 'visibilidade' => 'todos', 'personagem_id' => $c->orc->id, 'alvo_personagem_id' => $c->aria->id])->assertCreated();
 
         $evento = EventoDeCombate::first();
-        $this->assertSame([$c->aria->id], $evento->aguardando()); // a Esquiva da Aria; o Orc é do outro lado
+        $this->assertSame([$c->aria->id], $evento->aguardando()); // a Esquiva da Aria; o Bruno agora é do outro lado
     }
 
     public function test_reacao_de_cura_cura_quem_foi_atacado_ate_o_maximo(): void

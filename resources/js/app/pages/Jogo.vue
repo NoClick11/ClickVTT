@@ -41,6 +41,7 @@ import {
 } from '../engine/tipos';
 import { avaliarAcao, avaliarAtaque, type CategoriaAcao } from '../nucleo/combate/acoes';
 import type { AreaDeEfeito } from '../nucleo/combate/area';
+import { mesmoLado } from '../nucleo/combate/equipes';
 import { emCurso, itemAtual, normalizar as normalizarCombate, podeAgirAgora, rodadaParaFicha, semIniciativaDe } from '../nucleo/combate/estado';
 import { totalDoTurno } from '../nucleo/combate/movimento';
 import { comResumo, semOfertasDe, type OfertaDeReacao, type ResumoEvento } from '../nucleo/combate/reacoes';
@@ -799,19 +800,26 @@ async function rolarDaFicha(personagemId: number, ...[expressao, rotulo, aoRolar
 
 // --- Técnicas: gabarito de área e Salvaguarda coletiva ---------------------------------------------------------------------
 // Técnica de Salvaguarda: a área aparece no mapa a partir do token de quem usa; quem estiver dentro é alvo. O clique confirma, Esc cancela.
-const gabarito = ref<{ area: AreaDeEfeito; origem: number } | null>(null);
+const gabarito = ref<{ area: AreaDeEfeito; origem: number; excluir?: number[] } | null>(null);
 let resolverGabarito: ((ids: number[] | null) => void) | null = null;
 function aoGabarito(ids: number[] | null) {
     gabarito.value = null;
     resolverGabarito?.(ids);
     resolverGabarito = null;
 }
-const escolherNaArea = (area: AreaDeEfeito, origem: number) =>
+const escolherNaArea = (area: AreaDeEfeito, origem: number, excluir: number[]) =>
     new Promise<number[] | null>((resolver) => {
         resolverGabarito?.(null);
         resolverGabarito = resolver;
-        gabarito.value = { area, origem };
+        gabarito.value = { area, origem, excluir };
     });
+/** O personagem tem jogador atribuído (PC) ou é NPC? Os lados para o "sem fogo amigo" saem daqui e da disposição no combate. */
+const temJogadorDo = (id: number) => (props.personagens.find((p) => p.id === id)?.jogadores?.length ?? 0) > 0;
+/** O token é de alguém do mesmo lado de quem usa a Técnica? (a área não o atinge: sem fogo amigo) */
+const aliadosDe = (personagemId: number) =>
+    objetos.value
+        .filter((o) => o.tipo === 'token' && o.personagem_id !== null && mesmoLado(combate.value, personagemId, o.personagem_id, temJogadorDo))
+        .map((o) => o.id);
 
 /**
  * Marca a área da Técnica no mapa e devolve os personagens atingidos (do mais perto ao mais longe), ou null (cancelou, sem token no mapa ou
@@ -825,11 +833,11 @@ async function escolherAreaDaFicha(personagemId: number, area: AreaDeEfeito): Pr
         return null;
     }
     avisar('Marque a área no mapa: clique para confirmar, Esc cancela.');
-    const alvos = await escolherNaArea(area, token.id);
+    const alvos = await escolherNaArea(area, token.id, aliadosDe(personagemId));
     erro.value = null;
     if (alvos === null) return null;
     if (!alvos.length) {
-        avisar('Nenhuma criatura na área.');
+        avisar('Nenhum inimigo na área (sem fogo amigo: aliados não são atingidos).');
 
         return null;
     }

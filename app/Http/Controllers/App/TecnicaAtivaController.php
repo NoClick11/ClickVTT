@@ -8,6 +8,7 @@ use App\Models\Mesa;
 use App\Models\Personagem;
 use App\Nucleo\Combate\AplicarDano;
 use App\Nucleo\Combate\CombateService;
+use App\Nucleo\Combate\Equipes;
 use App\Nucleo\Combate\Pipeline;
 use App\Nucleo\Combate\SistemaDeCombate;
 use App\Nucleo\Combate\TecnicasAtivas;
@@ -121,6 +122,7 @@ class TecnicaAtivaController extends Controller
             $a = $this->ativa($mesa, $dados['ativa_id']);
             $atacante = Personagem::query()->where('mesa_id', $mesa->id)->findOrFail($dados['atacante']['personagem_id']);
             $alvo = Personagem::query()->where('mesa_id', $mesa->id)->findOrFail($dados['alvo']['personagem_id']);
+            Equipes::exigirInimigos($mesa, $atacante->id, $alvo->id);
             $vars = $sistema->variaveisDeRolagem($atacante->fichaCompleta($sistema), []);
             $r = $rolador->rolar('1d20+@ataque', $vars);
             $natural = Pipeline::naturalDoD20($r['termos']);

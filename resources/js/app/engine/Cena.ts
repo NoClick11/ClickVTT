@@ -69,7 +69,7 @@ export class Cena {
     /** Deslocamento do turno do token que se move agora (metros): a régua do arrasto mostra o gasto e, para o jogador, trava. */
     private movimento: { objetoId: number; usado: number; total: number; limitar: boolean } | null = null;
     /** Gabarito de área em uso (Técnica de área): a forma segue o cursor a partir do token de quem usa; um clique confirma. */
-    private gabarito: { area: AreaDeEfeito; origem: number } | null = null;
+    private gabarito: { area: AreaDeEfeito; origem: number; excluir?: number[] } | null = null;
     /** Tecla T apertada: o próximo clique em um token o mira (qualquer ferramenta). */
     private teclaMirar = false;
 
@@ -196,7 +196,7 @@ export class Cena {
     }
 
     /** Liga o gabarito de área a partir do token `origem` (id do objeto), ou o desliga (`null`). */
-    setGabarito(g: { area: AreaDeEfeito; origem: number } | null): void {
+    setGabarito(g: { area: AreaDeEfeito; origem: number; excluir?: number[] } | null): void {
         this.gabarito = g;
         this.gabaritoG.clear();
         this.reguaTexto.visible = false;
@@ -223,7 +223,13 @@ export class Cena {
         const mpp = this.metrosPorPixel();
         const medida = areaMedida(this.gabarito.area, origem, cursor, mpp);
         const tokens = [...this.visuais.values()]
-            .filter((v) => v.dto.tipo === 'token' && v.dto.personagem_id !== null && v.dto.id !== this.gabarito!.origem)
+            .filter(
+                (v) =>
+                    v.dto.tipo === 'token' &&
+                    v.dto.personagem_id !== null &&
+                    v.dto.id !== this.gabarito!.origem &&
+                    !this.gabarito!.excluir?.includes(v.dto.id),
+            )
             .map((v) => ({
                 id: v.dto.id,
                 x: v.dto.x + v.dto.largura / 2,

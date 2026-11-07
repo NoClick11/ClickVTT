@@ -9,6 +9,7 @@ use App\Models\Personagem;
 use App\Nucleo\Combate\AplicarCondicao;
 use App\Nucleo\Combate\AplicarDano;
 use App\Nucleo\Combate\Duracoes;
+use App\Nucleo\Combate\Equipes;
 use App\Nucleo\Combate\Pipeline;
 use App\Nucleo\Rolagem\Rolador;
 use App\Nucleo\Rolagem\RolagemInvalida;
@@ -63,6 +64,9 @@ class TecnicaController extends Controller
         ]);
         $sistema = $sistemas->resolver($mesa->sistema->slug) ?? throw ValidationException::withMessages(['sistema' => 'Este sistema não tem ficha.']);
         $atacante = $mesa->personagens()->findOrFail($d['personagem_id']);
+        foreach ($d['alvos'] as $alvoId) {
+            Equipes::exigirInimigos($mesa, $atacante->id, (int) $alvoId, 'alvos');
+        }
         $ficha = $atacante->fichaCompleta($sistema);
         $variaveis = $sistema->variaveisDeRolagem($ficha, []);
         if (! isset($variaveis['cd'])) {

@@ -52,6 +52,9 @@ class AlvoController extends Controller
                 throw ValidationException::withMessages(['mensagem_id' => 'Este dano já foi aplicado a este alvo.']);
             }
 
+            if ($mensagem->personagem_id) {
+                \App\Nucleo\Combate\Equipes::exigirInimigos($mesa, $mensagem->personagem_id, $personagem->id, 'mensagem_id');
+            }
             $tipo = $dano['tipo'] ?? null;
             // Fração do dano que vale (arma à distância do anão: metade), antes das defesas do alvo.
             $total = (int) floor(((int) ($mensagem->dados['total'] ?? 0)) * (float) ($dano['fator'] ?? 1));

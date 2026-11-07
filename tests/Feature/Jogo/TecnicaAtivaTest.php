@@ -38,8 +38,8 @@ class TecnicaAtivaTest extends TestCase
         $atirador = $mk('Atirador', ['des' => $desDoAtirador, 'von' => $desDoAtirador], $ana, 0);
         $perto = $mk('Perto', ['des' => $caDoAlvo], null, 700);   // 10 quadrados = 15 m
         $longe = $mk('Longe', ['des' => $caDoAlvo], null, 2100);  // 30 quadrados = 45 m
-        $item = fn ($id, $p, $ini) => ['id' => $id, 'nome' => $p->nome, 'cor' => '#000', 'personagem_id' => $p->id, 'objeto_id' => null, 'disposicao' => 'aliado', 'iniciativa' => $ini, 'acoes' => [], 'movimento' => ['usado' => 0.0, 'bonus' => 0.0]];
-        $mesa->combate = ['ativo' => true, 'fase' => 'em_curso', 'rodada' => 1, 'atual' => 'a', 'itens' => [$item('a', $atirador, 20), $item('b', $perto, 15), $item('c', $longe, 10)]];
+        $item = fn ($id, $p, $ini, $disp = 'inimigo') => ['id' => $id, 'nome' => $p->nome, 'cor' => '#000', 'personagem_id' => $p->id, 'objeto_id' => null, 'disposicao' => $disp, 'iniciativa' => $ini, 'acoes' => [], 'movimento' => ['usado' => 0.0, 'bonus' => 0.0]];
+        $mesa->combate = ['ativo' => true, 'fase' => 'em_curso', 'rodada' => 1, 'atual' => 'a', 'itens' => [$item('a', $atirador, 20, 'jogadores'), $item('b', $perto, 15), $item('c', $longe, 10)]];
         $mesa->save();
 
         return (object) compact('mesa', 'mestre', 'ana', 'atirador', 'perto', 'longe');
