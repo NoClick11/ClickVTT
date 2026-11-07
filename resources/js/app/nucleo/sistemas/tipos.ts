@@ -49,6 +49,20 @@ export interface VariavelEfeito {
     grupo?: string;
 }
 
+/**
+ * Uma informação que o token mostra sobre o personagem (como no Foundry e no Roll20): `pv` e `pp` são barras (atual/max), `ca` é um valor.
+ * O mapa só desenha; quem decide o que existe é o módulo do sistema (`resumoDoToken`).
+ */
+export interface BarraDoToken {
+    id: 'pv' | 'pp' | 'ca';
+    rotulo: string;
+    /** Barras: o valor atual e o máximo. */
+    atual?: number;
+    max?: number;
+    /** Valores soltos (CA). */
+    valor?: number;
+}
+
 export interface ModuloSistema {
     /** Igual ao `slug` do sistema no servidor (ex.: `dnd-5e`). */
     slug: string;
@@ -87,6 +101,11 @@ export interface ModuloSistema {
     Loja?: Component;
     /** Categorias, raridades e moeda da loja do sistema (alimenta o editor de itens do catálogo). */
     dadosDaLoja?: { categorias: { id: string; nome: string; grupo: string }[]; raridades: { id: string; nome: string }[]; moeda: string };
+    /**
+     * As informações que aparecem sobre o token do personagem (vida, CA, PP...), calculadas da ficha. A mesa só chama isto para as fichas que
+     * este jogador pode ver (as dele; o mestre vê todas), então um jogador nunca vê a vida de outro.
+     */
+    resumoDoToken?: (ficha: Record<string, unknown>, itens: Record<number, ItemDto>) => BarraDoToken[];
     /** Condições do sistema (id, nome, descrição), oferecidas no painel do alvo mirado. */
     condicoes?: { id: string; nome: string; descricao: string }[];
     /** Atributos do sistema (id e sigla), para a salvaguarda do alvo ao aplicar condições. */

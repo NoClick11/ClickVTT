@@ -68,3 +68,33 @@ test('condições e alvos de efeito conferem com o servidor', () => {
     assert.equal(new Set(ALVOS_DE_EFEITO.map((a) => a.id)).size, ALVOS_DE_EFEITO.length, 'ids repetidos');
     assert.ok(ALVOS_DE_EFEITO.some((a) => a.id === 'pp.max'));
 });
+
+// --- vida, CA e PP sobre o token --------------------------------------------------------------------------------------------
+import { resumoDoToken } from '../../resources/js/app/sistemas/onepiece/regras.ts';
+
+test('token: o resumo mostra PV (com temporários), CA e PP já calculados com os efeitos', () => {
+    const f = structuredClone(casos[1].ficha); // nível 5, 5 PP por nível
+    f.pv = { atual: 12, max: 30, temp: 5 };
+    f.pp = { atual: 7, porNivel: 5 };
+    const base = calcular(f, {});
+    const [pv, ca, pp] = resumoDoToken(f);
+    assert.deepEqual([pv.id, pv.atual, pv.max], ['pv', 17, base['pv.max']]);
+    assert.deepEqual([ca.id, ca.valor], ['ca', base.ca]);
+    assert.deepEqual([pp.id, pp.atual, pp.max], ['pp', 7, 25]);
+    // um efeito que soma à CA e ao PV máximo aparece no resumo
+    f.caracteristicas = [
+        {
+            nome: 'Casca',
+            origem: '',
+            tipo: 'passiva',
+            descricao: '',
+            efeitos: [
+                { alvo: 'ca', modo: 'soma', valor: 3 },
+                { alvo: 'pv.max', modo: 'soma', valor: 10 },
+            ],
+        },
+    ];
+    const r = resumoDoToken(f);
+    assert.equal(r[1].valor, base.ca + 3);
+    assert.equal(r[0].max, base['pv.max'] + 10);
+});

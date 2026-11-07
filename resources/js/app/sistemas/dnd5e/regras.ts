@@ -561,3 +561,16 @@ export function camposDoDescanso(f: FichaDnd5e, tipo: TipoDescanso, pvMax: numbe
 
     return campos;
 }
+
+/** O que o token mostra do personagem: vida (PV) e CA, já com os efeitos. */
+export function resumoDoToken(
+    f: FichaDnd5e,
+    itens: ItensPorId = {},
+): { id: 'pv' | 'ca'; rotulo: string; atual?: number; max?: number; valor?: number }[] {
+    const v = calcular(f, itens);
+
+    return [
+        { id: 'pv', rotulo: 'PV', atual: (f.pv?.atual ?? 0) + (f.pv?.temp ?? 0), max: v['pv.max'] ?? f.pv?.max ?? 0 },
+        { id: 'ca', rotulo: 'CA', valor: v.ca ?? 10 },
+    ];
+}

@@ -915,3 +915,17 @@ export function camposDoDescanso(
 
     return campos;
 }
+
+/** O que o token mostra do personagem: vida (PV), CA e Pontos de Poder, já com os efeitos (itens, características, condições). */
+export function resumoDoToken(
+    f: FichaOnePiece,
+    itens: ItensPorId = {},
+): { id: 'pv' | 'pp' | 'ca'; rotulo: string; atual?: number; max?: number; valor?: number }[] {
+    const v = calcular(f, itens);
+
+    return [
+        { id: 'pv', rotulo: 'PV', atual: (f.pv?.atual ?? 0) + (f.pv?.temp ?? 0), max: v['pv.max'] ?? f.pv?.max ?? 0 },
+        { id: 'ca', rotulo: 'CA', valor: v.ca ?? 10 },
+        { id: 'pp', rotulo: 'PP', atual: f.pp?.atual ?? 0, max: v['pp.max'] ?? 0 },
+    ];
+}

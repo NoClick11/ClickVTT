@@ -1,5 +1,6 @@
 import { Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { GifSprite } from 'pixi.js/gif';
+import type { BarraDoToken } from '../nucleo/sistemas/tipos';
 import { iconeDoStatus } from '../nucleo/status';
 import type { ObjetoDto } from './tipos';
 
@@ -18,14 +19,19 @@ export class ObjetoVisual {
     private marcador = new Graphics();
     private iconesStatus = new Container();
     private statusDesenhado = '';
+    private barras = new Container();
+    private barrasDesenhadas = '';
     private mira = new Graphics();
     private miraLigada = false;
     private destruido = false;
     private enfase = true;
 
-    constructor(dto: ObjetoDto, private mestre = false) {
+    constructor(
+        dto: ObjetoDto,
+        private mestre = false,
+    ) {
         this.dto = { ...dto };
-        this.container.addChild(this.fundo, this.marcador, this.iconesStatus, this.mira);
+        this.container.addChild(this.fundo, this.marcador, this.iconesStatus, this.barras, this.mira);
         this.aplicar();
         void this.carregarMidia();
     }
@@ -64,7 +70,17 @@ export class ObjetoVisual {
             const sy = this.dto.altura / (this.dto.dados.altura_original || this.dto.altura);
             const folga = tolerancia + (this.dto.dados.espessura ?? 4) / 2;
             for (let i = 0; i + 3 < p.length; i += 2) {
-                if (distanciaAoSegmento(x, y, this.dto.x + p[i] * sx, this.dto.y + p[i + 1] * sy, this.dto.x + p[i + 2] * sx, this.dto.y + p[i + 3] * sy) <= folga) return true;
+                if (
+                    distanciaAoSegmento(
+                        x,
+                        y,
+                        this.dto.x + p[i] * sx,
+                        this.dto.y + p[i + 1] * sy,
+                        this.dto.x + p[i + 2] * sx,
+                        this.dto.y + p[i + 3] * sy,
+                    ) <= folga
+                )
+                    return true;
             }
 
             return false;
@@ -98,6 +114,7 @@ export class ObjetoVisual {
         this.desenharFundo();
         this.desenharMarcador();
         this.desenharStatus();
+        this.desenharBarras();
         this.desenharMira();
         this.ajustarMidia();
         this.atualizarRotulo(largura, altura);
@@ -118,7 +135,11 @@ export class ObjetoVisual {
             // Sem imagem: círculo colorido com a inicial. Com imagem, ela ocupa o token inteiro.
             // Preenche o token inteiro (elipse): esticar o token estica o desenho, como a imagem.
             g.ellipse(largura / 2, altura / 2, largura / 2, altura / 2).fill({ color: corHex(dados?.cor), alpha: 1 });
-            g.ellipse(largura / 2, altura / 2, largura / 2, altura / 2).stroke({ color: camada === 'mestre' ? 0xd4a843 : 0x0d0a12, width: 3, alpha: 0.9 });
+            g.ellipse(largura / 2, altura / 2, largura / 2, altura / 2).stroke({
+                color: camada === 'mestre' ? 0xd4a843 : 0x0d0a12,
+                width: 3,
+                alpha: 0.9,
+            });
         } else if (!this.arquivoCarregado) {
             // Mapa/imagem ainda carregando ou sem arquivo.
             g.rect(0, 0, largura, altura).fill({ color: 0x25212b, alpha: 0.6 }).stroke({ color: 0x4a4452, width: 2 });
@@ -182,7 +203,9 @@ export class ObjetoVisual {
         const [ox, oy] = [this.dto.x, this.dto.y];
         const a = { x: pts[0] - ox, y: pts[1] - oy };
         const b = { x: pts[2] - ox, y: pts[3] - oy };
-        g.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ color: cor, width: tipo === 'janela' ? 6 : 9, alpha: tipo === 'porta' && aberta ? 0.35 : 0.95, cap: 'round' });
+        g.moveTo(a.x, a.y)
+            .lineTo(b.x, b.y)
+            .stroke({ color: cor, width: tipo === 'janela' ? 6 : 9, alpha: tipo === 'porta' && aberta ? 0.35 : 0.95, cap: 'round' });
         g.circle(a.x, a.y, 7).fill(0x0d0a12).stroke({ color: cor, width: 2 });
         g.circle(b.x, b.y, 7).fill(0x0d0a12).stroke({ color: cor, width: 2 });
     }
@@ -191,7 +214,9 @@ export class ObjetoVisual {
     private desenharMarcador(): void {
         const g = this.marcador.clear();
         if (this.dto.tipo !== 'luz' || !this.mestre) return;
-        g.circle(this.dto.largura / 2, this.dto.altura / 2, 9).fill(0x0d0a12).stroke({ color: corHex(this.dto.dados?.cor ?? '#ffd27a'), width: 3 });
+        g.circle(this.dto.largura / 2, this.dto.altura / 2, 9)
+            .fill(0x0d0a12)
+            .stroke({ color: corHex(this.dto.dados?.cor ?? '#ffd27a'), width: 3 });
         g.circle(this.dto.largura / 2, this.dto.altura / 2, 3).fill(0xffffff);
     }
 
@@ -213,10 +238,17 @@ export class ObjetoVisual {
         const ry = altura / 2 + 6;
         const risco = Math.max(8, Math.min(largura, altura) * 0.22);
         g.ellipse(cx, cy, rx, ry).stroke({ color: 0xef4444, width: 3, alpha: 0.95 });
-        for (const [dx, dy, ax, ay] of [[0, -1, 0, 1], [0, 1, 0, -1], [-1, 0, 1, 0], [1, 0, -1, 0]] as const) {
+        for (const [dx, dy, ax, ay] of [
+            [0, -1, 0, 1],
+            [0, 1, 0, -1],
+            [-1, 0, 1, 0],
+            [1, 0, -1, 0],
+        ] as const) {
             const x0 = cx + dx * rx;
             const y0 = cy + dy * ry;
-            g.moveTo(x0 + dx * 6, y0 + dy * 6).lineTo(x0 + ax * risco, y0 + ay * risco).stroke({ color: 0xef4444, width: 3, alpha: 0.95, cap: 'round' });
+            g.moveTo(x0 + dx * 6, y0 + dy * 6)
+                .lineTo(x0 + ax * risco, y0 + ay * risco)
+                .stroke({ color: 0xef4444, width: 3, alpha: 0.95, cap: 'round' });
         }
     }
 
@@ -257,6 +289,64 @@ export class ObjetoVisual {
             bolha.addChild(fundo, texto);
             this.iconesStatus.addChild(bolha);
         });
+    }
+
+    /**
+     * Vida, PP e CA sobre o token (como no Foundry e no Roll20): a barra de PV (verde, amarela, vermelha), a de PP (azul) e a CA num escudo. Só
+     * existem para quem pode ver a ficha: o jogador vê as dele; o mestre, as de todos. Redesenha só quando os valores mudam.
+     */
+    private desenharBarras(): void {
+        const dados = this.ehToken ? (this.dto.barras ?? []) : [];
+        const lado = Math.round(this.dto.largura);
+        const chave = `${lado}|${dados.map((b) => `${b.id}:${b.atual ?? ''}/${b.max ?? ''}/${b.valor ?? ''}`).join(',')}`;
+        if (chave === this.barrasDesenhadas) return;
+        this.barrasDesenhadas = chave;
+        for (const filho of this.barras.removeChildren()) filho.destroy({ children: true });
+        if (!dados.length) return;
+
+        const largura = this.dto.largura;
+        const altura = Math.max(13, Math.min(20, largura * 0.22));
+        const estiloTexto = (tamanho: number) => ({
+            fontFamily: 'sans-serif',
+            fontSize: tamanho,
+            fill: 0xffffff,
+            fontWeight: '700' as const,
+            stroke: { color: 0x0d0a12, width: Math.max(2, tamanho * 0.22) },
+        });
+        const texto = (t: string, tamanho: number, x: number, y: number) => {
+            const obj = new Text({ text: t, style: estiloTexto(tamanho) });
+            obj.anchor.set(0.5);
+            obj.position.set(x, y);
+
+            return obj;
+        };
+        // PP logo acima do token e PV acima dele; a CA num escudo sobre o canto esquerdo do token
+        let y = -(altura + 1);
+        const barra = (b: BarraDoToken, cor: number) => {
+            const max = Math.max(1, b.max ?? 1);
+            const atual = Math.max(0, b.atual ?? 0);
+            const pct = Math.min(1, atual / max);
+            const g = new Graphics().roundRect(0, y, largura, altura, altura * 0.35).fill({ color: 0x0d0a12, alpha: 0.88 });
+            if (pct > 0) g.roundRect(1, y + 1, Math.max(altura * 0.5, (largura - 2) * pct), altura - 2, (altura - 2) * 0.35).fill(cor);
+            this.barras.addChild(g, texto(`${atual}/${b.max ?? 0}`, altura * 0.78, largura / 2, y + altura / 2));
+            y -= altura + 2;
+        };
+        const pp = dados.find((b) => b.id === 'pp');
+        const pv = dados.find((b) => b.id === 'pv');
+        const ca = dados.find((b) => b.id === 'ca');
+        if (pp) barra(pp, 0x38bdf8);
+        if (pv) {
+            const pct = (pv.atual ?? 0) / Math.max(1, pv.max ?? 1);
+            barra(pv, pct > 0.5 ? 0x22c55e : pct > 0.25 ? 0xeab308 : 0xef4444);
+        }
+        if (ca) {
+            const r = altura * 0.95;
+            const escudo = new Graphics()
+                .circle(r * 0.35, r * 0.35, r)
+                .fill({ color: 0x0d0a12, alpha: 0.95 })
+                .stroke({ color: 0xd4a843, width: 2 });
+            this.barras.addChild(escudo, texto(String(ca.valor ?? 0), altura * 0.82, r * 0.35, r * 0.35));
+        }
     }
 
     private atualizarRotulo(largura: number, altura: number): void {

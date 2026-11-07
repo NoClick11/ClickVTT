@@ -3,7 +3,7 @@ import type { ModuloSistema } from '../../nucleo/sistemas/tipos';
 import { ALVOS_DE_EFEITO, formatoDeResumo, variaveisParaAlvo } from './alvos';
 import { CONDICOES } from './condicoes';
 import { CATEGORIAS, RARIDADES } from './itens/tipos';
-import { ATRIBUTOS, comItemEntregue, type FichaOnePiece } from './regras';
+import { ATRIBUTOS, comItemEntregue, resumoDoToken, type FichaOnePiece, type ItensPorId } from './regras';
 
 /** Módulo de D&D 5e: a ficha e o editor de dados do item são carregados só quando usados. */
 export const modulo: ModuloSistema = {
@@ -12,6 +12,7 @@ export const modulo: ModuloSistema = {
     alvosDeEfeito: ALVOS_DE_EFEITO,
     variaveisDeEfeito: variaveisParaAlvo,
     formatoDeResumo,
+    resumoDoToken: (ficha, itens) => resumoDoToken(ficha as unknown as FichaOnePiece, itens as unknown as ItensPorId),
     entregarItem: (ficha, itemId) => ({ inventario: comItemEntregue(ficha as unknown as FichaOnePiece, itemId) }),
     EditorDadosItem: defineAsyncComponent(() => import('./EditorDadosItem.vue')),
     atributos: ATRIBUTOS.map((a) => ({ id: a.id, sigla: a.sigla })),

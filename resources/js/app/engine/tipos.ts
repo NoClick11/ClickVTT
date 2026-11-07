@@ -19,6 +19,8 @@ export interface EstiloPintura {
 
 export type TipoParede = 'parede' | 'porta' | 'janela';
 
+import type { BarraDoToken } from '../nucleo/sistemas/tipos';
+
 export interface ObjetoDto {
     id: number;
     camada: Camada;
@@ -26,6 +28,8 @@ export interface ObjetoDto {
     personagem_id: number | null;
     /** token: ids dos efeitos (condições) ativos do personagem, desenhados como ícones no token. */
     status?: string[];
+    /** token: vida, CA e PP do personagem, só para quem pode ver a ficha (o jogador vê os dele; o mestre, todos). */
+    barras?: BarraDoToken[];
     /** jogador que fez (traço/texto) */
     jogador_id: number | null;
     nome: string | null;

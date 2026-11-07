@@ -408,9 +408,14 @@ sincronizarStatus();
 watch(() => props.personagens, sincronizarStatus, { deep: true });
 /** Os tokens que o mapa desenha, cada um com os efeitos do seu personagem. */
 const objetosDaCena = computed(() =>
-    objetos.value.map((o) =>
-        o.tipo === 'token' && o.personagem_id !== null ? { ...o, status: statusPorPersonagem.value[o.personagem_id] ?? [] } : o,
-    ),
+    objetos.value.map((o) => {
+        if (o.tipo !== 'token' || o.personagem_id === null) return o;
+        // vida, CA e PP sobre o token: só das fichas que este jogador recebe (as dele; o mestre recebe todas), então ninguém vê a vida alheia
+        const ficha = fichas.value[o.personagem_id];
+        const barras = ficha ? (moduloSistema?.resumoDoToken?.(ficha, itensPorIdDaMesa.value) ?? []) : [];
+
+        return { ...o, status: statusPorPersonagem.value[o.personagem_id] ?? [], barras };
+    }),
 );
 watch(
     () => props.combate,
@@ -736,6 +741,8 @@ function aoMudarFicha(e: { personagem_id: number; campos: Record<string, unknown
 // --- itens da mesa -------------------------------------------------------------
 // Um item salvo agora vale aqui até a recarga do servidor trazê-lo (evita piscar "item removido" ou o valor antigo).
 const itensSalvos = ref<ItemDto[]>([]);
+/** Os itens da mesa por id, para calcular as fichas (CA e PV máximos dependem do que o personagem veste). */
+const itensPorIdDaMesa = computed(() => Object.fromEntries(itensDaMesa.value.map((i) => [i.id, i])) as Record<number, ItemDto>);
 const itensDaMesa = computed(() => [
     ...props.itens.map((i) => itensSalvos.value.find((s) => s.id === i.id) ?? i),
     ...itensSalvos.value.filter((s) => !props.itens.some((i) => i.id === s.id)),
