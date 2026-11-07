@@ -6,12 +6,14 @@ import CampoTexto from '../../../../nucleo/ui/CampoTexto.vue';
 import { estilos, useFicha } from '../../contexto';
 import { alcanceComKokuto, USOS_DA_SAIJO } from '../../itens/forja';
 import {
+    ATRIBUTOS,
     camposDoGastoDePP,
     comDadosDaMeito as comDadosExtras,
     dadosExtrasDeMeito,
     expandirRolagem,
     kokutoEquipada,
     saijoEquipada,
+    type AtributoId,
     type FichaOnePiece,
     type Tecnica,
 } from '../../regras';
@@ -91,6 +93,21 @@ async function usar(t: Tecnica) {
             undefined,
             t.tipoDano?.trim() ? { tipo: t.tipoDano.trim() } : undefined,
         );
+}
+
+/** Muda o tipo de teste da técnica ('' = nenhum); a Salvaguarda começa em Destreza, passando = metade do dano. */
+function mudarTeste(i: number, tipo: string) {
+    mudar((l) => {
+        if (!tipo) delete l[i].teste;
+        else if (tipo === 'salvaguarda')
+            l[i].teste = {
+                tipo,
+                atributo: l[i].teste?.atributo ?? 'des',
+                aoPassar: l[i].teste?.aoPassar ?? 'metade',
+                ...(l[i].teste?.secundaria ? { secundaria: l[i].teste.secundaria } : {}),
+            };
+        else l[i].teste = { tipo: tipo as 'ataque' | 'automatico', ...(l[i].teste?.secundaria ? { secundaria: l[i].teste.secundaria } : {}) };
+    });
 }
 
 /** Liga ou desliga a reação da técnica: ligar já a põe na categoria Reação (se não tinha outra). */
@@ -272,6 +289,51 @@ function adicionar() {
                                 />
                                 Exige arma cortante</label
                             >
+                            <label
+                                class="flex items-center gap-1.5"
+                                title="Como a Técnica acerta: jogada de ataque, Salvaguarda de quem está na área, ou automática"
+                                >Teste
+                                <select
+                                    :value="t.teste?.tipo ?? ''"
+                                    aria-label="Teste da técnica"
+                                    class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1"
+                                    @change="mudarTeste(i, ($event.target as HTMLSelectElement).value)"
+                                >
+                                    <option value="">Nenhum</option>
+                                    <option value="ataque">Ataque</option>
+                                    <option value="salvaguarda">Salvaguarda</option>
+                                    <option value="automatico">Automática</option>
+                                </select></label
+                            >
+                            <template v-if="t.teste?.tipo === 'salvaguarda'">
+                                <select
+                                    :value="t.teste.atributo ?? 'des'"
+                                    aria-label="Atributo da Salvaguarda"
+                                    class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1"
+                                    @change="mudar((l) => (l[i].teste!.atributo = ($event.target as HTMLSelectElement).value as AtributoId))"
+                                >
+                                    <option v-for="a in ATRIBUTOS" :key="a.id" :value="a.id">{{ a.sigla }}</option>
+                                </select>
+                                <label class="flex items-center gap-1.5"
+                                    ><input
+                                        type="checkbox"
+                                        class="size-3.5 accent-ouro-500"
+                                        :checked="!!t.teste.desvantagem"
+                                        aria-label="Salvaguarda com desvantagem"
+                                        @change="mudar((l) => (l[i].teste!.desvantagem = ($event.target as HTMLInputElement).checked))"
+                                    />
+                                    Com desvantagem</label
+                                >
+                                <select
+                                    :value="t.teste.aoPassar ?? 'metade'"
+                                    aria-label="Dano de quem passa na Salvaguarda"
+                                    class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1"
+                                    @change="mudar((l) => (l[i].teste!.aoPassar = ($event.target as HTMLSelectElement).value as 'metade' | 'nada'))"
+                                >
+                                    <option value="metade">Passou: metade do dano</option>
+                                    <option value="nada">Passou: nenhum dano</option>
+                                </select>
+                            </template>
                             <label class="flex items-center gap-1.5"
                                 ><input
                                     type="checkbox"

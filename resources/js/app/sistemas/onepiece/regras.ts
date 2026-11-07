@@ -239,6 +239,20 @@ export interface Ferramenta {
     atributo: AtributoId;
 }
 /** Uma técnica: gasta pontos de poder (`custo`) e pode ter uma rolagem própria (ex.: `3d8+@mod.for`). */
+/**
+ * Como a Técnica acerta o alvo. `ataque`: jogada de ataque (Técnicas) contra a defesa; `salvaguarda`: cada criatura na área rola a
+ * salvaguarda contra a CD de quem usou; `automatico`: acerta sem rolar. `aoPassar` vale para o dano da salvaguarda (metade ou nada).
+ * `secundaria` é a salvaguarda do EFEITO (condição) de quem foi atingido ou falhou.
+ */
+export interface TesteDaTecnica {
+    tipo: 'ataque' | 'salvaguarda' | 'automatico';
+    /** Salvaguarda: o atributo que o alvo rola. */
+    atributo?: AtributoId;
+    desvantagem?: boolean;
+    aoPassar?: 'metade' | 'nada';
+    secundaria?: { atributo: AtributoId; desvantagem?: boolean; efeito: string };
+}
+
 export interface Tecnica {
     nome: string;
     /** De onde vem: estilo de luta, fruta, haki, profissão... */
@@ -256,6 +270,8 @@ export interface Tecnica {
     acao?: CategoriaDeAcao;
     /** Reação: usada quando alguém é atacado (fora do turno), a si ou a um aliado. */
     reacao?: ReacaoDeCombate;
+    /** Como a Técnica acerta (ataque, salvaguarda da área ou automática); sem isto, "Usar" só rola a `rolagem`. */
+    teste?: TesteDaTecnica;
     /** A Técnica tem uma arma cortante como requisito: as armas Meito equipadas somam dados ao dano dela. */
     armaCortante?: boolean;
     /** Quem criou: o assistente de criação marca `especie`, para refazer o passo sem duplicar. */

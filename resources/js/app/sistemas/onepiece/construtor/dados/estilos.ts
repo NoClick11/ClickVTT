@@ -5,7 +5,7 @@
  * O que o motor de efeitos modela entra em `efeitos`/`usos`/`acao`; o resto vira descrição + `etiquetas` (o resumo curto
  * que aparece na ficha). Características com `nivelMin` só valem a partir do nível indicado.
  */
-import type { AtributoId, CategoriaDeAcao, Tecnica } from '../../regras.ts';
+import type { AtributoId, CategoriaDeAcao, Tecnica, TesteDaTecnica } from '../../regras.ts';
 import type { DadoDeVida } from '../regras.ts';
 import type { TracoDados } from './tipos.ts';
 
@@ -645,6 +645,38 @@ export const ATIRADOR: EstiloDados = {
     ],
 };
 
+/**
+ * Como cada Técnica do Atirador acerta (Capítulo de estilos): ataque (Técnicas), Salvaguarda da área ou automática; `secundaria` é a
+ * Salvaguarda do efeito. Sem entrada, a Técnica não tem teste (reação, buff ou efeito sem alvo).
+ */
+const TESTES_DO_ATIRADOR: Record<string, TesteDaTecnica> = {
+    'Death Blossom': { tipo: 'salvaguarda', atributo: 'des', desvantagem: true, aoPassar: 'metade' },
+    Covering: { tipo: 'ataque' },
+    'Quick Fire': { tipo: 'ataque', secundaria: { atributo: 'con', efeito: 'encerra o turno logo após sofrer o dano' } },
+    'Death Shower': {
+        tipo: 'salvaguarda',
+        atributo: 'des',
+        desvantagem: true,
+        aoPassar: 'metade',
+        secundaria: { atributo: 'con', efeito: 'Sangramento' },
+    },
+    'Stunning Shot': { tipo: 'ataque', secundaria: { atributo: 'con', efeito: 'Atordoado até o fim do próximo turno dela' } },
+    'Quick Draw': { tipo: 'ataque' },
+    Execução: { tipo: 'ataque' },
+    'Último Recurso': { tipo: 'ataque', secundaria: { atributo: 'con', desvantagem: true, efeito: 'Incapacitado até o fim do próximo turno dela' } },
+    'Tiro de Advertência': {
+        tipo: 'ataque',
+        secundaria: { atributo: 'von', efeito: 'escolhe entre se mover ou realizar uma ação, sem reação nem ação bônus até o fim do próximo turno' },
+    },
+    'Tiro Certeiro': { tipo: 'automatico' },
+    'Mira Cruel': { tipo: 'ataque', secundaria: { atributo: 'con', efeito: 'Impedido até o fim do próximo turno' } },
+    'Shooting Stars': { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'metade' },
+    'Zona do Atirador': { tipo: 'ataque' },
+    Headshot: { tipo: 'ataque' },
+    'Saída Forçada': { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'nada' },
+};
+for (const t of ATIRADOR.tecnicas) if (TESTES_DO_ATIRADOR[t.nome]) t.teste = TESTES_DO_ATIRADOR[t.nome];
+
 export const ESTILOS: EstiloDados[] = [ATIRADOR];
 export const estiloPorId = (id: string | undefined | null): EstiloDados | undefined => ESTILOS.find((e) => e.id === id);
 
@@ -694,6 +726,7 @@ export function tecnicaDoEstilo(t: TecnicaDoEstilo & { origem: string }): Tecnic
         ...(t.tipoDano ? { tipoDano: t.tipoDano } : {}),
         ...(t.acao ? { acao: t.acao } : {}),
         ...(t.reacao ? { reacao: t.reacao } : {}),
+        ...(t.teste ? { teste: t.teste } : {}),
         builder: 'estilo',
     };
 }

@@ -350,6 +350,19 @@ final class FichaOnePiece
         // Quem criou a técnica: o assistente de criação marca `especie` para refazer o passo sem duplicar.
         $r['tecnicas.lista.*.builder'] = ['nullable', 'string', Rule::in(['especie', 'estilo', 'maestria', 'treinamento', 'criador', 'akuma'])];
 
+        // Como a Técnica acerta: ataque, Salvaguarda da área ou automática (e a Salvaguarda do efeito, se houver).
+        foreach (['tecnicas.lista.*', 'akuma.lista.*'] as $base) {
+            $r["{$base}.teste"] = ['nullable', 'array'];
+            $r["{$base}.teste.tipo"] = ['required_with:'.$base.'.teste', 'string', Rule::in(['ataque', 'salvaguarda', 'automatico'])];
+            $r["{$base}.teste.atributo"] = ['nullable', 'string', Rule::in(self::ATRIBUTOS)];
+            $r["{$base}.teste.desvantagem"] = ['nullable', 'boolean:strict'];
+            $r["{$base}.teste.aoPassar"] = ['nullable', 'string', Rule::in(['metade', 'nada'])];
+            $r["{$base}.teste.secundaria"] = ['nullable', 'array'];
+            $r["{$base}.teste.secundaria.atributo"] = ['required_with:'.$base.'.teste.secundaria', 'string', Rule::in(self::ATRIBUTOS)];
+            $r["{$base}.teste.secundaria.desvantagem"] = ['nullable', 'boolean:strict'];
+            $r["{$base}.teste.secundaria.efeito"] = ['required_with:'.$base.'.teste.secundaria', 'string', 'max:200'];
+        }
+
         // Reação (usada fora do turno, ex.: ao ser atacado): gatilho, a quem serve, bônus na defesa e cura.
         foreach (['tecnicas.lista.*', 'akuma.lista.*', 'caracteristicas.*'] as $base) {
             $r["{$base}.reacao.gatilho"] = ['nullable', 'string', Rule::in(['ataque_declarado'])];

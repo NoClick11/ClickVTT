@@ -230,7 +230,10 @@ export function camposDoNivel(f: FichaOnePiece, esc: EscolhasDoNivel): Record<st
         ...tecnicasDoEstiloNoNivel(estilo, f.estiloCaminho, novo).map((t) => {
             const antiga = lista.find((x) => x.builder === 'estilo' && x.nome === t.nome);
 
-            return antiga ?? tecnicaDoEstilo(t);
+            const nova = tecnicaDoEstilo(t);
+
+            // a que já existe segue como está (o jogador pode ter editado); só ganha o teste, que fichas antigas não têm
+            return antiga ? { ...antiga, ...(nova.teste && !antiga.teste ? { teste: nova.teste } : {}) } : nova;
         }),
     ];
 
