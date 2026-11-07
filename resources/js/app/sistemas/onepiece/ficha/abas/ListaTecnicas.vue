@@ -4,7 +4,7 @@ import { clonar } from '../../../../nucleo/ficha/caminho';
 import CampoNumero from '../../../../nucleo/ui/CampoNumero.vue';
 import CampoTexto from '../../../../nucleo/ui/CampoTexto.vue';
 import { estilos, useFicha } from '../../contexto';
-import { camposDoGastoDePP, expandirRolagem, type FichaOnePiece, type Tecnica } from '../../regras';
+import { camposDoGastoDePP, dadosExtrasDeMeito, expandirRolagem, type FichaOnePiece, type Tecnica } from '../../regras';
 import CriadorDeTecnicas from '../criador/CriadorDeTecnicas.vue';
 
 /**
@@ -20,7 +20,7 @@ const props = defineProps<{
     vazio: string;
     tom: 'sky' | 'violet';
 }>();
-const { editar, salvar, rolar, acoes, calc } = useFicha();
+const { editar, salvar, rolar, acoes, calc, itens } = useFicha();
 /** A categoria que usar a técnica gasta no combate: a dela ou a poderosa (que só serve para técnicas). */
 const CATEGORIAS = computed(() => acoes.todas());
 const categoria = (t: Tecnica) => t.acao ?? 'poderosa';
@@ -43,6 +43,18 @@ function mudar(fn: (lista: Tecnica[]) => void) {
 
 const podeUsar = (t: Tecnica) => props.ficha.pp.atual >= t.custo;
 
+/**
+ * Técnica com arma cortante como requisito + arma Meito equipada: soma os dados adicionais da qualidade (do mesmo tipo do primeiro
+ * dado da Técnica). Os dados só devem ajudar a alcançar o máximo da Técnica: o Narrador confere o teto.
+ */
+function comDadosDaMeito(expressao: string, t: Tecnica): string {
+    if (!t.armaCortante) return expressao;
+    const extra = dadosExtrasDeMeito(props.ficha, itens.value);
+    const faces = /\d+d(\d+)/i.exec(expressao)?.[1];
+
+    return extra > 0 && faces ? `${expressao}+${extra}d${faces}` : expressao;
+}
+
 /** Usar: gasta os PP e, se há rolagem, rola no chat. Sem PP suficiente não faz nada. */
 async function usar(t: Tecnica) {
     const campos = camposDoGastoDePP(props.ficha, t.custo);
@@ -53,7 +65,7 @@ async function usar(t: Tecnica) {
     // Com tipo de dano preenchido a rolagem é um dano: o card do chat oferece "Aplicar" ao alvo, respeitando resistências.
     if (t.rolagem.trim())
         rolar(
-            expandirRolagem(t.rolagem.trim(), calc.value, 'tecnica'),
+            comDadosDaMeito(expandirRolagem(t.rolagem.trim(), calc.value, 'tecnica'), t),
             t.nome,
             undefined,
             t.tipoDano?.trim() ? { tipo: t.tipoDano.trim() } : undefined,
@@ -203,6 +215,18 @@ function adicionar() {
                             />
                         </div>
                         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-preto-400">
+                            <label
+                                class="flex items-center gap-1.5"
+                                title="A Técnica exige uma arma cortante: as armas Meito equipadas somam dados ao dano dela"
+                                ><input
+                                    type="checkbox"
+                                    class="size-3.5 accent-ouro-500"
+                                    :checked="!!t.armaCortante"
+                                    aria-label="Exige arma cortante"
+                                    @change="mudar((l) => (l[i].armaCortante = ($event.target as HTMLInputElement).checked))"
+                                />
+                                Exige arma cortante</label
+                            >
                             <label class="flex items-center gap-1.5"
                                 ><input
                                     type="checkbox"

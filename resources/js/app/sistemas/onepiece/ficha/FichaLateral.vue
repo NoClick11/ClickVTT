@@ -346,6 +346,12 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                                 >{{ a.dano }}{{ a.danoBonus ? comSinal(a.danoBonus) : ''
                                 }}<template v-if="a.tipoDano"> · {{ a.tipoDano }}</template></span
                             >
+                            <span
+                                v-if="a.etiquetas.length"
+                                class="mt-0.5 block truncate text-[10px] text-ouro-300"
+                                :title="a.etiquetas.join(' · ')"
+                                >{{ a.etiquetas.join(' · ') }}</span
+                            >
                         </span>
                         <span class="shrink-0 text-right">
                             <span class="block font-serif text-xl font-bold tabular-nums leading-none text-ouro-100">{{ comSinal(a.ataque) }}</span>
