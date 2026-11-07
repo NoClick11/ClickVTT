@@ -1,5 +1,6 @@
 import type { Criacao, Personagem } from '@/site/types';
 import type { ObjetoDto, PaginaDto } from './engine/tipos';
+import type { ResumoEvento } from './nucleo/combate/reacoes';
 import type { Combate, ItemDto, Mensagem, NovoItem, VisibilidadeRolagem } from './tipos-mesa';
 
 export class ErroApi extends Error {
@@ -70,8 +71,46 @@ export function apiMesa(mesaId: number, atorId: number) {
             requisitar<object>(atorId, 'PUT', r('jogo.personagens.atribuir', personagemId), { jogadores }),
         enviarTexto: (texto: string, personagemId: number | null) =>
             requisitar<Mensagem>(atorId, 'POST', r('jogo.mensagens.store'), { texto, personagem_id: personagemId }),
-        rolar: (expressao: string, visibilidade: VisibilidadeRolagem, personagemId: number | null, rotulo?: string) =>
-            requisitar<Mensagem>(atorId, 'POST', r('jogo.rolagens.store'), { expressao, rotulo, visibilidade, personagem_id: personagemId }),
+        rolar: (
+            expressao: string,
+            visibilidade: VisibilidadeRolagem,
+            personagemId: number | null,
+            rotulo?: string,
+            dano?: { tipo: string | null; fator?: number },
+            acao?: { categoria: string; tecnica?: boolean },
+            alvoPersonagemId?: number | null,
+        ) =>
+            requisitar<Mensagem>(atorId, 'POST', r('jogo.rolagens.store'), {
+                ...(alvoPersonagemId ? { alvo_personagem_id: alvoPersonagemId } : {}),
+                expressao,
+                rotulo,
+                visibilidade,
+                personagem_id: personagemId,
+                ...(dano ? { dano } : {}),
+                ...(acao ? { acao } : {}),
+            }),
+        /** Disparada: gasta a ação dela e soma outro deslocamento ao turno do personagem. */
+        disparada: (personagemId: number) => requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.disparada'), { personagem_id: personagemId }),
+        /** Responde a janela de reação: usa a reação `opcao` ou passa (`null`). */
+        reagir: (eventoId: number, personagemId: number, opcao: string | null) =>
+            requisitar<ResumoEvento>(atorId, 'POST', r('jogo.combate.eventos.reagir', eventoId), { personagem_id: personagemId, opcao }),
+        /** O mestre fecha a janela de reação: quem não respondeu conta como "passou". */
+        encerrarJanela: (eventoId: number) => requisitar<ResumoEvento>(atorId, 'POST', r('jogo.combate.eventos.encerrar', eventoId), {}),
+        /** Gasta uma ação do personagem no combate (o servidor recusa com o motivo se não pode agir agora). */
+        gastarAcao: (personagemId: number, categoria: string, tecnica = false) =>
+            requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.acao'), { personagem_id: personagemId, categoria, tecnica }),
+        /** Entrega um companheiro com ficha pronta ao personagem (ex.: Cobra Bélica); pedir de novo devolve o mesmo. */
+        criarCompanheiro: (personagemId: number, modelo: string) =>
+            requisitar<{ id: number; criado: boolean }>(atorId, 'POST', r('jogo.personagens.companheiros', personagemId), { modelo }),
+        /** Aplica ao alvo o total de uma rolagem de dano (o servidor desconta PV, respeitando resistências e imunidades). */
+        aplicarDano: (personagemId: number, mensagemId: number) =>
+            requisitar<{ final: number; modo: string; texto: string }>(atorId, 'POST', r('jogo.personagens.dano', personagemId), { mensagem_id: mensagemId }),
+        /** Liga ou desliga uma condição do alvo, com duração em turnos ou até receber dano. */
+        aplicarCondicao: (
+            personagemId: number,
+            dados: { condicao: string; acao: 'aplicar' | 'remover'; turnos?: string; ao_dano?: boolean; salvaguarda?: { atributo: string; cd: number } },
+        ) =>
+            requisitar<{ imune: boolean; resistiu?: boolean; texto: string }>(atorId, 'POST', r('jogo.personagens.condicoes', personagemId), dados),
         /** Salva campos da ficha: 1 campo = edição pontual; vários = etapa da criação guiada (aplicados juntos). */
         salvarFicha: (personagemId: number, campos: Record<string, unknown>, criacao?: Criacao | null) =>
             requisitar<{ ficha: Record<string, unknown>; criacao: Criacao | null }>(
@@ -88,7 +127,9 @@ export function apiMesa(mesaId: number, atorId: number) {
         atualizarItem: (id: number, item: NovoItem) => requisitar<ItemDto>(atorId, 'PATCH', r('jogo.itens.update', id), item),
         /** Também tira o item do inventário de todos os personagens da mesa. */
         excluirItem: (id: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.itens.destroy', id)),
-        salvarCombate: (combate: Combate) => requisitar<Combate>(atorId, 'PUT', r('jogo.combate.update'), combate),
+        /** Comando de combate (o servidor decide e devolve o estado novo): iniciar, iniciativa, turno, ordem... Ver `CombateService`. */
+        comandoCombate: (comando: string, dados: Record<string, unknown> = {}) =>
+            requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.comando'), { comando, ...dados }),
         criarPasta: (nome: string) => requisitar<{ id: number; nome: string; ordem: number }>(atorId, 'POST', r('jogo.pastas.store'), { nome }),
         atualizarPasta: (id: number, campos: object) =>
             requisitar<{ id: number; nome: string; ordem: number }>(atorId, 'PATCH', r('jogo.pastas.update', id), campos),

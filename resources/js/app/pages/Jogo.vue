@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Criacao, Jogador, Personagem } from '@/site/types';
 import { Head, router } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import { apiMesa, ErroApi, medirArquivo } from '../api';
 import AtribuirJogadoresDialog from '../components/AtribuirJogadoresDialog.vue';
 import BarraFerramentas from '../components/BarraFerramentas.vue';
@@ -17,6 +17,16 @@ import MenuObjeto from '../components/MenuObjeto.vue';
 import MenuPaginas from '../components/MenuPaginas.vue';
 import NovoPersonagemDialog from '../components/NovoPersonagemDialog.vue';
 import OpcoesFerramenta from '../components/OpcoesFerramenta.vue';
+import type { AcaoCaracteristica } from '../sistemas/onepiece/regras';
+import PainelDoTurno from '../components/combate/PainelDoTurno.vue';
+import JanelaDeReacao from '../components/combate/JanelaDeReacao.vue';
+import ModalReacao from '../components/combate/ModalReacao.vue';
+import { comResumo, semOfertasDe, type OfertaDeReacao, type ResumoEvento } from '../nucleo/combate/reacoes';
+import ModalIniciativa from '../components/combate/ModalIniciativa.vue';
+import { totalDoTurno } from '../nucleo/combate/movimento';
+import { avaliarAcao, type CategoriaAcao } from '../nucleo/combate/acoes';
+import { emCurso, itemAtual, normalizar as normalizarCombate, podeAgirAgora, rodadaParaFicha, semIniciativaDe } from '../nucleo/combate/estado';
+import PainelAlvo from '../components/PainelAlvo.vue';
 import PainelChat from '../components/PainelChat.vue';
 import PainelDados from '../components/PainelDados.vue';
 import PainelPersonagens from '../components/PainelPersonagens.vue';
@@ -67,6 +77,10 @@ const props = defineProps<{
     /** Itens da mesa: o mestre recebe todos; o jogador, só os das fichas que controla. */
     itens: ItemDto[];
     combate: Combate;
+    /** Categorias de ação do sistema da mesa (padrão, poderosa, bônus, livre, reação...). */
+    categoriasDeAcao?: CategoriaAcao[];
+    /** Janelas de reação abertas e as ofertas dos personagens que este jogador controla. */
+    reacoes?: { eventos: ResumoEvento[]; ofertas: OfertaDeReacao[] };
     mensagens: Mensagem[];
     sairUrl: string;
 }>();
@@ -80,6 +94,8 @@ const objetos = ref<ObjetoDto[]>(copia(props.objetos));
 const camada = ref<Camada>('jogadores');
 const ferramenta = ref<Ferramenta>('selecionar');
 const selecionadoId = ref<number | null>(null);
+/** A seleção inteira do mapa (um ou vários objetos: laço, Shift+clique, Ctrl+A). */
+const selecionadosIds = ref<number[]>([]);
 const escala = ref(1);
 const erro = ref<string | null>(null);
 const canvas = ref<InstanceType<typeof CenaCanvas> | null>(null);
@@ -92,7 +108,7 @@ const painelDados = ref(false);
 const painelTurnos = ref(false);
 const estilo = ref<EstiloPintura>({ cor: '#ef4444', espessura: 4, tamanho: 28 });
 const mensagens = ref<Mensagem[]>(copia(props.mensagens));
-const combate = ref<Combate>(copia(props.combate));
+const combate = ref<Combate>(normalizarCombate(copia(props.combate)));
 const textoPendente = ref<{ x: number; y: number; tela: { x: number; y: number }; valor: string } | null>(null);
 
 // Animação dos dados: ligada por padrão (exceto para quem pede movimento reduzido); preferência salva no navegador.
@@ -173,6 +189,148 @@ watch(
     (novos) => (objetos.value = copia(novos)),
 );
 
+/** Ações do combate para as fichas: o botão liga ou desliga pela categoria e gastar avisa o servidor (que recusa se não pode). */
+const categoriasAcao = computed(() => props.categoriasDeAcao ?? []);
+provide('acoesDoCombate', {
+    categorias: categoriasAcao,
+    pode: (personagemId: number, categoria: string | undefined, tecnica = false) =>
+        avaliarAcao(combate.value, categoriasAcao.value, personagemId, categoria, props.mestre, tecnica),
+    /** Gasta a ação no servidor; false (com aviso do motivo) se não pôde. Fora do combate em curso não faz nada e libera. */
+    gastar: async (personagemId: number, categoria: string | undefined, tecnica = false): Promise<boolean> => {
+        if (!categoria || !emCurso(combate.value)) return true;
+        try {
+            combate.value = normalizarCombate((await api.gastarAcao(personagemId, categoria, tecnica)).combate);
+            return true;
+        } catch (e) {
+            avisar(mensagemDe(e));
+            return false;
+        }
+    },
+});
+
+/** Em combate, só o token de quem está no turno se move (o servidor também recusa); o mestre controla todos. */
+const personagensQuePodemMover = computed(() => props.meusPersonagens.filter((id) => podeAgirAgora(combate.value, id, props.mestre)));
+
+/** O token do turno e o deslocamento que lhe resta: a régua do arrasto mostra o gasto e, para o jogador, trava no limite. */
+const movimentoDaCena = computed(() => {
+    const item = emCurso(combate.value) ? itemAtual(combate.value) : null;
+    const total = item ? totalDoTurno(item) : null;
+    if (!item || total === null) return null;
+    const token = objetos.value.find((o) => o.tipo === 'token' && (o.id === item.objeto_id || (item.personagem_id !== null && o.personagem_id === item.personagem_id)));
+
+    return token ? { objetoId: token.id, usado: item.movimento.usado, total, limitar: !props.mestre } : null;
+});
+async function dispararDoTurno(personagemId: number) {
+    try {
+        combate.value = normalizarCombate((await api.disparada(personagemId)).combate);
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+
+// --- reações ao ataque ----------------------------------------------------------------------------------------------
+// O servidor abre a janela quando alguém ataca um alvo no combate em curso: cada jogador com uma reação que serve recebe
+// o modal (privado) e todos veem quem ainda não respondeu. O resultado volta no card do ataque (acerta ou erra).
+const ofertasDeReacao = ref<OfertaDeReacao[]>(copia(props.reacoes?.ofertas ?? []));
+const janelasDeReacao = ref<ResumoEvento[]>(copia(props.reacoes?.eventos ?? []));
+const reagindo = ref(false);
+async function reagir(eventoId: number, personagemId: number, opcao: string | null) {
+    reagindo.value = true;
+    try {
+        await api.reagir(eventoId, personagemId, opcao);
+        ofertasDeReacao.value = semOfertasDe(ofertasDeReacao.value, eventoId, personagemId);
+    } catch (e) {
+        avisar(mensagemDe(e));
+        ofertasDeReacao.value = semOfertasDe(ofertasDeReacao.value, eventoId, personagemId); // a janela fechou ou já respondi: não prende o modal
+    } finally {
+        reagindo.value = false;
+    }
+}
+async function encerrarJanela(eventoId: number) {
+    try {
+        await api.encerrarJanela(eventoId);
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+/** O alvo do ataque que a ficha manda junto da rolagem: só com o combate em curso e um alvo mirado. */
+const alvoDoAtaque = computed(() => (emCurso(combate.value) ? (alvoPersonagem.value?.id ?? null) : null));
+provide('alvoDoAtaque', alvoDoAtaque);
+
+// --- alvo (mira) -----------------------------------------------------------------------------------------------
+// Cada jogador mira o seu alvo (só local): botão Mirar ou tecla T + clique num token de personagem. O alvo fica travado
+// até ser trocado ou limpo e recebe o dano aplicado pelo chat e os efeitos do painel.
+const alvoObjetoId = ref<number | null>(null);
+const alvoObjeto = computed(() => objetos.value.find((o) => o.id === alvoObjetoId.value && o.tipo === 'token') ?? null);
+const alvoPersonagem = computed(() => props.personagens.find((p) => p.id === alvoObjeto.value?.personagem_id) ?? null);
+watch(alvoObjeto, (o) => {
+    if (alvoObjetoId.value !== null && !o) alvoObjetoId.value = null; // o token saiu da cena
+});
+const aplicadosLocais = ref<Set<string>>(new Set());
+/** Ids das rolagens de dano já aplicadas ao alvo atual (o botão do chat fica desligado). */
+const aplicadosAoAlvo = computed(() => {
+    const alvo = alvoPersonagem.value?.id;
+    if (alvo === undefined) return [];
+    const deste = [...aplicadosLocais.value].filter((k) => k.endsWith(`:${alvo}`)).map((k) => k.split(':')[0]);
+    const doServidor = mensagens.value.filter((m) => (m.dados as { aplicado?: number[] } | null)?.aplicado?.includes(alvo)).map((m) => String(m.id));
+
+    return [...deste, ...doServidor];
+});
+const alvoOcupado = ref(false);
+async function aplicarDanoDoChat(mensagem: Mensagem) {
+    const alvo = alvoPersonagem.value;
+    if (!alvo) return avisar('Mire um token de personagem para aplicar o dano.');
+    try {
+        await api.aplicarDano(alvo.id, mensagem.id); // o servidor desconta os PV e avisa a mesa no chat
+        aplicadosLocais.value = new Set([...aplicadosLocais.value, `${mensagem.id}:${alvo.id}`]);
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+async function condicaoDoAlvo(
+    dados: { condicao: string; acao: 'aplicar' | 'remover'; turnos?: string; ao_dano?: boolean; salvaguarda?: { atributo: string; cd: number } },
+    personagemId: number | null = null,
+) {
+    const alvo = personagemId !== null ? { id: personagemId } : alvoPersonagem.value;
+    if (!alvo) return avisar('Mire um token de personagem primeiro.');
+    alvoOcupado.value = true;
+    try {
+        await api.aplicarCondicao(alvo.id, dados);
+    } catch (e) {
+        avisar(mensagemDe(e));
+    } finally {
+        alvoOcupado.value = false;
+    }
+}
+
+/** Rodada do combate para as fichas (limites de um uso por rodada); null = sem combate ativo. */
+provide(
+    'rodadaDoCombate',
+    computed(() => rodadaParaFicha(combate.value)),
+);
+/** Botão de uma característica: aplicar condição (a si ou ao alvo mirado) ou hospedar-se no alvo. */
+async function executarAcao(personagemId: number, acao: AcaoCaracteristica) {
+    if (acao.tipo === 'hospedar') {
+        const alvo = alvoPersonagem.value;
+        const atual = (fichas.value[personagemId]?.hospedado as number | null) ?? null;
+        if (atual !== null) return salvarFicha(personagemId, { hospedado: null }); // sair do espaço
+        if (!alvo) return avisar('Mire um token de personagem para se hospedar nele.');
+        if (alvo.id === personagemId) return avisar('Escolha outro personagem como hospedeiro.');
+        return salvarFicha(personagemId, { hospedado: alvo.id });
+    }
+    if (acao.tipo !== 'condicao' || !acao.condicao) return;
+    await condicaoDoAlvo(
+        {
+            condicao: acao.condicao,
+            acao: 'aplicar',
+            ...(acao.turnos ? { turnos: acao.turnos } : {}),
+            ao_dano: !!acao.aoDano,
+            ...(acao.cd && acao.atributo ? { salvaguarda: { atributo: acao.atributo, cd: acao.cd } } : {}),
+        },
+        acao.alvo === 'proprio' ? personagemId : null,
+    );
+}
+
 // Efeitos ativos de cada personagem (ícones no token). Vêm públicos do servidor e mudam ao vivo (evento `status`).
 const statusPorPersonagem = ref<Record<number, string[]>>({});
 function sincronizarStatus() {
@@ -188,7 +346,7 @@ const objetosDaCena = computed(() =>
 );
 watch(
     () => props.combate,
-    (c) => (combate.value = copia(c)),
+    (c) => (combate.value = normalizarCombate(copia(c))),
 );
 
 const selecionado = computed(() => objetos.value.find((o) => o.id === selecionadoId.value) ?? null);
@@ -229,12 +387,18 @@ function atualizarSelecionado(campos: Partial<ObjetoDto>) {
     api.atualizarObjeto(o.id, campos).catch(falhou);
 }
 
+/** Pode apagar este objeto? Mestre, tudo; jogador, só o que ele mesmo desenhou ou escreveu. */
+const podeApagar = (o: ObjetoDto) => props.mestre || (['traco', 'texto'].includes(o.tipo) && o.jogador_id === props.jogador.id);
+
 function removerSelecionado() {
-    const o = selecionado.value;
-    if (!o || (!props.mestre && !(['traco', 'texto'].includes(o.tipo) && o.jogador_id === props.jogador.id))) return;
-    objetos.value = objetos.value.filter((x) => x.id !== o.id);
+    // Apaga a seleção inteira (um ou vários): o que a pessoa não pode apagar fica
+    const ids = new Set(selecionadosIds.value.length ? selecionadosIds.value : selecionadoId.value ? [selecionadoId.value] : []);
+    const alvos = objetos.value.filter((o) => ids.has(o.id) && podeApagar(o));
+    if (!alvos.length) return;
+    objetos.value = objetos.value.filter((x) => !alvos.some((o) => o.id === x.id));
     selecionadoId.value = null;
-    api.removerObjeto(o.id).catch(falhou);
+    selecionadosIds.value = [];
+    for (const o of alvos) api.removerObjeto(o.id).catch(falhou);
 }
 
 function centroEmQuadrados(): { x: number; y: number; t: number } {
@@ -539,12 +703,20 @@ watch(
 );
 
 /** Argumentos do evento `rolar` da ficha: expressão, nome e, opcional, quem recebe o total sorteado. */
-type RolagemDaFicha = [expressao: string, rotulo: string, aoRolar?: (total: number) => void];
+type RolagemDaFicha = [
+    // (o 6º argumento, o alvo do ataque, vem depois da ação)
+    expressao: string,
+    rotulo: string,
+    aoRolar?: (total: number) => void,
+    dano?: { tipo: string | null; fator?: number },
+    acao?: { categoria: string; tecnica?: boolean },
+    alvoPersonagemId?: number | null,
+];
 
 /** Rolagem vinda da ficha: as `@variáveis` são resolvidas no servidor pela ficha salva do personagem. */
-async function rolarDaFicha(personagemId: number, ...[expressao, rotulo, aoRolar]: RolagemDaFicha) {
+async function rolarDaFicha(personagemId: number, ...[expressao, rotulo, aoRolar, dano, acao, alvoPersonagemId]: RolagemDaFicha) {
     try {
-        const m = await api.rolar(expressao, 'todos', personagemId, rotulo);
+        const m = await api.rolar(expressao, 'todos', personagemId, rotulo, dano, acao, alvoPersonagemId);
         aoNovaMensagem(m);
         if (m.dados) aoRolar?.(m.dados.total);
     } catch (e) {
@@ -608,6 +780,12 @@ async function salvarCriacao(personagemId: number, campos: Record<string, unknow
     const resp = await api.salvarFicha(personagemId, campos, criacao);
     criacoes.value[personagemId] = resp.criacao;
     if (Object.keys(campos).length) fichas.value[personagemId] = copia(resp.ficha);
+}
+/** Companheiro entregue pelo assistente (ex.: Cobra Bélica): cria o personagem e recarrega a lista. */
+async function criarCompanheiroDoConstrutor(modelo: string) {
+    if (construtorId.value === null) return;
+    await api.criarCompanheiro(construtorId.value, modelo);
+    recarregar(['personagens', 'meusPersonagens']);
 }
 const rolarAtributosDaCriacao = (personagemId: number) => async () => {
     const r = await api.rolarAtributos(personagemId);
@@ -721,7 +899,7 @@ async function rolarAcaoDoChat(mensagem: Mensagem, acao: AcaoDaRolagem) {
     const visibilidade: VisibilidadeRolagem =
         mensagem.visibilidade === 'secreto' || mensagem.visibilidade === 'mestre' ? mensagem.visibilidade : 'todos';
     try {
-        aoNovaMensagem(await api.rolar(acao.expressao, visibilidade, mensagem.autor?.personagem_id ?? null, acao.rotuloRolagem));
+        aoNovaMensagem(await api.rolar(acao.expressao, visibilidade, mensagem.autor?.personagem_id ?? null, acao.rotuloRolagem, acao.dano));
     } catch (e) {
         avisar(mensagemDe(e));
     }
@@ -733,24 +911,17 @@ async function enviarTexto(texto: string) {
         avisar(mensagemDe(e));
     }
 }
-async function salvarCombate(novo: Combate) {
-    combate.value = novo;
+/** Comando de combate: o servidor decide e devolve o estado novo (a tela só mostra). */
+async function comandoCombate(comando: string, dados: Record<string, unknown> = {}) {
     try {
-        await api.salvarCombate(novo);
+        combate.value = normalizarCombate((await api.comandoCombate(comando, dados)).combate);
     } catch (e) {
         avisar(mensagemDe(e));
-        combate.value = copia(props.combate);
     }
 }
-function passarTurno(delta: 1 | -1) {
-    const c = combate.value;
-    const o = [...c.itens].sort((a, b) => (b.iniciativa ?? -Infinity) - (a.iniciativa ?? -Infinity));
-    if (!o.length) return;
-    const i = o.findIndex((x) => x.id === c.atual);
-    const prox = i === -1 ? 0 : i + delta;
-    const rodada = prox >= o.length ? c.rodada + 1 : prox < 0 ? Math.max(1, c.rodada - 1) : c.rodada;
-    salvarCombate({ ...c, atual: o[(prox + o.length) % o.length].id, rodada });
-}
+const rolarMinhaIniciativa = (itemId: string) => comandoCombate('iniciativa', { item_id: itemId });
+/** Personagens meus que ainda não rolaram a iniciativa (o aviso abre sozinho na minha tela). */
+const iniciativasPendentes = computed(() => semIniciativaDe(combate.value, props.meusPersonagens));
 
 // --- tempo real (Reverb): chat, turnos e sincronia da cena ---------------------------------------
 
@@ -777,8 +948,13 @@ onMounted(() => {
                 .listen('.mensagem', (e: { mensagem: Mensagem; substitui?: boolean }) => aoNovaMensagem(e.mensagem, !!e.substitui))
                 .listen('.cena', (e: { ator: number | null }) => aoMudarCena(e))
                 .listen('.ficha', aoMudarFicha)
+                .listen('.reacao', (e: OfertaDeReacao) => (ofertasDeReacao.value = [...semOfertasDe(ofertasDeReacao.value, e.evento_id, e.personagem_id), e]))
+                .listen('.evento', (e: ResumoEvento) => {
+                    janelasDeReacao.value = comResumo(janelasDeReacao.value, e);
+                    if (e.estado === 'resolvido') ofertasDeReacao.value = semOfertasDe(ofertasDeReacao.value, e.id);
+                })
                 .listen('.status', (e: { personagem_id: number; status: string[] }) => (statusPorPersonagem.value[e.personagem_id] = e.status))
-                .listen('.combate', (e: { combate: Combate; ator: number }) => e.ator !== meuId && (combate.value = e.combate));
+                .listen('.combate', (e: { combate: Combate; ator: number }) => e.ator !== meuId && (combate.value = normalizarCombate(e.combate)));
         abrir(conexao.echo.private(base));
         abrir(conexao.echo.private(`${base}.jogador.${meuId}`));
         if (props.mestre) abrir(conexao.echo.private(`${base}.mestre`));
@@ -796,7 +972,8 @@ onBeforeUnmount(() => {
 function aoTeclar(e: KeyboardEvent) {
     const alvo = e.target as HTMLElement;
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(alvo?.tagName)) return;
-    if ((e.key === 'Delete' || e.key === 'Backspace') && selecionadoId.value) {
+    if (e.key === 'Escape' && alvoObjetoId.value !== null) alvoObjetoId.value = null; // Esc limpa a mira
+    if ((e.key === 'Delete' || e.key === 'Backspace') && (selecionadoId.value || selecionadosIds.value.length)) {
         e.preventDefault();
         removerSelecionado();
     }
@@ -864,16 +1041,20 @@ function alternarPorta(id: number) {
                     ref="canvas"
                     :pagina="pagina"
                     :objetos="objetosDaCena"
+                    :alvo-id="alvoObjetoId"
+                    :movimento="movimentoDaCena"
                     :camada="camada"
                     :ferramenta="ferramenta"
                     :mestre="mestre"
                     :jogador-id="jogador.id"
-                    :personagens-permitidos="meusPersonagens"
+                    :personagens-permitidos="personagensQuePodemMover"
                     :estilo="estilo"
                     :margem-direita="margemDireita"
                     @criar-traco="criarTraco"
                     @criar-texto="pedirTexto"
                     @selecionar="selecionadoId = $event"
+                    @selecao="selecionadosIds = $event"
+                    @mirar="alvoObjetoId = $event"
                     @alterar="aoAlterar"
                     @zoom="escala = $event"
                     @criar-luz="criarLuz"
@@ -924,11 +1105,25 @@ function alternarPorta(id: number) {
                         @remover="removerSelecionado"
                     />
                     <ControlesZoom :escala="escala" @mais="canvas?.zoomPor(1.25)" @menos="canvas?.zoomPor(1 / 1.25)" @ajustar="canvas?.ajustar()" />
+                    <PainelDoTurno :combate="combate" :categorias="categoriasAcao" :mestre="mestre" :meus-personagens="meusPersonagens" @disparar="dispararDoTurno" @devolver="(item, categoria) => comandoCombate('devolver', { item_id: item, categoria })" />
+                    <PainelAlvo
+                        v-if="alvoPersonagem"
+                        :nome="alvoPersonagem.nome"
+                        :cor="alvoPersonagem.cor"
+                        :condicoes="moduloSistema?.condicoes ?? []"
+                        :ativas="statusPorPersonagem[alvoPersonagem.id] ?? []"
+                        :ocupado="alvoOcupado"
+                        :atributos="moduloSistema?.atributos"
+                        @limpar="alvoObjetoId = null"
+                        @aplicar="(d) => condicaoDoAlvo({ ...d, acao: 'aplicar' })"
+                        @remover="(id) => condicaoDoAlvo({ condicao: id, acao: 'remover' })"
+                    />
                     <BarraTurnos
                         :combate="combate"
                         :mestre="mestre"
-                        @anterior="passarTurno(-1)"
-                        @proximo="passarTurno(1)"
+                        :meus-personagens="meusPersonagens"
+                        @anterior="comandoCombate('turno', { sentido: 'anterior' })"
+                        @proximo="comandoCombate('turno', { sentido: 'proximo' })"
                         @abrir="((painelTurnos = true), (painelDados = false))"
                     />
                 </div>
@@ -942,9 +1137,13 @@ function alternarPorta(id: number) {
                     v-if="painelTurnos && mestre"
                     :combate="combate"
                     :personagens="personagens"
-                    @atualizar="salvarCombate"
+                    :pagina-id="pagina?.id ?? null"
+                    @comando="comandoCombate"
                     @fechar="painelTurnos = false"
                 />
+                <JanelaDeReacao :janelas="janelasDeReacao" :mestre="mestre" @encerrar="encerrarJanela" />
+                <ModalReacao :ofertas="ofertasDeReacao" :ocupado="reagindo" @reagir="reagir" />
+                <ModalIniciativa :itens="iniciativasPendentes" :ocupado="false" @rolar="rolarMinhaIniciativa" />
                 <BarraLateral v-model:aba="abaLateral" v-model:aberta="lateralAberta" :nao-lidas="naoLidas" :mestre="mestre">
                     <template #chat>
                         <PainelChat
@@ -953,7 +1152,10 @@ function alternarPorta(id: number) {
                             :visivel="lateralAberta && abaLateral === 'chat'"
                             :mestre="mestre"
                             @enviar="enviarTexto"
+                            :alvo-nome="alvoPersonagem?.nome ?? null"
+                            :aplicados="aplicadosAoAlvo"
                             @acao="rolarAcaoDoChat"
+                            @aplicar-dano="aplicarDanoDoChat"
                         />
                     </template>
                     <template #personagens>
@@ -1041,6 +1243,7 @@ function alternarPorta(id: number) {
                 :mestre="mestre"
                 @editor-item="abrirEditorItem"
                 @construtor="construtorId = f.id"
+                @acao="(a: AcaoCaracteristica) => executarAcao(f.id, a)"
                 @salvar="(campos: Record<string, unknown>) => salvarFicha(f.id, campos)"
                 @rolar="(...a: RolagemDaFicha) => rolarDaFicha(f.id, ...a)"
             />
@@ -1056,6 +1259,7 @@ function alternarPorta(id: number) {
             :criacao="criacoes[construtorPersonagem.id] ?? null"
             :salvar="(campos: Record<string, unknown>, criacao: Criacao) => salvarCriacao(construtorPersonagem!.id, campos, criacao)"
             :rolar-atributos="rolarAtributosDaCriacao(construtorPersonagem.id)"
+            :criar-companheiro="criarCompanheiroDoConstrutor"
             @update:open="construtorId = null"
         />
 
