@@ -1157,7 +1157,12 @@
       "arma": {
         "dano": "1d4",
         "atributo": "acuidade",
-        "tipoDano": "Cortante"
+        "tipoDano": "Cortante",
+        "forja": {
+          "expertise": [
+            "sangramento"
+          ]
+        }
       }
     }
   },
@@ -1175,7 +1180,12 @@
       "arma": {
         "dano": "1d6",
         "atributo": "acuidade",
-        "tipoDano": "Cortante"
+        "tipoDano": "Cortante",
+        "forja": {
+          "expertise": [
+            "proxima-falha"
+          ]
+        }
       }
     }
   },
@@ -1193,7 +1203,12 @@
       "arma": {
         "dano": "2d6",
         "atributo": "for",
-        "tipoDano": "Cortante"
+        "tipoDano": "Cortante",
+        "forja": {
+          "expertise": [
+            "cr-mais-2"
+          ]
+        }
       }
     }
   },
@@ -1211,7 +1226,12 @@
       "arma": {
         "dano": "1d6",
         "atributo": "acuidade",
-        "tipoDano": "Cortante"
+        "tipoDano": "Cortante",
+        "forja": {
+          "expertise": [
+            "maximizar"
+          ]
+        }
       }
     }
   },
@@ -1229,7 +1249,12 @@
       "arma": {
         "dano": "1d4",
         "atributo": "acuidade",
-        "tipoDano": "Cortante"
+        "tipoDano": "Cortante",
+        "forja": {
+          "expertise": [
+            "sangramento"
+          ]
+        }
       }
     }
   },
@@ -1247,7 +1272,12 @@
       "arma": {
         "dano": "1d6",
         "atributo": "for",
-        "tipoDano": "Cortante"
+        "tipoDano": "Cortante",
+        "forja": {
+          "expertise": [
+            "empoderado"
+          ]
+        }
       }
     }
   },
@@ -1265,7 +1295,12 @@
       "arma": {
         "dano": "1d12",
         "atributo": "for",
-        "tipoDano": "Cortante"
+        "tipoDano": "Cortante",
+        "forja": {
+          "expertise": [
+            "area-cortante"
+          ]
+        }
       }
     }
   },
@@ -1283,7 +1318,12 @@
       "arma": {
         "dano": "1d8",
         "atributo": "for",
-        "tipoDano": "Cortante"
+        "tipoDano": "Cortante",
+        "forja": {
+          "expertise": [
+            "critico-16"
+          ]
+        }
       }
     }
   },
@@ -1301,7 +1341,12 @@
       "arma": {
         "dano": "1d6",
         "atributo": "acuidade",
-        "tipoDano": "Cortante"
+        "tipoDano": "Cortante",
+        "forja": {
+          "expertise": [
+            "salvaguarda-des"
+          ]
+        }
       }
     }
   },
@@ -1319,7 +1364,12 @@
       "arma": {
         "dano": "1d6",
         "atributo": "for",
-        "tipoDano": "Cortante"
+        "tipoDano": "Cortante",
+        "forja": {
+          "expertise": [
+            "pv-temporarios"
+          ]
+        }
       }
     }
   },
@@ -1337,7 +1387,12 @@
       "arma": {
         "dano": "1d6",
         "atributo": "acuidade",
-        "tipoDano": "Cortante"
+        "tipoDano": "Cortante",
+        "forja": {
+          "expertise": [
+            "acerto-mais-3"
+          ]
+        }
       }
     }
   },
@@ -1619,7 +1674,12 @@
       "arma": {
         "dano": "1d4",
         "atributo": "for",
-        "tipoDano": "Contundente"
+        "tipoDano": "Contundente",
+        "forja": {
+          "expertise": [
+            "pv-temporarios"
+          ]
+        }
       }
     }
   },
@@ -1637,7 +1697,12 @@
       "arma": {
         "dano": "1d6",
         "atributo": "acuidade",
-        "tipoDano": "Cortante"
+        "tipoDano": "Cortante",
+        "forja": {
+          "expertise": [
+            "incapacitado"
+          ]
+        }
       }
     }
   },
@@ -1655,7 +1720,12 @@
       "arma": {
         "dano": "1d8",
         "atributo": "for",
-        "tipoDano": "Cortante"
+        "tipoDano": "Cortante",
+        "forja": {
+          "expertise": [
+            "puxar-ou-1d8"
+          ]
+        }
       }
     }
   },
@@ -1673,7 +1743,12 @@
       "arma": {
         "dano": "1d10",
         "atributo": "for",
-        "tipoDano": "Perfurante"
+        "tipoDano": "Perfurante",
+        "forja": {
+          "expertise": [
+            "dois-ataques"
+          ]
+        }
       }
     }
   },
@@ -1691,7 +1766,12 @@
       "arma": {
         "dano": "1d10",
         "atributo": "for",
-        "tipoDano": "Perfurante"
+        "tipoDano": "Perfurante",
+        "forja": {
+          "expertise": [
+            "metade-da-cr"
+          ]
+        }
       }
     }
   },
@@ -1709,7 +1789,12 @@
       "arma": {
         "dano": "1d12",
         "atributo": "for",
-        "tipoDano": "Contundente"
+        "tipoDano": "Contundente",
+        "forja": {
+          "expertise": [
+            "empurrar-ou-1d8"
+          ]
+        }
       }
     }
   },
@@ -1727,7 +1812,12 @@
       "arma": {
         "dano": "1d10",
         "atributo": "for",
-        "tipoDano": "Cortante"
+        "tipoDano": "Cortante",
+        "forja": {
+          "expertise": [
+            "area-cortante"
+          ]
+        }
       }
     }
   },
@@ -1745,7 +1835,12 @@
       "arma": {
         "dano": "1d10",
         "atributo": "for",
-        "tipoDano": "Perfurante"
+        "tipoDano": "Perfurante",
+        "forja": {
+          "expertise": [
+            "deslocamento-metade"
+          ]
+        }
       }
     }
   },
@@ -1776,7 +1871,12 @@
       "arma": {
         "dano": "1d4",
         "atributo": "acuidade",
-        "tipoDano": "Perfurante"
+        "tipoDano": "Perfurante",
+        "forja": {
+          "expertise": [
+            "sangramento"
+          ]
+        }
       }
     }
   },

@@ -20,7 +20,11 @@ const dadosIndividuais = computed(() => dadosRolados(dados.value));
 const tamanhoDado = computed(() => (dadosIndividuais.value.length <= 2 ? 'size-12' : dadosIndividuais.value.length <= 4 ? 'size-10' : 'size-8'));
 /** O ataque contra um alvo: janela de reação aberta ou resolvido. O dano só abre no acerto (sem alvo, como sempre). */
 const resolucao = computed(() => dados.value.sistema?.resolucao ?? null);
-const acoes = computed(() => (props.podeAgir && (!resolucao.value || (resolucao.value.estado === 'resolvido' && resolucao.value.acerto)) ? (dados.value.sistema?.acoes ?? []) : []));
+const acoes = computed(() =>
+    props.podeAgir && (!resolucao.value || (resolucao.value.estado === 'resolvido' && resolucao.value.acerto))
+        ? (dados.value.sistema?.acoes ?? [])
+        : [],
+);
 const sinal = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 /** Rolagem de dano e quem pode agir: oferece "Aplicar" ao alvo mirado (o tipo, se houver, aparece no botão). */
 const dano = computed(() => (props.podeAgir ? (dados.value.sistema?.dano ?? null) : null));
@@ -96,12 +100,27 @@ const estiloBotao = (a: AcaoDaRolagem, indice: number) =>
                 </div>
             </div>
 
-            <div v-if="resolucao" class="mt-3 rounded-md border px-2.5 py-1.5 text-xs" :class="resolucao.estado === 'aguardando' ? 'border-sky-400/50 bg-sky-500/10 text-sky-100' : resolucao.acerto ? 'border-green-400/50 bg-green-500/10 text-green-100' : 'border-red-400/50 bg-red-500/10 text-red-100'" role="status">
-                <template v-if="resolucao.estado === 'aguardando'">Aguardando reações de {{ resolucao.alvo }}… (defesa {{ resolucao.defesa }})</template>
+            <div
+                v-if="resolucao"
+                class="mt-3 rounded-md border px-2.5 py-1.5 text-xs"
+                :class="
+                    resolucao.estado === 'aguardando'
+                        ? 'border-sky-400/50 bg-sky-500/10 text-sky-100'
+                        : resolucao.acerto
+                          ? 'border-green-400/50 bg-green-500/10 text-green-100'
+                          : 'border-red-400/50 bg-red-500/10 text-red-100'
+                "
+                role="status"
+            >
+                <template v-if="resolucao.estado === 'aguardando'"
+                    >Aguardando reações de {{ resolucao.alvo }}… (defesa {{ resolucao.defesa }})</template
+                >
                 <template v-else>
                     <strong>{{ resolucao.acerto ? (resolucao.critico ? 'Crítico!' : 'Acerta') : resolucao.falha ? 'Falha crítica' : 'Erra' }}</strong>
                     {{ resolucao.alvo }}: {{ dados.total }} contra defesa {{ resolucao.defesa }}
-                    <span v-if="resolucao.mods?.length" class="opacity-80">({{ resolucao.base }} {{ resolucao.mods.map((m) => `${m.fonte} ${sinal(m.valor)}`).join(', ') }})</span>
+                    <span v-if="resolucao.mods?.length" class="opacity-80"
+                        >({{ resolucao.base }} {{ resolucao.mods.map((m) => `${m.fonte} ${sinal(m.valor)}`).join(', ') }})</span
+                    >
                 </template>
             </div>
 
@@ -110,7 +129,11 @@ const estiloBotao = (a: AcaoDaRolagem, indice: number) =>
                     type="button"
                     :disabled="!alvoNome || aplicado"
                     class="flex w-full items-center gap-2 rounded-md border border-red-400/60 bg-red-500/10 px-2.5 py-1.5 text-left text-xs font-semibold text-red-100 transition hover:bg-red-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 disabled:cursor-not-allowed disabled:opacity-50"
-                    :title="alvoNome ? `Aplicar ${dados.total} de dano${dano.tipo ? ' de ' + dano.tipo : ''} a ${alvoNome}` : 'Mire num token (botão Mirar ou tecla T + clique) para aplicar o dano'"
+                    :title="
+                        alvoNome
+                            ? `Aplicar ${dados.total} de dano${dano.tipo ? ' de ' + dano.tipo : ''} a ${alvoNome}`
+                            : 'Mire num token (botão Mirar ou tecla T + clique) para aplicar o dano'
+                    "
                     @click="emit('aplicarDano', mensagem)"
                 >
                     <span class="flex-1">{{ aplicado ? 'Dano aplicado' : alvoNome ? `Aplicar a ${alvoNome}` : 'Mire um alvo para aplicar' }}</span>
@@ -119,6 +142,13 @@ const estiloBotao = (a: AcaoDaRolagem, indice: number) =>
                 </button>
             </div>
 
+            <ul
+                v-if="props.podeAgir && dados.sistema?.expertise?.length"
+                class="mt-3 grid gap-1 rounded-md border border-ouro-500/40 bg-ouro-500/10 p-2 text-xs text-ouro-100"
+                aria-label="Expertise da arma"
+            >
+                <li v-for="e in dados.sistema.expertise" :key="e.id"><strong class="text-ouro-200">Expertise:</strong> {{ e.texto }}</li>
+            </ul>
             <div v-if="acoes.length" class="mt-3 grid gap-1.5 border-t border-preto-700/60 pt-2.5">
                 <button
                     v-for="(a, i) in acoes"

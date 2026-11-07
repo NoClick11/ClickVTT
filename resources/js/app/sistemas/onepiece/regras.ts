@@ -22,6 +22,15 @@ import { condicaoPorId } from './condicoes.ts';
 import type { EscolhasDaTecnica } from './criador/regras.ts';
 import { estagio as estagioDoHaki, type HakiFicha } from './haki/calculo.ts';
 import type { IndividualidadesFicha } from './individualidades/regras.ts';
+import {
+    bonusDeAtaqueDaForja,
+    dadosDeTecnicaDaForja,
+    danoComForja,
+    etiquetasDaForja,
+    margemDaForja,
+    type FichaForja,
+    type ForjaDaArma,
+} from './itens/forja.ts';
 import type { ProfissoesFicha } from './profissoes/regras.ts';
 import type { TreinamentoFicha } from './treinamentos/regras.ts';
 
@@ -126,6 +135,8 @@ export interface DadosItemOnePiece {
         distancia?: boolean;
         /** Tamanho da arma: gigantes só usam armas de gigante, e nenhum outro tamanho usa a de um gigante. */
         tamanho?: 'padrao' | 'gigante' | null;
+        /** Meito, Kokuto, Yoto, Expertise e melhorias de Pontos de Forja: valem sozinhos com a arma equipada. */
+        forja?: ForjaDaArma;
     };
 }
 /** O que o cálculo precisa de um item da mesa (campos ausentes valem: equipável, sem sintonia, sem efeitos). */
@@ -245,6 +256,8 @@ export interface Tecnica {
     acao?: CategoriaDeAcao;
     /** Reação: usada quando alguém é atacado (fora do turno), a si ou a um aliado. */
     reacao?: ReacaoDeCombate;
+    /** A Técnica tem uma arma cortante como requisito: as armas Meito equipadas somam dados ao dano dela. */
+    armaCortante?: boolean;
     /** Quem criou: o assistente de criação marca `especie`, para refazer o passo sem duplicar. */
     builder?: 'especie' | 'estilo' | 'maestria' | 'treinamento' | 'criador' | 'akuma';
     /** Escolhas do Criador de Técnicas (o servidor refaz o custo e os limites a partir delas). */
@@ -301,6 +314,8 @@ export interface FichaOnePiece {
     /** Profissões (cap. 4): a do 1º nível, graduações e os avanços já usados. */
     profissoes: ProfissoesFicha;
     individualidades: IndividualidadesFicha;
+    /** Pontos de Forja do Ferreiro (idade, lâminas, PF dados e gastos); o mestre e a forja do servidor alteram. */
+    forja?: FichaForja;
     maestria: string;
     tracosDeMaestria: { id: string; nivel: number }[];
     estiloId: string;
@@ -546,12 +561,17 @@ export function analisar(f: FichaOnePiece, itens: ItensPorId = {}): Analise {
             const mAtaque = modificadorDaArma(arma.atributo, mod);
             const mDano = modificadorDaArma(arma.atributoDano ?? arma.atributo, mod);
             // Bônus simples de acerto e de dano, separados; armas antigas (só `bonusMagico`) usam o mesmo nos dois.
-            const bonusAtaque = arma.bonusAtaque ?? arma.bonusMagico ?? 0;
+            // Meito: +1/+2/+3 no acerto corpo a corpo (prevalece o maior entre a forja e o bônus que a arma já tinha)
+            const bonusAtaque = Math.max(arma.bonusAtaque ?? arma.bonusMagico ?? 0, arma.distancia ? 0 : bonusDeAtaqueDaForja(arma.forja));
             const bonusDano = arma.bonusDano ?? arma.bonusMagico ?? 0;
             r[`arma.${ref.item_id}.ataque`] = mAtaque + (arma.proficiente ? prof : 0) + bonusAtaque + r['ataque.arma'];
             r[`arma.${ref.item_id}.dano`] = mDano + bonusDano + r['dano.arma'];
             // d20 puro igual ou maior que isto é crítico: a margem da arma ou a do tipo (Crítico Marcial: 19), a menor
-            r[`arma.${ref.item_id}.margem`] = Math.min(arma.margemCritica ?? 20, r[arma.distancia ? 'margem.distancia' : 'margem.corpo']);
+            r[`arma.${ref.item_id}.margem`] = Math.min(
+                arma.margemCritica ?? 20,
+                arma.distancia ? 20 : margemDaForja(arma.forja),
+                r[arma.distancia ? 'margem.distancia' : 'margem.corpo'],
+            );
         }
     }
 
@@ -614,7 +634,7 @@ export function dadosDeDano(f: FichaOnePiece, itens: ItensPorId, itemId: number,
     if (!arma || typeof arma.dano !== 'string') return [];
 
     // O dado da arma sobe os degraus do tipo dela (corpo a corpo ou à distância); os extras não
-    const dados = [degrau(arma.dano, valores[arma.distancia ? 'passo.distancia' : 'passo.corpo'] ?? 0)];
+    const dados = [degrau(danoComForja(arma.dano, arma.forja), valores[arma.distancia ? 'passo.distancia' : 'passo.corpo'] ?? 0)];
     for (const extra of arma.danoExtra ?? []) if (dadosValidos(extra.dados)) dados.push(extra.dados);
     for (const e of efeitosAtivos(f, itens)) if (e.modo === 'dados' && casa(e.alvo, 'dano.arma') && dadosValidos(e.valor)) dados.push(e.valor);
 
@@ -638,6 +658,28 @@ export interface ArmaAtiva {
     danoBonus: number;
     /** d20 puro igual ou maior que isto é crítico (20 por padrão; armas específicas: 19 ou 18). */
     margem: number;
+    /** O que a forja deu à arma (Meito, Yoto, Fio...), para o card de ataque. */
+    etiquetas: string[];
+    /** Expertise da arma (ids), que vale no acerto crítico quando há proficiência. */
+    expertise: string[];
+}
+
+/**
+ * Dados adicionais que a arma Meito equipada dá às Técnicas com arma cortante como requisito (1 Wazamono, 2 Ryo, 3 Ô, 4 Saijo Ô):
+ * vale o maior entre as armas equipadas. Espelha `Regras::dadosExtrasDeMeito`.
+ */
+export function dadosExtrasDeMeito(f: FichaOnePiece, itens: ItensPorId): number {
+    let n = 0;
+    for (const secao of f.inventario ?? []) {
+        for (const ref of secao.itens ?? []) {
+            const item = itens[ref.item_id];
+            const arma = (item?.dados as DadosItemOnePiece | null | undefined)?.arma;
+            if (!item || !arma || !ativo(ref, item) || !armaCabe(arma, f.tamanho)) continue;
+            n = Math.max(n, dadosDeTecnicaDaForja(arma.forja));
+        }
+    }
+
+    return n;
 }
 
 /** Armas equipadas (e sintonizadas, se exigir), com os bônus já calculados por `analisar`. */
@@ -656,6 +698,8 @@ export function armasAtivas(f: FichaOnePiece, itens: ItensPorId, valores: Record
                 ataque: valores[`arma.${ref.item_id}.ataque`],
                 danoBonus: valores[`arma.${ref.item_id}.dano`],
                 margem: valores[`arma.${ref.item_id}.margem`],
+                etiquetas: etiquetasDaForja(arma.forja),
+                expertise: arma.proficiente ? (arma.forja?.expertise ?? []) : [],
             });
         }
     }

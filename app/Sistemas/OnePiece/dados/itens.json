@@ -1329,6 +1329,7 @@
           6,
           15
         ],
+        "expertiseId": "sangramento",
         "expertise": "A criatura atingida recebe a condição \"Sangramento\"."
       },
       "loja": true
@@ -1353,6 +1354,7 @@
           "Acuidade",
           "Versátil (1d8)"
         ],
+        "expertiseId": "proxima-falha",
         "expertise": "A próxima jogada de ataque (comum) feita contra você, até o final do seu próximo turno, falha."
       },
       "loja": true
@@ -1376,6 +1378,7 @@
           "Duas Mãos",
           "Pesada"
         ],
+        "expertiseId": "cr-mais-2",
         "expertise": "Você recebe +2 na Classe de Resistência, até o início do seu próximo turno."
       },
       "loja": true
@@ -1396,6 +1399,7 @@
         "propriedades": [
           "Acuidade"
         ],
+        "expertiseId": "maximizar",
         "expertise": "Os dados de dano da arma são maximizados."
       },
       "loja": true
@@ -1416,6 +1420,7 @@
         "propriedades": [
           "Acuidade"
         ],
+        "expertiseId": "sangramento",
         "expertise": "A criatura atingida recebe a condição \"Sangramento\"."
       },
       "loja": true
@@ -1440,6 +1445,7 @@
           6,
           15
         ],
+        "expertiseId": "empoderado",
         "expertise": "Você recebe a condição \"Empoderado\", até o final do seu próximo turno."
       },
       "loja": true
@@ -1462,6 +1468,7 @@
           "Duas Mãos",
           "Pesada"
         ],
+        "expertiseId": "area-cortante",
         "expertise": "Você causa 1d6 de dano Cortante em todas as criaturas a até 3 metros de você."
       },
       "loja": true
@@ -1484,6 +1491,7 @@
           "Duas Mãos",
           "Pesada"
         ],
+        "expertiseId": "critico-16",
         "expertise": "Sua próxima jogada de ataque (comum), até o final do seu próximo turno, tem margem de acerto crítico 16-20."
       },
       "loja": true
@@ -1507,6 +1515,7 @@
         "propriedades": [
           "Acuidade"
         ],
+        "expertiseId": "salvaguarda-des",
         "expertise": "A próxima Salvaguarda de Destreza recebe sucesso automático, até o fim do encontro de combate."
       },
       "loja": true
@@ -1525,6 +1534,7 @@
         "dano": "1d6",
         "tipoDano": "Cortante",
         "propriedades": [],
+        "expertiseId": "pv-temporarios",
         "expertise": "Você recebe 20 Pontos de Vida temporários, que duram até o início do seu próximo turno."
       },
       "loja": true
@@ -1545,6 +1555,7 @@
         "propriedades": [
           "Acuidade"
         ],
+        "expertiseId": "acerto-mais-3",
         "expertise": "A sua próxima jogada de ataque (comum ou Técnicas), até o final do seu próximo turno, recebe +3 de acerto."
       },
       "loja": true
@@ -1567,6 +1578,7 @@
           "Alcance",
           "Duas Mãos"
         ],
+        "expertiseId": "caido",
         "expertise": "A criatura atingida recebe a condição \"Caído\"."
       },
       "loja": true
@@ -1596,6 +1608,7 @@
           "Duas Mãos",
           "Pesada"
         ],
+        "expertiseId": "empurrar-ou-1d8",
         "expertise": "Ao final do cálculo de dano, empurre a criatura por 6 metros ou adicione 1d8 de dano Contundente adicional."
       },
       "loja": true
@@ -1618,6 +1631,7 @@
           "Perfurante"
         ],
         "propriedades": [],
+        "expertiseId": "acerto-mais-3",
         "expertise": "A sua próxima jogada de ataque (comum ou Técnicas), até o final do seu próximo turno, recebe +3 de acerto."
       },
       "loja": true
@@ -1639,6 +1653,7 @@
         "propriedades": [
           "Acuidade"
         ],
+        "expertiseId": "contundente-1d12",
         "expertise": "Ao final do cálculo de dano, adicione 1d12 de dano Contundente."
       },
       "loja": true
@@ -1660,6 +1675,7 @@
         "propriedades": [
           "Duas Mãos"
         ],
+        "expertiseId": "cr-mais-2",
         "expertise": "Você recebe +2 na Classe de Resistência, até o início do seu próximo turno."
       },
       "loja": true
@@ -1692,6 +1708,7 @@
           21,
           30
         ],
+        "expertiseId": "deslocamento-6",
         "expertise": "Você recebe +6 metros de deslocamento, até o fim do seu próximo turno."
       },
       "loja": true
@@ -1742,6 +1759,7 @@
           18,
           24
         ],
+        "expertiseId": "critico-16",
         "expertise": "Sua próxima jogada de ataque (comum), até o final do seu próximo turno, tem margem de acerto crítico 16-20."
       },
       "loja": true
@@ -1791,6 +1809,7 @@
           9,
           15
         ],
+        "expertiseId": "dois-ataques",
         "expertise": "Caso tenha errado uma ou mais jogadas de ataque (comum ou Técnicas) no turno atual, você recebe 2 jogadas de ataque (comum) adicionais que causam apenas o dano da munição."
       },
       "loja": true
@@ -1963,6 +1982,7 @@
           18,
           24
         ],
+        "expertiseId": "enfurecido",
         "expertise": "A criatura atingida recebe a condição \"Enfurecido\", até o final do próximo turno da criatura."
       },
       "loja": true
@@ -2004,6 +2024,7 @@
         "dano": "1d4",
         "tipoDano": "Contundente",
         "propriedades": [],
+        "expertiseId": "pv-temporarios",
         "expertise": "Você recebe 20 Pontos de Vida temporários, que duram até o início do seu próximo turno."
       },
       "dados": {
@@ -2031,6 +2052,7 @@
           "Acuidade",
           "Alcance"
         ],
+        "expertiseId": "incapacitado",
         "expertise": "A criatura atingida recebe a condição \"Incapacitado\", até o final do próximo turno da criatura."
       },
       "loja": true
@@ -2052,6 +2074,7 @@
           "Alcance",
           "Duas Mãos"
         ],
+        "expertiseId": "puxar-ou-1d8",
         "expertise": "Ao final do cálculo de dano, puxe a criatura para 1,5 metro de você ou adicione 1d8 de dano adicional."
       },
       "loja": true
@@ -2078,6 +2101,7 @@
           6,
           12
         ],
+        "expertiseId": "dois-ataques",
         "expertise": "Caso tenha errado uma ou mais jogadas de ataque (comum ou Técnicas) no turno atual, você recebe 2 jogadas de ataque (comum) adicionais que causam apenas o dano da lança."
       },
       "loja": true
@@ -2099,6 +2123,7 @@
           "Arma de Cerco",
           "Pesada"
         ],
+        "expertiseId": "metade-da-cr",
         "expertise": "Ao final do cálculo de dano, adicione pontos de dano extra em um valor igual à metade da CR do alvo."
       },
       "loja": true
@@ -2121,6 +2146,7 @@
           "Duas Mãos",
           "Pesada"
         ],
+        "expertiseId": "empurrar-ou-1d8",
         "expertise": "Ao final do cálculo de dano, empurre a criatura por 6 metros ou adicione 1d8 de dano adicional."
       },
       "loja": true
@@ -2146,6 +2172,7 @@
           "Pesada",
           "Versátil (1d12)"
         ],
+        "expertiseId": "area-cortante",
         "expertise": "Você causa 1d6 de dano em todas as criaturas a até 3 metros de você."
       },
       "loja": true
@@ -2167,6 +2194,7 @@
           "Alcance",
           "Duas Mãos"
         ],
+        "expertiseId": "deslocamento-metade",
         "expertise": "A criatura atingida tem seu deslocamento reduzido pela metade, até o final do próximo turno dela."
       },
       "loja": true
@@ -2193,6 +2221,7 @@
           6,
           9
         ],
+        "expertiseId": "impedido",
         "expertise": "A criatura atingida recebe a condição \"Impedido\", até o final do próximo turno da criatura."
       },
       "loja": true
@@ -2218,6 +2247,7 @@
           6,
           12
         ],
+        "expertiseId": "sangramento",
         "expertise": "A criatura atingida recebe a condição \"Sangramento\"."
       },
       "loja": true

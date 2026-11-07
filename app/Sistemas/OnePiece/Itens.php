@@ -80,7 +80,7 @@ class Itens
                 'dano' => $a['dano'],
                 'atributo' => in_array('Acuidade', $a['propriedades'], true) ? 'acuidade' : ($aDistancia ? 'des' : 'for'),
                 'tipoDano' => $a['tipoDano'],
-            ] + ($aDistancia ? ['distancia' => true] : []);
+            ] + ($aDistancia ? ['distancia' => true] : []) + (! empty($a['expertiseId']) ? ['forja' => ['expertise' => [$a['expertiseId']]]] : []);
         }
 
         return $dados;

@@ -96,6 +96,7 @@ export function dadosDoSistema(i: ItemDoCatalogo): DadosItemOnePiece & { catalog
             atributo: acuidade ? 'acuidade' : aDistancia ? 'des' : 'for',
             tipoDano: a.tipoDano,
             ...(aDistancia ? { distancia: true } : {}),
+            ...(a.expertiseId ? { forja: { expertise: [a.expertiseId] } } : {}),
         };
     }
 

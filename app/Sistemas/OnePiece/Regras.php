@@ -240,13 +240,14 @@ final class Regras
                 $mAtaque = self::modificadorDaArma($arma['atributo'], $mod);
                 $mDano = self::modificadorDaArma($arma['atributoDano'] ?? $arma['atributo'], $mod);
                 // Bônus simples de acerto e de dano, separados; armas antigas (só `bonusMagico`) usam o mesmo nos dois.
-                $bonusAtaque = $arma['bonusAtaque'] ?? $arma['bonusMagico'] ?? 0;
+                // Meito: +1/+2/+3 no acerto corpo a corpo (prevalece o maior entre a forja e o bônus que a arma já tinha)
+                $bonusAtaque = max($arma['bonusAtaque'] ?? $arma['bonusMagico'] ?? 0, ($arma['distancia'] ?? false) ? 0 : Forja::bonusDeAtaque($arma['forja'] ?? null));
                 $bonusDano = $arma['bonusDano'] ?? $arma['bonusMagico'] ?? 0;
                 $id = (int) $ref['item_id'];
                 $r["arma.{$id}.ataque"] = $mAtaque + (($arma['proficiente'] ?? false) ? $prof : 0) + $bonusAtaque + $r['ataque.arma'];
                 $r["arma.{$id}.dano"] = $mDano + $bonusDano + $r['dano.arma'];
                 // d20 puro igual ou maior que isto é crítico: a margem da arma ou a do tipo (Crítico Marcial: 19), a menor
-                $r["arma.{$id}.margem"] = min($arma['margemCritica'] ?? 20, $r[($arma['distancia'] ?? false) ? 'margem.distancia' : 'margem.corpo']);
+                $r["arma.{$id}.margem"] = min($arma['margemCritica'] ?? 20, ($arma['distancia'] ?? false) ? 20 : Forja::margem($arma['forja'] ?? null), $r[($arma['distancia'] ?? false) ? 'margem.distancia' : 'margem.corpo']);
             }
         }
 
@@ -263,6 +264,24 @@ final class Regras
             'dv.max' => $nivel,
             'treinamento.pontos' => max(0, $mod['sab']), // Traços Culturais: pontos de treinamento = mod. SAB positivo
         ];
+    }
+
+    /** Dados adicionais da Meito equipada nas Técnicas com arma cortante como requisito (o maior entre as armas equipadas). */
+    public static function dadosExtrasDeMeito(array $f, array $itens): int
+    {
+        $n = 0;
+        foreach ($f['inventario'] ?? [] as $secao) {
+            foreach ($secao['itens'] ?? [] as $ref) {
+                $item = $itens[$ref['item_id']] ?? null;
+                $arma = $item['dados']['arma'] ?? null;
+                if ($item === null || ! is_array($arma) || ! self::ativo($ref, $item) || ! self::armaCabe($arma, $f['tamanho'] ?? 'Médio')) {
+                    continue;
+                }
+                $n = max($n, Forja::dadosDeTecnica($arma['forja'] ?? null));
+            }
+        }
+
+        return $n;
     }
 
     /** O gigante (tamanho Enorme) só usa armas de gigante, e nenhum outro tamanho usa a arma de um gigante. */
@@ -362,6 +381,32 @@ final class Regras
                     [...$normal, 'rotulo' => 'Dano normal'],
                 ]
                 : [$normal];
+
+            // Expertise: no acerto crítico natural, com proficiência na arma. O texto do efeito vai no card; o dano extra (dados) e
+            // o dano máximo viram botões. Os efeitos sobre condições e movimento ficam para o jogador e o Narrador aplicarem.
+            $armaDados = $itens[$arma]['dados']['arma'] ?? [];
+            if (($meta['destaque'] ?? null) === 'critico' && ! empty($armaDados['proficiente'])) {
+                foreach ($armaDados['forja']['expertise'] ?? [] as $idExp) {
+                    $e = Forja::expertise($idExp);
+                    if (! $e) {
+                        continue;
+                    }
+                    $meta['expertise'][] = ['id' => $e['id'], 'texto' => $e['texto']];
+                    if (! empty($e['dados'])) {
+                        $meta['acoes'][] = [
+                            'id' => "expertise-{$e['id']}", 'rotulo' => "Expertise: +{$e['dados']}", 'resumo' => $e['dados'], 'expressao' => $e['dados'],
+                            'rotuloRolagem' => "{$nome} (Expertise)", 'dano' => ['tipo' => $e['tipoDano'] ?? $tipoDano],
+                        ];
+                    }
+                    if (! empty($e['maximizar'])) {
+                        $maximo = array_sum(array_map(fn ($d) => preg_match('/^(\d+)d(\d+)$/', $d, $m) ? (int) $m[1] * (int) $m[2] : 0, $dados));
+                        $meta['acoes'][] = [
+                            'id' => 'expertise-maximizar', 'rotulo' => 'Expertise: dano máximo', 'resumo' => (string) ($maximo + $bonus), 'expressao' => "{$maximo}+@arma.{$arma}.dano",
+                            'rotuloRolagem' => "{$nome} (dados maximizados)", 'dano' => ['tipo' => $tipoDano],
+                        ];
+                    }
+                }
+            }
         }
 
         return $meta;
@@ -385,7 +430,7 @@ final class Regras
 
         // O dado da arma sobe os degraus do tipo dela (corpo a corpo ou à distância); os extras não
         $passos = (int) ($variaveis[($arma['distancia'] ?? false) ? 'passo.distancia' : 'passo.corpo'] ?? 0);
-        $dados = [self::degrau($arma['dano'], $passos)];
+        $dados = [self::degrau(Forja::danoComForja($arma['dano'], $arma['forja'] ?? null), $passos)];
         foreach ($arma['danoExtra'] ?? [] as $extra) {
             if (Efeitos::dadosValidos($extra['dados'] ?? null)) {
                 $dados[] = $extra['dados'];

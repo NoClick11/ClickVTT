@@ -81,6 +81,13 @@ class ChatController extends Controller
                 'tipo' => filled($dados['dano']['tipo'] ?? null) ? trim($dados['dano']['tipo']) : null,
                 ...(isset($dados['dano']['fator']) && (float) $dados['dano']['fator'] !== 1.0 ? ['fator' => (float) $dados['dano']['fator']] : []),
             ];
+            // Densidade e Balanço da arma (forja): o servidor deduz da arma da rolagem, nunca do que o cliente manda.
+            if (preg_match('/@arma\.(\d+)\.dano/', (string) $dados['expressao'], $m)) {
+                $ignora = \App\Sistemas\OnePiece\Forja::ignoraDoDano($itens[(int) $m[1]]['dados']['arma'] ?? null);
+                if ($ignora) {
+                    $marcas['dano']['ignora'] = $ignora;
+                }
+            }
         }
 
         $mensagem = $mesa->mensagens()->create([

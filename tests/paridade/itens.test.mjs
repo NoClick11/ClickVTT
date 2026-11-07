@@ -112,7 +112,7 @@ test('itens: compra, venda (metade em bom estado) e Mercado Negro até 100 vezes
 
 test('itens: conversão para o item da mesa (arma, escudo, vínculo com o catálogo)', () => {
     const katana = itemParaAMesa(itemDoCatalogo('katana'));
-    assert.deepEqual(katana.dados.arma, { dano: '1d6', atributo: 'acuidade', tipoDano: 'Cortante' });
+    assert.deepEqual(katana.dados.arma, { dano: '1d6', atributo: 'acuidade', tipoDano: 'Cortante', forja: { expertise: ['maximizar'] } });
     assert.deepEqual(katana.dados.catalogo, { id: 'katana' });
     assert.equal(katana.peso, 1.2);
     assert.equal(katana.equipavel, true);

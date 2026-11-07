@@ -69,6 +69,8 @@ export interface MarcasDoSistema {
     dano?: { tipo: string | null };
     /** Botões do card (ex.: Dano, Dano crítico). */
     acoes?: AcaoDaRolagem[];
+    /** Expertise da arma no acerto crítico (efeitos para o jogador e o Narrador aplicarem). */
+    expertise?: { id: string; texto: string }[];
 }
 
 export interface DadosRolagem {

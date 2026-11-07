@@ -59,7 +59,7 @@ class AlvoController extends Controller
             if (($ficha['hospedado'] ?? null) !== null) {
                 throw ValidationException::withMessages(['mensagem_id' => "{$p->nome} está hospedado no espaço de outro personagem: ataque o hospedeiro."]);
             }
-            $calculo = Dano::calcular($ficha, $total, $tipo);
+            $calculo = Dano::calcular($ficha, $total, $tipo, (array) ($dano['ignora'] ?? []));
             // Pontos de Escudo (Haki do Armamento) absorvem antes dos PV temporários, com a resistência do sistema
             if (method_exists($sistema, 'escudoResiste') && (int) ($ficha['pv']['escudo'] ?? 0) > 0) {
                 $pv = Dano::noPvComEscudo($ficha['pv'], $calculo['final'], $sistema->escudoResiste($ficha, $tipo));
