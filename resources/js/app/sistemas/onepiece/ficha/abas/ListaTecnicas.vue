@@ -4,7 +4,14 @@ import { clonar } from '../../../../nucleo/ficha/caminho';
 import CampoNumero from '../../../../nucleo/ui/CampoNumero.vue';
 import CampoTexto from '../../../../nucleo/ui/CampoTexto.vue';
 import { estilos, useFicha } from '../../contexto';
-import { camposDoGastoDePP, dadosExtrasDeMeito, expandirRolagem, type FichaOnePiece, type Tecnica } from '../../regras';
+import {
+    camposDoGastoDePP,
+    comDadosDaMeito as comDadosExtras,
+    dadosExtrasDeMeito,
+    expandirRolagem,
+    type FichaOnePiece,
+    type Tecnica,
+} from '../../regras';
 import CriadorDeTecnicas from '../criador/CriadorDeTecnicas.vue';
 
 /**
@@ -44,16 +51,11 @@ function mudar(fn: (lista: Tecnica[]) => void) {
 const podeUsar = (t: Tecnica) => props.ficha.pp.atual >= t.custo;
 
 /**
- * Técnica com arma cortante como requisito + arma Meito equipada: soma os dados adicionais da qualidade (do mesmo tipo do primeiro
- * dado da Técnica). Os dados só devem ajudar a alcançar o máximo da Técnica: o Narrador confere o teto.
+ * Técnica com arma cortante como requisito + arma Meito equipada: soma os dados adicionais da qualidade (do mesmo tipo do primeiro dado
+ * da Técnica), com a soma dos dados limitada ao máximo da Técnica (os extras só ajudam a alcançá-lo).
  */
-function comDadosDaMeito(expressao: string, t: Tecnica): string {
-    if (!t.armaCortante) return expressao;
-    const extra = dadosExtrasDeMeito(props.ficha, itens.value);
-    const faces = /\d+d(\d+)/i.exec(expressao)?.[1];
-
-    return extra > 0 && faces ? `${expressao}+${extra}d${faces}` : expressao;
-}
+const comDadosDaMeito = (expressao: string, t: Tecnica): string =>
+    t.armaCortante ? comDadosExtras(expressao, dadosExtrasDeMeito(props.ficha, itens.value)) : expressao;
 
 /** Usar: gasta os PP e, se há rolagem, rola no chat. Sem PP suficiente não faz nada. */
 async function usar(t: Tecnica) {

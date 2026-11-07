@@ -665,6 +665,22 @@ export interface ArmaAtiva {
 }
 
 /**
+ * A rolagem da Técnica com os dados adicionais da Meito: soma `extra` dados do mesmo tipo do primeiro dado da Técnica e limita a soma
+ * dos DADOS ao máximo possível da Técnica (`|N`): "o valor extra não pode ultrapassar o máximo de dano da Técnica, sendo usado apenas
+ * para ajudar a Técnica a alcançar o máximo". O bônus fixo fica de fora do limite. Sem extra ou sem dados, devolve a expressão igual.
+ */
+export function comDadosDaMeito(expressao: string, extra: number): string {
+    if (extra <= 0) return expressao;
+    const dados = [...expressao.matchAll(/(?:^|[+(])\s*(\d*)d(\d+)/gi)];
+    if (!dados.length) return expressao;
+    const faces = Number(dados[0][2]);
+    // máximo da Técnica sem os extras: cada termo de dados da expressão (sem contar os que subtraem)
+    const maximo = dados.reduce((s, m) => s + (m[1] === '' ? 1 : Number(m[1])) * Number(m[2]), 0);
+
+    return `${expressao}+${extra}d${faces}|${maximo}`;
+}
+
+/**
  * Dados adicionais que a arma Meito equipada dá às Técnicas com arma cortante como requisito (1 Wazamono, 2 Ryo, 3 Ô, 4 Saijo Ô):
  * vale o maior entre as armas equipadas. Espelha `Regras::dadosExtrasDeMeito`.
  */

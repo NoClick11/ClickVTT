@@ -111,3 +111,13 @@ test('forja: com a arma equipada o acerto, a margem crítica e o dano mudam sozi
     assert.equal(analisar(ficha(), itens({ ...arma, distancia: true, atributo: 'des' })).valores['arma.1.ataque'], 3 + 3);
     assert.equal(analisar(ficha(), itens({ ...arma, distancia: true, atributo: 'des' })).valores['arma.1.margem'], 20);
 });
+
+test('forja: dados da Meito nas Técnicas — os extras são do mesmo tipo e a soma dos dados fica limitada ao máximo da Técnica', async () => {
+    const { comDadosDaMeito } = await import('../../resources/js/app/sistemas/onepiece/regras.ts');
+    assert.equal(comDadosDaMeito('4d10', 2), '4d10+2d10|40');
+    assert.equal(comDadosDaMeito('4d10+3', 3), '4d10+3+3d10|40'); // o bônus fixo fica fora do teto
+    assert.equal(comDadosDaMeito('2d6+1d8+@mod.for', 1), '2d6+1d8+@mod.for+1d6|20'); // dois termos de dados: teto 12 + 8
+    assert.equal(comDadosDaMeito('d8', 1), 'd8+1d8|8');
+    assert.equal(comDadosDaMeito('4d10', 0), '4d10');
+    assert.equal(comDadosDaMeito('5', 2), '5'); // sem dados: nada a somar
+});
