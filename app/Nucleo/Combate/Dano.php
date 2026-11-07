@@ -49,6 +49,37 @@ final class Dano
     }
 
     /**
+     * Como `noPv`, mas com Pontos de Escudo na frente (consumidos antes dos PV temporários). Com `$escudoResiste` o escudo
+     * tem resistência ao dano deste tipo: cada ponto absorve 2 de dano (o escudo perde metade, para baixo).
+     *
+     * @param  array{atual?: int, max?: int, temp?: int, escudo?: int}  $pv
+     * @return array{atual: int, temp: int, escudo: int}
+     */
+    public static function noPvComEscudo(array $pv, int $dano, bool $escudoResiste): array
+    {
+        $escudo = max(0, (int) ($pv['escudo'] ?? 0));
+        $resto = $dano;
+        if ($escudo > 0 && $dano > 0) {
+            if ($escudoResiste) {
+                $perda = intdiv($dano, 2);
+                if ($perda <= $escudo) {
+                    $escudo -= $perda;
+                    $resto = 0;
+                } else {
+                    $resto = $dano - 2 * $escudo;
+                    $escudo = 0;
+                }
+            } else {
+                $absorvido = min($escudo, $dano);
+                $escudo -= $absorvido;
+                $resto = $dano - $absorvido;
+            }
+        }
+
+        return [...self::noPv($pv, $resto), 'escudo' => $escudo];
+    }
+
+    /**
      * Tira o dano dos PV temporários primeiro e do resto dos PV atuais (mínimo 0).
      *
      * @param  array{atual?: int, max?: int, temp?: int}  $pv

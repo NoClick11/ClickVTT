@@ -60,8 +60,14 @@ class AlvoController extends Controller
                 throw ValidationException::withMessages(['mensagem_id' => "{$p->nome} está hospedado no espaço de outro personagem: ataque o hospedeiro."]);
             }
             $calculo = Dano::calcular($ficha, $total, $tipo);
-            $pv = Dano::noPv($ficha['pv'] ?? [], $calculo['final']);
-            $campos = ['pv.atual' => $pv['atual'], 'pv.temp' => $pv['temp']];
+            // Pontos de Escudo (Haki do Armamento) absorvem antes dos PV temporários, com a resistência do sistema
+            if (method_exists($sistema, 'escudoResiste') && (int) ($ficha['pv']['escudo'] ?? 0) > 0) {
+                $pv = Dano::noPvComEscudo($ficha['pv'], $calculo['final'], $sistema->escudoResiste($ficha, $tipo));
+                $campos = ['pv.atual' => $pv['atual'], 'pv.temp' => $pv['temp'], 'pv.escudo' => $pv['escudo']];
+            } else {
+                $pv = Dano::noPv($ficha['pv'] ?? [], $calculo['final']);
+                $campos = ['pv.atual' => $pv['atual'], 'pv.temp' => $pv['temp']];
+            }
 
             // Condições "até receber dano" (ex.: Atordoado de Instintos Animalescos) acabam com o dano.
             $acabaram = [];
@@ -76,8 +82,22 @@ class AlvoController extends Controller
                     $campos['duracoes'] = array_diff_key($ficha['duracoes'] ?? [], array_flip($acabaram));
                 }
             }
+            // Superioridade Absoluta (e afins): o sistema pode mandar o dano zerar o alvo quando sobra pouco; o atacante ganha o bônus
+            $execucao = null;
+            if ($mensagem->personagem_id && method_exists($sistema, 'execucao') && $pv['atual'] > 0 && $calculo['final'] > 0) {
+                $atacante = Personagem::query()->where('mesa_id', $mesa->id)->find($mensagem->personagem_id);
+                $execucao = $atacante ? $sistema->execucao($atacante->fichaCompleta($sistema), $pv['atual']) : null;
+                if ($execucao) {
+                    $campos['pv.atual'] = 0;
+                    $execucao = [$atacante, $execucao['campos']];
+                }
+            }
             $p->ficha = $fichas->aplicar($sistema, $p->ficha, $campos);
             $p->save();
+            if ($execucao) {
+                $execucao[0]->ficha = $fichas->aplicar($sistema, $execucao[0]->ficha, $execucao[1]);
+                $execucao[0]->save();
+            }
 
             $mensagem->dados = [...$mensagem->dados, 'aplicado' => [...$jaAplicado, $personagem->id]];
             $mensagem->save();
@@ -96,11 +116,15 @@ class AlvoController extends Controller
                 $hospedes[] = [$outro, $camposHospede, intdiv($calculo['final'], 2)];
             }
 
-            return [$p, $mensagem, $calculo, $total, $tipo, $campos, $acabaram, $hospedes];
+            return [$p, $mensagem, $calculo, $total, $tipo, $campos, $acabaram, $hospedes, $execucao];
         });
 
-        [$alvo, $mensagem, $calculo, $total, $tipo, $campos, $acabaram, $hospedes] = $resultado;
+        [$alvo, $mensagem, $calculo, $total, $tipo, $campos, $acabaram, $hospedes, $execucao] = $resultado;
         Duracoes::transmitir($mesa, $alvo, $campos, $acabaram !== []);
+        if ($execucao) {
+            Duracoes::transmitir($mesa, $execucao[0], $execucao[1]);
+            $this->avisar($mesa, $acesso, $mensagem->visibilidade, "{$alvo->nome} é derrotado por Superioridade Absoluta de {$execucao[0]->nome}.");
+        }
         foreach ($hospedes as [$hospede, $camposHospede, $parte]) {
             Duracoes::transmitir($mesa, $hospede, $camposHospede);
             $this->avisar($mesa, $acesso, $mensagem->visibilidade, "{$hospede->nome} sofreu {$parte} de dano como hóspede de {$alvo->nome}.");
@@ -200,6 +224,71 @@ class AlvoController extends Controller
     private function turnos(string $valor, Rolador $rolador): int
     {
         return max(1, min(99, (int) (str_contains($valor, 'd') ? $rolador->rolar($valor)['total'] : $valor)));
+    }
+
+    /** As condições que os Primeiros Socorros encerram. */
+    public const CONDICOES_DE_SOCORRO = ['envenenado', 'letargico', 'queimado', 'sangramento'];
+
+    /**
+     * Primeiros Socorros (Habilidade Básica): o socorrista trata a criatura `{personagem}`. Cura 10 PV por nível dele, dá
+     * 4d10 PV temporários e encerra as condições Envenenado, Letárgico, Queimado e Sangramento; cada criatura recebe isso
+     * uma vez por descanso longo (`socorrido`). Com `so_condicoes` só encerra as condições, quantas vezes quiser.
+     * Corpo: `socorrista_id`, `so_condicoes`.
+     */
+    public function socorros(Request $request, Mesa $mesa, Personagem $personagem, RegistroSistemas $sistemas, FichaCampos $fichas, Rolador $rolador): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+        abort_unless($personagem->mesa_id === $mesa->id, 404);
+        $entrada = $request->validate([
+            'socorrista_id' => ['required', 'integer', Rule::exists('personagens', 'id')->where('mesa_id', $mesa->id)],
+            'so_condicoes' => ['nullable', 'boolean'],
+        ]);
+        abort_unless($acesso->podeControlar($entrada['socorrista_id']), 403, 'O socorrista não é seu.');
+        $sistema = $this->sistema($mesa, $sistemas);
+        $socorrista = Personagem::query()->where('mesa_id', $mesa->id)->findOrFail($entrada['socorrista_id']);
+        $soCondicoes = (bool) ($entrada['so_condicoes'] ?? false);
+
+        $r = DB::transaction(function () use ($personagem, $sistema, $socorrista, $fichas, $rolador, $soCondicoes) {
+            $p = Personagem::query()->whereKey($personagem->id)->lockForUpdate()->firstOrFail();
+            $ficha = $p->fichaCompleta($sistema);
+            $campos = [];
+            $acabaram = array_values(array_intersect($ficha['condicoes'] ?? [], self::CONDICOES_DE_SOCORRO));
+            if ($acabaram) {
+                $campos['condicoes'] = array_values(array_diff($ficha['condicoes'], $acabaram));
+                if (array_key_exists('duracoes', $ficha)) {
+                    $campos['duracoes'] = array_diff_key($ficha['duracoes'], array_flip($acabaram));
+                }
+            }
+            $cura = $temp = 0;
+            if (! $soCondicoes) {
+                if (($ficha['socorrido'] ?? false) === true) {
+                    throw ValidationException::withMessages(['socorrista_id' => "{$p->nome} já recebeu Primeiros Socorros: só depois de um descanso longo."]);
+                }
+                $nivel = (int) ($socorrista->fichaCompleta($sistema)['nivel'] ?? 1);
+                $max = (int) ($sistema->variaveisDeRolagem($ficha, [])['pv.max'] ?? ($ficha['pv']['max'] ?? 0));
+                $cura = 10 * $nivel;
+                $temp = (int) $rolador->rolar('4d10')['total'];
+                $campos += ['pv.atual' => min($max, (int) ($ficha['pv']['atual'] ?? 0) + $cura), 'pv.temp' => $temp, 'socorrido' => true];
+            }
+            if ($campos === []) {
+                return [$p, [], $acabaram, 0, 0];
+            }
+            $p->ficha = $fichas->aplicar($sistema, $p->ficha, $campos);
+            $p->save();
+
+            return [$p, $campos, $acabaram, $cura, $temp];
+        });
+
+        [$alvo, $campos, $acabaram, $cura, $temp] = $r;
+        if ($campos) {
+            Duracoes::transmitir($mesa, $alvo, $campos, $acabaram !== []);
+        }
+        $texto = $soCondicoes
+            ? ($acabaram ? "{$socorrista->nome} trata {$alvo->nome}: as condições terminam." : "{$alvo->nome} não tem condição que os Primeiros Socorros encerrem.")
+            : "{$socorrista->nome} dá Primeiros Socorros a {$alvo->nome}: cura {$cura} PV, {$temp} PV temporários".($acabaram ? ' e encerra as condições.' : '.');
+        $this->avisar($mesa, $acesso, 'todos', $texto);
+
+        return response()->json(['texto' => $texto]);
     }
 
     private function sistema(Mesa $mesa, RegistroSistemas $sistemas): Sistema

@@ -59,6 +59,18 @@ class CombateController extends Controller
         return response()->json(['combate' => $combate->executar($mesa, $acesso, $dados['comando'], $dados)]);
     }
 
+    /** Soma ao turno do personagem `fator` vezes o deslocamento dele (a ação já foi gasta). Ver `CombateService::somarDeslocamento`. */
+    public function deslocamento(Request $request, Mesa $mesa, CombateService $combate): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+        $dados = $request->validate([
+            'personagem_id' => ['required', 'integer', Rule::exists('personagens', 'id')->where('mesa_id', $mesa->id)],
+            'fator' => ['required', 'integer', 'between:1,4'],
+        ]);
+
+        return response()->json(['combate' => $combate->somarDeslocamento($mesa, $acesso, $dados['personagem_id'], $dados['fator'])]);
+    }
+
     /** Disparada: gasta a ação dela e soma outro deslocamento ao turno do personagem. Ver `CombateService::disparar`. */
     public function disparada(Request $request, Mesa $mesa, CombateService $combate): JsonResponse
     {

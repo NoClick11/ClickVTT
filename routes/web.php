@@ -72,6 +72,8 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::post('combate', [CombateController::class, 'comando'])->middleware('throttle:120,1')->name('combate.comando');
     Route::post('combate/eventos/{evento}/reagir', [EventoDeCombateController::class, 'reagir'])->middleware('throttle:60,1')->name('combate.eventos.reagir');
     Route::post('combate/eventos/{evento}/encerrar', [EventoDeCombateController::class, 'encerrar'])->middleware('throttle:30,1')->name('combate.eventos.encerrar');
+    Route::post('combate/deslocamento', [CombateController::class, 'deslocamento'])->middleware('throttle:60,1')->name('combate.deslocamento');
+    Route::post('personagens/{personagem}/socorros', [AlvoController::class, 'socorros'])->middleware('throttle:30,1')->name('personagens.socorros');
     Route::post('combate/disparada', [CombateController::class, 'disparada'])->middleware('throttle:60,1')->name('combate.disparada');
     Route::post('combate/acao', [CombateController::class, 'acao'])->middleware('throttle:240,1')->name('combate.acao');
     Route::post('broadcasting/auth', BroadcastAuthController::class)->name('broadcasting.auth');

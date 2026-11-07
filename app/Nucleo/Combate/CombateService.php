@@ -197,6 +197,32 @@ final class CombateService
     }
 
     /**
+     * Soma ao turno `fator` vezes o deslocamento do personagem (a Disparada soma 1; Recuo Estratégico, 2). A ação que o botão
+     * gasta já foi gasta antes (`gastar`); aqui só entra o deslocamento. Só no combate em curso e no turno dele (o mestre sempre).
+     */
+    public function somarDeslocamento(Mesa $mesa, AcessoMesa $acesso, int $personagemId, int $fator): array
+    {
+        abort_unless($acesso->podeControlar($personagemId), 403, 'Este personagem não é seu.');
+        abort_unless(self::emCurso($mesa), 422, 'O deslocamento extra só vale em combate.');
+        $depois = DB::transaction(function () use ($mesa, $acesso, $personagemId, $fator) {
+            $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
+            $c = self::normalizar($m->combate);
+            $k = collect($c['itens'])->search(fn ($i) => $i['personagem_id'] === $personagemId);
+            abort_if($k === false, 422, 'O personagem não está no combate.');
+            abort_if(! $acesso->ehMestre() && $c['atual'] !== $c['itens'][$k]['id'], 422, 'Não é o seu turno.');
+            $base = $this->baseDoTurno($m, $c['itens'][$k]) ?? $c['itens'][$k]['movimento']['base'] ?? 0.0;
+            $c['itens'][$k]['movimento']['bonus'] += $base * max(1, $fator);
+            $c['itens'][$k]['movimento']['base'] = $base;
+            $m->forceFill(['combate' => $c])->save();
+
+            return $c;
+        });
+        Transmitir::enviar($mesa, 'combate', ['combate' => $depois, 'ator' => $acesso->jogador->id], ['mesa']);
+
+        return $depois;
+    }
+
+    /**
      * Disparada: gasta a ação que o sistema define para ela (com as mesmas regras de turno e limite) e soma ao turno
      * outro deslocamento inteiro. Só vale no combate em curso, para o personagem do turno.
      */
@@ -244,9 +270,32 @@ final class CombateService
             'remover' => $this->remover($c, (string) $d['item_id']),
             'devolver' => $this->devolver($c, (string) $d['item_id'], (string) $d['categoria']),
             'definir_movimento' => $this->alterarItem($c, (string) $d['item_id'], fn (array $i) => [...$i, 'movimento' => [...$i['movimento'], 'bonus' => (float) ($d['bonus'] ?? $i['movimento']['bonus']), 'usado' => (float) ($d['usado'] ?? $i['movimento']['usado'])]]),
-            'encerrar' => self::normalizar(null),
+            'encerrar' => $this->encerrar($mesa),
             default => throw ValidationException::withMessages(['comando' => 'Comando de combate desconhecido.']),
         };
+    }
+
+    /** Fim do encontro: o combate zera e os bônus que duram "até o fim do encontro" (`bonusExecucao`) voltam a 0. */
+    private function encerrar(Mesa $mesa): array
+    {
+        $sistema = $this->sistemas->resolver($mesa->sistema->slug);
+        foreach (Personagem::query()->where('mesa_id', $mesa->id)->get() as $p) {
+            // O sistema renova o que volta ao fim do encontro (ex.: Pontos de Escudo do Haki)
+            if ($sistema && method_exists($sistema, 'aoEncerrarCombate') && ($renovar = $sistema->aoEncerrarCombate($p->fichaCompleta($sistema))) !== []) {
+                $p->ficha = app(\App\Nucleo\Sistemas\FichaCampos::class)->aplicar($sistema, $p->ficha, $renovar);
+                $p->save();
+                Duracoes::transmitir($mesa, $p, $renovar);
+            }
+            if ((int) ($p->ficha['bonusExecucao'] ?? 0) > 0) {
+                $ficha = $p->ficha;
+                $ficha['bonusExecucao'] = 0;
+                $p->ficha = $ficha;
+                $p->save();
+                Duracoes::transmitir($mesa, $p, ['bonusExecucao' => 0]);
+            }
+        }
+
+        return self::normalizar(null);
     }
 
     /** O mestre devolve um uso de uma categoria de ação (ou tudo: `todas`) a um participante. */
