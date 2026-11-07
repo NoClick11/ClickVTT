@@ -121,3 +121,34 @@ test('forja: dados da Meito nas Técnicas — os extras são do mesmo tipo e a s
     assert.equal(comDadosDaMeito('4d10', 0), '4d10');
     assert.equal(comDadosDaMeito('5', 2), '5'); // sem dados: nada a somar
 });
+
+test('forja: Kokuto amplia o alcance das Técnicas (Linha 15/+9, Cone 9/+6, Esfera/Cilindro 6/+3)', () => {
+    const k = (t) => f.alcanceComKokuto(t);
+    assert.deepEqual(k('Até 9 metros, Linha'), { metros: 15, texto: '15 m em Linha', mudou: true }); // abaixo do mínimo: vira 15
+    assert.equal(k('Até 15 metros, Linha').metros, 24); // já tinha 15: +9
+    assert.equal(k('33 m em Linha').metros, 42);
+    assert.equal(k('Cone de 6 m').metros, 9);
+    assert.equal(k('Até 18 metros, Cone').metros, 24);
+    assert.equal(k('Cone de 9 m').metros, 15);
+    assert.equal(k('3 m de raio').metros, 6);
+    assert.equal(k('Até 4,5 metros de raio, Esfera').metros, 6);
+    assert.equal(k('9 m de raio').metros, 12);
+    assert.equal(k('Toque'), null); // sem forma e metros: não muda
+    assert.equal(k('Pessoal'), null);
+    assert.equal(f.lerAlcance('Até 21 metros, Linha').metros, 21);
+    assert.equal(f.USOS_DA_SAIJO, 3);
+});
+
+test('forja: Saijo Ô e Kokuto equipadas são detectadas; descanso longo devolve os usos da Saijo', async () => {
+    const { saijoEquipada, kokutoEquipada, camposDoDescanso } = await import('../../resources/js/app/sistemas/onepiece/regras.ts');
+    const fi = (forja, equipado = true) => ({ ...ficha(), inventario: [{ secao: 'E', itens: [{ item_id: 1, qtd: 1, equipado, sintonizado: false }] }] });
+    const it = (forja) => itens({ dano: '1d6', atributo: 'for', tipoDano: 'Cortante', forja });
+    assert.equal(saijoEquipada(fi(), it({ meito: 'saijo-o-wazamono' })), true);
+    assert.equal(saijoEquipada(fi(), it({ meito: 'o-wazamono' })), false);
+    assert.equal(saijoEquipada(fi(null, false), it({ meito: 'saijo-o-wazamono' })), false); // desequipada
+    assert.equal(kokutoEquipada(fi(), it({ meito: 'wazamono', kokuto: true })), true);
+    assert.equal(kokutoEquipada(fi(), it({ meito: 'wazamono' })), false);
+    const longo = camposDoDescanso({ ...ficha(), pv: { atual: 1, max: 10, temp: 0 }, dadosVida: { restantes: 1, tipo: 'd8' }, exaustao: 0, meito: { usados: 2 } }, 'longo');
+    assert.equal(longo['meito.usados'], 0);
+    assert.equal(camposDoDescanso({ ...ficha(), pv: { atual: 1, max: 10, temp: 0 }, dadosVida: { restantes: 1, tipo: 'd8' }, exaustao: 0, meito: { usados: 2 } }, 'curto')['meito.usados'], undefined);
+});

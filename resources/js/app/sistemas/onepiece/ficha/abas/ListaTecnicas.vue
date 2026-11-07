@@ -50,6 +50,22 @@ function mudar(fn: (lista: Tecnica[]) => void) {
 
 const podeUsar = (t: Tecnica) => props.ficha.pp.atual >= t.custo;
 
+// --- Saijo Ô Wazamono (rolar o dano duas vezes, 3 usos) e Espada Kokuto (alcance maior; desvantagem nas Salvaguardas)
+const saijo = computed(() => saijoEquipada(props.ficha, itens.value));
+const kokuto = computed(() => kokutoEquipada(props.ficha, itens.value));
+const usosDaSaijo = computed(() => Math.max(0, USOS_DA_SAIJO - (props.ficha.meito?.usados ?? 0)));
+/** Técnicas (por posição) que o jogador marcou para rolar o dano duas vezes neste uso. */
+const dobrar = ref<Record<number, boolean>>({});
+const indiceDe = (t: Tecnica) => props.lista.indexOf(t);
+const podeDobrar = (t: Tecnica) => !!t.armaCortante && !!t.rolagem.trim() && saijo.value && usosDaSaijo.value > 0;
+const dobrarDano = (t: Tecnica) => podeDobrar(t) && !!dobrar.value[indiceDe(t)];
+/** O alcance mostrado: com a Kokuto e a Técnica exigindo arma cortante, o alcance ampliado. */
+const alcanceDe = (t: Tecnica) => (kokuto.value && t.armaCortante ? (alcanceComKokuto(t.alcance) ?? null) : null);
+const rotuloDoUso = (t: Tecnica) =>
+    t.nome +
+    (dobrarDano(t) ? ' (Saijo Ô: dano 2×, fica o maior)' : '') +
+    (kokuto.value && t.armaCortante ? ' (Kokuto: alvos com desvantagem na Salvaguarda)' : '');
+
 /**
  * Técnica com arma cortante como requisito + arma Meito equipada: soma os dados adicionais da qualidade (do mesmo tipo do primeiro dado
  * da Técnica), com a soma dos dados limitada ao máximo da Técnica (os extras só ajudam a alcançá-lo).
@@ -67,8 +83,8 @@ async function usar(t: Tecnica) {
     // Com tipo de dano preenchido a rolagem é um dano: o card do chat oferece "Aplicar" ao alvo, respeitando resistências.
     if (t.rolagem.trim())
         rolar(
-            comDadosDaMeito(expandirRolagem(t.rolagem.trim(), calc.value, 'tecnica'), t),
-            t.nome,
+            comDadosDaMeito(expandirRolagem(t.rolagem.trim(), calc.value, 'tecnica'), t) + (dobrarDano(t) ? '^2' : ''),
+            rotuloDoUso(t),
             undefined,
             t.tipoDano?.trim() ? { tipo: t.tipoDano.trim() } : undefined,
         );
@@ -132,8 +148,19 @@ function adicionar() {
                             <p class="font-semibold text-preto-100">{{ t.nome }}</p>
                             <p class="text-xs text-preto-400">
                                 <span v-if="t.origem">{{ t.origem }}</span>
-                                <span v-if="t.alcance"> · {{ t.alcance }}</span>
+                                <span v-if="t.alcance">
+                                    ·
+                                    <template v-if="alcanceDe(t)?.mudou"
+                                        >{{ alcanceDe(t)!.texto }}
+                                        <span class="text-ouro-300" :title="`Alcance de ${t.alcance} ampliado pela Espada Kokuto`"
+                                            >(Kokuto)</span
+                                        ></template
+                                    ><template v-else>{{ t.alcance }}</template></span
+                                >
                                 <span v-if="t.efeito"> · {{ t.efeito }}</span>
+                            </p>
+                            <p v-if="kokuto && t.armaCortante" class="mt-1 text-[11px] text-ouro-300">
+                                Kokuto: criaturas na área têm desvantagem na Salvaguarda para sofrer metade ou todo o dano.
                             </p>
                             <p v-if="t.descricao" class="mt-1 whitespace-pre-wrap break-words text-xs text-preto-300">{{ t.descricao }}</p>
                         </div>
@@ -142,6 +169,19 @@ function adicionar() {
                             <p class="text-[10px] uppercase tracking-wide text-preto-400" :title="'Categoria de ação que a técnica gasta no combate'">
                                 {{ acoes.rotulo(categoria(t)) }}
                             </p>
+                            <label
+                                v-if="podeDobrar(t)"
+                                class="mt-1 flex items-center justify-end gap-1 text-[10px] text-ouro-200"
+                                :title="`Saijo Ô Wazamono: rola o dano duas vezes e fica com o maior (${usosDaSaijo} de ${USOS_DA_SAIJO} usos; voltam no descanso longo)`"
+                            >
+                                <input
+                                    v-model="dobrar[indiceDe(t)]"
+                                    type="checkbox"
+                                    class="size-3 accent-ouro-500"
+                                    aria-label="Rolar o dano duas vezes (Saijo Ô)"
+                                />
+                                Dano 2× ({{ usosDaSaijo }}/{{ USOS_DA_SAIJO }})
+                            </label>
                             <button
                                 type="button"
                                 :disabled="!podeUsar(t) || !permitida(t).ok"

@@ -338,3 +338,49 @@ export function pontosDeForja(f: {
         ehFerreiro: !!ferreiro,
     };
 }
+
+export type FormaDaTecnica = 'linha' | 'cone' | 'esfera';
+
+/** Kokuto: alcance mínimo e acréscimo (m) por forma: se o alcance já é igual ou maior que o mínimo, soma o acréscimo. */
+export const ALCANCE_KOKUTO: Record<FormaDaTecnica, { minimo: number; extra: number; nome: string }> = {
+    linha: { minimo: 15, extra: 9, nome: 'Linha' },
+    cone: { minimo: 9, extra: 6, nome: 'Cone' },
+    esfera: { minimo: 6, extra: 3, nome: 'Esfera/Cilindro' },
+};
+
+/** Lê o alcance em texto da Técnica ("Até 15 metros, Linha", "Cone de 18 m", "4,5 m de raio"): forma e metros; null se não der para ler. */
+export function lerAlcance(texto: string): { forma: FormaDaTecnica; metros: number } | null {
+    const t = texto.toLowerCase();
+    const forma: FormaDaTecnica | null = /\bcone\b/.test(t)
+        ? 'cone'
+        : /\blinha\b/.test(t)
+          ? 'linha'
+          : /esfera|cilindro|emana[cç][aã]o|\braio\b/.test(t)
+            ? 'esfera'
+            : null;
+    const m = /(\d+(?:[.,]\d+)?)\s*(?:m\b|metros?\b)/.exec(t);
+    if (!forma || !m) return null;
+
+    return { forma, metros: Number(m[1].replace(',', '.')) };
+}
+
+/**
+ * O alcance de uma Técnica com arma cortante como requisito empunhando uma Espada Kokuto (Linha: mínimo 15 m, ou +9 m se já tem 15 m ou
+ * mais; Cone: mínimo 9 m ou +6 m; Esfera/Cilindro: mínimo 6 m ou +3 m). `metros` = o alcance novo; null se o texto não tem forma e metros.
+ */
+export function alcanceComKokuto(texto: string): { metros: number; texto: string; mudou: boolean } | null {
+    const a = lerAlcance(texto);
+    if (!a) return null;
+    const r = ALCANCE_KOKUTO[a.forma];
+    const metros = a.metros >= r.minimo ? a.metros + r.extra : r.minimo;
+    const fmt = (n: number) => String(n).replace('.', ',');
+
+    return {
+        metros,
+        mudou: metros !== a.metros,
+        texto: a.forma === 'linha' ? `${fmt(metros)} m em Linha` : a.forma === 'cone' ? `Cone de ${fmt(metros)} m` : `${fmt(metros)} m de raio`,
+    };
+}
+
+/** Usos da Saijo Ô Wazamono por descanso longo (rolar o dano da Técnica duas vezes e ficar com o maior). */
+export const USOS_DA_SAIJO = 3;
