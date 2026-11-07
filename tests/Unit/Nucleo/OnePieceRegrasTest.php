@@ -30,12 +30,12 @@ class OnePieceRegrasTest extends TestCase
         }
     }
 
-    public function test_ficha_padrao_tem_os_seis_atributos_e_as_dezenove_pericias(): void
+    public function test_ficha_padrao_tem_os_seis_atributos_e_as_vinte_pericias(): void
     {
         $f = FichaOnePiece::padrao();
 
         $this->assertSame(['for', 'des', 'con', 'sab', 'pre', 'von'], array_keys($f['atributos']));
-        $this->assertCount(19, $f['pericias']);
+        $this->assertCount(20, $f['pericias']);
         $this->assertSame('von', FichaOnePiece::PERICIAS['haki']);
         $this->assertSame('pre', FichaOnePiece::PERICIAS['provocacao']);
         $this->assertArrayNotHasKey('morte', $f);

@@ -90,11 +90,11 @@ test('mink ágil: deslocamento 12 m e escalada 9 m (prevalece o maior); exige va
 test('humano: Adaptação pede 3 perícias (sem Haki) e Aspectos Humanos pede 1 falha', () => {
     let e = feito({ especies: ['humano'], variantes: ['comum'] });
     assert.ok(problemasDaEtapa(e, 'escolhas').length >= 2);
-    e = { ...e, pericias: { adaptacao: ['atletismo', 'acrobacia', 'percepcao'], 'aptidao-natural': ['furtividade'] }, falhas: ['orgulho'] };
+    e = { ...e, pericias: { adaptacao: ['atletismo', 'acrobacia', 'percepcao'], 'aptidao-natural': ['acrobacia'] }, falhas: ['orgulho'] };
     assert.deepEqual(problemasDaEtapa(e, 'escolhas'), []);
     const { campos } = camposDaCriacao(e);
     assert.equal(campos['pericias.atletismo'], 1);
-    assert.equal(campos['pericias.furtividade'], 2); // Aptidão Natural: dobra a proficiência
+    assert.equal(campos['pericias.acrobacia'], 2); // Aptidão Natural: dobra a proficiência de uma perícia que já tinha
     const orgulho = campos.caracteristicas.find((c) => c.nome.includes('Orgulho'));
     assert.equal(orgulho.efeitos[0].alvo, 'teste.pre');
     assert.deepEqual(
@@ -113,7 +113,7 @@ test('humano: regra opcional pede 1 perícia e não tem dificuldade; kuja pede 2
         especies: ['humano'],
         variantes: ['comum'],
         adaptacaoOpcional: true,
-        pericias: { adaptacao: ['atletismo'], 'aptidao-natural': ['furtividade'] },
+        pericias: { adaptacao: ['atletismo'], 'aptidao-natural': ['atletismo'] },
     });
     assert.deepEqual(problemasDaEtapa(opc, 'escolhas'), []);
     assert.ok(!camposDaCriacao(opc).campos.caracteristicas.some((c) => c.nome.startsWith('Aspectos')));
@@ -392,4 +392,449 @@ test('gigante só usa arma de gigante e os demais não usam a dele', () => {
     };
     assert.ok(!('arma.1.ataque' in calcular(ficha, { 1: arma }))); // arma comum não serve a um gigante
     assert.ok('arma.1.ataque' in calcular(ficha, { 1: { ...arma, dados: { arma: { ...arma.dados.arma, tamanho: 'gigante' } } } }));
+});
+
+// --- estilo de luta: Atirador -----------------------------------------------------------------------------------------
+const atirador = (caminho, extra = {}) =>
+    feito({
+        estilo: {
+            id: 'atirador',
+            nome: 'Atirador',
+            dado: 'd8',
+            caminho,
+            armaFavorita: 'Mosquete',
+            hbInata: 'mira-treinada',
+            pericias: ['acrobacia', 'percepcao', 'sorte'],
+        },
+        especies: ['humano'],
+        variantes: [null],
+        ...extra,
+    });
+
+test('Atirador: o estilo exige caminho, arma favorita, Habilidade Básica Inata e 3 perícias', () => {
+    assert.deepEqual(problemasDaEtapa(atirador('sniper'), 'estilo'), []);
+    assert.ok(problemasDaEtapa(atirador(null), 'estilo').some((m) => m.includes('caminho')));
+    assert.ok(problemasDaEtapa(atirador('sniper', { estilo: { ...atirador('sniper').estilo, hbInata: 'robusto' } }), 'estilo').length > 0);
+    assert.ok(problemasDaEtapa(atirador('sniper', { estilo: { ...atirador('sniper').estilo, pericias: ['acrobacia'] } }), 'estilo').length > 0);
+});
+
+test('Atirador: PV d8, salvaguardas DES e SAB, 3 perícias, atributo primário e Habilidade Básica Inata', () => {
+    const e = atirador('sniper');
+    assert.equal(pvInicial(e), 8 + 1 + 0 + (fisicoDe(e)?.pv ?? 0));
+    const { campos } = camposDaCriacao(e);
+    assert.equal(campos['dadosVida.tipo'], 'd8');
+    assert.equal(campos.atributoPrimario, 'des');
+    assert.ok(['des', 'sab'].every((s) => campos.salvaguardas.includes(s)));
+    for (const p of ['acrobacia', 'percepcao', 'sorte']) assert.ok(campos[`pericias.${p}`] >= 1);
+    assert.deepEqual(campos.habilidadesBasicas, [{ id: 'mira-treinada', nivel: 1, opcao: 'inata' }]);
+    assert.ok(campos.proficienciasArmas.includes('Armas de Fogo'));
+});
+
+test('Atirador: as características do caminho vêm com o nível mínimo; o outro caminho só no 11º (Rei Atirador)', () => {
+    const nomes = (c) => c.caracteristicas.map((x) => x.nome);
+    const { campos } = camposDaCriacao(atirador('sniper'));
+    assert.ok(nomes(campos).includes('Corrida Contínua'));
+    const gunFu = campos.caracteristicas.find((c) => c.nome === 'Gun-Fu');
+    assert.equal(gunFu.nivelMin, 11); // do Duelista, só com o Rei Atirador
+    assert.equal(campos.caracteristicas.find((c) => c.nome === 'Corrida Contínua').nivelMin, undefined);
+    assert.equal(campos.caracteristicas.find((c) => c.nome === 'Guarda Astuta: Sentido de Perigo').nivelMin, 6);
+    assert.ok(campos.caracteristicas.every((c) => c.builder === 'estilo' || c.builder === 'especie' || c.builder === 'variacao' || !c.builder));
+});
+
+test('Atirador: as técnicas entram pelo nível (1º: técnica de combate e auxiliar; o outro caminho só no 11º)', () => {
+    const tecnicas = (nivel, caminho = 'sniper') => camposDaCriacao(atirador(caminho), { nivel })['campos']['tecnicas.lista'].map((t) => t.nome);
+    assert.deepEqual(tecnicas(1), ['Tiro de Advertência', 'Saída Forçada']);
+    assert.ok(tecnicas(3).includes('Tiro Certeiro'));
+    assert.ok(!tecnicas(6).includes('Death Blossom'));
+    assert.ok(tecnicas(11).includes('Death Blossom')); // Rei Atirador: tudo que não escolheu
+    assert.deepEqual(tecnicas(1, 'duelista'), ['Death Blossom', 'Último Recurso']);
+});
+
+test('Atirador: Corpo Treinado soma 1 PV por nível e Corrida Contínua dá 15 m de deslocamento', () => {
+    const duelista = camposDaCriacao(atirador('duelista')).campos;
+    const f = { ...fichaDe(duelista), nivel: 5 };
+    assert.equal(calcular(f, {})['pv.max'], duelista['pv.max'] + 5);
+    const sniper = camposDaCriacao(atirador('sniper')).campos;
+    assert.equal(calcular(fichaDe(sniper), {})['movimento.normal'], 150);
+});
+
+// --- Habilidades Básicas e subir de nível ------------------------------------------------------------------------------
+import { HABILIDADES_BASICAS } from '../../resources/js/app/sistemas/onepiece/construtor/dados/habilidades-basicas.ts';
+import { camposDoNivel, problemasDoNivel, pvPelaMedia } from '../../resources/js/app/sistemas/onepiece/construtor/nivel.ts';
+import { caracteristicasDasHB, dadoDeVidaFinal } from '../../resources/js/app/sistemas/onepiece/construtor/regras.ts';
+
+const comHB = (hb, hbOpcoes = {}, extra = {}) => atirador('sniper', { hb, hbOpcoes, ...extra });
+const fichaCompleta = (e, nivel = 1) => {
+    const { campos } = camposDaCriacao(e, { nivel });
+    return {
+        ...fichaDe(campos),
+        nivel,
+        atributoPrimario: campos.atributoPrimario,
+        estiloId: campos.estiloId,
+        estiloCaminho: campos.estiloCaminho,
+        habilidadesBasicas: campos.habilidadesBasicas,
+        dadosVida: { tipo: campos['dadosVida.tipo'], restantes: nivel },
+        tecnicas: { atributo: 'des', lista: campos['tecnicas.lista'] },
+        pp: { atual: campos['pp.atual'], porNivel: 4 },
+    };
+};
+
+test('Habilidades Básicas: as 19 existem, com id único e características marcadas', () => {
+    assert.equal(HABILIDADES_BASICAS.length, 19);
+    assert.equal(new Set(HABILIDADES_BASICAS.map((h) => h.id)).size, 19);
+    for (const h of HABILIDADES_BASICAS) {
+        const tracos = h.tracos({ primario: 'des', opcoes: h.escolha === 'prodigio' ? ['corpo'] : h.escolha === 'quebrador' ? ['forca-arma'] : [] });
+        assert.ok(tracos.length > 0 && tracos.every((t) => t.hb === h.id), h.id);
+    }
+});
+
+test('assistente: o passo da HB exige uma HB diferente da Inata e a escolha do Prodígio/Quebrador', () => {
+    assert.ok(problemasDaEtapa(comHB(null), 'habilidades').length > 0);
+    assert.ok(problemasDaEtapa(comHB('mira-treinada'), 'habilidades').some((m) => m.includes('Inata')));
+    assert.ok(problemasDaEtapa(comHB('prodigio-do-combate'), 'habilidades').length > 0);
+    assert.deepEqual(problemasDaEtapa(comHB('prodigio-do-combate', { 'prodigio-do-combate': ['distancia'] }), 'habilidades'), []);
+    assert.deepEqual(problemasDaEtapa(comHB('robusto'), 'habilidades'), []);
+});
+
+test('Robusto soma 3 PV por nível; Mira Treinada sobe o dado à distância; Crítico Marcial muda a margem', () => {
+    const { campos } = camposDaCriacao(comHB('robusto'));
+    const f = { ...fichaDe(campos), nivel: 4 };
+    assert.equal(calcular(f, {})['pv.max'], campos['pv.max'] + 12);
+    assert.equal(calcular(f, {})['passo.distancia'], 1); // Mira Treinada (Inata)
+    const prod = camposDaCriacao(comHB('prodigio-do-combate', { 'prodigio-do-combate': ['distancia'] })).campos;
+    assert.equal(calcular(fichaDe(prod), {})['margem.distancia'], 19);
+    assert.equal(calcular(fichaDe(prod), {})['margem.corpo'], 20);
+});
+
+test('Defesa Aprimorada (Corpo de Guerreiro): CR 10 + atributo primário + CON limitada a ½ nível (+1 no 1º)', () => {
+    const e = comHB('corpo-de-guerreiro');
+    const { campos } = camposDaCriacao(e);
+    const f = fichaDe(campos);
+    const des = f.atributos.des;
+    const con = f.atributos.con;
+    const mod = (v) => Math.floor((v - 10) / 2);
+    assert.equal(calcular(f, {}).ca, Math.max(10 + mod(des), 10 + Math.max(1, mod(des)) + Math.min(mod(con), 1)));
+});
+
+test('Dificuldade Inefável: CD +½ proficiência, +2 no 6º e +3 no 9º', () => {
+    const { campos } = camposDaCriacao(comHB('dificuldade-inefavel'));
+    const base = calcular({ ...fichaDe(campos), caracteristicas: [] }, {}).cd;
+    const cd = (nivel) => calcular({ ...fichaDe(campos), nivel }, {}).cd - calcular({ ...fichaDe(campos), nivel, caracteristicas: [] }, {}).cd;
+    assert.equal(cd(1), 1);
+    assert.equal(cd(6), 3);
+    assert.equal(cd(9), 2 + 3);
+    assert.ok(base > 0);
+});
+
+test('Vitalidade Exuberante: o dado sobe um passo e, no d12, vira +1 PV por nível', () => {
+    assert.equal(dadoDeVidaFinal('d8', [{ id: 'quebrador-de-regras', nivel: 1, opcao: 'vitalidade' }], 1), 'd10');
+    assert.equal(
+        dadoDeVidaFinal(
+            'd8',
+            [
+                { id: 'quebrador-de-regras', nivel: 1, opcao: 'vitalidade' },
+                { id: 'quebrador-de-regras', nivel: 6, opcao: 'vitalidade' },
+            ],
+            5,
+        ),
+        'd10',
+    );
+    assert.equal(
+        dadoDeVidaFinal(
+            'd8',
+            [
+                { id: 'quebrador-de-regras', nivel: 1, opcao: 'vitalidade' },
+                { id: 'quebrador-de-regras', nivel: 6, opcao: 'vitalidade' },
+            ],
+            6,
+        ),
+        'd12',
+    );
+    const c = caracteristicasDasHB([{ id: 'quebrador-de-regras', nivel: 1, opcao: 'vitalidade' }], 'des', 1, 'd12');
+    assert.equal(c[0].efeitos[0].alvo, 'pv.max');
+    const e = comHB('quebrador-de-regras', { 'quebrador-de-regras': ['vitalidade'] });
+    assert.equal(camposDaCriacao(e).campos['dadosVida.tipo'], 'd10');
+    assert.equal(pvInicial(e), 10 + 1 + (fisicoDe(e)?.pv ?? 0));
+});
+
+test('subir de nível: o 2º nível exige HB (sem repetir), dá PP, técnicas e 1 dado de vida', () => {
+    const f = fichaCompleta(comHB('robusto'), 2 - 1);
+    assert.ok(problemasDoNivel(f, { pvGanho: 6 }).some((m) => m.includes('Habilidade Básica')));
+    assert.ok(problemasDoNivel(f, { hb: { id: 'robusto' }, pvGanho: 6 }).some((m) => m.includes('repete')));
+    assert.ok(problemasDoNivel(f, { hb: { id: 'mira-treinada' }, pvGanho: 6 }).some((m) => m.includes('repete'))); // a Inata também conta
+    const esc = { hb: { id: 'sortudo' }, pvGanho: pvPelaMedia('d8', 1) };
+    assert.deepEqual(problemasDoNivel(f, esc), []);
+    const campos = camposDoNivel(f, esc);
+    assert.equal(campos.nivel, 2);
+    assert.equal(campos['pp.atual'], f.pp.atual + 4);
+    assert.equal(campos['pv.max'], f.pv.max + 6);
+    assert.ok(campos.caracteristicas.some((c) => c.hb === 'sortudo'));
+    assert.equal(campos.habilidadesBasicas.length, 3);
+});
+
+test('subir de nível: o 3º nível traz a 2ª técnica de combate e o 4º dá AVA (+2 ou +1/+1, teto 20) ou troca por HB', () => {
+    let f = fichaCompleta(comHB('robusto'), 3);
+    f.habilidadesBasicas.push({ id: 'sortudo', nivel: 2 });
+    f = { ...f, nivel: 3 };
+    const para3 = fichaCompleta(comHB('robusto'), 2);
+    const campos3 = camposDoNivel(
+        { ...para3, habilidadesBasicas: [...para3.habilidadesBasicas, { id: 'sortudo', nivel: 2 }] },
+        { hb: { id: 'mente-e-corpo' }, pvGanho: 6 },
+    );
+    assert.ok(campos3['tecnicas.lista'].some((t) => t.nome === 'Tiro Certeiro'));
+
+    assert.ok(problemasDoNivel(f, { pvGanho: 6 }).some((m) => m.includes('AVA')));
+    assert.deepEqual(problemasDoNivel(f, { ava: { tipo: 'dois', atributos: ['des'] }, pvGanho: 6 }), []);
+    assert.deepEqual(problemasDoNivel(f, { ava: { tipo: 'um', atributos: ['des', 'con'] }, pvGanho: 6 }), []);
+    assert.ok(
+        problemasDoNivel({ ...f, atributos: { ...f.atributos, des: 19 } }, { ava: { tipo: 'dois', atributos: ['des'] }, pvGanho: 6 }).some((m) =>
+            m.includes('20'),
+        ),
+    );
+    assert.deepEqual(problemasDoNivel(f, { trocarAva: true, hb: { id: 'reflexo-afiado' }, pvGanho: 6 }), []);
+    assert.equal(camposDoNivel(f, { ava: { tipo: 'dois', atributos: ['des'] }, pvGanho: 6 })['atributos.des'], f.atributos.des + 2);
+});
+
+test('as etiquetas, os rótulos e as rolagens do catálogo cabem nos limites do servidor', () => {
+    const { campos } = camposDaCriacao(comHB('prodigio-do-combate', { 'prodigio-do-combate': ['corpo'] }), { nivel: 20 });
+    for (const c of campos.caracteristicas) {
+        for (const t of c.etiquetas ?? []) assert.ok(t.length <= 80, `${c.nome}: etiqueta longa`);
+        for (const a of c.acoes ?? []) assert.ok(a.rotulo.length <= 60 && (a.rolagem ?? '').length <= 60, `${c.nome}: ação`);
+    }
+});
+
+// --- Maestrias e Aprimoramento Inato ----------------------------------------------------------------------------------
+import { MAESTRIAS, problemasDaMaestria } from '../../resources/js/app/sistemas/onepiece/construtor/dados/maestrias.ts';
+import { atributosComAprimoramentoInato } from '../../resources/js/app/sistemas/onepiece/construtor/regras.ts';
+
+test('Maestrias: as 20 existem com 3 traços cada e ids únicos', () => {
+    assert.equal(MAESTRIAS.length, 20);
+    for (const m of MAESTRIAS) {
+        assert.equal(m.tracos.length, 3, m.nome);
+        assert.equal(new Set(m.tracos.map((t) => t.id)).size, 3, m.nome);
+    }
+    assert.equal(new Set(MAESTRIAS.map((m) => m.id)).size, 20);
+});
+
+test('Maestria: exige o atributo mínimo (um dos dois) e confirma o requisito adicional', () => {
+    const bar = MAESTRIAS.find((m) => m.id === 'barbaro');
+    assert.ok(problemasDaMaestria(bar, { for: 15, des: 10, con: 10, sab: 10, pre: 10, von: 10 }, false).length > 0);
+    assert.deepEqual(problemasDaMaestria(bar, { for: 16, des: 10, con: 10, sab: 10, pre: 10, von: 10 }, false), []);
+    const rei = MAESTRIAS.find((m) => m.id === 'rei-do-inferno');
+    const atr = { for: 10, des: 10, con: 10, sab: 10, pre: 10, von: 15 };
+    assert.equal(problemasDaMaestria(rei, atr, false).length, 1); // falta confirmar o Haki do Rei
+    assert.deepEqual(problemasDaMaestria(rei, atr, true), []);
+});
+
+const ficha9 = () => {
+    const f = fichaCompleta(comHB('robusto'), 8);
+    return { ...f, nivel: 8, atributos: { ...f.atributos, for: 16, des: 18 }, maestria: '', tracosDeMaestria: [] };
+};
+
+test('subir de nível: no 9º, 13º e 17º escolhe-se um Traço de Maestria; só uma Maestria; sem repetir traço', () => {
+    const f = ficha9();
+    assert.ok(problemasDoNivel(f, { pvGanho: 6 }).some((m) => m.includes('Maestria')));
+    assert.deepEqual(problemasDoNivel(f, { maestria: { id: 'barbaro', traco: 'furia' }, pvGanho: 6 }), []);
+    assert.ok(problemasDoNivel(f, { maestria: { id: 'ambicao-suprema', traco: 'voz-soberana' }, pvGanho: 6 }).length > 0); // Haki do Rei não confirmado e PRE/VON baixos
+    const c1 = camposDoNivel(f, { maestria: { id: 'barbaro', traco: 'furia' }, pvGanho: 6 });
+    assert.equal(c1.maestria, 'barbaro');
+    assert.deepEqual(c1.tracosDeMaestria, [{ id: 'furia', nivel: 9 }]);
+    assert.ok(c1.caracteristicas.some((c) => c.nome === 'Fúria' && c.builder === 'maestria'));
+    // 13º: mesma Maestria, outro traço
+    const f13 = { ...f, nivel: 12, maestria: 'barbaro', tracosDeMaestria: [{ id: 'furia', nivel: 9 }] };
+    assert.ok(problemasDoNivel(f13, { maestria: { id: 'barbaro', traco: 'furia' }, pvGanho: 6 }).some((m) => m.includes('já foi')));
+    assert.ok(problemasDoNivel(f13, { maestria: { id: 'sumo', traco: 'oni-muso' }, pvGanho: 6 }).some((m) => m.includes('uma Maestria')));
+    assert.deepEqual(problemasDoNivel(f13, { maestria: { id: 'barbaro', traco: 'ira' }, pvGanho: 6 }), []);
+    // nos outros níveis não há Traço de Maestria
+    assert.ok(problemasDoNivel({ ...f, nivel: 9 }, { maestria: { id: 'barbaro', traco: 'furia' }, pvGanho: 6 }).some((m) => m.includes('não dá')));
+});
+
+test('Maestria Imaculado: Energia Impetuosa soma PP e a Técnica Noryoku Hunter entra na lista', () => {
+    const f = { ...ficha9(), atributos: { ...ficha9().atributos, con: 16 } };
+    const c = camposDoNivel(f, { maestria: { id: 'imaculado', traco: 'estrategias-do-imaculado' }, pvGanho: 6 });
+    assert.ok(c['tecnicas.lista'].some((t) => t.nome === 'Noryoku Hunter' && t.builder === 'maestria'));
+    assert.ok(c.caracteristicas.find((c) => c.nome === 'Estratégias do Imaculado').efeitos.some((e) => e.alvo === 'pp.max'));
+});
+
+test('Aprimoramento Inato: +1 direto no atributo, nunca acima de 20 por ele', () => {
+    const inato = [{ id: 'quebrador-de-regras', nivel: 1, opcao: 'inato-des' }];
+    assert.equal(atributosComAprimoramentoInato({ for: 10, des: 14, con: 10, sab: 10, pre: 10, von: 10 }, inato).des, 15);
+    assert.equal(atributosComAprimoramentoInato({ for: 10, des: 20, con: 10, sab: 10, pre: 10, von: 10 }, inato).des, 20);
+    assert.equal(atributosComAprimoramentoInato({ for: 10, des: 21, con: 10, sab: 10, pre: 10, von: 10 }, inato).des, 21); // já passava: não reduz
+    const e = comHB('quebrador-de-regras', { 'quebrador-de-regras': ['inato-des'] });
+    const des = camposDaCriacao(e).campos['atributos.des'];
+    assert.equal(des, atributosFinais(e).des + 1);
+    // sem efeito duplicado nas características
+    const q = camposDaCriacao(e).campos.caracteristicas.find((c) => c.nome.includes('Aprimoramento Inato'));
+    assert.equal(q.efeitos, undefined);
+});
+
+test('subir de nível: o Aprimoramento Inato no 6º nível respeita o teto de 20', () => {
+    let f = fichaCompleta(comHB('quebrador-de-regras', { 'quebrador-de-regras': ['vitalidade'] }), 5);
+    f = { ...f, nivel: 5, atributos: { ...f.atributos, con: 20 } };
+    const c = camposDoNivel(f, { hb: { id: 'quebrador-de-regras', opcao: 'inato-con' }, pvGanho: 6 });
+    assert.equal(c['atributos.con'], undefined); // já estava em 20: nada muda
+    const g = camposDoNivel({ ...f, atributos: { ...f.atributos, con: 19 } }, { hb: { id: 'quebrador-de-regras', opcao: 'inato-con' }, pvGanho: 6 });
+    assert.equal(g['atributos.con'], 20);
+});
+
+test('Aptidão Natural: só vale em perícia já proficiente, inclusive as do estilo escolhido depois', () => {
+    const humano = { especies: ['humano'], variantes: ['comum'], falhas: ['orgulho'] };
+    const adaptacao = ['atletismo', 'acrobacia', 'percepcao'];
+    // a etapa Escolhas não cobra a Aptidão (ela é feita na etapa do estilo)
+    const base = feito({ ...humano, pericias: { adaptacao } });
+    assert.deepEqual(problemasDaEtapa(base, 'escolhas'), []);
+    // sem escolher: o estilo pede
+    assert.ok(problemasDaEtapa(base, 'estilo').some((m) => m.includes('Aptidão Natural')));
+    // perícia sem proficiência: recusada
+    const ruim = feito({ ...humano, pericias: { adaptacao, 'aptidao-natural': ['furtividade'] } });
+    assert.ok(problemasDaEtapa(ruim, 'estilo').some((m) => m.includes('já tem proficiência')));
+    assert.equal(camposDaCriacao(ruim).campos['pericias.furtividade'], 0);
+    // perícia que vem do estilo (escolhido depois): aceita e dobra
+    const doEstilo = atirador('sniper', { ...humano, pericias: { adaptacao, 'aptidao-natural': ['sorte'] } });
+    assert.deepEqual(problemasDaEtapa(doEstilo, 'estilo'), []);
+    assert.equal(camposDaCriacao(doEstilo).campos['pericias.sorte'], 2);
+    // trocar a perícia do estilo invalida a Aptidão
+    const trocou = atirador('sniper', {
+        ...humano,
+        pericias: { adaptacao, 'aptidao-natural': ['sorte'] },
+        estilo: { ...doEstilo.estilo, pericias: ['acrobacia', 'percepcao', 'furtividade'] },
+    });
+    assert.ok(problemasDaEtapa(trocou, 'resumo').some((m) => m.includes('já tem proficiência')));
+});
+
+test('atributo primário: estilo com dois possíveis exige a escolha; com um só, é fixo', async () => {
+    const { ESTILOS, ATIRADOR } = await import('../../resources/js/app/sistemas/onepiece/construtor/dados/estilos.ts');
+    const duplo = { ...ATIRADOR, id: 'teste-duplo', atributosPrimarios: ['for', 'des'] };
+    ESTILOS.push(duplo);
+    try {
+        const base = atirador('sniper');
+        const e = { ...base, estilo: { ...base.estilo, id: 'teste-duplo', primario: null } };
+        assert.ok(problemasDaEtapa(e, 'estilo').some((m) => m.includes('atributo primário')));
+        const com = { ...e, estilo: { ...e.estilo, primario: 'for' } };
+        assert.deepEqual(problemasDaEtapa(com, 'estilo'), []);
+        assert.equal(camposDaCriacao(com).campos.atributoPrimario, 'for');
+        assert.ok(problemasDaEtapa({ ...e, estilo: { ...e.estilo, primario: 'sab' } }, 'estilo').length > 0); // fora das opções
+    } finally {
+        ESTILOS.pop();
+    }
+    // Atirador: só Destreza, sem pergunta
+    assert.equal(camposDaCriacao(atirador('sniper')).campos.atributoPrimario, 'des');
+});
+
+// --- Antecedentes -------------------------------------------------------------------------------------------------------
+import { ANTECEDENTES, antecedentePorId, comAumentoDeAntecedente } from '../../resources/js/app/sistemas/onepiece/construtor/dados/antecedentes.ts';
+import { ETAPAS, periciasJaProficientes, problemasDoAntecedente } from '../../resources/js/app/sistemas/onepiece/construtor/regras.ts';
+import { ATRIBUTOS as LISTA_ATRIBUTOS, PERICIAS as LISTA_PERICIAS } from '../../resources/js/app/sistemas/onepiece/regras.ts';
+
+const comAnt = (antecedente, extra = {}) =>
+    feito({
+        especies: ['humano'],
+        variantes: ['comum'],
+        antecedente: { id: '', pericia: '', atributo: null, personalizado: false, caracteristicaDe: null, ...antecedente },
+        ...extra,
+    });
+
+test('antecedentes: os 20 existem com ids únicos, perícias e atributos válidos e uma característica especial', () => {
+    assert.equal(ANTECEDENTES.length, 20);
+    assert.equal(new Set(ANTECEDENTES.map((a) => a.id)).size, 20);
+    const pericias = LISTA_PERICIAS.map((p) => p.id);
+    const atributos = LISTA_ATRIBUTOS.map((a) => a.id);
+    for (const a of ANTECEDENTES) {
+        assert.ok(a.pericias.length >= 4 && a.pericias.every((p) => pericias.includes(p)), `${a.id}: perícias`);
+        assert.ok(a.atributos.length >= 1 && a.atributos.every((x) => atributos.includes(x)), `${a.id}: atributos`);
+        assert.ok(a.caracteristica.nome && a.caracteristica.descricao.length > 40, a.id);
+    }
+    assert.ok(ETAPAS.map((e) => e.id).indexOf('antecedente') < ETAPAS.map((e) => e.id).indexOf('estilo'));
+});
+
+test('antecedente: a etapa exige o antecedente, uma perícia da lista e o atributo; personalizar libera qualquer perícia', () => {
+    assert.ok(problemasDaEtapa(comAnt({}), 'antecedente').length > 0);
+    assert.deepEqual(problemasDaEtapa(comAnt({ id: 'marinheiro', pericia: 'medicina', atributo: 'for' }), 'antecedente'), []);
+    assert.ok(problemasDoAntecedente(comAnt({ id: 'marinheiro', pericia: 'sorte', atributo: 'for' })).length > 0); // fora da lista
+    assert.deepEqual(problemasDoAntecedente(comAnt({ id: 'marinheiro', pericia: 'sorte', atributo: 'for', personalizado: true })), []);
+    assert.ok(problemasDoAntecedente(comAnt({ id: 'marinheiro', pericia: 'medicina', atributo: null })).length > 0);
+    assert.ok(
+        problemasDoAntecedente(
+            comAnt({ id: 'marinheiro', pericia: 'medicina', atributo: 'for', personalizado: true, caracteristicaDe: 'inexistente' }),
+        ).length > 0,
+    );
+    // o resumo também confere
+    assert.ok(problemasDaEtapa(comAnt({}), 'resumo').some((m) => m.includes('antecedente')));
+});
+
+test('antecedente: +2 no atributo escolhido, sem passar de 20 e sem reduzir quem já passou', () => {
+    assert.equal(comAumentoDeAntecedente(14), 16);
+    assert.equal(comAumentoDeAntecedente(19), 20);
+    assert.equal(comAumentoDeAntecedente(20), 20);
+    assert.equal(comAumentoDeAntecedente(22), 22);
+    const sem = atributosFinais(comAnt({}));
+    const com = atributosFinais(comAnt({ id: 'tenryuubito', pericia: 'historia', atributo: 'con' }));
+    assert.equal(com.con, sem.con + 2);
+    assert.equal(com.for, sem.for);
+    // a CON mais alta entra no PV do nível 1
+    assert.ok(pvInicial(comAnt({ id: 'tenryuubito', pericia: 'historia', atributo: 'con' })) >= pvInicial(comAnt({})));
+});
+
+test('antecedente: camposDaCriacao grava o nome, a proficiência, o atributo e a característica especial', () => {
+    const e = comAnt({ id: 'amnesia', pericia: 'percepcao', atributo: 'sab' });
+    const { campos } = camposDaCriacao(e);
+    assert.equal(campos.antecedente, 'Amnésia');
+    assert.equal(campos['pericias.percepcao'], 1);
+    assert.equal(campos['atributos.sab'], atributosFinais(e).sab);
+    const c = campos.caracteristicas.find((x) => x.builder === 'antecedente');
+    assert.equal(c.nome, 'Ecos do Passado');
+    assert.equal(c.origem, 'Antecedente: Amnésia');
+    assert.deepEqual(c.usos, { atual: 1, max: 1 });
+    assert.equal(c.descanso, 'longo');
+    assert.equal(c.acoes[0].rolagem, '1d20+@pericia.sorte');
+    // quem já é especialista não é rebaixado
+    const aptidao = comAnt(
+        { id: 'amnesia', pericia: 'percepcao', atributo: 'sab' },
+        { pericias: { adaptacao: ['percepcao', 'atletismo', 'acrobacia'], 'aptidao-natural': ['percepcao'] }, falhas: ['orgulho'] },
+    );
+    assert.equal(camposDaCriacao(aptidao).campos['pericias.percepcao'], 2);
+});
+
+test('antecedente personalizado: a característica especial vem de outro antecedente', () => {
+    const e = comAnt({ id: 'amnesia', pericia: 'sorte', atributo: 'von', personalizado: true, caracteristicaDe: 'mercador' });
+    const c = camposDaCriacao(e).campos.caracteristicas.find((x) => x.builder === 'antecedente');
+    assert.equal(c.nome, 'Bom Negócio');
+    assert.equal(c.origem, 'Antecedente: Amnésia');
+    // sem personalizar, a troca é ignorada
+    const sem = comAnt({ id: 'amnesia', pericia: 'percepcao', atributo: 'sab', personalizado: false, caracteristicaDe: 'mercador' });
+    assert.equal(camposDaCriacao(sem).campos.caracteristicas.find((x) => x.builder === 'antecedente').nome, 'Ecos do Passado');
+});
+
+test('antecedente: a perícia dele conta para a Aptidão Natural e refazer a criação mantém Haki, Treinamentos e Maestria', () => {
+    const humano = { especies: ['humano'], variantes: ['comum'], falhas: ['orgulho'] };
+    const e = comAnt(
+        { id: 'artista', pericia: 'atuacao', atributo: 'pre' },
+        { ...humano, pericias: { adaptacao: ['atletismo', 'acrobacia', 'percepcao'], 'aptidao-natural': ['atuacao'] } },
+    );
+    assert.ok(periciasJaProficientes(e).includes('atuacao'));
+    assert.deepEqual(problemasDaEtapa(e, 'estilo'), []);
+    assert.equal(camposDaCriacao(e).campos['pericias.atuacao'], 2);
+    const trocou = { ...e, antecedente: { ...e.antecedente, pericia: 'persuasao' } };
+    assert.ok(problemasDaEtapa(trocou, 'resumo').some((m) => m.includes('já tem proficiência')));
+    // refazer: as características de outros assistentes ficam, a do antecedente é substituída (sem duplicar)
+    const mantidas = [
+        { nome: 'Do Haki', origem: 'Haki', tipo: 'passiva', builder: 'haki' },
+        { nome: 'Do Treino', origem: 'Treinamento', tipo: 'passiva', builder: 'treinamento' },
+        { nome: 'Da Maestria', origem: 'Maestria', tipo: 'passiva', builder: 'maestria' },
+        { nome: 'Antiga do antecedente', origem: 'Antecedente: X', tipo: 'passiva', builder: 'antecedente' },
+    ];
+    const nomes = camposDaCriacao(e, { caracteristicas: mantidas }).campos.caracteristicas.map((c) => c.nome);
+    for (const n of ['Do Haki', 'Do Treino', 'Da Maestria', 'Rock Star']) assert.ok(nomes.includes(n), n);
+    assert.equal(nomes.includes('Antiga do antecedente'), false);
+    assert.equal(nomes.filter((n) => n === 'Rock Star').length, 1);
+});
+
+test('antecedente: uma criação salva sem o campo cai no padrão e pede a nova etapa', () => {
+    const antiga = { ...escolhasIniciais(), ...{ especies: ['humano'], variantes: ['comum'] } };
+    delete antiga.antecedente;
+    const e = { ...escolhasIniciais(), ...antiga }; // como o assistente retoma: padrão primeiro, salvo por cima
+    assert.equal(e.antecedente.id, '');
+    assert.ok(problemasDaEtapa(e, 'antecedente').length > 0);
+    assert.equal(antecedentePorId(''), undefined);
 });

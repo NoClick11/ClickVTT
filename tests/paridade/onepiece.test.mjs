@@ -34,7 +34,7 @@ test('atributos e perícias do One Piece', () => {
         ATRIBUTOS.map((a) => a.id),
         ['for', 'des', 'con', 'sab', 'pre', 'von'],
     );
-    assert.equal(PERICIAS.length, 19);
+    assert.equal(PERICIAS.length, 20);
     assert.equal(PERICIAS.find((p) => p.id === 'haki').atributo, 'von');
     assert.equal(PERICIAS.find((p) => p.id === 'provocacao').atributo, 'pre');
 });
