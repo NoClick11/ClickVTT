@@ -1,0 +1,536 @@
+{
+  "espacosIniciais": 5,
+  "niveis": [
+    {
+      "id": "suave",
+      "nome": "Suave",
+      "espacos": 1
+    },
+    {
+      "id": "media",
+      "nome": "Média",
+      "espacos": 3
+    },
+    {
+      "id": "forte",
+      "nome": "Forte",
+      "espacos": 4
+    }
+  ],
+  "itens": [
+    {
+      "id": "amante",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "ambiente-familiar",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": {
+        "opcoes": null
+      }
+    },
+    {
+      "id": "armadura-de-musculos",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "beleza-natural",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "bom-senso",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "chefe",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "corpo-fechado",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "corpo-vigoroso",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "determinacao",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "disciplinado",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "equilibrio-perfeito",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "forasteiro",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": {
+        "opcoes": [
+          "planta-mae",
+          "dials",
+          "clima-tact"
+        ]
+      }
+    },
+    {
+      "id": "indomavel",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "instintos-animais",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "integrante-fantasma",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "ma-fama",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "metabolismo-anormal",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "rotina-tranquila",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "sono-seguro",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "tesouro-precioso",
+      "tipo": "singularidade",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": {
+        "opcoes": null
+      }
+    },
+    {
+      "id": "alter-ego-heroico",
+      "tipo": "singularidade",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "aparencia-inofensiva",
+      "tipo": "singularidade",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "ator",
+      "tipo": "singularidade",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "aura-assassina",
+      "tipo": "singularidade",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "estudioso",
+      "tipo": "singularidade",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": {
+        "opcoes": [
+          "historia",
+          "investigacao",
+          "medicina",
+          "natureza",
+          "sobrevivencia"
+        ]
+      }
+    },
+    {
+      "id": "fisico-perfeito",
+      "tipo": "singularidade",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "negativo",
+      "tipo": "singularidade",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "vocacao",
+      "tipo": "singularidade",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": {
+        "opcoes": null
+      }
+    },
+    {
+      "id": "ambicao-do-rei",
+      "tipo": "singularidade",
+      "nivel": "forte",
+      "aprovacaoDoMestre": true,
+      "escolha": null
+    },
+    {
+      "id": "grande-planejador",
+      "tipo": "singularidade",
+      "nivel": "forte",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "haki-observacao-inato",
+      "tipo": "singularidade",
+      "nivel": "forte",
+      "aprovacaoDoMestre": true,
+      "escolha": null
+    },
+    {
+      "id": "pau-para-toda-obra",
+      "tipo": "singularidade",
+      "nivel": "forte",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "recuperacao-espantosa",
+      "tipo": "singularidade",
+      "nivel": "forte",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "voz-de-todas-as-coisas",
+      "tipo": "singularidade",
+      "nivel": "forte",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "zona",
+      "tipo": "singularidade",
+      "nivel": "forte",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "casamento-marcado",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "chantagem",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "churriado",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "dupla-personalidade",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "falta-de-higiene",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "falta-de-sorte",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "hipocondriaco",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "medroso",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "monstruoso",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "mudo",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "narcisista",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "orgulho-cego",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "rosto-debochado",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "sedutor-incorrigivel",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "senso-de-direcao-ruim",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "sinceridade-excessiva",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "vicio",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": {
+        "opcoes": null
+      }
+    },
+    {
+      "id": "voz-fina",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "teimoso",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "trapalhao",
+      "tipo": "defeito",
+      "nivel": "suave",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "coracao-mole",
+      "tipo": "defeito",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "dependente",
+      "tipo": "defeito",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "divida-de-jogo",
+      "tipo": "defeito",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "ferida-fantasma",
+      "tipo": "defeito",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "ganancioso",
+      "tipo": "defeito",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "linhagem-demoniaca",
+      "tipo": "defeito",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "paranoico",
+      "tipo": "defeito",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "preguicoso",
+      "tipo": "defeito",
+      "nivel": "media",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "consumidor-compulsivo",
+      "tipo": "defeito",
+      "nivel": "forte",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "doenca-terminal",
+      "tipo": "defeito",
+      "nivel": "forte",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "ignorante",
+      "tipo": "defeito",
+      "nivel": "forte",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "mediocre",
+      "tipo": "defeito",
+      "nivel": "forte",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "pacifista",
+      "tipo": "defeito",
+      "nivel": "forte",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "sonolencia",
+      "tipo": "defeito",
+      "nivel": "forte",
+      "aprovacaoDoMestre": false,
+      "escolha": null
+    },
+    {
+      "id": "trauma-profundo",
+      "tipo": "defeito",
+      "nivel": "forte",
+      "aprovacaoDoMestre": false,
+      "escolha": {
+        "opcoes": null
+      }
+    }
+  ]
+}
