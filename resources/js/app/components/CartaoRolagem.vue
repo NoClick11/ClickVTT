@@ -10,7 +10,11 @@ import DadoIcone from './DadoIcone.vue';
  * Crítico e falha mudam a cor do card inteiro.
  */
 const props = defineProps<{ mensagem: Mensagem; podeAgir: boolean; alvoNome?: string | null; aplicado?: boolean }>();
-const emit = defineEmits<{ acao: [mensagem: Mensagem, acao: AcaoDaRolagem]; aplicarDano: [mensagem: Mensagem] }>();
+const emit = defineEmits<{
+    acao: [mensagem: Mensagem, acao: AcaoDaRolagem];
+    aplicarDano: [mensagem: Mensagem];
+    pedirSalvaguarda: [mensagem: Mensagem];
+}>();
 
 const dados = computed(() => props.mensagem.dados!);
 const titulo = computed(() => dados.value.rotulo ?? 'Rolagem');
@@ -28,6 +32,14 @@ const acoes = computed(() =>
 const sinal = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 /** Rolagem de dano e quem pode agir: oferece "Aplicar" ao alvo mirado (o tipo, se houver, aparece no botão). */
 const dano = computed(() => (props.podeAgir ? (dados.value.sistema?.dano ?? null) : null));
+/** Ataque de uma Técnica que acertou (ou sem alvo mirado): a Salvaguarda do efeito pode ser pedida ao atingido. */
+const secundaria = computed(() => {
+    const t = dados.value.sistema?.tecnica;
+    if (!props.podeAgir || !t?.secundaria || dados.value.sistema?.destaque === 'falha') return null;
+    const r = resolucao.value;
+
+    return !r || (r.estado === 'resolvido' && r.acerto) ? t.secundaria : null;
+});
 const marca = computed(() => (dados.value.sistema?.destaque === 'falha' ? 'Falha crítica' : 'Crítico!'));
 
 /** Faixa da lateral: a cor do resultado, ou a de quem rolou. */
@@ -139,6 +151,20 @@ const estiloBotao = (a: AcaoDaRolagem, indice: number) =>
                     <span class="flex-1">{{ aplicado ? 'Dano aplicado' : alvoNome ? `Aplicar a ${alvoNome}` : 'Mire um alvo para aplicar' }}</span>
                     <span v-if="dano.tipo" class="rounded bg-preto-950/60 px-1.5 text-[10px] uppercase">{{ dano.tipo }}</span>
                     <span class="font-mono text-[11px] opacity-80">{{ dados.total }}</span>
+                </button>
+            </div>
+
+            <div v-if="secundaria" class="mt-3 border-t border-preto-700/60 pt-2.5">
+                <button
+                    type="button"
+                    class="flex w-full items-center gap-2 rounded-md border border-orange-400/60 bg-orange-500/10 px-2.5 py-1.5 text-left text-xs transition hover:bg-orange-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                    :title="`O alvo rola a Salvaguarda de ${secundaria.atributo.toUpperCase()}: se falhar, ${secundaria.efeito}`"
+                    @click="emit('pedirSalvaguarda', mensagem)"
+                >
+                    <span class="flex-1 font-semibold text-orange-100"
+                        >Pedir Salvaguarda de {{ secundaria.atributo.toUpperCase() }}{{ secundaria.desvantagem ? ' (desvantagem)' : '' }}</span
+                    >
+                    <span class="max-w-40 truncate text-[11px] text-orange-200/80">{{ secundaria.efeito }}</span>
                 </button>
             </div>
 

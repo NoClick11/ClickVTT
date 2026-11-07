@@ -38,6 +38,7 @@ import {
     type TipoParede,
 } from '../engine/tipos';
 import { avaliarAcao, type CategoriaAcao } from '../nucleo/combate/acoes';
+import type { AreaDeEfeito } from '../nucleo/combate/area';
 import { emCurso, itemAtual, normalizar as normalizarCombate, podeAgirAgora, rodadaParaFicha, semIniciativaDe } from '../nucleo/combate/estado';
 import { totalDoTurno } from '../nucleo/combate/movimento';
 import { comResumo, semOfertasDe, type OfertaDeReacao, type ResumoEvento } from '../nucleo/combate/reacoes';
@@ -52,6 +53,7 @@ import { moduloDoSistema } from '../nucleo/sistemas/registro';
 import type { AbrirEditorItem } from '../nucleo/sistemas/tipos';
 import JanelaFlutuante from '../nucleo/ui/JanelaFlutuante.vue';
 import { conectar, type Conexao } from '../realtime';
+import type { UsoDeSalvaguarda } from '../sistemas/onepiece/contexto';
 import type { AcaoCaracteristica } from '../sistemas/onepiece/regras';
 import type {
     Combate,
@@ -747,14 +749,101 @@ type RolagemDaFicha = [
     dano?: { tipo: string | null; fator?: number },
     acao?: { categoria: string; tecnica?: boolean },
     alvoPersonagemId?: number | null,
+    tecnica?: { nome: string; dano?: { expressao: string; tipo: string | null } | null; secundaria?: object | null },
 ];
 
 /** Rolagem vinda da ficha: as `@variáveis` são resolvidas no servidor pela ficha salva do personagem. */
-async function rolarDaFicha(personagemId: number, ...[expressao, rotulo, aoRolar, dano, acao, alvoPersonagemId]: RolagemDaFicha) {
+async function rolarDaFicha(personagemId: number, ...[expressao, rotulo, aoRolar, dano, acao, alvoPersonagemId, tecnica]: RolagemDaFicha) {
     try {
-        const m = await api.rolar(expressao, 'todos', personagemId, rotulo, dano, acao, alvoPersonagemId);
+        const m = await api.rolar(expressao, 'todos', personagemId, rotulo, dano, acao, alvoPersonagemId, tecnica);
         aoNovaMensagem(m);
         if (m.dados) aoRolar?.(m.dados.total);
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+
+// --- Técnicas: gabarito de área e Salvaguarda coletiva ---------------------------------------------------------------------
+// Técnica de Salvaguarda: a área aparece no mapa a partir do token de quem usa; quem estiver dentro é alvo. O clique confirma, Esc cancela.
+const gabarito = ref<{ area: AreaDeEfeito; origem: number } | null>(null);
+let resolverGabarito: ((ids: number[] | null) => void) | null = null;
+function aoGabarito(ids: number[] | null) {
+    gabarito.value = null;
+    resolverGabarito?.(ids);
+    resolverGabarito = null;
+}
+const escolherNaArea = (area: AreaDeEfeito, origem: number) =>
+    new Promise<number[] | null>((resolver) => {
+        resolverGabarito?.(null);
+        resolverGabarito = resolver;
+        gabarito.value = { area, origem };
+    });
+
+async function salvaguardaDaFicha(personagemId: number, uso: UsoDeSalvaguarda) {
+    try {
+        let alvos: number[] | null;
+        const token = objetos.value.find((o) => o.tipo === 'token' && o.personagem_id === personagemId);
+        if (uso.area && token) {
+            avisar('Mire a área no mapa: clique para confirmar, Esc cancela.');
+            alvos = await escolherNaArea(uso.area, token.id);
+            if (alvos === null) return;
+            if (!alvos.length) return avisar('Nenhuma criatura na área.');
+        } else {
+            // Sem forma (ou sem o token no mapa): vale o alvo mirado
+            if (!alvoPersonagem.value) return avisar(uso.area ? 'Coloque o seu token no mapa para marcar a área, ou mire um alvo.' : 'Mire um alvo.');
+            alvos = [alvoPersonagem.value.id];
+        }
+        if (!(await uso.pagar())) return;
+        aoNovaMensagem(
+            await api.abrirSalvaguarda({
+                personagem_id: personagemId,
+                nome: uso.nome,
+                atributo: uso.atributo,
+                desvantagem: uso.desvantagem,
+                ao_passar: uso.aoPassar,
+                alvos,
+                dano: uso.dano,
+                ...(uso.secundaria ? { secundaria: uso.secundaria } : {}),
+            }),
+        );
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+
+/** Salvaguardas em andamento (`mensagem:personagem`): o botão do card fica desligado até a resposta. */
+const salvaguardasRolando = ref<string[]>([]);
+async function rolarSalvaguarda(mensagem: Mensagem, personagemId: number) {
+    const chave = `${mensagem.id}:${personagemId}`;
+    if (salvaguardasRolando.value.includes(chave)) return;
+    salvaguardasRolando.value = [...salvaguardasRolando.value, chave];
+    try {
+        aoNovaMensagem(await api.rolarSalvaguarda(mensagem.id, personagemId), true);
+    } catch (e) {
+        avisar(mensagemDe(e));
+    } finally {
+        salvaguardasRolando.value = salvaguardasRolando.value.filter((c) => c !== chave);
+    }
+}
+/** Ataque de Técnica que acertou: pede ao atingido a Salvaguarda do efeito (Sangramento, Atordoado...). */
+async function pedirSalvaguardaDoEfeito(mensagem: Mensagem) {
+    const t = mensagem.dados?.sistema?.tecnica;
+    const alvo = mensagem.dados?.sistema?.resolucao?.alvo_id ?? alvoPersonagem.value?.id;
+    const personagemId = mensagem.autor?.personagem_id;
+    if (!t?.secundaria || !personagemId) return;
+    if (!alvo) return avisar('Mire o alvo atingido para pedir a Salvaguarda.');
+    try {
+        aoNovaMensagem(
+            await api.abrirSalvaguarda({
+                personagem_id: personagemId,
+                nome: `${t.nome}: efeito`,
+                atributo: t.secundaria.atributo,
+                desvantagem: !!t.secundaria.desvantagem,
+                ao_passar: 'nada',
+                alvos: [alvo],
+                efeito: t.secundaria.efeito,
+            }),
+        );
     } catch (e) {
         avisar(mensagemDe(e));
     }
@@ -1181,6 +1270,7 @@ function alternarPorta(id: number) {
                     :objetos="objetosDaCena"
                     :alvo-id="alvoObjetoId"
                     :movimento="movimentoDaCena"
+                    :gabarito="gabarito"
                     :camada="camada"
                     :ferramenta="ferramenta"
                     :mestre="mestre"
@@ -1193,6 +1283,7 @@ function alternarPorta(id: number) {
                     @selecionar="selecionadoId = $event"
                     @selecao="selecionadosIds = $event"
                     @mirar="alvoObjetoId = $event"
+                    @gabarito="aoGabarito"
                     @alterar="aoAlterar"
                     @zoom="escala = $event"
                     @criar-luz="criarLuz"
@@ -1299,6 +1390,10 @@ function alternarPorta(id: number) {
                             @enviar="enviarTexto"
                             :alvo-nome="alvoPersonagem?.nome ?? null"
                             :aplicados="aplicadosAoAlvo"
+                            :meus-personagens="meusPersonagens"
+                            :ocupados="salvaguardasRolando"
+                            @rolar-salvaguarda="rolarSalvaguarda"
+                            @pedir-salvaguarda="pedirSalvaguardaDoEfeito"
                             @acao="rolarAcaoDoChat"
                             @aplicar-dano="aplicarDanoDoChat"
                         />
@@ -1398,6 +1493,7 @@ function alternarPorta(id: number) {
                 @acao="(a: AcaoCaracteristica) => executarAcao(f.id, a)"
                 @salvar="(campos: Record<string, unknown>) => salvarFicha(f.id, campos)"
                 @rolar="(...a: RolagemDaFicha) => rolarDaFicha(f.id, ...a)"
+                @salvaguarda="(uso: UsoDeSalvaguarda) => salvaguardaDaFicha(f.id, uso)"
             />
             <FichaPrivada v-else :personagem="f.personagem!" />
         </JanelaFlutuante>

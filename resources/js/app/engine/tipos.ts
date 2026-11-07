@@ -88,4 +88,6 @@ export interface CenaEventos {
     menuObjeto: (id: number, tela: { x: number; y: number }) => void;
     /** Ferramenta Mirar (ou tecla T + clique): o token de personagem clicado vira o alvo (`null` = limpar o alvo). */
     mirar: (id: number | null) => void;
+    /** O gabarito de área foi confirmado (ids dos personagens dentro dele) ou cancelado (`null`). */
+    gabarito: (personagemIds: number[] | null) => void;
 }

@@ -11,16 +11,25 @@ const props = defineProps<{ open: boolean; pagina: PaginaDto | null; erro?: stri
 const emit = defineEmits<{ 'update:open': [boolean]; salvar: [id: number, campos: Partial<PaginaDto>] }>();
 
 const f = ref({ nome: '', colunas: 25, linhas: 25, tamanho_quadrado: 70, grade_quadrada: true, distancia_quadrado: 1.5, unidade: 'm' });
-const campo = 'flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
+const campo =
+    'flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 
-watch(() => [props.open, props.pagina] as const, ([aberto, p]) => {
-    if (aberto && p) {
-        f.value = {
-            nome: p.nome, colunas: p.colunas, linhas: p.linhas, tamanho_quadrado: p.tamanho_quadrado,
-            grade_quadrada: p.grade_quadrada, distancia_quadrado: p.distancia_quadrado, unidade: p.unidade,
-        };
-    }
-});
+watch(
+    () => [props.open, props.pagina] as const,
+    ([aberto, p]) => {
+        if (aberto && p) {
+            f.value = {
+                nome: p.nome,
+                colunas: p.colunas,
+                linhas: p.linhas,
+                tamanho_quadrado: p.tamanho_quadrado,
+                grade_quadrada: p.grade_quadrada,
+                distancia_quadrado: p.distancia_quadrado,
+                unidade: p.unidade,
+            };
+        }
+    },
+);
 
 const resumo = computed(() => {
     const total = Math.round(f.value.colunas * f.value.distancia_quadrado * 100) / 100;
@@ -52,14 +61,24 @@ function salvar() {
                     <input v-model="f.grade_quadrada" type="checkbox" class="mt-0.5 size-4 accent-ouro-500" />
                     <span>
                         <span class="block text-sm font-medium">Modo quadrado</span>
-                        <span class="text-xs text-muted-foreground">Mostra a grade e prende objetos aos quadrados. Desligado, o posicionamento é livre.</span>
+                        <span class="text-xs text-muted-foreground"
+                            >Mostra a grade e prende objetos aos quadrados. Desligado, o posicionamento é livre.</span
+                        >
                     </span>
                 </label>
                 <div class="grid grid-cols-3 gap-3">
-                    <Campo label="Pixels / quadrado" for="p-px"><Input id="p-px" v-model.number="f.tamanho_quadrado" type="number" min="10" max="400" /></Campo>
-                    <Campo label="Distância / quadrado" for="p-dist"><Input id="p-dist" v-model.number="f.distancia_quadrado" type="number" min="0.1" step="0.1" /></Campo>
+                    <Campo label="Pixels / quadrado" for="p-px"
+                        ><Input id="p-px" v-model.number="f.tamanho_quadrado" type="number" min="10" max="400"
+                    /></Campo>
+                    <Campo label="Distância / quadrado" for="p-dist"
+                        ><Input id="p-dist" v-model.number="f.distancia_quadrado" type="number" min="0.1" step="0.1"
+                    /></Campo>
                     <Campo label="Unidade" for="p-un">
-                        <select id="p-un" v-model="f.unidade" :class="campo"><option value="m">metros</option><option value="ft">pés</option><option value="km">km</option></select>
+                        <select id="p-un" v-model="f.unidade" :class="campo">
+                            <option value="m">metros</option>
+                            <option value="ft">pés</option>
+                            <option value="km">km</option>
+                        </select>
                     </Campo>
                 </div>
                 <InputError :message="erro" />

@@ -1,5 +1,6 @@
 import { Application, Container, Graphics, Text } from 'pixi.js';
-import { limitar as limitarPasso, metros as metrosDe } from '../nucleo/combate/movimento';
+import { areaMedida, LARGURA_DA_LINHA, MEIO_ANGULO_DO_CONE, tokensNaArea, type AreaDeEfeito } from '../nucleo/combate/area';
+import { fatorParaMetros, limitar as limitarPasso, metros as metrosDe } from '../nucleo/combate/movimento';
 import { ObjetoVisual } from './ObjetoVisual';
 import {
     CAMADAS,
@@ -43,6 +44,7 @@ export class Cena {
     private overlay = new Container();
     private selecaoG = new Graphics();
     private reguaG = new Graphics();
+    private gabaritoG = new Graphics();
     private desenhoG = new Graphics();
     private reguaTexto = new Text({
         text: '',
@@ -66,6 +68,8 @@ export class Cena {
     private alvoId: number | null = null;
     /** Deslocamento do turno do token que se move agora (metros): a régua do arrasto mostra o gasto e, para o jogador, trava. */
     private movimento: { objetoId: number; usado: number; total: number; limitar: boolean } | null = null;
+    /** Gabarito de área em uso (Técnica de área): a forma segue o cursor a partir do token de quem usa; um clique confirma. */
+    private gabarito: { area: AreaDeEfeito; origem: number } | null = null;
     /** Tecla T apertada: o próximo clique em um token o mira (qualquer ferramenta). */
     private teclaMirar = false;
 
@@ -116,7 +120,7 @@ export class Cena {
             this.mundo.addChild(c);
             if (id === 'mapa') this.mundo.addChild(this.grade);
         }
-        this.overlay.addChild(this.selecaoG, this.reguaG, this.desenhoG, this.reguaTexto);
+        this.overlay.addChild(this.selecaoG, this.reguaG, this.gabaritoG, this.desenhoG, this.reguaTexto);
         this.reguaTexto.visible = false;
         this.mundo.addChild(this.overlay);
 
@@ -191,6 +195,87 @@ export class Cena {
         for (const v of this.visuais.values()) v.definirAlvo(v.dto.id === id);
     }
 
+    /** Liga o gabarito de área a partir do token `origem` (id do objeto), ou o desliga (`null`). */
+    setGabarito(g: { area: AreaDeEfeito; origem: number } | null): void {
+        this.gabarito = g;
+        this.gabaritoG.clear();
+        this.reguaTexto.visible = false;
+        for (const v of this.visuais.values()) v.definirAlvo(v.dto.id === this.alvoId);
+        this.atualizarCursor();
+    }
+
+    private metrosPorPixel(): number {
+        const p = this.pagina;
+
+        return ((p?.distancia_quadrado ?? 1.5) * fatorParaMetros(p?.unidade)) / Math.max(1, p?.tamanho_quadrado ?? 70);
+    }
+
+    private origemDoGabarito(): { x: number; y: number } | null {
+        const o = this.visuais.get(this.gabarito?.origem ?? -1)?.dto;
+
+        return o ? { x: o.x + o.largura / 2, y: o.y + o.altura / 2 } : null;
+    }
+
+    /** Os tokens de personagem que a área atinge com o cursor onde está (e a medida da forma). */
+    private alcancadosPeloGabarito(cursor: { x: number; y: number }) {
+        const origem = this.origemDoGabarito();
+        if (!origem || !this.gabarito) return null;
+        const mpp = this.metrosPorPixel();
+        const medida = areaMedida(this.gabarito.area, origem, cursor, mpp);
+        const tokens = [...this.visuais.values()]
+            .filter((v) => v.dto.tipo === 'token' && v.dto.personagem_id !== null && v.dto.id !== this.gabarito!.origem)
+            .map((v) => ({
+                id: v.dto.id,
+                x: v.dto.x + v.dto.largura / 2,
+                y: v.dto.y + v.dto.altura / 2,
+                raio: Math.min(v.dto.largura, v.dto.altura) / 2,
+            }));
+
+        return { origem, medida, mpp, ids: tokensNaArea(medida, origem, tokens, mpp, this.gabarito.origem) };
+    }
+
+    private desenharGabarito(cursor: { x: number; y: number }): void {
+        const r = this.alcancadosPeloGabarito(cursor);
+        const g = this.gabaritoG.clear();
+        if (!r) return;
+        const { origem, medida, mpp, ids } = r;
+        const comprimento = medida.metros / mpp;
+        const estilo = { color: 0xfb923c, width: 2, alpha: 0.95, pixelLine: true };
+        if (medida.forma === 'esfera') {
+            g.circle(origem.x, origem.y, comprimento).fill({ color: 0xfb923c, alpha: 0.22 }).stroke(estilo);
+        } else if (medida.forma === 'cone') {
+            g.moveTo(origem.x, origem.y)
+                .arc(origem.x, origem.y, comprimento, medida.angulo - MEIO_ANGULO_DO_CONE, medida.angulo + MEIO_ANGULO_DO_CONE)
+                .closePath()
+                .fill({ color: 0xfb923c, alpha: 0.22 })
+                .stroke(estilo);
+        } else {
+            const meia = LARGURA_DA_LINHA / mpp / 2;
+            const c = Math.cos(medida.angulo);
+            const sn = Math.sin(medida.angulo);
+            const pontos = [
+                [origem.x - sn * meia, origem.y + c * meia],
+                [origem.x + c * comprimento - sn * meia, origem.y + sn * comprimento + c * meia],
+                [origem.x + c * comprimento + sn * meia, origem.y + sn * comprimento - c * meia],
+                [origem.x + sn * meia, origem.y - c * meia],
+            ].flat();
+            g.poly(pontos).fill({ color: 0xfb923c, alpha: 0.22 }).stroke(estilo);
+        }
+        const dentro = new Set(ids);
+        for (const v of this.visuais.values()) v.definirAlvo(dentro.has(v.dto.id) || v.dto.id === this.alvoId);
+        this.reguaTexto.text = `${formatar(medida.metros)} m · ${ids.length} alvo${ids.length === 1 ? '' : 's'}`;
+        this.reguaTexto.scale.set(1 / this.mundo.scale.x);
+        this.reguaTexto.position.set(cursor.x + 12 / this.mundo.scale.x, cursor.y - 24 / this.mundo.scale.x);
+        this.reguaTexto.visible = true;
+    }
+
+    private confirmarGabarito(cursor: { x: number; y: number }): void {
+        const r = this.alcancadosPeloGabarito(cursor);
+        if (!r) return;
+        const ids = r.ids.map((id) => this.visuais.get(id)?.dto.personagem_id).filter((x): x is number => typeof x === 'number');
+        this.opcoes.eventos.gabarito(ids);
+    }
+
     setPersonagensPermitidos(ids: number[]): void {
         this.opcoes.personagensPermitidos = ids;
     }
@@ -252,7 +337,14 @@ export class Cena {
                 // parede: o segmento (pelo menos uma das pontas dentro, ou a caixa cruza)
                 if (v.dto.tipo === 'parede' && pts?.length === 4) {
                     const dentro = (px: number, py: number) => px >= x0 && px <= x1 && py >= y0 && py <= y1;
-                    return dentro(pts[0], pts[1]) || dentro(pts[2], pts[3]) || (Math.min(pts[0], pts[2]) <= x1 && Math.max(pts[0], pts[2]) >= x0 && Math.min(pts[1], pts[3]) <= y1 && Math.max(pts[1], pts[3]) >= y0);
+                    return (
+                        dentro(pts[0], pts[1]) ||
+                        dentro(pts[2], pts[3]) ||
+                        (Math.min(pts[0], pts[2]) <= x1 &&
+                            Math.max(pts[0], pts[2]) >= x0 &&
+                            Math.min(pts[1], pts[3]) <= y1 &&
+                            Math.max(pts[1], pts[3]) >= y0)
+                    );
                 }
 
                 return c.x <= x1 && c.x + c.largura >= x0 && c.y <= y1 && c.y + c.altura >= y0;
@@ -411,7 +503,9 @@ export class Cena {
                     continue;
                 }
                 const c = o.caixa();
-                g.rect(c.x, c.y, c.largura, c.altura).fill({ color: 0xd4a843, alpha: 0.08 }).stroke({ color: 0xd4a843, width: 1.5, alpha: 0.95, pixelLine: true });
+                g.rect(c.x, c.y, c.largura, c.altura)
+                    .fill({ color: 0xd4a843, alpha: 0.08 })
+                    .stroke({ color: 0xd4a843, width: 1.5, alpha: 0.95, pixelLine: true });
             }
 
             return;
@@ -589,6 +683,7 @@ export class Cena {
                 this.atualizarCursor();
             }
             if (e.key === 'Escape') {
+                if (this.gabarito) this.opcoes.eventos.gabarito(null);
                 this.limparRegua();
                 this.selecionar(null);
             }
@@ -623,6 +718,10 @@ export class Cena {
             return;
         }
         if (e.button !== 0) return;
+        if (this.gabarito) {
+            this.confirmarGabarito(p);
+            return;
+        }
 
         if (this.ferramenta === 'regua') {
             this.modo = 'regua';
@@ -708,6 +807,10 @@ export class Cena {
     private aoMover(e: PointerEvent): void {
         const tela = this.posTela(e);
         const p = this.paraMundo(tela.x, tela.y);
+        if (this.gabarito && this.modo !== 'pan') {
+            this.desenharGabarito(p);
+            return;
+        }
 
         if (this.modo === 'pan') {
             this.mundo.position.set(this.mundo.x + (tela.x - this.inicioTela.x), this.mundo.y + (tela.y - this.inicioTela.y));
@@ -819,7 +922,15 @@ export class Cena {
     }
 
     /** Régua do arrasto do token do turno: linha do ponto de partida até o token, com o gasto do turno. */
-    private desenharMovimento(v: ObjetoVisual, ini: { x: number; y: number }, fim: { x: number; y: number }, usado: number, total: number, travou: boolean, livre: boolean): void {
+    private desenharMovimento(
+        v: ObjetoVisual,
+        ini: { x: number; y: number },
+        fim: { x: number; y: number },
+        usado: number,
+        total: number,
+        travou: boolean,
+        livre: boolean,
+    ): void {
         const pagina = this.pagina!;
         const { largura, altura } = v.dto;
         const a = { x: ini.x + largura / 2, y: ini.y + altura / 2 };
@@ -831,8 +942,13 @@ export class Cena {
         const corte = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
         const g = this.reguaG.clear();
         const esgotado = travou || restante <= 0.0001;
-        g.moveTo(a.x, a.y).lineTo(corte.x, corte.y).stroke({ color: esgotado ? 0xef4444 : 0x4ade80, width: 4 / this.mundo.scale.x, alpha: 0.95, cap: 'round' });
-        if (t < 1) g.moveTo(corte.x, corte.y).lineTo(b.x, b.y).stroke({ color: 0xef4444, width: 4 / this.mundo.scale.x, alpha: 0.95, cap: 'round' });
+        g.moveTo(a.x, a.y)
+            .lineTo(corte.x, corte.y)
+            .stroke({ color: esgotado ? 0xef4444 : 0x4ade80, width: 4 / this.mundo.scale.x, alpha: 0.95, cap: 'round' });
+        if (t < 1)
+            g.moveTo(corte.x, corte.y)
+                .lineTo(b.x, b.y)
+                .stroke({ color: 0xef4444, width: 4 / this.mundo.scale.x, alpha: 0.95, cap: 'round' });
         g.circle(a.x, a.y, 5 / this.mundo.scale.x).fill(0x4ade80);
         g.circle(b.x, b.y, 5 / this.mundo.scale.x).fill(esgotado || t < 1 ? 0xef4444 : 0x4ade80);
         this.reguaTexto.text = `${formatar(andou)} m · ${esgotado ? (travou ? 'deslocamento esgotado' : 'sem deslocamento') : `restam ${formatar(restante - andou)} m`}${livre && t < 1 ? ' (além do limite)' : ''}`;
@@ -969,13 +1085,14 @@ export class Cena {
     private atualizarCursor(forcado?: string): void {
         if (!this.pronto) return;
         const emPan = this.espaco || this.ferramenta === 'mover';
-        const padrao = this.teclaMirar || ['mirar', 'regua', 'luz', 'parede', 'porta', 'janela', 'pintar'].includes(this.ferramenta)
-            ? 'crosshair'
-            : this.ferramenta === 'texto'
-              ? 'text'
-              : emPan
-                ? 'grab'
-                : 'default';
+        const padrao =
+            this.teclaMirar || this.gabarito || ['mirar', 'regua', 'luz', 'parede', 'porta', 'janela', 'pintar'].includes(this.ferramenta)
+                ? 'crosshair'
+                : this.ferramenta === 'texto'
+                  ? 'text'
+                  : emPan
+                    ? 'grab'
+                    : 'default';
         this.app.canvas.style.cursor = forcado ?? padrao;
     }
 }

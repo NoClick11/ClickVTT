@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Cena } from '../engine/Cena';
 import type { Camada, CamposGeometria, EstiloPintura, Ferramenta, ObjetoDto, PaginaDto, TipoParede } from '../engine/tipos';
+import type { AreaDeEfeito } from '../nucleo/combate/area';
 
 const props = defineProps<{
     pagina: PaginaDto;
@@ -17,6 +18,8 @@ const props = defineProps<{
     alvoId?: number | null;
     /** Deslocamento do turno do token que se move (metros), com a régua do arrasto; null = sem limite medido. */
     movimento?: { objetoId: number; usado: number; total: number; limitar: boolean } | null;
+    /** Gabarito de área da Técnica em uso: a forma, o tamanho e o token (id do objeto) de onde parte; null = sem gabarito. */
+    gabarito?: { area: AreaDeEfeito; origem: number } | null;
 }>();
 
 const emit = defineEmits<{
@@ -31,6 +34,7 @@ const emit = defineEmits<{
     alternarPorta: [id: number];
     menuObjeto: [id: number, tela: { x: number; y: number }];
     mirar: [id: number | null];
+    gabarito: [personagemIds: number[] | null];
 }>();
 
 const host = ref<HTMLDivElement | null>(null);
@@ -54,6 +58,7 @@ onMounted(async () => {
             alternarPorta: (id) => emit('alternarPorta', id),
             menuObjeto: (id, tela) => emit('menuObjeto', id, tela),
             mirar: (id) => emit('mirar', id),
+            gabarito: (ids) => emit('gabarito', ids),
         },
     });
     await nova.iniciar(host.value!);
@@ -70,6 +75,7 @@ onMounted(async () => {
     nova.setObjetos(props.objetos);
     nova.setAlvo(props.alvoId ?? null);
     nova.setMovimento(props.movimento ?? null);
+    nova.setGabarito(props.gabarito ?? null);
 });
 
 onBeforeUnmount(() => {
@@ -92,6 +98,10 @@ watch(
     () => props.movimento,
     (m) => cena?.setMovimento(m ?? null),
     { deep: true },
+);
+watch(
+    () => props.gabarito,
+    (g) => cena?.setGabarito(g ?? null),
 );
 watch(
     () => props.alvoId,

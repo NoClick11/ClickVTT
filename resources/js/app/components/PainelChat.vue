@@ -5,9 +5,27 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import type { AcaoDaRolagem } from '../nucleo/rolagem';
 import type { Mensagem } from '../tipos-mesa';
 import CartaoRolagem from './CartaoRolagem.vue';
+import CartaoTecnica from './CartaoTecnica.vue';
 
-const props = defineProps<{ mensagens: Mensagem[]; meuId: number; visivel: boolean; mestre: boolean; alvoNome?: string | null; aplicados?: string[] }>();
-const emit = defineEmits<{ enviar: [texto: string]; acao: [mensagem: Mensagem, acao: AcaoDaRolagem]; aplicarDano: [mensagem: Mensagem] }>();
+const props = defineProps<{
+    mensagens: Mensagem[];
+    meuId: number;
+    visivel: boolean;
+    mestre: boolean;
+    alvoNome?: string | null;
+    aplicados?: string[];
+    /** Personagens que este jogador controla (rolam a própria Salvaguarda de uma Técnica). */
+    meusPersonagens?: number[];
+    /** Salvaguardas em andamento (`mensagem:personagem`), para desligar o botão. */
+    ocupados?: string[];
+}>();
+const emit = defineEmits<{
+    enviar: [texto: string];
+    acao: [mensagem: Mensagem, acao: AcaoDaRolagem];
+    aplicarDano: [mensagem: Mensagem];
+    rolarSalvaguarda: [mensagem: Mensagem, personagemId: number];
+    pedirSalvaguarda: [mensagem: Mensagem];
+}>();
 
 /** Os botões do card (ex.: Dano) são de quem rolou — e do mestre, que controla todos os personagens. */
 const podeAgir = (m: Mensagem) => m.autor?.personagem_id != null && (m.autor.id === props.meuId || props.mestre);
@@ -93,6 +111,14 @@ const hora = (m: Mensagem) => (m.criada_em ? new Date(m.criada_em).toLocaleTimeS
                 >
                     <p v-if="m.tipo === 'texto'" class="break-words text-preto-100">{{ m.texto }}</p>
                     <p v-else-if="m.visibilidade === 'secreto_oculto'" class="text-xs italic text-preto-300">🎲 {{ m.texto }}</p>
+                    <CartaoTecnica
+                        v-else-if="m.tipo === 'tecnica' && m.dados"
+                        :mensagem="m"
+                        :meus-personagens="meusPersonagens ?? []"
+                        :mestre="mestre"
+                        :ocupados="(ocupados ?? []).filter((o) => o.startsWith(`${m.id}:`)).map((o) => Number(o.split(':')[1]))"
+                        @rolar="(msg, id) => emit('rolarSalvaguarda', msg, id)"
+                    />
                     <CartaoRolagem
                         v-else-if="m.dados"
                         :mensagem="m"
@@ -101,6 +127,7 @@ const hora = (m: Mensagem) => (m.criada_em ? new Date(m.criada_em).toLocaleTimeS
                         :aplicado="(aplicados ?? []).includes(String(m.id))"
                         @acao="(msg, acao) => emit('acao', msg, acao)"
                         @aplicar-dano="(msg) => emit('aplicarDano', msg)"
+                        @pedir-salvaguarda="(msg) => emit('pedirSalvaguarda', msg)"
                     />
                 </div>
             </li>

@@ -63,7 +63,7 @@ final class Pipeline
         $ofertas = $this->ofertas($mesa, $sistema, $estado, $contexto);
 
         $evento = $mesa->eventosDeCombate()->create(['tipo' => 'ataque', 'estado' => 'aguardando', 'contexto' => $contexto, 'ofertas' => $ofertas, 'respostas' => []]);
-        $this->marcarMensagem($mesa, $acesso, $mensagem, ['estado' => 'aguardando', 'evento_id' => $evento->id, 'defesa' => $defesa, 'alvo' => $alvo->nome]);
+        $this->marcarMensagem($mesa, $acesso, $mensagem, ['estado' => 'aguardando', 'evento_id' => $evento->id, 'defesa' => $defesa, 'alvo' => $alvo->nome, 'alvo_id' => $alvo->id]);
 
         if ($ofertas === []) {
             return $this->resolver($mesa, $acesso, $evento);
@@ -226,7 +226,7 @@ final class Pipeline
         $r = $e->resultado;
         $mensagem = $mesa->mensagens()->find($c['mensagem_id']);
         if ($mensagem) {
-            $this->marcarMensagem($mesa, $acesso, $mensagem, ['estado' => 'resolvido', 'evento_id' => $e->id, 'alvo' => $c['alvo'], ...$r]);
+            $this->marcarMensagem($mesa, $acesso, $mensagem, ['estado' => 'resolvido', 'evento_id' => $e->id, 'alvo' => $c['alvo'], 'alvo_id' => $c['alvo_id'], ...$r]);
             $mods = $r['mods'] ? ' ('.implode(', ', array_map(fn ($m) => "{$m['fonte']} ".($m['valor'] >= 0 ? '+' : '').$m['valor'], $r['mods'])).')' : '';
             $texto = $r['acerto']
                 ? "{$c['atacante']} ".($r['critico'] ? 'acerta um golpe crítico em' : 'acerta')." {$c['alvo']}: {$c['total']} contra defesa {$r['defesa']}{$mods}."

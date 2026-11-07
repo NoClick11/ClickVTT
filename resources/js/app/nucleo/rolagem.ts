@@ -48,6 +48,7 @@ export interface Resolucao {
     estado: 'aguardando' | 'resolvido';
     evento_id: number;
     alvo?: string;
+    alvo_id?: number;
     defesa?: number;
     base?: number;
     acerto?: boolean;
@@ -69,6 +70,8 @@ export interface MarcasDoSistema {
     dano?: { tipo: string | null };
     /** Botões do card (ex.: Dano, Dano crítico). */
     acoes?: AcaoDaRolagem[];
+    /** Ataque de uma Técnica: o nome e a Salvaguarda do efeito (condição), que o card oferece pedir ao alvo atingido. */
+    tecnica?: { nome: string; secundaria?: { atributo: string; desvantagem?: boolean; efeito: string } };
     /** Expertise da arma no acerto crítico (efeitos para o jogador e o Narrador aplicarem). */
     expertise?: { id: string; texto: string }[];
 }
@@ -138,3 +141,34 @@ export function destaqueDaRolagem(d: DadosRolagem): 'critico' | 'falha' | null {
 
     return null;
 }
+
+/** O card da Salvaguarda coletiva de uma Técnica (mensagem `tipo: 'tecnica'`): cada alvo rola, o dano é aplicado quando todos rolaram. */
+export interface DadosDaTecnica {
+    rotulo: string;
+    estado: 'aguardando' | 'resolvido';
+    tecnica: {
+        nome: string;
+        atributo: string;
+        desvantagem: boolean;
+        cd: number;
+        aoPassar: 'metade' | 'nada';
+        dano: { expressao: string; tipo: string | null } | null;
+        efeito: string | null;
+        atacante_id: number | null;
+    };
+    alvos: {
+        personagem_id: number;
+        nome: string;
+        estado: 'pendente' | 'rolou';
+        total?: number;
+        termos?: TermoRolagem[];
+        passou?: boolean;
+        /** Dano antes das defesas do alvo e o que ele de fato recebeu (resistência, imunidade, escudo). */
+        base?: number;
+        final?: number;
+        modo?: string;
+    }[];
+    dano?: { total: number; expressao: string; tipo: string | null; termos: TermoRolagem[]; repeticoes?: number[]; escolhida?: number };
+}
+
+export const dadosDaTecnica = (m: { dados: unknown }): DadosDaTecnica => m.dados as DadosDaTecnica;

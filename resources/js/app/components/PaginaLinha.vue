@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import type { Jogador } from '@/site/types';
 import { ChevronDown, ChevronUp, Eye, MoreVertical, Pencil, Settings2, Trash2, Users } from 'lucide-vue-next';
@@ -68,15 +75,36 @@ function aoArrastarJogador(e: DragEvent, p: Jogador) {
         @drop.prevent="aoSoltar"
     >
         <div class="flex items-center gap-1 px-2 py-1.5">
-            <Input v-if="editando !== null" :id="`pg-edicao-${pagina.id}`" v-model="editando" class="h-7 flex-1 px-2 text-sm" @keydown.enter="confirmarEdicao" @keydown.esc="editando = null" @blur="confirmarEdicao" />
-            <button v-else type="button" class="flex-1 truncate text-left text-sm" :class="atual ? 'font-semibold text-ouro-200' : ''" @click="emit('abrir')" @dblclick="iniciarEdicao">
+            <Input
+                v-if="editando !== null"
+                :id="`pg-edicao-${pagina.id}`"
+                v-model="editando"
+                class="h-7 flex-1 px-2 text-sm"
+                @keydown.enter="confirmarEdicao"
+                @keydown.esc="editando = null"
+                @blur="confirmarEdicao"
+            />
+            <button
+                v-else
+                type="button"
+                class="flex-1 truncate text-left text-sm"
+                :class="atual ? 'font-semibold text-ouro-200' : ''"
+                @click="emit('abrir')"
+                @dblclick="iniciarEdicao"
+            >
                 {{ pagina.nome }}
                 <span class="ml-1 text-xs text-preto-400">{{ pagina.colunas }}×{{ pagina.linhas }}</span>
             </button>
-            <Button size="icon" variant="ghost" class="size-7" aria-label="Abrir página" title="Abrir (ver como mestre)" @click="emit('abrir')"><Eye class="size-3.5" /></Button>
-            <Button size="icon" variant="ghost" class="size-7" aria-label="Configurar página" title="Configurar" @click="emit('configurar')"><Settings2 class="size-3.5" /></Button>
+            <Button size="icon" variant="ghost" class="size-7" aria-label="Abrir página" title="Abrir (ver como mestre)" @click="emit('abrir')"
+                ><Eye class="size-3.5"
+            /></Button>
+            <Button size="icon" variant="ghost" class="size-7" aria-label="Configurar página" title="Configurar" @click="emit('configurar')"
+                ><Settings2 class="size-3.5"
+            /></Button>
             <DropdownMenu>
-                <DropdownMenuTrigger as-child><Button size="icon" variant="ghost" class="size-7" aria-label="Mais ações da página"><MoreVertical class="size-3.5" /></Button></DropdownMenuTrigger>
+                <DropdownMenuTrigger as-child
+                    ><Button size="icon" variant="ghost" class="size-7" aria-label="Mais ações da página"><MoreVertical class="size-3.5" /></Button
+                ></DropdownMenuTrigger>
                 <DropdownMenuContent align="end" class="w-52">
                     <DropdownMenuItem @click="iniciarEdicao"><Pencil class="mr-2 size-4" /> Renomear</DropdownMenuItem>
                     <DropdownMenuItem @click="emit('trazerTodos')"><Users class="mr-2 size-4" /> Levar todos os jogadores</DropdownMenuItem>
@@ -86,10 +114,17 @@ function aoArrastarJogador(e: DragEvent, p: Jogador) {
                         <DropdownMenuSeparator />
                         <DropdownMenuLabel class="text-xs">Mover para pasta</DropdownMenuLabel>
                         <DropdownMenuItem v-if="pagina.pasta_id" @click="emit('moverParaPasta', null)">Fora de pastas</DropdownMenuItem>
-                        <DropdownMenuItem v-for="p in pastas.filter((x) => x.id !== pagina.pasta_id)" :key="p.id" @click="emit('moverParaPasta', p.id)">{{ p.nome }}</DropdownMenuItem>
+                        <DropdownMenuItem
+                            v-for="p in pastas.filter((x) => x.id !== pagina.pasta_id)"
+                            :key="p.id"
+                            @click="emit('moverParaPasta', p.id)"
+                            >{{ p.nome }}</DropdownMenuItem
+                        >
                     </template>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem class="text-red-400 focus:text-red-300" :disabled="ultima" @click="pedirExclusao"><Trash2 class="mr-2 size-4" /> {{ confirmando ? 'Clique de novo para excluir' : 'Excluir' }}</DropdownMenuItem>
+                    <DropdownMenuItem class="text-red-400 focus:text-red-300" :disabled="ultima" @click="pedirExclusao"
+                        ><Trash2 class="mr-2 size-4" /> {{ confirmando ? 'Clique de novo para excluir' : 'Excluir' }}</DropdownMenuItem
+                    >
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>

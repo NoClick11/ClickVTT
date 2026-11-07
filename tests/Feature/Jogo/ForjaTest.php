@@ -50,6 +50,7 @@ class ForjaTest extends TestCase
         $f['atributos'] = ['for' => 30, 'des' => 30, 'con' => 10, 'sab' => 30, 'pre' => 10, 'von' => 10]; // o Teste (CD 16) passa sempre
         $f['profissoes'] = ['semProfissao' => false, 'livroLido' => false, 'usados' => [], 'lista' => [['id' => 'ferreiro', 'graduacao' => 0, 'nivel' => 1]]];
         $f['forja'] = ['idade' => 0, 'laminas' => 0, 'extras' => $pf, 'gastos' => 0];
+        $f['ajustes']['proficiencia'] = 4; // o Teste (CD 16, d20 + 10 + 6) passa sempre
         $f['inventario'] = [['secao' => 'Equipamento', 'itens' => [['item_id' => $lingote->id, 'qtd' => 3, 'equipado' => false, 'sintonizado' => false]]]];
         $c->ferr->ficha = $f;
         $c->ferr->save();

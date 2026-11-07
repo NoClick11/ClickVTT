@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { areaDoAlcance, areaMedida, tokensNaArea } from '../../resources/js/app/sistemas/onepiece/area.ts';
+import { areaMedida, tokensNaArea } from '../../resources/js/app/nucleo/combate/area.ts';
+import { areaDoAlcance } from '../../resources/js/app/sistemas/onepiece/area.ts';
 import { ESTILOS } from '../../resources/js/app/sistemas/onepiece/construtor/dados/estilos.ts';
 
 const T = (id, x, y) => ({ id, x, y, raio: 0 }); // 1 px = 1 m nestes testes

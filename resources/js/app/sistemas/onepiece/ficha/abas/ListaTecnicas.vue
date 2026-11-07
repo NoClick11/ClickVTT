@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { clonar } from '../../../../nucleo/ficha/caminho';
 import CampoNumero from '../../../../nucleo/ui/CampoNumero.vue';
 import CampoTexto from '../../../../nucleo/ui/CampoTexto.vue';
+import { areaDoAlcance } from '../../area';
 import { estilos, useFicha } from '../../contexto';
 import { alcanceComKokuto, USOS_DA_SAIJO } from '../../itens/forja';
 import {
@@ -32,7 +33,7 @@ const props = defineProps<{
     vazio: string;
     tom: 'sky' | 'violet';
 }>();
-const { editar, salvar, rolar, acoes, calc, itens } = useFicha();
+const { editar, salvar, rolar, acoes, calc, itens, ataqueDeTecnica, salvaguardaDeTecnica } = useFicha();
 /** A categoria que usar a técnica gasta no combate: a dela ou a poderosa (que só serve para técnicas). */
 const CATEGORIAS = computed(() => acoes.todas());
 const categoria = (t: Tecnica) => t.acao ?? 'poderosa';
@@ -78,21 +79,53 @@ const rotuloDoUso = (t: Tecnica) =>
 const comDadosDaMeito = (expressao: string, t: Tecnica): string =>
     t.armaCortante ? comDadosExtras(expressao, dadosExtrasDeMeito(props.ficha, itens.value)) : expressao;
 
-/** Usar: gasta os PP e, se há rolagem, rola no chat. Sem PP suficiente não faz nada. */
+/**
+ * Usar: gasta os PP e a ação e, conforme o teste da Técnica:
+ * - Ataque: rola o ataque (Técnicas) no alvo mirado; depois do acerto o card do chat oferece o dano (e a Salvaguarda do efeito);
+ * - Salvaguarda: a mesa marca a área no mapa, e cada criatura dentro rola a Salvaguarda no chat (o dano sai sozinho no fim);
+ * - Automática ou sem teste: rola o dano direto (o card oferece "Aplicar" ao alvo, respeitando resistências).
+ * Sem PP suficiente não faz nada.
+ */
 async function usar(t: Tecnica) {
     const campos = camposDoGastoDePP(props.ficha, t.custo);
     if (!campos) return;
     // A ação vem antes dos PP: se o servidor recusar (fora do turno, ação já usada), nada é gasto.
-    if (!(await acoes.gastar(categoria(t), true))) return;
-    salvar(campos);
+    const pagar = async () => {
+        if (!(await acoes.gastar(categoria(t), true))) return false;
+        salvar(campos);
+
+        return true;
+    };
+    const expressao = t.rolagem.trim()
+        ? comDadosDaMeito(expandirRolagem(t.rolagem.trim(), calc.value, 'tecnica'), t) + (dobrarDano(t) ? '^2' : '')
+        : '';
+    const dano = expressao ? { expressao, tipo: t.tipoDano?.trim() || null } : null;
+    const teste = t.teste;
+
+    if (teste?.tipo === 'salvaguarda' && teste.atributo) {
+        // O alcance da Kokuto amplia a área; as criaturas dela têm desvantagem na Salvaguarda
+        const ampliado = alcanceDe(t);
+        await salvaguardaDeTecnica({
+            nome: rotuloDoUso(t),
+            atributo: teste.atributo,
+            desvantagem: !!teste.desvantagem || (kokuto.value && !!t.armaCortante),
+            aoPassar: teste.aoPassar ?? 'metade',
+            area: areaDoAlcance(ampliado?.mudou ? ampliado.texto : t.alcance),
+            dano,
+            ...(teste.secundaria ? { secundaria: teste.secundaria } : {}),
+            pagar,
+        });
+
+        return;
+    }
+    if (!(await pagar())) return;
+    if (teste?.tipo === 'ataque') {
+        ataqueDeTecnica({ nome: rotuloDoUso(t), dano, ...(teste.secundaria ? { secundaria: teste.secundaria } : {}) });
+
+        return;
+    }
     // Com tipo de dano preenchido a rolagem é um dano: o card do chat oferece "Aplicar" ao alvo, respeitando resistências.
-    if (t.rolagem.trim())
-        rolar(
-            comDadosDaMeito(expandirRolagem(t.rolagem.trim(), calc.value, 'tecnica'), t) + (dobrarDano(t) ? '^2' : ''),
-            rotuloDoUso(t),
-            undefined,
-            t.tipoDano?.trim() ? { tipo: t.tipoDano.trim() } : undefined,
-        );
+    if (dano) rolar(dano.expressao, rotuloDoUso(t), undefined, dano.tipo ? { tipo: dano.tipo } : undefined);
 }
 
 /** Muda o tipo de teste da técnica ('' = nenhum); a Salvaguarda começa em Destreza, passando = metade do dano. */

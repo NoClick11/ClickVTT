@@ -1,8 +1,9 @@
 import { inject, type ComputedRef, type InjectionKey, type Ref } from 'vue';
+import type { AreaDeEfeito } from '../../nucleo/combate/area';
 import type { Efeito, Origem, Rolagem } from '../../nucleo/efeitos/efeitos';
 import type { AbrirEditorItem } from '../../nucleo/sistemas/tipos';
 import type { ArmaParaForja, ItemDto } from '../../tipos-mesa';
-import type { AcaoCaracteristica, ArmaAtiva } from './regras';
+import type { AcaoCaracteristica, ArmaAtiva, AtributoId } from './regras';
 
 /**
  * Contexto da ficha de D&D 5e, compartilhado pelos blocos sem passar props: modo Jogar/Editar, valores
@@ -53,8 +54,37 @@ export interface ContextoFicha {
     rodada: ComputedRef<number | null>;
     /** Pede à mesa uma ação de característica (aplicar condição ao alvo mirado, hospedar-se). */
     acao: (acao: AcaoCaracteristica) => void;
+    /** Ataque de uma Técnica (1d20 + ataque, com vantagem/desvantagem dos efeitos) no alvo mirado: o card oferece o dano depois do acerto. */
+    ataqueDeTecnica: (dados: { nome: string; dano: DanoDaTecnica | null; secundaria?: EfeitoSecundario }) => void;
+    /** Técnica de Salvaguarda: a mesa marca a área no mapa e abre a Salvaguarda coletiva no chat. */
+    salvaguardaDeTecnica: (uso: UsoDeSalvaguarda) => Promise<void>;
     /** Teste de d20 + variável: Shift = vantagem, Ctrl/Alt = desvantagem. `acao`: a categoria que a rolagem gasta no combate. */
     d20: (evento: MouseEvent, variavel: string, rotulo: string, acao?: { categoria: string; tecnica?: boolean }) => void;
+}
+
+/** O dano que a Técnica rola (a expressão já com os dados da Meito e o tipo) e a Salvaguarda do efeito dela. */
+export interface DanoDaTecnica {
+    expressao: string;
+    tipo: string | null;
+}
+export interface EfeitoSecundario {
+    atributo: AtributoId;
+    desvantagem?: boolean;
+    efeito: string;
+}
+
+/** Uma Técnica de Salvaguarda sendo usada: a mesa escolhe os alvos (a área no mapa), cobra o custo (`pagar`) e abre o card no chat. */
+export interface UsoDeSalvaguarda {
+    nome: string;
+    atributo: AtributoId;
+    desvantagem: boolean;
+    aoPassar: 'metade' | 'nada';
+    /** A forma e o tamanho da área (null = sem forma: vale o alvo mirado). */
+    area: AreaDeEfeito | null;
+    dano: DanoDaTecnica | null;
+    secundaria?: EfeitoSecundario;
+    /** Gasta os PP e a ação; false = não pôde (nada é aberto). Chamado só depois de escolhidos os alvos. */
+    pagar: () => Promise<boolean>;
 }
 
 /** O que a mesa oferece à ficha além de salvar e rolar (a ficha nunca fala com a API): a forja do Ferreiro. */

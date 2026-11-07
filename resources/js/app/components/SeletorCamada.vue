@@ -7,8 +7,14 @@ defineEmits<{ camada: [Camada] }>();
 </script>
 
 <template>
-    <div class="pointer-events-auto absolute bottom-4 left-3 z-10 w-44 rounded-lg border border-ouro-500/20 bg-preto-950/90 p-1.5 backdrop-blur" role="radiogroup" aria-label="Camada ativa">
-        <p class="flex items-center gap-1.5 px-2 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wider text-ouro-400"><Layers class="size-3.5" /> Camada</p>
+    <div
+        class="pointer-events-auto absolute bottom-4 left-3 z-10 w-44 rounded-lg border border-ouro-500/20 bg-preto-950/90 p-1.5 backdrop-blur"
+        role="radiogroup"
+        aria-label="Camada ativa"
+    >
+        <p class="flex items-center gap-1.5 px-2 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wider text-ouro-400">
+            <Layers class="size-3.5" /> Camada
+        </p>
         <button
             v-for="c in [...CAMADAS].reverse()"
             :key="c.id"

@@ -89,9 +89,19 @@ export function apiMesa(mesaId: number, atorId: number) {
             dano?: { tipo: string | null; fator?: number },
             acao?: { categoria: string; tecnica?: boolean },
             alvoPersonagemId?: number | null,
+            tecnica?: { nome: string; dano?: { expressao: string; tipo: string | null } | null; secundaria?: object | null },
         ) =>
             requisitar<Mensagem>(atorId, 'POST', r('jogo.rolagens.store'), {
                 ...(alvoPersonagemId ? { alvo_personagem_id: alvoPersonagemId } : {}),
+                ...(tecnica
+                    ? {
+                          tecnica: {
+                              nome: tecnica.nome,
+                              ...(tecnica.dano ? { dano: tecnica.dano } : {}),
+                              ...(tecnica.secundaria ? { secundaria: tecnica.secundaria } : {}),
+                          },
+                      }
+                    : {}),
                 expressao,
                 rotulo,
                 visibilidade,
@@ -99,6 +109,21 @@ export function apiMesa(mesaId: number, atorId: number) {
                 ...(dano ? { dano } : {}),
                 ...(acao ? { acao } : {}),
             }),
+        /** Técnica de Salvaguarda: abre o card no chat com os alvos da área (a CD e o dano saem do servidor). */
+        abrirSalvaguarda: (dados: {
+            personagem_id: number;
+            nome: string;
+            atributo: string;
+            desvantagem?: boolean;
+            ao_passar?: 'metade' | 'nada';
+            alvos: number[];
+            dano?: { expressao: string; tipo: string | null } | null;
+            efeito?: string;
+            secundaria?: { atributo: string; desvantagem?: boolean; efeito: string } | null;
+        }) => requisitar<Mensagem>(atorId, 'POST', r('jogo.tecnicas.salvaguarda.abrir'), dados),
+        /** Um alvo rola a Salvaguarda do card; com o último a rolar o servidor rola o dano e o aplica. */
+        rolarSalvaguarda: (mensagemId: number, personagemId: number) =>
+            requisitar<Mensagem>(atorId, 'POST', r('jogo.tecnicas.salvaguarda.rolar', mensagemId), { personagem_id: personagemId }),
         /** Disparada: gasta a ação dela e soma outro deslocamento ao turno do personagem. */
         disparada: (personagemId: number) =>
             requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.disparada'), { personagem_id: personagemId }),
