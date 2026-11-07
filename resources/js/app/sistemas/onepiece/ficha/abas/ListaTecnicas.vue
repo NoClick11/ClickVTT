@@ -98,19 +98,13 @@ const usosDaSaijo = computed(() => Math.max(0, USOS_DA_SAIJO - (props.ficha.meit
 /** Técnicas (por posição) que o jogador marcou para rolar o dano duas vezes neste uso. */
 const dobrar = ref<Record<number, boolean>>({});
 const indiceDe = (t: Tecnica) => props.lista.indexOf(t);
-/** Rei Atirador: "Execução Perfeita" (3 usos): rola o dano de uma Técnica que tem a arma como requisito duas vezes e fica com o maior. */
-const execucaoPerfeita = computed(() => props.ficha.caracteristicas.find((c) => c.nome.includes('Execução Perfeita')) ?? null);
-const usosDaExecucao = computed(() => execucaoPerfeita.value?.usos?.atual ?? 0);
-const temArmaComoRequisito = (t: Tecnica) => /Requisito:[^.]*(arma favorita|mosquete|pistola)/i.test(t.descricao ?? '');
-const podeDobrarExecucao = (t: Tecnica) => !!execucaoPerfeita.value && usosDaExecucao.value > 0 && !!t.rolagem.trim() && temArmaComoRequisito(t);
-const podeDobrar = (t: Tecnica) =>
-    (!!t.armaCortante && !!t.rolagem.trim() && saijo.value && usosDaSaijo.value > 0) || (!saijo.value && podeDobrarExecucao(t));
+const podeDobrar = (t: Tecnica) => !!t.armaCortante && !!t.rolagem.trim() && saijo.value && usosDaSaijo.value > 0;
 const dobrarDano = (t: Tecnica) => podeDobrar(t) && !!dobrar.value[indiceDe(t)];
 /** O alcance mostrado: com a Kokuto e a Técnica exigindo arma cortante, o alcance ampliado. */
 const alcanceDe = (t: Tecnica) => (kokuto.value && t.armaCortante ? (alcanceComKokuto(t.alcance) ?? null) : null);
 const rotuloDoUso = (t: Tecnica) =>
     t.nome +
-    (dobrarDano(t) ? (saijo.value ? ' (Saijo Ô: dano 2×, fica o maior)' : ' (Execução Perfeita: dano 2×, fica o maior)') : '') +
+    (dobrarDano(t) ? ' (Saijo Ô: dano 2×, fica o maior)' : '') +
     (kokuto.value && t.armaCortante ? ' (Kokuto: alvos com desvantagem na Salvaguarda)' : '');
 
 /**
@@ -360,21 +354,15 @@ function adicionar() {
                                     <label
                                         v-if="podeDobrar(t)"
                                         class="mt-1 flex items-center justify-end gap-1 text-[10px] text-ouro-200"
-                                        :title="
-                                            saijo
-                                                ? `Saijo Ô Wazamono: rola o dano duas vezes e fica com o maior (${usosDaSaijo} de ${USOS_DA_SAIJO} usos; voltam no descanso longo)`
-                                                : `Execução Perfeita: rola o dano duas vezes e fica com o maior (${usosDaExecucao} de ${execucaoPerfeita?.usos?.max ?? 3} usos; voltam no descanso longo)`
-                                        "
+                                        :title="`Saijo Ô Wazamono: rola o dano duas vezes e fica com o maior (${usosDaSaijo} de ${USOS_DA_SAIJO} usos; voltam no descanso longo)`"
                                     >
                                         <input
                                             v-model="dobrar[indiceDe(t)]"
                                             type="checkbox"
                                             class="size-3 accent-ouro-500"
-                                            :aria-label="saijo ? 'Rolar o dano duas vezes (Saijo Ô)' : 'Rolar o dano duas vezes (Execução Perfeita)'"
+                                            aria-label="Rolar o dano duas vezes (Saijo Ô)"
                                         />
-                                        Dano 2× ({{ saijo ? usosDaSaijo : usosDaExecucao }}/{{
-                                            saijo ? USOS_DA_SAIJO : (execucaoPerfeita?.usos?.max ?? 3)
-                                        }})
+                                        Dano 2× ({{ usosDaSaijo }}/{{ USOS_DA_SAIJO }})
                                     </label>
                                     <button
                                         type="button"

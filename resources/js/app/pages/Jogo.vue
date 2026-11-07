@@ -1039,16 +1039,7 @@ async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
                 { nome: uso.nomeBase ?? uso.nome, dano: uso.dano, ...(uso.secundaria ? { secundaria: uso.secundaria } : {}) },
             );
         } else if (uso.dano) {
-            await rolarDaFicha(
-                personagemId,
-                uso.dano.expressao,
-                uso.nome,
-                undefined,
-                uso.dano.tipo ? { tipo: uso.dano.tipo } : undefined,
-                undefined,
-                undefined,
-                { nome: uso.nomeBase ?? uso.nome },
-            );
+            await rolarDaFicha(personagemId, uso.dano.expressao, uso.nome, undefined, uso.dano.tipo ? { tipo: uso.dano.tipo } : undefined);
         }
     } catch (e) {
         avisar(mensagemDe(e));

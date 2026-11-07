@@ -66,8 +66,6 @@ export interface MarcasDoSistema {
     destaque?: 'critico' | 'falha';
     /** Andamento do ataque contra um alvo: janela de reação aberta (`aguardando`) ou resolvido (acertou ou errou). */
     resolucao?: Resolucao;
-    /** Defesa Improvisada: a redução rolada (6d8, mais 2d8 por PP gasto, até 20d8). */
-    reducao?: { dados: number; total: number };
     /** Munição gasta neste ataque (arma por munição); `nota` traz o efeito especial (explosiva, kairoseki). */
     municao?: { id?: string; nome: string; nota: string; efeito?: 'explosao' | 'kairoseki'; usado?: boolean };
     /** Esta rolagem é um dano que pode ser aplicado a um alvo (o tipo pode ser nulo). */

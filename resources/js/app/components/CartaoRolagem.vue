@@ -56,7 +56,7 @@ const especiais = computed(() => {
     if (!props.podeAgir || !lista.length || dados.value.sistema?.destaque === 'falha') return [];
     const r = resolucao.value;
 
-    return !r || (r.estado === 'resolvido' && r.acerto) || dados.value.sistema?.reducao ? lista : [];
+    return !r || (r.estado === 'resolvido' && r.acerto) ? lista : [];
 });
 const marca = computed(() => (dados.value.sistema?.destaque === 'falha' ? 'Falha crítica' : 'Crítico!'));
 
@@ -173,10 +173,7 @@ const estiloBotao = (a: AcaoDaRolagem, indice: number) =>
                 </button>
             </div>
 
-            <div v-if="especiais.length || dados.sistema?.reducao" class="mt-3 grid gap-1.5 border-t border-preto-700/60 pt-2.5">
-                <p v-if="dados.sistema?.reducao" class="text-xs text-preto-200" role="status">
-                    Redução do dano: <strong class="text-ouro-200">{{ dados.sistema.reducao.total }}</strong> ({{ dados.sistema.reducao.dados }}d8)
-                </p>
+            <div v-if="especiais.length" class="mt-3 grid gap-1.5 border-t border-preto-700/60 pt-2.5">
                 <button
                     v-for="e in especiais"
                     :key="e.id"

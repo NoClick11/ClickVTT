@@ -217,8 +217,7 @@ class TecnicaController extends Controller
     }
 
     /**
-     * Um efeito de Técnica que a mesa comanda (botão do card do ataque): Execução, Zona do Atirador, Headshot, Covering, Mira Cruel e a redução
-     * extra da Defesa Improvisada. O servidor confere o dono, o acerto (e o crítico onde pede), que o botão existe para a Técnica e uma vez só.
+     * Um efeito de Técnica que a mesa comanda (botão do card do ataque): Execução, Headshot e Covering. O servidor confere o dono, o acerto (e o crítico onde pede), que o botão existe para a Técnica e uma vez só.
      */
     public function especial(Request $request, Mesa $mesa, Mensagem $mensagem, RegistroSistemas $sistemas, Rolador $rolador, AplicarDano $aplicar, AplicarCondicao $condicoes): JsonResponse
     {
@@ -234,9 +233,8 @@ class TecnicaController extends Controller
         $textos = [];
         $aplicados = [];
         $condicionados = [];
-        $combateNovo = null;
 
-        $m = DB::transaction(function () use ($mesa, $mensagem, $d, $sistema, $acesso, $rolador, $aplicar, $condicoes, $erro, &$textos, &$aplicados, &$condicionados, &$combateNovo) {
+        $m = DB::transaction(function () use ($mesa, $mensagem, $d, $sistema, $acesso, $rolador, $aplicar, $condicoes, $erro, &$textos, &$aplicados, &$condicionados) {
             $m = Mensagem::query()->whereKey($mensagem->id)->lockForUpdate()->firstOrFail();
             $dados = $m->dados;
             $sis = $dados['sistema'] ?? [];
@@ -250,21 +248,19 @@ class TecnicaController extends Controller
                 $erro("{$atacante->nome} não tem a Técnica {$nome}.");
             }
             $usados = $sis['tecnica']['usados'] ?? [];
-            // a redução da Defesa Improvisada pode somar várias vezes; os demais efeitos valem uma vez por ataque
-            if ($d['efeito'] !== 'reducao_extra' && in_array($d['efeito'], $usados, true)) {
+            // cada efeito vale uma vez por ataque
+            if (in_array($d['efeito'], $usados, true)) {
                 $erro('Este efeito já foi usado neste ataque.');
             }
             $res = $sis['resolucao'] ?? null;
-            if ($d['efeito'] !== 'reducao_extra') {
-                if ($res && ($res['estado'] ?? null) === 'aguardando') {
-                    $erro('Espere o alvo reagir: o ataque ainda não foi resolvido.');
-                }
-                if ($res && ! ($res['acerto'] ?? false)) {
-                    $erro('O ataque errou.');
-                }
-                if (($sis['destaque'] ?? null) === 'falha') {
-                    $erro('O ataque falhou.');
-                }
+            if ($res && ($res['estado'] ?? null) === 'aguardando') {
+                $erro('Espere o alvo reagir: o ataque ainda não foi resolvido.');
+            }
+            if ($res && ! ($res['acerto'] ?? false)) {
+                $erro('O ataque errou.');
+            }
+            if (($sis['destaque'] ?? null) === 'falha') {
+                $erro('O ataque falhou.');
             }
             $catalogo = collect(\App\Sistemas\OnePiece\TecnicasEspeciais::CATALOGO[$nome] ?? [])->firstWhere('id', $d['efeito']);
             if (! empty($catalogo['soMestre']) && ! $acesso->ehMestre()) {
@@ -272,15 +268,12 @@ class TecnicaController extends Controller
             }
             $alvoId = (int) ($res['alvo_id'] ?? $d['alvo_id'] ?? 0);
             $alvo = $alvoId ? Personagem::query()->where('mesa_id', $mesa->id)->find($alvoId) : null;
-            $contraAlvo = ! in_array($d['efeito'], ['zona', 'reducao_extra'], true);
-            if ($contraAlvo) {
-                if (! $alvo) {
-                    $erro('Mire o alvo atingido.');
-                }
-                Equipes::exigirPodeAtingir($mesa, $atacante->id, $alvo->id, 'alvo_id');
-                if (! $acesso->ehMestre() && Visibilidade::oculto($alvo->id)) {
-                    $erro('Esse alvo não está à vista.');
-                }
+            if (! $alvo) {
+                $erro('Mire o alvo atingido.');
+            }
+            Equipes::exigirPodeAtingir($mesa, $atacante->id, $alvo->id, 'alvo_id');
+            if (! $acesso->ehMestre() && Visibilidade::oculto($alvo->id)) {
+                $erro('Esse alvo não está à vista.');
             }
             $verdadeiro = fn (Personagem $p) => $aplicar->aplicar($mesa, $p->id, $sistema, 99999, 'Verdadeiro', [], $atacante->id);
 
@@ -303,15 +296,6 @@ class TecnicaController extends Controller
                     $aplicados[] = $res2;
                     $textos[] = "Headshot: {$r['total']} de dano Perfurante extra em {$alvo->nome} ({$res2['calculo']['final']} depois das defesas).";
                     break;
-                case 'zona':
-                    $f = $atacante->ficha ?? [];
-                    $f['pv']['temp'] = max((int) ($f['pv']['temp'] ?? 0), 60);
-                    $atacante->ficha = $f;
-                    $atacante->save();
-                    $canais = ['mestre', ...$atacante->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
-                    Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $atacante->id, 'campos' => ['pv.temp' => $f['pv']['temp']], 'criacao' => $atacante->criacao, 'ator' => 0], $canais);
-                    $textos[] = "{$atacante->nome} recebe 60 PV temporários e tem vantagem nas jogadas de ataque (comum) por até 1 minuto (Zona do Atirador).";
-                    break;
                 case 'desvantagem':
                     $c = $condicoes->aplicar($alvo->id, $sistema, 'covering', 1);
                     $c['texto'] = match ($c['situacao']) {
@@ -321,45 +305,9 @@ class TecnicaController extends Controller
                     };
                     $condicionados[] = $c;
                     break;
-                case 'metade_movimento':
-                    $mesaTrava = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
-                    $cb = CombateService::normalizar($mesaTrava->combate);
-                    $k = collect($cb['itens'])->search(fn ($i) => $i['personagem_id'] === $alvo->id);
-                    if ($cb['fase'] !== 'em_curso' || $k === false) {
-                        $erro("{$alvo->nome} não está no combate em curso: reduza o movimento dele à mão.");
-                    }
-                    $mov = $cb['itens'][$k]['movimento'];
-                    $cb['itens'][$k]['movimento'] = [...$mov, 'base' => $mov['base'] !== null ? round($mov['base'] / 2, 3) : null, 'bonus' => round($mov['bonus'] / 2, 3)];
-                    $mesaTrava->forceFill(['combate' => $cb])->save();
-                    $combateNovo = $cb;
-                    $textos[] = "{$alvo->nome} tem o deslocamento pela metade neste turno (Mira Cruel).";
-                    break;
-                case 'reducao_extra':
-                    $red = $sis['reducao'] ?? null;
-                    if (! $red || ($red['dados'] ?? 0) + 2 > 20) {
-                        $erro('A redução já chegou ao limite de 20d8.');
-                    }
-                    $f = $atacante->ficha ?? [];
-                    if ((int) ($f['pp']['atual'] ?? 0) < 1) {
-                        $erro('Sem PP: cada 2d8 extras custam 1 PP.');
-                    }
-                    $f['pp']['atual'] = (int) $f['pp']['atual'] - 1;
-                    $atacante->ficha = $f;
-                    $atacante->save();
-                    $canais = ['mestre', ...$atacante->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
-                    Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $atacante->id, 'campos' => ['pp.atual' => $f['pp']['atual']], 'criacao' => $atacante->criacao, 'ator' => 0], $canais);
-                    $r = $rolador->rolar('2d8', []);
-                    $sis['reducao'] = ['dados' => $red['dados'] + 2, 'total' => $red['total'] + $r['total']];
-                    if ($sis['reducao']['dados'] >= 20) {
-                        $sis['tecnica']['especiais'] = [];
-                    }
-                    $textos[] = "Defesa Improvisada: +2d8 ({$r['total']}) por 1 PP; redução total {$sis['reducao']['total']} ({$sis['reducao']['dados']}d8).";
-                    break;
             }
-            if ($d['efeito'] !== 'reducao_extra') {
-                $sis['tecnica']['usados'] = [...$usados, $d['efeito']];
-                $sis['tecnica']['especiais'] = array_values(array_filter($sis['tecnica']['especiais'] ?? [], fn ($b) => $b['id'] !== $d['efeito']));
-            }
+            $sis['tecnica']['usados'] = [...$usados, $d['efeito']];
+            $sis['tecnica']['especiais'] = array_values(array_filter($sis['tecnica']['especiais'] ?? [], fn ($b) => $b['id'] !== $d['efeito']));
             $dados['sistema'] = $sis;
             $m->dados = $dados;
             $m->save();
@@ -375,9 +323,6 @@ class TecnicaController extends Controller
                 Duracoes::transmitir($mesa, $c['p'], $c['campos'], true);
             }
             $textos[] = $c['texto'];
-        }
-        if ($combateNovo) {
-            Transmitir::enviar($mesa, 'combate', ['combate' => $combateNovo, 'ator' => $acesso->jogador->id], ['mesa']);
         }
         foreach ($textos as $t) {
             AplicarDano::postar($mesa, $acesso, 'todos', $t);

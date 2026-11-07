@@ -4,21 +4,18 @@ namespace App\Sistemas\OnePiece;
 
 /**
  * Efeitos de Técnicas que o jogo NÃO decide sozinho: o card do ataque oferece um botão e quem comanda (o dono, ou só o Narrador onde o livro
- * pede o julgamento dele) o aciona. Automação híbrida: o servidor confere o acerto, o dono e as regras objetivas (150 PV, 60 PV temporários,
- * 6d10 extra); o resto fica por conta da mesa. O catálogo é POR NOME da Técnica, conferida na ficha do atacante.
+ * pede o julgamento dele) o aciona. Automação híbrida: o servidor confere o acerto, o dono e as regras objetivas (150 PV, 6d10 extra); o resto fica por conta da mesa. O catálogo é POR NOME da Técnica, conferida na ficha do atacante.
  */
 final class TecnicasEspeciais
 {
     /** @var array<string, list<array{id: string, rotulo: string, critico?: bool, soMestre?: bool}>> */
     public const CATALOGO = [
         'Execução' => [['id' => 'executar', 'rotulo' => 'Executar (150 PV ou menos: morre)']],
-        'Zona do Atirador' => [['id' => 'zona', 'rotulo' => '+60 PV temporários (vantagem por 1 min)']],
         'Headshot' => [
             ['id' => 'cabeca', 'rotulo' => 'Atravessa a cabeça: morre (Narrador)', 'critico' => true, 'soMestre' => true],
             ['id' => 'extra', 'rotulo' => '6d10 Perfurante extra', 'critico' => true],
         ],
         'Covering' => [['id' => 'desvantagem', 'rotulo' => 'Desvantagem no próximo ataque dela']],
-        'Mira Cruel' => [['id' => 'metade_movimento', 'rotulo' => 'Movimento pela metade (neste turno)']],
     ];
 
     /** Os botões do card para a Técnica: no acerto crítico entram os que só valem no crítico. @return list<array{id: string, rotulo: string}> */

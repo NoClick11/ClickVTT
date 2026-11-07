@@ -1,5 +1,5 @@
-// Efeitos de Técnicas que a mesa comanda por botão (Atirador), no navegador: Execução (≤150 PV), Zona do Atirador (+60 PV temporários), Covering
-// (desvantagem), Defesa Improvisada (soma 2d8 por PP) e a Execução Perfeita (dano 2×, gasta um uso). O Headshot depende de crítico natural: PHP.
+// Efeitos de Técnicas que a mesa comanda por botão (Atirador), no navegador: Execução (≤150 PV) e Covering (condição de desvantagem).
+// O Headshot depende de crítico natural: testes PHP.
 //   node tests/e2e/atirador-especiais.mjs      (app em http://localhost:8000 com o Vite; MOSTRAR=1 abre a janela)
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -81,10 +81,7 @@ try {
     await page.mouse.click(...TELA.perto);
 
     etapa('1. Execução: o botão aparece no acerto e mata quem tem 150 PV ou menos (o primeiro da linha tem 100)');
-    await usar('Execução', async () => {
-        const dobrar = page.getByLabel('Rolar o dano duas vezes (Execução Perfeita)');
-        confere((await dobrar.count()) > 0, 'a Execução oferece "Dano 2×" (Execução Perfeita, Rei Atirador)');
-    });
+    await usar('Execução');
     const executar = page.getByRole('button', { name: /^Executar/ });
     if (await executar.count()) {
         await executar.click();
@@ -93,16 +90,7 @@ try {
         confere((await page.getByRole('button', { name: /^Executar/ }).count()) === 0, 'o botão some depois de usado');
     } else console.log('  (o ataque errou: rode de novo)');
 
-    etapa('2. Zona do Atirador: +60 PV temporários para quem atacou');
-    await usar('Zona do Atirador');
-    const zona = page.getByRole('button', { name: /^\+60 PV temporários/ });
-    if (await zona.count()) {
-        await zona.click();
-        await page.waitForTimeout(1500);
-        confere(artisan('e2e:estado').atirador.pv_temp === 60, 'servidor: 60 PV temporários no Atirador');
-    } else console.log('  (o ataque errou: rode de novo)');
-
-    etapa('3. Covering: a condição de desvantagem entra no alvo por 1 turno');
+    etapa('2. Covering: a condição de desvantagem entra no alvo por 1 turno');
     await usar('Covering');
     const cobrir = page.getByRole('button', { name: /^Desvantagem no próximo ataque/ });
     if (await cobrir.count()) {
@@ -114,21 +102,6 @@ try {
             JSON.stringify(artisan('e2e:estado').condicoes),
         );
     } else console.log('  (o ataque errou: rode de novo)');
-
-    etapa('4. Defesa Improvisada: rola a redução (6d8) e o botão soma 2d8 por 1 PP');
-    const ppAntes = artisan('e2e:estado').pp;
-    await abrirTecnicas();
-    await page.getByRole('button', { name: /^Usar Defesa Improvisada/ }).click();
-    await page.waitForTimeout(1500);
-    await abaChat();
-    const ppDepoisDeUsar = artisan('e2e:estado').pp;
-    confere(ppDepoisDeUsar === ppAntes - 2, 'servidor: a Técnica custou 2 PP', `${ppAntes}→${ppDepoisDeUsar}`);
-    const somar = page.getByRole('button', { name: /^Somar 2d8/ });
-    confere((await somar.count()) >= 1, 'o card oferece "Somar 2d8 (1 PP)"');
-    await somar.last().click();
-    await page.waitForTimeout(1500);
-    confere(artisan('e2e:estado').pp === ppDepoisDeUsar - 1, 'servidor: somar 2d8 custou 1 PP');
-    confere(/8d8/.test((await page.locator('ol[aria-live="polite"]').innerText()).replace(/\s+/g, ' ')), 'o card mostra a redução total em 8d8');
 } catch (e) {
     falhas++;
     console.log(`\n  ✖ o roteiro parou: ${e.message.split('\n')[0]}`);
