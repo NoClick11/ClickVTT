@@ -68,7 +68,53 @@ export function tokensNaArea(
             const across = Math.abs(-dx * s + dy * c);
             if (medida.forma === 'linha') return along >= -raio && along <= medida.metros + raio && across <= LARGURA_DA_LINHA / 2 + raio;
             // cone: dentro do comprimento e do ângulo (a margem do raio do token deixa passar quem está na borda)
-            return along >= -raio && distancia <= medida.metros + raio && across <= Math.max(0, along) * Math.tan(MEIO_ANGULO_DO_CONE) + raio;
+            return (
+                along >= -raio &&
+                distancia <= medida.metros + raio &&
+                across <= Math.max(0, along) * Math.tan(MEIO_ANGULO_DO_CONE) + raio / Math.cos(MEIO_ANGULO_DO_CONE)
+            );
         })
         .map((t) => t.id);
+}
+
+/** O desenho da área no mapa (em pixels do mundo): um círculo, um setor (cone) ou um polígono (linha). */
+export type DesenhoDaArea =
+    | { tipo: 'circulo'; x: number; y: number; r: number }
+    | { tipo: 'setor'; x: number; y: number; r: number; de: number; ate: number }
+    | { tipo: 'poligono'; pontos: number[] };
+
+/**
+ * O contorno que o mapa desenha: o MESMO que `tokensNaArea` usa para contar, ou seja, a forma alargada pelo raio de um token
+ * (`raioPx`). Assim a borda toca onde um token começa a ser atingido: a esfera de 1,5 m cobre os quadrados vizinhos por inteiro, e não
+ * só até a metade deles. A origem é o centro de quem usa a Técnica.
+ */
+export function desenhoDaArea(
+    medida: { forma: FormaDeArea; metros: number; angulo: number },
+    origem: Ponto,
+    raioPx: number,
+    metrosPorPx: number,
+): DesenhoDaArea {
+    const comprimento = medida.metros / metrosPorPx;
+    const c = Math.cos(medida.angulo);
+    const sn = Math.sin(medida.angulo);
+    if (medida.forma === 'esfera') return { tipo: 'circulo', x: origem.x, y: origem.y, r: comprimento + raioPx };
+    if (medida.forma === 'cone') {
+        // as bordas do cone ficam `raioPx` mais afastadas: o vértice recua raio / sen(meio ângulo) e o raio cresce o mesmo tanto
+        const recuo = raioPx / Math.sin(MEIO_ANGULO_DO_CONE);
+
+        return {
+            tipo: 'setor',
+            x: origem.x - c * recuo,
+            y: origem.y - sn * recuo,
+            r: comprimento + raioPx + recuo,
+            de: medida.angulo - MEIO_ANGULO_DO_CONE,
+            ate: medida.angulo + MEIO_ANGULO_DO_CONE,
+        };
+    }
+    const meia = LARGURA_DA_LINHA / metrosPorPx / 2 + raioPx;
+    const de = -raioPx;
+    const ate = comprimento + raioPx;
+    const ponto = (along: number, lado: number) => [origem.x + c * along - sn * lado, origem.y + sn * along + c * lado];
+
+    return { tipo: 'poligono', pontos: [...ponto(de, -meia), ...ponto(ate, -meia), ...ponto(ate, meia), ...ponto(de, meia)] };
 }

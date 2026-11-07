@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Text } from 'pixi.js';
-import { areaMedida, LARGURA_DA_LINHA, MEIO_ANGULO_DO_CONE, tokensNaArea, type AreaDeEfeito } from '../nucleo/combate/area';
+import { areaMedida, desenhoDaArea, tokensNaArea, type AreaDeEfeito } from '../nucleo/combate/area';
 import { fatorParaMetros, limitar as limitarPasso, metros as metrosDe } from '../nucleo/combate/movimento';
 import { ObjetoVisual } from './ObjetoVisual';
 import {
@@ -239,28 +239,15 @@ export class Cena {
         const g = this.gabaritoG.clear();
         if (!r) return;
         const { origem, medida, mpp, ids } = r;
-        const comprimento = medida.metros / mpp;
+        // o contorno é o mesmo que conta os tokens: a forma alargada pelo raio de um token (a de quem usa vale de referência)
+        const o = this.visuais.get(this.gabarito?.origem ?? -1)?.dto;
+        const raioPx = o ? Math.min(o.largura, o.altura) / 2 : 0;
+        const d = desenhoDaArea(medida, origem, raioPx, mpp);
         const estilo = { color: 0xfb923c, width: 2, alpha: 0.95, pixelLine: true };
-        if (medida.forma === 'esfera') {
-            g.circle(origem.x, origem.y, comprimento).fill({ color: 0xfb923c, alpha: 0.22 }).stroke(estilo);
-        } else if (medida.forma === 'cone') {
-            g.moveTo(origem.x, origem.y)
-                .arc(origem.x, origem.y, comprimento, medida.angulo - MEIO_ANGULO_DO_CONE, medida.angulo + MEIO_ANGULO_DO_CONE)
-                .closePath()
-                .fill({ color: 0xfb923c, alpha: 0.22 })
-                .stroke(estilo);
-        } else {
-            const meia = LARGURA_DA_LINHA / mpp / 2;
-            const c = Math.cos(medida.angulo);
-            const sn = Math.sin(medida.angulo);
-            const pontos = [
-                [origem.x - sn * meia, origem.y + c * meia],
-                [origem.x + c * comprimento - sn * meia, origem.y + sn * comprimento + c * meia],
-                [origem.x + c * comprimento + sn * meia, origem.y + sn * comprimento - c * meia],
-                [origem.x + sn * meia, origem.y - c * meia],
-            ].flat();
-            g.poly(pontos).fill({ color: 0xfb923c, alpha: 0.22 }).stroke(estilo);
-        }
+        const preencher = { color: 0xfb923c, alpha: 0.22 };
+        if (d.tipo === 'circulo') g.circle(d.x, d.y, d.r).fill(preencher).stroke(estilo);
+        else if (d.tipo === 'setor') g.moveTo(d.x, d.y).arc(d.x, d.y, d.r, d.de, d.ate).closePath().fill(preencher).stroke(estilo);
+        else g.poly(d.pontos).fill(preencher).stroke(estilo);
         const dentro = new Set(ids);
         for (const v of this.visuais.values()) v.definirAlvo(dentro.has(v.dto.id) || v.dto.id === this.alvoId);
         this.reguaTexto.text = `${formatar(medida.metros)} m · ${ids.length} alvo${ids.length === 1 ? '' : 's'}`;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { areaMedida, tokensNaArea } from '../../resources/js/app/nucleo/combate/area.ts';
+import { areaMedida, desenhoDaArea, tokensNaArea } from '../../resources/js/app/nucleo/combate/area.ts';
 import { areaDoAlcance } from '../../resources/js/app/sistemas/onepiece/area.ts';
 import { ESTILOS } from '../../resources/js/app/sistemas/onepiece/construtor/dados/estilos.ts';
 
@@ -60,4 +60,45 @@ test('Atirador: toda Técnica com Salvaguarda da área tem forma legível; as de
     assert.equal(por['Shooting Stars'].desvantagem, undefined);
     assert.equal(por['Saída Forçada'].aoPassar, 'nada');
     assert.equal(por['Tiro Certeiro'].tipo, 'automatico');
+});
+
+test('area: o desenho é a forma alargada pelo raio de um token (a borda toca onde o token começa a ser atingido)', () => {
+    // 1 px = 1 m; token de raio 0,75: a esfera de 1,5 m desenha 2,25 m e cobre os quadrados vizinhos por inteiro
+    const esfera = desenhoDaArea({ forma: 'esfera', metros: 1.5, angulo: 0 }, { x: 0, y: 0 }, 0.75, 1);
+    assert.deepEqual(esfera, { tipo: 'circulo', x: 0, y: 0, r: 2.25 });
+    // tudo que o desenho cobre por inteiro é contado, e o que está logo fora, não
+    const medida = { forma: 'esfera', metros: 1.5, angulo: 0 };
+    assert.deepEqual(
+        tokensNaArea(
+            medida,
+            { x: 0, y: 0 },
+            [
+                { id: 1, x: 1.5, y: 0, raio: 0.75 },
+                { id: 2, x: 2.12, y: 2.12 * 0, raio: 0.75 },
+                { id: 3, x: 3.1, y: 0, raio: 0.75 },
+            ],
+            1,
+        ),
+        [1, 2],
+    );
+    const linha = desenhoDaArea({ forma: 'linha', metros: 9, angulo: 0 }, { x: 0, y: 0 }, 0.75, 1);
+    assert.equal(linha.tipo, 'poligono');
+    assert.deepEqual(linha.pontos.slice(0, 2), [-0.75, -1.5]); // começa atrás da origem e tem 1,5 m de meia largura (0,75 + 0,75)
+    const cone = desenhoDaArea({ forma: 'cone', metros: 18, angulo: 0 }, { x: 0, y: 0 }, 0.75, 1);
+    assert.equal(cone.tipo, 'setor');
+    assert.ok(cone.x < 0 && cone.r > 18.75); // o vértice recua e o raio cresce
+    // um token encostado na borda lateral do cone desenhado é contado
+    const lateral = 15 * Math.tan(Math.atan(0.5)) + 0.75 / Math.cos(Math.atan(0.5)) - 0.01;
+    assert.deepEqual(
+        tokensNaArea(
+            { forma: 'cone', metros: 18, angulo: 0 },
+            { x: 0, y: 0 },
+            [
+                { id: 1, x: 15, y: lateral, raio: 0.75 },
+                { id: 2, x: 15, y: lateral + 0.1, raio: 0.75 },
+            ],
+            1,
+        ),
+        [1],
+    );
 });
