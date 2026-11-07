@@ -85,6 +85,20 @@ export function precoDeVenda(i: ItemDoCatalogo, bomEstado = true): number | null
 }
 
 /** O que a ficha calcula no item: armadura/escudo e, se o dano da arma é fixo, a arma. */
+/**
+ * O alcance (m) que a arma do catálogo leva para o item da mesa: Distância/Arremesso trazem normal e máximo; as demais valem o alcance corpo a
+ * corpo (1,5 m, ou 3 m com a propriedade Alcance). Espelha `Itens::alcanceDaArma`.
+ */
+export function alcanceDaArmaDoCatalogo(a: { distancia?: [number, number]; propriedades: string[] }): {
+    alcanceNormal: number;
+    alcanceMaximo: number;
+} {
+    if (a.distancia) return { alcanceNormal: a.distancia[0], alcanceMaximo: a.distancia[1] };
+    const corpo = a.propriedades.includes('Alcance') ? 3 : 1.5;
+
+    return { alcanceNormal: corpo, alcanceMaximo: corpo };
+}
+
 export function dadosDoSistema(i: ItemDoCatalogo): DadosItemOnePiece & { catalogo: { id: string } } {
     const dados: DadosItemOnePiece & { catalogo: { id: string } } = { ...(i.dados ?? {}), catalogo: { id: i.id } };
     const a = i.arma;
@@ -96,6 +110,7 @@ export function dadosDoSistema(i: ItemDoCatalogo): DadosItemOnePiece & { catalog
             atributo: acuidade ? 'acuidade' : aDistancia ? 'des' : 'for',
             tipoDano: a.tipoDano,
             ...(aDistancia ? { distancia: true } : {}),
+            ...alcanceDaArmaDoCatalogo(a),
             ...(a.expertiseId ? { forja: { expertise: [a.expertiseId] } } : {}),
         };
     }

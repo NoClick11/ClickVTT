@@ -14,8 +14,10 @@ export interface AreaDeEfeito {
     forma: FormaDeArea;
     /** Tamanho fixo em metros (raio, comprimento); `null` = o cursor define (alcance da arma). */
     metros: number | null;
-    /** Com `metros: null`: o tamanho máximo que o cursor pode dar (o alcance da arma); sem ele, sem limite. */
+    /** Com `metros: null`: o tamanho máximo que o cursor pode dar (o alcance da arma). */
     maximo?: number | null;
+    /** A área não pode ser marcada (ex.: sem arma equipada, ou arma sem alcance): o motivo para avisar o jogador. */
+    bloqueio?: string;
 }
 
 export interface Ponto {

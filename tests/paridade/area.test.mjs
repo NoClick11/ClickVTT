@@ -115,21 +115,41 @@ test('area: "Arma" deixa o cursor definir o tamanho, mas nunca além do máximo 
     assert.equal(areaMedida({ forma: 'cone', metros: 18, maximo: 3 }, { x: 0, y: 0 }, { x: 0, y: 50 }, 1).metros, 18); // tamanho fixo ignora o cursor
 });
 
-test('alcance da arma: à distância usa o máximo do catálogo; corpo a corpo, 1,5 m; várias armas, a maior', () => {
-    const item = (id, dados) => ({ id, nome: 'x', peso: 1, equipavel: true, dados });
+test('alcance da arma: usa o alcanceMaximo do item; arma antiga completa pelo catálogo; sem arma ou sem alcance, o problema', () => {
+    const item = (id, nome, dados) => ({ id, nome, peso: 1, equipavel: true, dados });
     const itens = {
-        1: item(1, { arma: { dano: '1d12', atributo: 'des', distancia: true }, catalogo: { id: 'mosquete' } }), // 18/24
-        2: item(2, { arma: { dano: '1d6', atributo: 'for' } }), // corpo a corpo
-        3: item(3, { arma: { dano: '1d6', atributo: 'des', distancia: true } }), // à distância sem catálogo
+        1: item(1, 'Mosquete', { arma: { dano: '1d12', atributo: 'des', distancia: true, alcanceNormal: 18, alcanceMaximo: 24 } }),
+        2: item(2, 'Espada', { arma: { dano: '1d6', atributo: 'for', alcanceNormal: 1.5, alcanceMaximo: 1.5 } }),
+        3: item(3, 'Lança', { arma: { dano: '1d6', atributo: 'for', alcanceNormal: 3, alcanceMaximo: 3 } }),
+        4: item(4, 'Mosquete antigo', { arma: { dano: '1d12', atributo: 'des', distancia: true }, catalogo: { id: 'mosquete' } }), // sem o campo: o catálogo completa (18/24)
+        5: item(5, 'Pistola caseira', { arma: { dano: '1d6', atributo: 'des', distancia: true } }), // sem o campo e sem catálogo
     };
     const com = (...ids) => ({
         tamanho: 'Médio',
         inventario: [{ secao: 'E', itens: ids.map((i) => ({ item_id: i, qtd: 1, equipado: true, sintonizado: false })) }],
     });
-    assert.equal(alcanceMaximoDaArma(com(1), itens), 24);
-    assert.equal(alcanceMaximoDaArma(com(2), itens), 1.5);
-    assert.equal(alcanceMaximoDaArma(com(1, 2), itens), 24);
-    assert.equal(alcanceMaximoDaArma(com(3), itens), null); // não dá para saber: sem limite
-    assert.equal(alcanceMaximoDaArma(com(2), itens, 30), 3); // alcance corpo a corpo da ficha (decímetros)
-    assert.equal(alcanceMaximoDaArma({ tamanho: 'Médio', inventario: [] }, itens), null); // sem arma equipada
+    assert.deepEqual(alcanceMaximoDaArma(com(1), itens), { maximo: 24 });
+    assert.deepEqual(alcanceMaximoDaArma(com(2), itens), { maximo: 1.5 });
+    assert.deepEqual(alcanceMaximoDaArma(com(3), itens), { maximo: 3 });
+    assert.deepEqual(alcanceMaximoDaArma(com(1, 2), itens), { maximo: 24 }); // várias armas: a de maior alcance
+    assert.deepEqual(alcanceMaximoDaArma(com(4), itens), { maximo: 24 });
+    assert.match(alcanceMaximoDaArma(com(5), itens).problema, /Pistola caseira: toda arma precisa de alcance/);
+    assert.deepEqual(alcanceMaximoDaArma(com(5, 1), itens), { maximo: 24 }); // uma arma sem alcance não impede a que tem
+    assert.match(alcanceMaximoDaArma({ tamanho: 'Médio', inventario: [] }, itens).problema, /Equipe uma arma/);
+});
+
+test('catálogo: toda arma vai para a mesa com alcance (distância normal/máximo; corpo a corpo 1,5 m, 3 m com Alcance)', async () => {
+    const { alcanceDaArmaDoCatalogo, dadosDoSistema } = await import('../../resources/js/app/sistemas/onepiece/itens/regras.ts');
+    const { CATALOGO_DE_ITENS } = await import('../../resources/js/app/sistemas/onepiece/itens/index.ts');
+    assert.deepEqual(alcanceDaArmaDoCatalogo({ distancia: [18, 24], propriedades: [] }), { alcanceNormal: 18, alcanceMaximo: 24 });
+    assert.deepEqual(alcanceDaArmaDoCatalogo({ propriedades: [] }), { alcanceNormal: 1.5, alcanceMaximo: 1.5 });
+    assert.deepEqual(alcanceDaArmaDoCatalogo({ propriedades: ['Alcance', 'Duas Mãos'] }), { alcanceNormal: 3, alcanceMaximo: 3 });
+    let armas = 0;
+    for (const i of CATALOGO_DE_ITENS.filter((x) => x.arma)) {
+        const d = dadosDoSistema(i);
+        if (!d.arma) continue; // arma sem dano fixo (marcial, por munição) não vira arma da ficha
+        armas++;
+        assert.ok(d.arma.alcanceNormal >= 0.5 && d.arma.alcanceMaximo >= d.arma.alcanceNormal, `${i.id} sem alcance`);
+    }
+    assert.ok(armas > 10);
 });

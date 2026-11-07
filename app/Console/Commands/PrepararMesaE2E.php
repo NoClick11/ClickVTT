@@ -56,7 +56,7 @@ class PrepararMesaE2E extends Command
         // o Atirador empunha um Mosquete do catálogo (alcance 18/24 m): limita as áreas "Arma, Cone/Linha" a 24 m
         $mosquete = $mesa->itens()->updateOrCreate(['catalogo_id' => 'mosquete'], [
             'nome' => 'Mosquete', 'peso' => 4, 'equipavel' => true,
-            'dados' => ['arma' => ['dano' => '1d12', 'atributo' => 'des', 'tipoDano' => 'Perfurante', 'proficiente' => true, 'distancia' => true], 'catalogo' => ['id' => 'mosquete']],
+            'dados' => ['arma' => ['dano' => '1d12', 'atributo' => 'des', 'tipoDano' => 'Perfurante', 'proficiente' => true, 'distancia' => true, 'alcanceNormal' => 18, 'alcanceMaximo' => 24], 'catalogo' => ['id' => 'mosquete']],
         ]);
         $ficha['inventario'] = [['secao' => 'Equipamento', 'itens' => [['item_id' => $mosquete->id, 'qtd' => 1, 'equipado' => true, 'sintonizado' => false]]]];
 

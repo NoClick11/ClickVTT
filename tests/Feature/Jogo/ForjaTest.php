@@ -67,7 +67,7 @@ class ForjaTest extends TestCase
         $c = $this->cenario();
         $corpo = fn (array $forja, string $tipo = 'Cortante') => [
             'nome' => 'Lâmina', 'categoria' => 'armas-cortantes', 'raridade' => 'raro', 'preco' => 1, 'peso' => 1, 'equipavel' => true, 'requer_sintonia' => false,
-            'dados' => ['arma' => ['dano' => '1d6', 'atributo' => 'for', 'tipoDano' => $tipo, 'forja' => $forja]],
+            'dados' => ['arma' => ['dano' => '1d6', 'atributo' => 'for', 'tipoDano' => $tipo, 'alcanceNormal' => 1.5, 'alcanceMaximo' => 1.5, 'forja' => $forja]],
         ];
         $url = route('jogo.catalogo.store', $c->mesa->id);
         $this->como($c->mestre)->postJson($url, $corpo(['meito' => 'o-wazamono', 'yoto' => 'azar-mortal', 'expertise' => ['maximizar', 'caido'], 'densidade' => 'cortante', 'balanco' => true, 'fio' => 2, 'dureza' => true]))

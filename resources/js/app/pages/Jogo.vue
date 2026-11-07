@@ -852,6 +852,11 @@ const protegidosDe = (personagemId: number) =>
  * ninguém dentro). O mais perto vira o alvo mirado: o ataque e o "Aplicar" do chat o usam.
  */
 async function escolherAreaDaFicha(personagemId: number, area: AreaDeEfeito): Promise<number[] | null> {
+    if (area.bloqueio) {
+        avisar(area.bloqueio);
+
+        return null;
+    }
     const token = objetos.value.find((o) => o.tipo === 'token' && o.personagem_id === personagemId);
     if (!token) {
         avisar('Coloque o seu token no mapa para marcar a área da Técnica.');

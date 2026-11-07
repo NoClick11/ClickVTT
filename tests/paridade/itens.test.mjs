@@ -112,12 +112,13 @@ test('itens: compra, venda (metade em bom estado) e Mercado Negro até 100 vezes
 
 test('itens: conversão para o item da mesa (arma, escudo, vínculo com o catálogo)', () => {
     const katana = itemParaAMesa(itemDoCatalogo('katana'));
-    assert.deepEqual(katana.dados.arma, { dano: '1d6', atributo: 'acuidade', tipoDano: 'Cortante', forja: { expertise: ['maximizar'] } });
+    assert.deepEqual(katana.dados.arma, { dano: '1d6', atributo: 'acuidade', tipoDano: 'Cortante', alcanceNormal: 1.5, alcanceMaximo: 1.5, forja: { expertise: ['maximizar'] } });
     assert.deepEqual(katana.dados.catalogo, { id: 'katana' });
     assert.equal(katana.peso, 1.2);
     assert.equal(katana.equipavel, true);
     assert.ok(katana.descricao.includes('Expertise') && katana.descricao.includes('Raridade: Comum'));
     assert.equal(dadosDoSistema(itemDoCatalogo('machado')).arma.atributo, 'for');
+    assert.deepEqual([dadosDoSistema(itemDoCatalogo('lanca')).arma.alcanceNormal].length, 1); // arma com Alcance/Arremesso também leva alcance
     assert.equal(dadosDoSistema(itemDoCatalogo('shuriken')).arma.atributo, 'acuidade');
     assert.equal(dadosDoSistema(itemDoCatalogo('bastao')).arma, undefined); // marcial: dano vem do desarmado
     assert.equal(dadosDoSistema(itemDoCatalogo('pistola')).arma, undefined); // dano pela munição

@@ -95,7 +95,7 @@ class LojaTest extends TestCase
         $this->dar($c, $c->aria, 1000000);
         $criar = $this->como($c->mestre)->postJson(route('jogo.catalogo.store', $c->mesa->id), [
             'nome' => 'Espada do Capitão', 'descricao' => 'Única.', 'categoria' => 'armas-cortantes', 'raridade' => 'raro', 'preco' => 500000, 'peso' => 2,
-            'equipavel' => true, 'requer_sintonia' => false, 'efeitos' => [['alvo' => 'ca', 'modo' => 'soma', 'valor' => 1]], 'dados' => ['arma' => ['dano' => '1d8', 'atributo' => 'for', 'tipoDano' => 'Cortante']],
+            'equipavel' => true, 'requer_sintonia' => false, 'efeitos' => [['alvo' => 'ca', 'modo' => 'soma', 'valor' => 1]], 'dados' => ['arma' => ['dano' => '1d8', 'atributo' => 'for', 'tipoDano' => 'Cortante', 'alcanceNormal' => 1.5, 'alcanceMaximo' => 1.5]],
         ])->assertCreated();
         $id = 'c:'.$criar->json('id');
         $this->como($c->ana)->postJson(route('jogo.catalogo.store', $c->mesa->id), ['nome' => 'x'])->assertForbidden();

@@ -80,10 +80,26 @@ class Itens
                 'dano' => $a['dano'],
                 'atributo' => in_array('Acuidade', $a['propriedades'], true) ? 'acuidade' : ($aDistancia ? 'des' : 'for'),
                 'tipoDano' => $a['tipoDano'],
-            ] + ($aDistancia ? ['distancia' => true] : []) + (! empty($a['expertiseId']) ? ['forja' => ['expertise' => [$a['expertiseId']]]] : []);
+            ] + ($aDistancia ? ['distancia' => true] : []) + self::alcanceDaArma($a) + (! empty($a['expertiseId']) ? ['forja' => ['expertise' => [$a['expertiseId']]]] : []);
         }
 
         return $dados;
+    }
+
+    /**
+     * O alcance (m) da arma do catálogo no item da mesa: Distância/Arremesso trazem normal e máximo; as demais valem o alcance corpo a corpo
+     * (1,5 m, ou 3 m com a propriedade Alcance). Espelha `alcanceDaArmaDoCatalogo` do TS.
+     *
+     * @return array{alcanceNormal: float|int, alcanceMaximo: float|int}
+     */
+    public static function alcanceDaArma(array $a): array
+    {
+        if (! empty($a['distancia'])) {
+            return ['alcanceNormal' => $a['distancia'][0], 'alcanceMaximo' => $a['distancia'][1]];
+        }
+        $corpo = in_array('Alcance', $a['propriedades'] ?? [], true) ? 3 : 1.5;
+
+        return ['alcanceNormal' => $corpo, 'alcanceMaximo' => $corpo];
     }
 
     /** Descrição, dano, propriedades, expertise, raridade e preço, para o item da mesa. Espelha `descricaoParaAMesa` do TS. */

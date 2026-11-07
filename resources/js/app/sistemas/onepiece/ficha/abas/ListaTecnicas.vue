@@ -154,12 +154,13 @@ const alternarGrupo = (chave: string) => {
 /** A Técnica está ativa no combate (Quick Draw...)? Mostra as rodadas que faltam e deixa encerrar. */
 const ativaDe = (t: Tecnica) => acoes.ativas().find((a) => a.nome === rotuloDoUso(t) || a.nome === t.nome) ?? null;
 
-/** A área da Técnica; "Arma, Cone/Linha" não passa do alcance da arma equipada (o cursor define o tamanho até esse máximo). */
+/** A área da Técnica; "Arma, Cone/Linha/Esfera" não passa do alcance máximo da arma equipada (sem arma ou sem alcance cadastrado, fica bloqueada). */
 function areaComLimite(alcance: string) {
     const area = areaDoAlcance(alcance);
     if (!area || area.metros !== null) return area;
+    const r = alcanceMaximoDaArma(props.ficha, itens.value);
 
-    return { ...area, maximo: alcanceMaximoDaArma(props.ficha, itens.value, calc.value['alcance.corpo']) };
+    return 'maximo' in r ? { ...area, maximo: r.maximo } : { ...area, bloqueio: r.problema };
 }
 
 /** Muda o tipo de teste da técnica ('' = nenhum); a Salvaguarda começa em Destreza, passando = metade do dano. */

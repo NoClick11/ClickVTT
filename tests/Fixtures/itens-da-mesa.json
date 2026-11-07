@@ -1158,6 +1158,8 @@
         "dano": "1d4",
         "atributo": "acuidade",
         "tipoDano": "Cortante",
+        "alcanceNormal": 6,
+        "alcanceMaximo": 15,
         "forja": {
           "expertise": [
             "sangramento"
@@ -1181,6 +1183,8 @@
         "dano": "1d6",
         "atributo": "acuidade",
         "tipoDano": "Cortante",
+        "alcanceNormal": 1.5,
+        "alcanceMaximo": 1.5,
         "forja": {
           "expertise": [
             "proxima-falha"
@@ -1204,6 +1208,8 @@
         "dano": "2d6",
         "atributo": "for",
         "tipoDano": "Cortante",
+        "alcanceNormal": 3,
+        "alcanceMaximo": 3,
         "forja": {
           "expertise": [
             "cr-mais-2"
@@ -1227,6 +1233,8 @@
         "dano": "1d6",
         "atributo": "acuidade",
         "tipoDano": "Cortante",
+        "alcanceNormal": 1.5,
+        "alcanceMaximo": 1.5,
         "forja": {
           "expertise": [
             "maximizar"
@@ -1250,6 +1258,8 @@
         "dano": "1d4",
         "atributo": "acuidade",
         "tipoDano": "Cortante",
+        "alcanceNormal": 1.5,
+        "alcanceMaximo": 1.5,
         "forja": {
           "expertise": [
             "sangramento"
@@ -1273,6 +1283,8 @@
         "dano": "1d6",
         "atributo": "for",
         "tipoDano": "Cortante",
+        "alcanceNormal": 6,
+        "alcanceMaximo": 15,
         "forja": {
           "expertise": [
             "empoderado"
@@ -1296,6 +1308,8 @@
         "dano": "1d12",
         "atributo": "for",
         "tipoDano": "Cortante",
+        "alcanceNormal": 3,
+        "alcanceMaximo": 3,
         "forja": {
           "expertise": [
             "area-cortante"
@@ -1319,6 +1333,8 @@
         "dano": "1d8",
         "atributo": "for",
         "tipoDano": "Cortante",
+        "alcanceNormal": 3,
+        "alcanceMaximo": 3,
         "forja": {
           "expertise": [
             "critico-16"
@@ -1342,6 +1358,8 @@
         "dano": "1d6",
         "atributo": "acuidade",
         "tipoDano": "Cortante",
+        "alcanceNormal": 1.5,
+        "alcanceMaximo": 1.5,
         "forja": {
           "expertise": [
             "salvaguarda-des"
@@ -1365,6 +1383,8 @@
         "dano": "1d6",
         "atributo": "for",
         "tipoDano": "Cortante",
+        "alcanceNormal": 1.5,
+        "alcanceMaximo": 1.5,
         "forja": {
           "expertise": [
             "pv-temporarios"
@@ -1388,6 +1408,8 @@
         "dano": "1d6",
         "atributo": "acuidade",
         "tipoDano": "Cortante",
+        "alcanceNormal": 1.5,
+        "alcanceMaximo": 1.5,
         "forja": {
           "expertise": [
             "acerto-mais-3"
@@ -1675,6 +1697,8 @@
         "dano": "1d4",
         "atributo": "for",
         "tipoDano": "Contundente",
+        "alcanceNormal": 1.5,
+        "alcanceMaximo": 1.5,
         "forja": {
           "expertise": [
             "pv-temporarios"
@@ -1698,6 +1722,8 @@
         "dano": "1d6",
         "atributo": "acuidade",
         "tipoDano": "Cortante",
+        "alcanceNormal": 3,
+        "alcanceMaximo": 3,
         "forja": {
           "expertise": [
             "incapacitado"
@@ -1721,6 +1747,8 @@
         "dano": "1d8",
         "atributo": "for",
         "tipoDano": "Cortante",
+        "alcanceNormal": 3,
+        "alcanceMaximo": 3,
         "forja": {
           "expertise": [
             "puxar-ou-1d8"
@@ -1744,6 +1772,8 @@
         "dano": "1d10",
         "atributo": "for",
         "tipoDano": "Perfurante",
+        "alcanceNormal": 6,
+        "alcanceMaximo": 12,
         "forja": {
           "expertise": [
             "dois-ataques"
@@ -1767,6 +1797,8 @@
         "dano": "1d10",
         "atributo": "for",
         "tipoDano": "Perfurante",
+        "alcanceNormal": 1.5,
+        "alcanceMaximo": 1.5,
         "forja": {
           "expertise": [
             "metade-da-cr"
@@ -1790,6 +1822,8 @@
         "dano": "1d12",
         "atributo": "for",
         "tipoDano": "Contundente",
+        "alcanceNormal": 1.5,
+        "alcanceMaximo": 1.5,
         "forja": {
           "expertise": [
             "empurrar-ou-1d8"
@@ -1813,6 +1847,8 @@
         "dano": "1d10",
         "atributo": "for",
         "tipoDano": "Cortante",
+        "alcanceNormal": 3,
+        "alcanceMaximo": 3,
         "forja": {
           "expertise": [
             "area-cortante"
@@ -1836,6 +1872,8 @@
         "dano": "1d10",
         "atributo": "for",
         "tipoDano": "Perfurante",
+        "alcanceNormal": 3,
+        "alcanceMaximo": 3,
         "forja": {
           "expertise": [
             "deslocamento-metade"
@@ -1872,6 +1910,8 @@
         "dano": "1d4",
         "atributo": "acuidade",
         "tipoDano": "Perfurante",
+        "alcanceNormal": 6,
+        "alcanceMaximo": 12,
         "forja": {
           "expertise": [
             "sangramento"

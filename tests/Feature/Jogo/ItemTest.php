@@ -341,4 +341,19 @@ class ItemTest extends TestCase
         $this->assertSame(3, Item::count());
         $this->assertSame(0.25, Item::where('nome', 'Poção')->first()->peso);
     }
+
+    public function test_toda_arma_precisa_do_alcance_normal_e_maximo(): void
+    {
+        $c = $this->cenario('one-piece');
+        $corpo = fn (array $arma) => [
+            'nome' => 'Espingarda', 'peso' => 3, 'equipavel' => true, 'requer_sintonia' => false,
+            'dados' => ['arma' => ['dano' => '1d8', 'atributo' => 'des', 'tipoDano' => 'Perfurante', 'distancia' => true, ...$arma]],
+        ];
+        $criar = fn (array $arma) => $this->como($c->mestre)->postJson(route('jogo.itens.store', $c->mesa->id), $corpo($arma));
+        $criar([])->assertStatus(422)->assertJsonValidationErrors(['dados.arma.alcanceNormal', 'dados.arma.alcanceMaximo']); // sem alcance
+        $criar(['alcanceNormal' => 18])->assertStatus(422)->assertJsonValidationErrors('dados.arma.alcanceMaximo');
+        $criar(['alcanceNormal' => 24, 'alcanceMaximo' => 18])->assertStatus(422)->assertJsonValidationErrors('dados.arma.alcanceMaximo'); // máximo < normal
+        $criar(['alcanceNormal' => 0, 'alcanceMaximo' => 18])->assertStatus(422)->assertJsonValidationErrors('dados.arma.alcanceNormal');
+        $criar(['alcanceNormal' => 18, 'alcanceMaximo' => 24])->assertCreated();
+    }
 }

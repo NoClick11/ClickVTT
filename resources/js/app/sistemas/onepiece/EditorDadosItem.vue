@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Plus, X } from 'lucide-vue-next';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { dadosValidos } from '../../nucleo/efeitos/efeitos';
 import { EXPERTISES, KOKUTO, MAX_FIO, MEITO, TIPOS_DE_DANO_FISICO, YOTO, meitoPorId, yotoPorId, type ForjaDaArma } from './itens/forja';
 import { ATRIBUTOS, type DadosItemOnePiece } from './regras';
@@ -31,10 +31,29 @@ const arma = ref({
     margemCritica: inicial.arma?.margemCritica ?? 20,
     /** Arma à distância (o anão com Armas Reduzidas causa metade do dano) e tamanho da arma (gigantes só usam armas de gigante). */
     distancia: inicial.arma?.distancia ?? false,
+    /** Alcance em metros (obrigatório): à distância, o normal e o máximo; corpo a corpo, o alcance da arma nos dois (1,5 m; 3 m com a propriedade Alcance). */
+    alcanceNormal: inicial.arma?.alcanceNormal ?? (inicial.arma?.distancia ? 9 : 1.5),
+    alcanceMaximo: inicial.arma?.alcanceMaximo ?? (inicial.arma?.distancia ? 18 : 1.5),
     tamanho: (inicial.arma?.tamanho ?? 'padrao') as 'padrao' | 'gigante',
     /** Dados extras só desta arma (ex.: +2d6 de fogo), até 3. */
     danoExtra: (inicial.arma?.danoExtra ?? []).map((x) => ({ dados: x.dados, tipo: x.tipo ?? '' })),
 });
+/** O alcance é obrigatório: os dois valores existem, são positivos e o máximo não é menor que o normal. */
+const alcanceInvalido = computed(() => {
+    const n = Number(arma.value.alcanceNormal);
+    const m = Number(arma.value.alcanceMaximo);
+
+    return !(n >= 0.5 && m >= 0.5 && m >= n);
+});
+/** Trocar entre corpo a corpo e à distância sugere o alcance típico (só enquanto ainda é o valor padrão do outro tipo). */
+watch(
+    () => arma.value.distancia,
+    (aDistancia) => {
+        const a = arma.value;
+        if (aDistancia && a.alcanceNormal === 1.5 && a.alcanceMaximo === 1.5) [a.alcanceNormal, a.alcanceMaximo] = [9, 18];
+        else if (!aDistancia && a.alcanceNormal === 9 && a.alcanceMaximo === 18) [a.alcanceNormal, a.alcanceMaximo] = [1.5, 1.5];
+    },
+);
 const MAX_DANO_EXTRA = 3;
 
 /** Forja da arma: Meito (qualidade), Kokuto, Yoto, Expertise (até 2), Densidade, Dureza, Balanço e Fio. Valem sozinhos com a arma equipada. */
@@ -103,6 +122,8 @@ function montar(): Record<string, unknown> | null {
                 bonusDano: Number(a.bonusDano) || 0,
                 margemCritica: Number(a.margemCritica),
                 ...(a.distancia ? { distancia: true } : {}),
+                alcanceNormal: Number(a.alcanceNormal),
+                alcanceMaximo: Number(a.alcanceMaximo),
                 ...(a.tamanho === 'gigante' ? { tamanho: 'gigante' as const } : {}),
                 ...(extras(a.danoExtra).length ? { danoExtra: extras(a.danoExtra) } : {}),
                 ...(montarForja() ? { forja: montarForja()! } : {}),
@@ -236,6 +257,39 @@ const campoLinha = campo.replace('w-full ', '');
             <label class="flex items-end gap-2 pb-1.5 text-sm" title="O anão (Armas Reduzidas) causa só metade do dano com armas à distância"
                 ><input v-model="arma.distancia" type="checkbox" class="size-4 accent-ouro-500" /> À distância</label
             >
+            <label
+                ><span
+                    :class="rotulo"
+                    title="Alcance normal em metros: à distância, até onde o ataque não sofre desvantagem; corpo a corpo, o alcance da arma (1,5 m; 3 m com a propriedade Alcance)"
+                    >Alcance normal (m)</span
+                ><input
+                    v-model.number="arma.alcanceNormal"
+                    type="number"
+                    min="0.5"
+                    max="1000"
+                    step="0.5"
+                    required
+                    :class="[campo, alcanceInvalido ? 'border-red-400' : '']"
+                    aria-label="Alcance normal da arma, em metros (obrigatório)"
+            /></label>
+            <label
+                ><span
+                    :class="rotulo"
+                    title="Alcance máximo em metros: além dele não se ataca. Limita as áreas das Técnicas que usam o alcance da arma"
+                    >Alcance máximo (m)</span
+                ><input
+                    v-model.number="arma.alcanceMaximo"
+                    type="number"
+                    min="0.5"
+                    max="1000"
+                    step="0.5"
+                    required
+                    :class="[campo, alcanceInvalido ? 'border-red-400' : '']"
+                    aria-label="Alcance máximo da arma, em metros (obrigatório, não menor que o normal)"
+            /></label>
+            <p v-if="alcanceInvalido" class="col-span-full text-xs text-red-300" role="alert">
+                O alcance é obrigatório em toda arma: normal e máximo, em metros (o máximo não pode ser menor que o normal).
+            </p>
             <label
                 ><span :class="rotulo" title="Gigantes só usam armas de gigante, e nenhum outro tamanho usa a arma de um gigante"
                     >Tamanho da arma</span

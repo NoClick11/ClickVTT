@@ -133,6 +133,12 @@ export interface DadosItemOnePiece {
         margemCritica?: number;
         /** Arma à distância: o anão (Armas Reduzidas) causa só metade do dano com ela. */
         distancia?: boolean;
+        /**
+         * Alcance da arma em metros (OBRIGATÓRIO em toda arma): à distância, o normal e o máximo (além do normal o ataque tem desvantagem; além do
+         * máximo não se ataca); corpo a corpo, o alcance da arma nos dois (1,5 m; 3 m com a propriedade Alcance). Limita as áreas "Arma, ..." das Técnicas.
+         */
+        alcanceNormal?: number;
+        alcanceMaximo?: number;
         /** Tamanho da arma: gigantes só usam armas de gigante, e nenhum outro tamanho usa a de um gigante. */
         tamanho?: 'padrao' | 'gigante' | null;
         /** Meito, Kokuto, Yoto, Expertise e melhorias de Pontos de Forja: valem sozinhos com a arma equipada. */

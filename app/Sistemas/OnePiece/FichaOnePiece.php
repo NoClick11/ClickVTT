@@ -522,6 +522,9 @@ final class FichaOnePiece
             'dados.arma.danoExtra.*.tipo' => ['nullable', 'string', 'max:30'],
             // Arma à distância (o anão com Armas Reduzidas causa metade do dano) e tamanho da arma (gigantes só usam armas de gigante).
             'dados.arma.distancia' => ['boolean:strict'],
+            // Alcance (m) é OBRIGATÓRIO em toda arma: à distância, normal e máximo; corpo a corpo, o alcance da arma nos dois
+            'dados.arma.alcanceNormal' => ['required_with:dados.arma.dano', 'numeric', 'between:0.5,1000'],
+            'dados.arma.alcanceMaximo' => ['required_with:dados.arma.dano', 'numeric', 'between:0.5,1000', 'gte:dados.arma.alcanceNormal'],
             'dados.arma.tamanho' => ['nullable', 'string', Rule::in(['padrao', 'gigante'])],
             'dados.arma.margemCritica' => ['integer:strict', 'between:10,20'], // d20 puro igual ou maior é crítico (padrão 20)
             // Forja da arma (Meito, Kokuto, Yoto, Expertise e melhorias de Pontos de Forja); o conteúdo é conferido por `Forja::problemas`.
