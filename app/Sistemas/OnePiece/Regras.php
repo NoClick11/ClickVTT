@@ -484,6 +484,12 @@ final class Regras
     }
 
     /** Dados do item dobrados para o crítico (`1d8` → `2d8`); formato inesperado volta como está. */
+    /** Dobra a quantidade de dados de uma expressão (`3d10+2` → `6d10+2`; `d8` → `2d8`): o acerto crítico. O bônus fixo não dobra. */
+    public static function dobrarDadosDaExpressao(string $expressao): string
+    {
+        return preg_replace_callback('/(\d*)d(\d+)/i', fn ($m) => (($m[1] === '' ? 1 : (int) $m[1]) * 2).'d'.$m[2], $expressao) ?? $expressao;
+    }
+
     private static function dobrarDados(string $dano): string
     {
         return preg_match('/^(\d+)d(\d+)$/', $dano, $m) ? ($m[1] * 2).'d'.$m[2] : $dano;

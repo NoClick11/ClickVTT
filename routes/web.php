@@ -14,6 +14,7 @@ use App\Http\Controllers\App\JogoController;
 use App\Http\Controllers\App\ObjetoController;
 use App\Http\Controllers\App\PaginaController;
 use App\Http\Controllers\App\PastaController;
+use App\Http\Controllers\App\TecnicaController;
 use App\Http\Controllers\App\PersonagemController as PersonagemDoJogoController;
 use App\Http\Controllers\Site\ConviteController;
 use App\Http\Controllers\Site\JogadorController;
@@ -82,6 +83,8 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::delete('objetos/{objeto}', [ObjetoController::class, 'destroy'])->name('objetos.destroy');
     Route::post('mensagens', [ChatController::class, 'texto'])->middleware('throttle:60,1')->name('mensagens.store');
     Route::post('rolagens', [ChatController::class, 'rolar'])->middleware('throttle:60,1')->name('rolagens.store');
+    Route::post('tecnicas/salvaguarda', [TecnicaController::class, 'abrir'])->middleware('throttle:30,1')->name('tecnicas.salvaguarda.abrir');
+    Route::post('tecnicas/salvaguarda/{mensagem}/rolar', [TecnicaController::class, 'rolar'])->middleware('throttle:120,1')->name('tecnicas.salvaguarda.rolar');
     Route::post('combate', [CombateController::class, 'comando'])->middleware('throttle:120,1')->name('combate.comando');
     Route::post('combate/eventos/{evento}/reagir', [EventoDeCombateController::class, 'reagir'])->middleware('throttle:60,1')->name('combate.eventos.reagir');
     Route::post('combate/eventos/{evento}/encerrar', [EventoDeCombateController::class, 'encerrar'])->middleware('throttle:30,1')->name('combate.eventos.encerrar');

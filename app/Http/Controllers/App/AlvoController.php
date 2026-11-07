@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Mensagem;
 use App\Models\Mesa;
 use App\Models\Personagem;
+use App\Nucleo\Combate\AplicarDano;
 use App\Nucleo\Combate\Dano;
 use App\Nucleo\Combate\Duracoes;
 use App\Nucleo\Rolagem\Rolador;
@@ -31,14 +32,14 @@ class AlvoController extends Controller
      * Aplica o total de uma rolagem de dano ao alvo, respeitando imunidade, resistência e vulnerabilidade ao tipo do dano.
      * Só o autor da rolagem ou o mestre; cada rolagem vale uma vez por alvo. Corpo: `mensagem_id`.
      */
-    public function dano(Request $request, Mesa $mesa, Personagem $personagem, RegistroSistemas $sistemas, FichaCampos $fichas): JsonResponse
+    public function dano(Request $request, Mesa $mesa, Personagem $personagem, RegistroSistemas $sistemas, AplicarDano $aplicar): JsonResponse
     {
         $acesso = AcessoMesa::exigir($request, $mesa);
         abort_unless($personagem->mesa_id === $mesa->id, 404);
         $entrada = $request->validate(['mensagem_id' => ['required', 'integer']]);
         $sistema = $this->sistema($mesa, $sistemas);
 
-        $resultado = DB::transaction(function () use ($mesa, $personagem, $acesso, $entrada, $sistema, $fichas) {
+        $resultado = DB::transaction(function () use ($mesa, $personagem, $acesso, $entrada, $sistema, $aplicar) {
             /** @var Mensagem $mensagem */
             $mensagem = $mesa->mensagens()->whereKey($entrada['mensagem_id'])->lockForUpdate()->firstOrFail();
             $dano = $mensagem->dados['sistema']['dano'] ?? null;
@@ -51,89 +52,21 @@ class AlvoController extends Controller
                 throw ValidationException::withMessages(['mensagem_id' => 'Este dano já foi aplicado a este alvo.']);
             }
 
-            $p = Personagem::query()->whereKey($personagem->id)->lockForUpdate()->firstOrFail();
-            $ficha = $p->fichaCompleta($sistema);
             $tipo = $dano['tipo'] ?? null;
             // Fração do dano que vale (arma à distância do anão: metade), antes das defesas do alvo.
             $total = (int) floor(((int) ($mensagem->dados['total'] ?? 0)) * (float) ($dano['fator'] ?? 1));
-            if (($ficha['hospedado'] ?? null) !== null) {
-                throw ValidationException::withMessages(['mensagem_id' => "{$p->nome} está hospedado no espaço de outro personagem: ataque o hospedeiro."]);
-            }
-            $calculo = Dano::calcular($ficha, $total, $tipo, (array) ($dano['ignora'] ?? []));
-            // Pontos de Escudo (Haki do Armamento) absorvem antes dos PV temporários, com a resistência do sistema
-            if (method_exists($sistema, 'escudoResiste') && (int) ($ficha['pv']['escudo'] ?? 0) > 0) {
-                $pv = Dano::noPvComEscudo($ficha['pv'], $calculo['final'], $sistema->escudoResiste($ficha, $tipo));
-                $campos = ['pv.atual' => $pv['atual'], 'pv.temp' => $pv['temp'], 'pv.escudo' => $pv['escudo']];
-            } else {
-                $pv = Dano::noPv($ficha['pv'] ?? [], $calculo['final']);
-                $campos = ['pv.atual' => $pv['atual'], 'pv.temp' => $pv['temp']];
-            }
-
-            // Condições "até receber dano" (ex.: Atordoado de Instintos Animalescos) acabam com o dano.
-            $acabaram = [];
-            if ($calculo['final'] > 0) {
-                foreach ($ficha['duracoes'] ?? [] as $id => $d) {
-                    if ($d['aoDano'] ?? false) {
-                        $acabaram[] = $id;
-                    }
-                }
-                if ($acabaram) {
-                    $campos['condicoes'] = array_values(array_diff($ficha['condicoes'] ?? [], $acabaram));
-                    $campos['duracoes'] = array_diff_key($ficha['duracoes'] ?? [], array_flip($acabaram));
-                }
-            }
-            // Superioridade Absoluta (e afins): o sistema pode mandar o dano zerar o alvo quando sobra pouco; o atacante ganha o bônus
-            $execucao = null;
-            if ($mensagem->personagem_id && method_exists($sistema, 'execucao') && $pv['atual'] > 0 && $calculo['final'] > 0) {
-                $atacante = Personagem::query()->where('mesa_id', $mesa->id)->find($mensagem->personagem_id);
-                $execucao = $atacante ? $sistema->execucao($atacante->fichaCompleta($sistema), $pv['atual']) : null;
-                if ($execucao) {
-                    $campos['pv.atual'] = 0;
-                    $execucao = [$atacante, $execucao['campos']];
-                }
-            }
-            $p->ficha = $fichas->aplicar($sistema, $p->ficha, $campos);
-            $p->save();
-            if ($execucao) {
-                $execucao[0]->ficha = $fichas->aplicar($sistema, $execucao[0]->ficha, $execucao[1]);
-                $execucao[0]->save();
-            }
+            $r = $aplicar->aplicar($mesa, $personagem->id, $sistema, $total, $tipo, (array) ($dano['ignora'] ?? []), $mensagem->personagem_id);
 
             $mensagem->dados = [...$mensagem->dados, 'aplicado' => [...$jaAplicado, $personagem->id]];
             $mensagem->save();
 
-            // Hóspede Feérico: quem está no espaço deste alvo sofre METADE do dano que o alvo recebeu, ignorando as defesas dele.
-            $hospedes = [];
-            foreach ($mesa->personagens()->get() as $outro) {
-                if ($outro->id === $p->id || (int) ($outro->ficha['hospedado'] ?? 0) !== $p->id) {
-                    continue;
-                }
-                $outraFicha = $outro->fichaCompleta($sistema);
-                $pvHospede = Dano::noPv($outraFicha['pv'] ?? [], intdiv($calculo['final'], 2));
-                $camposHospede = ['pv.atual' => $pvHospede['atual'], 'pv.temp' => $pvHospede['temp']];
-                $outro->ficha = $fichas->aplicar($sistema, $outro->ficha, $camposHospede);
-                $outro->save();
-                $hospedes[] = [$outro, $camposHospede, intdiv($calculo['final'], 2)];
-            }
-
-            return [$p, $mensagem, $calculo, $total, $tipo, $campos, $acabaram, $hospedes, $execucao];
+            return [$r, $mensagem];
         });
 
-        [$alvo, $mensagem, $calculo, $total, $tipo, $campos, $acabaram, $hospedes, $execucao] = $resultado;
-        Duracoes::transmitir($mesa, $alvo, $campos, $acabaram !== []);
-        if ($execucao) {
-            Duracoes::transmitir($mesa, $execucao[0], $execucao[1]);
-            $this->avisar($mesa, $acesso, $mensagem->visibilidade, "{$alvo->nome} é derrotado por Superioridade Absoluta de {$execucao[0]->nome}.");
-        }
-        foreach ($hospedes as [$hospede, $camposHospede, $parte]) {
-            Duracoes::transmitir($mesa, $hospede, $camposHospede);
-            $this->avisar($mesa, $acesso, $mensagem->visibilidade, "{$hospede->nome} sofreu {$parte} de dano como hóspede de {$alvo->nome}.");
-        }
+        [$r, $mensagem] = $resultado;
+        $texto = $aplicar->avisar($mesa, $acesso, $mensagem->visibilidade, $r);
 
-        $texto = $this->textoDoDano($alvo->nome, $total, $tipo, $calculo);
-        $this->avisar($mesa, $acesso, $mensagem->visibilidade, $texto);
-
-        return response()->json(['final' => $calculo['final'], 'modo' => $calculo['modo'], 'texto' => $texto]);
+        return response()->json(['final' => $r['calculo']['final'], 'modo' => $r['calculo']['modo'], 'texto' => $texto]);
     }
 
     /**
@@ -298,19 +231,6 @@ class AlvoController extends Controller
     }
 
     /** @param  array{final: int, modo: string}  $calculo */
-    private function textoDoDano(string $nome, int $total, ?string $tipo, array $calculo): string
-    {
-        $tipoTexto = filled($tipo) ? " de {$tipo}" : '';
-
-        return match ($calculo['modo']) {
-            'imune' => "{$nome} é imune a dano{$tipoTexto}: nenhum dano.",
-            'resistido' => "{$nome} recebeu {$calculo['final']} de dano{$tipoTexto} (resistência: {$total} pela metade).",
-            'vulneravel' => "{$nome} recebeu {$calculo['final']} de dano{$tipoTexto} (vulnerável: {$total} em dobro).",
-            default => "{$nome} recebeu {$calculo['final']} de dano{$tipoTexto}.",
-        };
-    }
-
-    /** Mensagem de texto no chat, na mesma visibilidade do dano (rolagem secreta/do mestre não vaza o aviso). */
     private function avisar(Mesa $mesa, AcessoMesa $acesso, string $visibilidade, string $texto): void
     {
         $mensagem = $mesa->mensagens()->create([

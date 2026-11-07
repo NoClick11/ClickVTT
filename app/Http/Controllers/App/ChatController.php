@@ -64,6 +64,16 @@ class ChatController extends Controller
             'acao.categoria' => ['required_with:acao', 'string', 'max:20'],
             'acao.tecnica' => ['nullable', 'boolean'],
             'dano.fator' => ['nullable', 'numeric', 'between:0,4'], // fração do dano que vale (0,5 = metade, ex.: arma à distância do anão)
+            // Ataque de uma Técnica: o card do chat oferece o dano dela (e o crítico) depois do acerto, e mostra a Salvaguarda do efeito.
+            'tecnica' => ['nullable', 'array'],
+            'tecnica.nome' => ['required_with:tecnica', 'string', 'max:120'],
+            'tecnica.dano' => ['nullable', 'array'],
+            'tecnica.dano.expressao' => ['required_with:tecnica.dano', 'string', 'max:'.Rolador::MAX_EXPRESSAO],
+            'tecnica.dano.tipo' => ['nullable', 'string', 'max:30'],
+            'tecnica.secundaria' => ['nullable', 'array'],
+            'tecnica.secundaria.atributo' => ['required_with:tecnica.secundaria', 'string', 'max:3'],
+            'tecnica.secundaria.desvantagem' => ['nullable', 'boolean'],
+            'tecnica.secundaria.efeito' => ['required_with:tecnica.secundaria', 'string', 'max:200'],
         ]);
 
         if (isset($dados['acao']) && ! empty($dados['personagem_id'])) {
@@ -78,10 +88,13 @@ class ChatController extends Controller
         }
         // `^2` (rolar o dano duas vezes e ficar com o maior) é da Saijo Ô Wazamono equipada: até 3 usos por descanso longo, consumidos aqui (depois de a expressão rolar).
         if (str_contains($dados['expressao'], '^')) {
-            $this->consumirSaijo($mesa, $acesso, $dados['personagem_id'] ?? null, $sistema, $itens, $ficha);
+            \App\Sistemas\OnePiece\ConsumoDaSaijo::consumir($mesa, $dados['personagem_id'] ?? null, $sistema, $itens, $ficha);
         }
         // O sistema pode marcar a rolagem (ex.: ataque crítico); o núcleo só guarda e repassa.
         $marcas = $sistema?->metadadosDaRolagem($resultado['termos'], $variaveis, $itens, $ficha) ?? [];
+        if (is_array($dados['tecnica'] ?? null) && $this->ehAtaque($resultado['termos'])) {
+            $marcas = [...$marcas, ...$this->marcasDoAtaqueDeTecnica($dados['tecnica'], $resultado['termos'])];
+        }
         if (is_array($dados['dano'] ?? null)) {
             $marcas['dano'] = [
                 'tipo' => filled($dados['dano']['tipo'] ?? null) ? trim($dados['dano']['tipo']) : null,
@@ -125,6 +138,37 @@ class ChatController extends Controller
         return $resposta;
     }
 
+    /**
+     * O ataque de uma Técnica: o d20 puro na margem (20) é crítico, 1 é falha. No acerto o card oferece o dano da Técnica (no crítico,
+     * os dados dobram, com o normal ao lado). A Salvaguarda do efeito (condição) vai no card para quem atingiu lembrar de pedir.
+     *
+     * @param  array<string, mixed>  $tecnica
+     * @param  list<array>  $termos
+     * @return array<string, mixed>
+     */
+    private function marcasDoAtaqueDeTecnica(array $tecnica, array $termos): array
+    {
+        $natural = Pipeline::naturalDoD20($termos);
+        $destaque = $natural === null ? null : ($natural >= 20 ? 'critico' : ($natural === 1 ? 'falha' : null));
+        $meta = ['margem' => 20, 'tecnica' => ['nome' => trim($tecnica['nome']), ...(isset($tecnica['secundaria']) ? ['secundaria' => $tecnica['secundaria']] : [])]];
+        if ($destaque) {
+            $meta['destaque'] = $destaque;
+        }
+        $dano = $tecnica['dano'] ?? null;
+        if ($dano && $destaque !== 'falha') {
+            $tipo = filled($dano['tipo'] ?? null) ? trim($dano['tipo']) : null;
+            $acao = fn (string $id, string $rotulo, string $expressao) => [
+                'id' => $id, 'rotulo' => $rotulo, 'resumo' => $expressao, 'expressao' => $expressao, 'rotuloRolagem' => trim($tecnica['nome']), 'dano' => ['tipo' => $tipo],
+            ];
+            $normal = $acao('dano', 'Dano', $dano['expressao']);
+            $meta['acoes'] = $destaque === 'critico'
+                ? [[...$acao('dano-critico', 'Dano crítico', \App\Sistemas\OnePiece\Regras::dobrarDadosDaExpressao($dano['expressao'])), 'destaque' => 'critico'], [...$normal, 'rotulo' => 'Dano normal']]
+                : [$normal];
+        }
+
+        return $meta;
+    }
+
     /** A rolagem é um ataque (usa a variável de ataque: `@ataque` ou `@arma.<id>.ataque`)? */
     private function ehAtaque(array $termos): bool
     {
@@ -143,35 +187,6 @@ class ChatController extends Controller
      *
      * @return array{0: ?Sistema, 1: array<string, int|float>, 2: array<int, array>, 3: array<string, mixed>}
      */
-    /**
-     * Gasta 1 uso da Saijo Ô Wazamono para rolar duas vezes. Recusa sem a arma equipada ou com os 3 usos já gastos; avisa a ficha.
-     *
-     * @param  array<int, array>  $itens
-     */
-    private function consumirSaijo(Mesa $mesa, AcessoMesa $acesso, ?int $personagemId, mixed $sistema, array $itens, array $ficha): void
-    {
-        if (! $personagemId || ! $sistema instanceof \App\Sistemas\OnePiece\OnePiece || ! \App\Sistemas\OnePiece\Regras::saijoEquipada($ficha, $itens)) {
-            throw ValidationException::withMessages(['expressao' => 'Rolar o dano duas vezes exige uma arma Saijo Ô Wazamono equipada.']);
-        }
-        $usados = DB::transaction(function () use ($personagemId, $mesa) {
-            $p = \App\Models\Personagem::query()->whereKey($personagemId)->where('mesa_id', $mesa->id)->lockForUpdate()->firstOrFail();
-            $f = $p->ficha ?? [];
-            $n = (int) ($f['meito']['usados'] ?? 0);
-            if ($n >= 3) {
-                throw ValidationException::withMessages(['expressao' => 'Os 3 usos da Saijo Ô Wazamono já foram gastos até o descanso longo.']);
-            }
-            $f['meito']['usados'] = $n + 1;
-            $p->ficha = $f;
-            $p->save();
-
-            return [$n + 1, $p];
-        });
-        [$n, $p] = $usados;
-        $canais = ['mestre', ...$p->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
-        // ator 0: quem rolou também aplica (o contador mudou no servidor)
-        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => ['meito.usados' => $n], 'criacao' => $p->criacao, 'ator' => 0], $canais);
-    }
-
     private function variaveis(Mesa $mesa, ?int $personagemId, RegistroSistemas $sistemas): array
     {
         $personagem = $personagemId ? $mesa->personagens()->find($personagemId) : null;
