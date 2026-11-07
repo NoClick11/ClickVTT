@@ -1,0 +1,882 @@
+{
+  "nivel": 20,
+  "campos": {
+    "especie": "Humano",
+    "estilo": "Atirador",
+    "atributoPrimario": "des",
+    "tecnicas.atributo": "des",
+    "estiloId": "atirador",
+    "estiloCaminho": "sniper",
+    "proficienciasArmas": [
+      "Armas de Fogo",
+      "Lançador de Arpão",
+      "Bazuca",
+      "Canhão",
+      "Armas de Navio"
+    ],
+    "habilidadesBasicas": [
+      {
+        "id": "mira-treinada",
+        "nivel": 1,
+        "opcao": "inata"
+      }
+    ],
+    "tamanho": "Médio",
+    "movimento.normal": 9,
+    "movimento.nado": 4.5,
+    "movimento.escalada": 0,
+    "movimento.voo": 0,
+    "deslocamento": "9 m · nado 4,5 m",
+    "atributos.for": 16,
+    "atributos.des": 15,
+    "atributos.con": 13,
+    "atributos.sab": 12,
+    "atributos.pre": 10,
+    "atributos.von": 8,
+    "pericias.atletismo": 0,
+    "pericias.acrobacia": 1,
+    "pericias.furtividade": 0,
+    "pericias.prestidigitacao": 0,
+    "pericias.historia": 0,
+    "pericias.investigacao": 0,
+    "pericias.medicina": 0,
+    "pericias.natureza": 0,
+    "pericias.sobrevivencia": 0,
+    "pericias.atuacao": 0,
+    "pericias.enganacao": 0,
+    "pericias.intimidacao": 0,
+    "pericias.persuasao": 0,
+    "pericias.provocacao": 0,
+    "pericias.haki": 0,
+    "pericias.intuicao": 0,
+    "pericias.percepcao": 1,
+    "pericias.sobrenatural": 0,
+    "pericias.sorte": 1,
+    "pericias.oficio": 0,
+    "salvaguardas": [
+      "des",
+      "sab"
+    ],
+    "resistencias": [],
+    "imunidades": [],
+    "dadosVida.tipo": "d8",
+    "dadosVida.restantes": 20,
+    "pv.max": 19,
+    "pv.atual": 19,
+    "pp.atual": 80,
+    "ancestralidade": "",
+    "caracteristicas": [
+      {
+        "nome": "Adaptação",
+        "origem": "Humanos",
+        "tipo": "passiva",
+        "descricao": "O humano escolhe 3 perícias para adicionar sua proficiência, à sua escolha, exceto Haki, Sobrenatural e Sorte. Regra opcional: você pode escolher receber apenas 1 perícia e não receber a Dificuldade da Espécie \"Aspectos Humanos\".",
+        "builder": "especie"
+      },
+      {
+        "nome": "Mira Treinada",
+        "origem": "Habilidade Básica: Mira Treinada",
+        "tipo": "passiva",
+        "descricao": "Suas jogadas de ataque (comum) à distância têm o dano aumentado em um passo (1 → 1d4 → 1d6 → 1d8 → 1d10 → 1d12 → 2d6 opcional). Em acerto crítico o projétil ricocheteia e atinge automaticamente uma criatura adicional à sua escolha a até 9 m do alvo original, causando metade do dano. Você não pode fazer mais de uma jogada de ataque (comum) corpo a corpo por rodada.",
+        "builder": "estilo",
+        "efeitos": [
+          {
+            "alvo": "passo.distancia",
+            "modo": "min",
+            "valor": 1
+          }
+        ],
+        "etiquetas": [
+          "Crítico: ricochete em outro alvo (½ dano)",
+          "Máx. 1 ataque corpo a corpo por rodada"
+        ],
+        "hb": "mira-treinada"
+      },
+      {
+        "nome": "Gun-Fu",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Enquanto estiver empunhando sua arma favorita, você recebe o benefício \"Defesa Aprimorada\" da Habilidade Básica Geral \"Corpo de Guerreiro\".",
+        "builder": "estilo",
+        "etiquetas": [
+          "Defesa Aprimorada com a arma favorita"
+        ],
+        "nivelMin": 11
+      },
+      {
+        "nome": "Corpo Treinado",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "A experiência do combate aproximado faz você ficar mais resistente: +1 no máximo de Pontos de Vida no 1º nível e +1 a cada nível de Atirador posterior.",
+        "builder": "estilo",
+        "efeitos": [
+          {
+            "alvo": "pv.max",
+            "modo": "soma",
+            "valor": "@nivel"
+          }
+        ],
+        "nivelMin": 11
+      },
+      {
+        "nome": "Pistoleiro",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Estar a 1,5 metro de uma criatura não impõe desvantagem em jogadas de ataque (comum ou Técnicas) à distância.",
+        "builder": "estilo",
+        "etiquetas": [
+          "Sem desvantagem à distância a 1,5 m"
+        ],
+        "nivelMin": 11
+      },
+      {
+        "nome": "Visão do Caçador",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Enquanto estiver empunhando sua arma favorita, você recebe os benefícios da Habilidade Básica Geral \"Perito em Técnicas\".",
+        "builder": "estilo",
+        "etiquetas": [
+          "Perito em Técnicas com a arma favorita"
+        ]
+      },
+      {
+        "nome": "Visão Além do Alcance",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Com a mira de um mosquete, sua visão alcança 5 km em condições normais e o dobro em locais altos. Dentro de metade desse alcance você é proficiente e dobra o Bônus de Proficiência em testes de Percepção que dependam da visão. Jogadas de ataque (comum) à distância além da distância normal da arma não recebem desvantagem.",
+        "builder": "estilo",
+        "etiquetas": [
+          "Visão de 5 km (10 km no alto)",
+          "Sem desvantagem além da distância normal"
+        ]
+      },
+      {
+        "nome": "Corrida Contínua",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Carregando menos de 10 vezes o seu valor de Força em quilos (ignorando armas e equipamentos que normalmente carrega), você não recebe Níveis de Exaustão ao se manter em disparada por até 1 hora. Seu deslocamento normal se torna 15 metros e não pode ser reduzido por terreno difícil.",
+        "builder": "estilo",
+        "efeitos": [
+          {
+            "alvo": "movimento.normal",
+            "modo": "min",
+            "valor": 150
+          }
+        ],
+        "etiquetas": [
+          "Deslocamento 15 m",
+          "Ignora terreno difícil",
+          "Disparada sem exaustão (1 h)"
+        ]
+      },
+      {
+        "nome": "Guarda Astuta: Rompante Defensivo",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Na primeira vez em cada rodada em que um inimigo que você possa ver acertar você com uma jogada de ataque (comum), você reduz pela metade o dano sofrido.",
+        "builder": "estilo",
+        "etiquetas": [
+          "1ª vez por rodada: dano do ataque (comum) pela metade"
+        ],
+        "nivelMin": 2
+      },
+      {
+        "nome": "Guarda Astuta: Queda Suave",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Ao receber dano de queda, você reduz o dano em 5 vezes o seu nível de Atirador.",
+        "builder": "estilo",
+        "etiquetas": [
+          "Dano de queda −5 × nível"
+        ],
+        "nivelMin": 4
+      },
+      {
+        "nome": "Guarda Astuta: Sentido de Perigo",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Você tem vantagem em Salvaguardas de Destreza contra Técnicas e armadilhas. Para receber esse benefício, você não pode estar sob as condições \"Cego\", \"Surdo\" ou \"Incapacitado\".",
+        "builder": "estilo",
+        "efeitos": [
+          {
+            "alvo": "salv.des",
+            "modo": "vantagem"
+          }
+        ],
+        "etiquetas": [
+          "Vantagem em Salv. DES contra Técnicas e armadilhas"
+        ],
+        "nivelMin": 6
+      },
+      {
+        "nome": "Guarda Astuta: Esquiva Fugaz",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Quando for alvo de um efeito que exige Salvaguarda de Destreza para sofrer metade do dano, você não sofre dano algum se passar e apenas metade se falhar.",
+        "builder": "estilo",
+        "etiquetas": [
+          "Salv. DES: passa = 0 de dano, falha = metade"
+        ],
+        "nivelMin": 8
+      },
+      {
+        "nome": "Guarda Astuta: Elusivo",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Nenhuma jogada de ataque (comum) tem vantagem contra você, desde que você não esteja \"Incapacitado\".",
+        "builder": "estilo",
+        "etiquetas": [
+          "Ataques (comuns) não têm vantagem contra você"
+        ],
+        "nivelMin": 10
+      },
+      {
+        "nome": "Atirador de Elite",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Aplicável às jogadas de ataque com armas à distância: o alcance das Técnicas de ataque à distância é dobrado e o alcance máximo das armas não impõe desvantagem; seus ataques (comum ou Técnicas) à distância ignoram meia-cobertura e três quartos de cobertura; nos ataques (comum) à distância você dobra o Bônus de Proficiência.",
+        "builder": "estilo",
+        "etiquetas": [
+          "Alcance das Técnicas à distância ×2",
+          "Ignora meia e 3/4 de cobertura",
+          "Prof. dobrada em ataques (comum) à distância"
+        ],
+        "nivelMin": 3
+      },
+      {
+        "nome": "Atirador de Elite: Tiro Pesado",
+        "origem": "Atirador",
+        "tipo": "ativa",
+        "descricao": "Antes de uma jogada de ataque (comum) à distância na qual seja proficiente, você pode sofrer −5 na jogada. Se acertar, adiciona +10 ao dano. Ligue antes de atacar.",
+        "builder": "estilo",
+        "efeitos": [
+          {
+            "alvo": "ataque.arma",
+            "modo": "soma",
+            "valor": -5
+          },
+          {
+            "alvo": "dano.arma",
+            "modo": "soma",
+            "valor": 10
+          }
+        ],
+        "ativa": false,
+        "nivelMin": 3
+      },
+      {
+        "nome": "Duelista de Elite: Rápido no Gatilho",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Uma vez por turno, ao realizar uma jogada de ataque (comum ou Técnicas) à distância, você pode usar uma ação bônus para realizar outra jogada de ataque (comum) à distância.",
+        "builder": "estilo",
+        "acao": "bonus",
+        "etiquetas": [
+          "1×/turno: ataque (comum) extra à distância com ação bônus"
+        ],
+        "nivelMin": 11
+      },
+      {
+        "nome": "Duelista de Elite: Tiro de Oportunidade",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Com sua reação, você pode fazer uma jogada de ataque (comum) à distância contra uma criatura que você veja e que se mova voluntariamente para fora ou para dentro de um espaço a 1,5 metro de você.",
+        "builder": "estilo",
+        "acao": "reacao",
+        "etiquetas": [
+          "Reação: ataque (comum) à distância contra quem entra ou sai de 1,5 m"
+        ],
+        "nivelMin": 11
+      },
+      {
+        "nome": "Sniper de Elite: Alvo na Mira",
+        "origem": "Atirador",
+        "tipo": "ativa",
+        "descricao": "Com uma ação bônus, dobre o alcance normal da sua arma para todas as jogadas de ataque (comum) à distância durante seu turno, sem desvantagem pela distância.",
+        "builder": "estilo",
+        "acao": "bonus",
+        "etiquetas": [
+          "Alcance normal da arma ×2 no turno"
+        ],
+        "nivelMin": 3
+      },
+      {
+        "nome": "Sniper de Elite: Posicionamento Perfeito",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Você ganha 9 metros de escalada, que podem ser reduzidos pela metade para passar automaticamente em Testes de Atributo de escalada.",
+        "builder": "estilo",
+        "efeitos": [
+          {
+            "alvo": "movimento.escalada",
+            "modo": "min",
+            "valor": 90
+          }
+        ],
+        "nivelMin": 3
+      },
+      {
+        "nome": "Franco Atirador: Carga de Adrenalina",
+        "origem": "Atirador",
+        "tipo": "ativa",
+        "descricao": "Com uma ação bônus, você aumenta sua Classe de Resistência em +3 por 1 minuto. Até 3 usos; recupera 1 uso ao final de um descanso longo. Não acumula consigo mesma.",
+        "builder": "estilo",
+        "usos": {
+          "atual": 3,
+          "max": 3
+        },
+        "descanso": "longo",
+        "efeitos": [
+          {
+            "alvo": "ca",
+            "modo": "soma",
+            "valor": 3
+          }
+        ],
+        "acao": "bonus",
+        "ativa": false,
+        "nivelMin": 5
+      },
+      {
+        "nome": "Franco Atirador: Alvo Travado",
+        "origem": "Atirador",
+        "tipo": "ativa",
+        "descricao": "Com uma ação bônus, escolha uma criatura que você veja. Por 1 minuto: ao usar a ação \"Atacar\", você pode fazer 10 jogadas de ataque (comum) à distância extras contra o alvo travado, no máximo 2 desses ataques por rodada; seus ataques (comum) à distância contra ele têm vantagem; ataques (comum) contra qualquer outra criatura têm desvantagem.",
+        "builder": "estilo",
+        "usos": {
+          "atual": 1,
+          "max": 1
+        },
+        "descanso": "longo",
+        "acao": "bonus",
+        "etiquetas": [
+          "Alvo travado: até 10 ataques extras (máx. 2/rodada), com vantagem"
+        ],
+        "nivelMin": 5
+      },
+      {
+        "nome": "Franco Atirador: Talento Confiável",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Em um Teste de Atributo em que você tenha proficiência, trate qualquer resultado de 9 ou menos no d20 como 10.",
+        "builder": "estilo",
+        "etiquetas": [
+          "Teste com proficiência: d20 ≤ 9 vale 10"
+        ],
+        "nivelMin": 5
+      },
+      {
+        "nome": "Franco Atirador: Melhorar Munição",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Após 1 hora aprimorando 50 munições, elas: ignoram resistência a dano Contundente ou Perfurante; passam a causar 1d10; e um dano de 4 ou menos nelas conta como 5. Alternativamente, gaste o mesmo tempo para manufaturar 50 munições esféricas ou perfurantes comuns com sucata.",
+        "builder": "estilo",
+        "nivelMin": 5
+      },
+      {
+        "nome": "Emissário da Morte",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Uma vez por encontro, ao acertar uma criatura que não esteja ciente da sua presença ou \"Surpreso\", os PV atuais dela caem para metade do máximo (arredondado para baixo), se ainda não estiverem, antes do dano. Não vale contra criaturas imunes a \"Surpreso\" ou com percepção às cegas. Além disso, o dano contra criaturas com menos da metade dos PV máximos não pode ser menor que o seu nível de Atirador.",
+        "builder": "estilo",
+        "usos": {
+          "atual": 1,
+          "max": 1
+        },
+        "descanso": "curto",
+        "etiquetas": [
+          "Dano mínimo = nível contra alvos com menos da metade dos PV"
+        ],
+        "nivelMin": 6
+      },
+      {
+        "nome": "Ataque Extra",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Você pode atacar duas vezes, em vez de uma, ao usar a ação \"Atacar\" no seu turno.",
+        "builder": "estilo",
+        "efeitos": [
+          {
+            "alvo": "ataques.acao",
+            "modo": "soma",
+            "valor": 1
+          }
+        ],
+        "etiquetas": [
+          "Ação Atacar: 2 ataques"
+        ],
+        "nivelMin": 7
+      },
+      {
+        "nome": "Contagem de Balas",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "No início de cada dia você recebe 10 disparos de precisão máxima: cada um é uma jogada de ataque (comum) à distância adicional, no máximo uma por rodada, junto da ação \"Atacar\". São acertos automáticos e dobram a quantidade de dados de dano da munição. O que sobrar é perdido ao fim do dia.",
+        "builder": "estilo",
+        "usos": {
+          "atual": 10,
+          "max": 10
+        },
+        "descanso": "longo",
+        "nivelMin": 10
+      },
+      {
+        "nome": "Rei Atirador",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Pistolas e mosquetes tornam-se suas armas favoritas e você recebe todas as características e Técnicas dos caminhos que não escolheu. Com ฿ 100.000 e 2 horas de manutenção, você melhora uma arma à distância: Adaptação Absoluta (recebe os benefícios que você aplica a pistolas e mosquetes), Alcance Absoluto (sem limite de alcance; basta ver o alvo), Crítico Aprimorado (margem 18-20 nos ataques (comum) à distância), Máximo Aproveitamento (3 dados adicionais nas Técnicas, dobrados em crítico, sem passar do dano máximo) e Precisão Aprimorada (+3 no acerto; prevalece o maior).",
+        "builder": "estilo",
+        "etiquetas": [
+          "Arma melhorada: crítico 18-20, +3 no acerto, sem limite de alcance"
+        ],
+        "nivelMin": 11
+      },
+      {
+        "nome": "Rei Atirador: Execução Perfeita",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Ao executar uma Técnica que tenha a arma melhorada como requisito, role o dano duas vezes e fique com o maior. 3 usos; todos voltam no descanso longo.",
+        "builder": "estilo",
+        "usos": {
+          "atual": 3,
+          "max": 3
+        },
+        "descanso": "longo",
+        "nivelMin": 11
+      },
+      {
+        "nome": "Tempestade de Balas",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Sempre que reduzir uma criatura a 0 PV, você recebe 2 jogadas de ataque (comum) à distância adicionais até o fim do seu turno.",
+        "builder": "estilo",
+        "etiquetas": [
+          "Abate: +2 ataques (comum) à distância"
+        ],
+        "nivelMin": 14
+      },
+      {
+        "nome": "Mira Absoluta",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Suas jogadas de ataque (comum) à distância causam dano Verdadeiro e atravessam todo o alcance em linha reta, atingindo todas as criaturas no trajeto. Cada criatura adicional sofre metade do dano inicial (arredondado para cima).",
+        "builder": "estilo",
+        "etiquetas": [
+          "Ataques à distância: dano Verdadeiro, atravessam em linha"
+        ],
+        "nivelMin": 15
+      },
+      {
+        "nome": "Mestre Atirador",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Distribua livremente 6 pontos entre seus atributos, respeitando o máximo de 24 em cada um. Dois atributos à sua escolha podem chegar a 30. (Aplique na aba Atributos.)",
+        "builder": "estilo",
+        "nivelMin": 18
+      },
+      {
+        "nome": "Deus Atirador: Engatilhado",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Você recebe 2 jogadas de ataque (comum) à distância adicionais na característica \"Ataque Extra\".",
+        "builder": "estilo",
+        "efeitos": [
+          {
+            "alvo": "ataques.distancia",
+            "modo": "soma",
+            "valor": 2
+          }
+        ],
+        "etiquetas": [
+          "Ataque Extra: +2 ataques à distância"
+        ],
+        "nivelMin": 19
+      },
+      {
+        "nome": "Deus Atirador: Next Level",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Ao atingir criaturas com ND 6 ou menor, você reduz os PV delas a 0. Em acertos críticos, vale também para ND 9 ou menor.",
+        "builder": "estilo",
+        "nivelMin": 19
+      },
+      {
+        "nome": "Deus Atirador: Homem sem Nome",
+        "origem": "Atirador",
+        "tipo": "passiva",
+        "descricao": "Enquanto estiver com mais da metade dos seus PV, você não erra nenhuma jogada de ataque (comum) à distância e pode rolar os dados só para verificar acertos críticos e outras características, ignorando penalidades.",
+        "builder": "estilo",
+        "etiquetas": [
+          "Mais da metade dos PV: ataques (comum) à distância não erram"
+        ],
+        "nivelMin": 19
+      }
+    ],
+    "tecnicas.lista": [
+      {
+        "nome": "Death Blossom",
+        "origem": "Atirador (Duelista): 1º Grau",
+        "custo": 2,
+        "alcance": "Arma, Esfera",
+        "efeito": "2d6 Contundente ou Perfurante",
+        "descricao": "Disparos contra as criaturas ao redor, escolhendo quais estão no alcance. Cada criatura na área faz Salvaguarda de Destreza com desvantagem: todo o dano se falhar, metade se passar. <Gun Powder Party> No 6º nível pode ser usada como de 3º Grau: 6d6 e 5 PP. Requisito: arma favorita, 8 munições (qualquer). Ataque combinado: impossível.",
+        "rolagem": "2d6",
+        "tipoDano": "perfurante",
+        "acao": "poderosa",
+        "teste": {
+          "tipo": "salvaguarda",
+          "atributo": "des",
+          "desvantagem": true,
+          "aoPassar": "metade"
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Covering",
+        "origem": "Atirador (Duelista): 2º Grau",
+        "custo": 4,
+        "alcance": "Arma, Linha",
+        "efeito": "4d10 Contundente ou Perfurante",
+        "descricao": "Disparos cadenciados: jogada de ataque (Técnicas) à distância contra uma criatura. Se acertar, a próxima jogada de ataque (comum ou Técnicas) dela tem desvantagem até o fim do próximo turno dela. Requisito: arma favorita, 6 munições (qualquer). Ataque combinado: possível.",
+        "rolagem": "4d10",
+        "tipoDano": "perfurante",
+        "acao": "poderosa",
+        "teste": {
+          "tipo": "ataque"
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Quick Fire",
+        "origem": "Atirador (Duelista): 3º Grau",
+        "custo": 6,
+        "alcance": "Arma, Linha",
+        "efeito": "2d10 Perfurante",
+        "descricao": "Ao ser alvo de uma jogada de ataque (comum), faça em resposta uma jogada de ataque (Técnicas) à distância. A criatura atingida deve passar em Salvaguarda de Constituição ou encerra o turno logo após sofrer o dano. Requisito: arma favorita, 1 munição (perfurante). Ataque combinado: impossível.",
+        "rolagem": "2d10",
+        "tipoDano": "perfurante",
+        "acao": "reacao",
+        "teste": {
+          "tipo": "ataque",
+          "secundaria": {
+            "atributo": "con",
+            "efeito": "encerra o turno logo após sofrer o dano"
+          }
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Death Shower",
+        "origem": "Atirador (Duelista): 4º Grau",
+        "custo": 8,
+        "alcance": "Arma, Cone",
+        "efeito": "8d6 Perfurante",
+        "descricao": "Cada criatura na área faz Salvaguarda de Destreza com desvantagem: todo o dano se falhar, metade se passar. Quem falhar faz uma Salvaguarda de Constituição ou recebe \"Sangramento\". Requisito: arma favorita, 12 munições (perfurante).",
+        "rolagem": "8d6",
+        "tipoDano": "perfurante",
+        "acao": "poderosa",
+        "teste": {
+          "tipo": "salvaguarda",
+          "atributo": "des",
+          "desvantagem": true,
+          "aoPassar": "metade",
+          "secundaria": {
+            "atributo": "con",
+            "efeito": "Sangramento",
+            "aplica": {
+              "condicao": "sangramento"
+            }
+          }
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Stunning Shot",
+        "origem": "Atirador (Duelista): 5º Grau",
+        "custo": 10,
+        "alcance": "Arma, Linha",
+        "efeito": "6d10 Contundente",
+        "descricao": "Jogada de ataque (Técnicas) à distância com disparos seguidos em pontos fracos. A criatura atingida deve passar em Salvaguarda de Constituição ou recebe \"Atordoado\" até o fim do próximo turno dela. Requisito: arma favorita, 2 munições (esférica).",
+        "rolagem": "6d10",
+        "tipoDano": "contundente",
+        "acao": "poderosa",
+        "teste": {
+          "tipo": "ataque",
+          "secundaria": {
+            "atributo": "con",
+            "efeito": "Atordoado até o fim do próximo turno dela",
+            "aplica": {
+              "condicao": "atordoado",
+              "turnos": 1
+            }
+          }
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Quick Draw",
+        "origem": "Atirador (Duelista): 6º Grau",
+        "custo": 12,
+        "alcance": "Até 15 m, Esfera",
+        "efeito": "2d10 Contundente ou Perfurante",
+        "descricao": "Duração: até 1 minuto. No início do turno de cada criatura que você veja no alcance, faça uma jogada de ataque (Técnicas) à distância contra ela. Em cada acerto, cause o dano e escolha: movimento da criatura a 0 até o fim do turno; +2d10 de dano Contundente ou Perfurante; ou impedi-la de realizar a ação naquele turno. Requisito: arma favorita.",
+        "rolagem": "2d10",
+        "tipoDano": "perfurante",
+        "acao": "bonus",
+        "teste": {
+          "tipo": "ataque"
+        },
+        "duracao": {
+          "rodadas": 10,
+          "opcoes": [
+            {
+              "id": "movimento",
+              "rotulo": "Movimento da criatura a 0 até o fim do turno",
+              "efeito": {
+                "tipo": "movimento_zero"
+              }
+            },
+            {
+              "id": "dano",
+              "rotulo": "+2d10 de dano Contundente ou Perfurante",
+              "efeito": {
+                "tipo": "dano",
+                "expressao": "2d10",
+                "tipoDano": "perfurante"
+              }
+            },
+            {
+              "id": "acao",
+              "rotulo": "Impedi-la de realizar a ação neste turno",
+              "efeito": {
+                "tipo": "sem_acao"
+              }
+            }
+          ]
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Execução",
+        "origem": "Atirador (Duelista): 7º Grau",
+        "custo": 14,
+        "alcance": "Arma, Linha",
+        "efeito": "11d10 Contundente ou Perfurante",
+        "descricao": "Jogada de ataque à distância (Técnicas) contra uma criatura que você veja no alcance. Se ela tiver 150 PV ou menos, antes de descontar o dano, morre instantaneamente. Requisito: arma favorita, 1 munição (qualquer).",
+        "rolagem": "11d10",
+        "tipoDano": "perfurante",
+        "acao": "poderosa",
+        "teste": {
+          "tipo": "ataque"
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Último Recurso",
+        "origem": "Atirador (Duelista): Auxiliar",
+        "custo": 2,
+        "alcance": "Até 9 m, Linha",
+        "efeito": "Sem dano; Incapacitado",
+        "descricao": "Arremesse uma arma (mesmo sem munição) contra uma criatura no alcance: jogada de ataque (Técnicas), sem dano. A criatura atingida deve passar em Salvaguarda de Constituição, com desvantagem, ou fica \"Incapacitado\" até o fim do próximo turno dela. Requisito: 1 arma.",
+        "rolagem": "",
+        "acao": "bonus",
+        "teste": {
+          "tipo": "ataque",
+          "secundaria": {
+            "atributo": "con",
+            "desvantagem": true,
+            "efeito": "Incapacitado até o fim do próximo turno dela",
+            "aplica": {
+              "condicao": "incapacitado",
+              "turnos": 1
+            }
+          }
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Defesa Improvisada",
+        "origem": "Atirador (Duelista): Auxiliar",
+        "custo": 2,
+        "alcance": "Pessoal",
+        "efeito": "Reduz o dano em 6d8",
+        "descricao": "Ao ser atingido por uma jogada de ataque (comum ou Técnicas), defenda-se com suas pistolas e reduza o dano em 6d8. Gaste 1 PP para somar 2d8 à redução, até 20d8 no total. Requisito: pistola.",
+        "rolagem": "6d8",
+        "acao": "reacao",
+        "builder": "estilo"
+      },
+      {
+        "nome": "Acerto Debilitante",
+        "origem": "Atirador (Duelista): Auxiliar",
+        "custo": 10,
+        "alcance": "Pessoal",
+        "efeito": "Próximo ataque debilita",
+        "descricao": "A próxima jogada de ataque (comum) à distância que acertar, até o fim do seu próximo turno, obriga a criatura a uma Salvaguarda de Constituição com desvantagem. Se falhar, por 1 minuto: sem ações bônus nem reações; deslocamento pela metade; em cada turno usa ação OU ação poderosa. Ao fim de cada turno dela, repete a salvaguarda (com desvantagem) para encerrar.",
+        "rolagem": "",
+        "acao": "bonus",
+        "builder": "estilo"
+      },
+      {
+        "nome": "Tiro de Advertência",
+        "origem": "Atirador (Sniper): 1º Grau",
+        "custo": 2,
+        "alcance": "Arma, Linha",
+        "efeito": "2d10 Psíquico",
+        "descricao": "Disparo rápido que quase raspa no inimigo: jogada de ataque (Técnicas) à distância. O alvo faz Salvaguarda de Vontade; se falhar, escolhe entre se mover ou realizar uma ação e não usa reação nem ação bônus até o fim do próximo turno dele. Requisito: arma favorita, 1 munição (qualquer). Ataque combinado: possível.",
+        "rolagem": "2d10",
+        "tipoDano": "psiquico",
+        "acao": "poderosa",
+        "teste": {
+          "tipo": "ataque",
+          "secundaria": {
+            "atributo": "von",
+            "efeito": "escolhe entre se mover ou realizar uma ação, sem reação nem ação bônus até o fim do próximo turno"
+          }
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Tiro Certeiro",
+        "origem": "Atirador (Sniper): 2º Grau",
+        "custo": 4,
+        "alcance": "Arma, Linha",
+        "efeito": "3d10 Contundente ou Perfurante",
+        "descricao": "Jogada de ataque (Técnicas) à distância contra criatura que você veja no alcance: o disparo acerta automaticamente. Requisito: mosquete, 1 munição (qualquer). Ataque combinado: possível.",
+        "rolagem": "3d10",
+        "tipoDano": "perfurante",
+        "acao": "poderosa",
+        "teste": {
+          "tipo": "automatico"
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Mira Cruel",
+        "origem": "Atirador (Sniper): 3º Grau",
+        "custo": 6,
+        "alcance": "Arma, Linha",
+        "efeito": "5d10 Perfurante",
+        "descricao": "Mirando nas articulações: a criatura atingida tem o movimento reduzido pela metade e deve passar em Salvaguarda de Constituição ou recebe \"Impedido\" até o fim do próximo turno. Requisito: mosquete, 1 munição (perfurante).",
+        "rolagem": "5d10",
+        "tipoDano": "perfurante",
+        "acao": "poderosa",
+        "teste": {
+          "tipo": "ataque",
+          "secundaria": {
+            "atributo": "con",
+            "efeito": "Impedido até o fim do próximo turno",
+            "aplica": {
+              "condicao": "contido",
+              "turnos": 1
+            }
+          }
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Overwatch",
+        "origem": "Atirador (Sniper): 4º Grau",
+        "custo": 8,
+        "alcance": "Arma, Linha",
+        "efeito": "Sem dano direto",
+        "descricao": "Duração: até 1 minuto, concentração. Marque uma esfera de até 3 m de raio. Sempre que uma criatura realizar uma ação na duração, antes que a complete, faça uma jogada de ataque (comum) contra ela; a atingida deve passar em Salvaguarda de Constituição ou encerra o turno logo após sofrer o dano. Ação bônus: mover o centro da esfera até 6 m. Qualquer outra atividade encerra a Técnica. Requisito: mosquete, 1 munição por ataque.",
+        "rolagem": "",
+        "acao": "poderosa",
+        "builder": "estilo"
+      },
+      {
+        "nome": "Shooting Stars",
+        "origem": "Atirador (Sniper): 5º Grau",
+        "custo": 10,
+        "alcance": "Até 18 m, Cone",
+        "efeito": "10d6 Contundente ou Perfurante",
+        "descricao": "Série de disparos contra todos os inimigos: cada criatura na área faz Salvaguarda de Destreza (todo o dano se falhar, metade se passar). Requisito: mosquete, 20 munições (qualquer). Ataque combinado: possível.",
+        "rolagem": "10d6",
+        "tipoDano": "perfurante",
+        "acao": "poderosa",
+        "teste": {
+          "tipo": "salvaguarda",
+          "atributo": "des",
+          "aoPassar": "metade"
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Zona do Atirador",
+        "origem": "Atirador (Sniper): 6º Grau",
+        "custo": 12,
+        "alcance": "Arma, Linha",
+        "efeito": "5d10 Perfurante",
+        "descricao": "Jogada de ataque (Técnicas) à distância certeira. Ao acertar, enquanto durar (até 1 minuto) você tem vantagem em jogadas de ataque (comum) e 60 PV temporários. Requisito: mosquete, 10 munições (perfurante).",
+        "rolagem": "5d10",
+        "tipoDano": "perfurante",
+        "acao": "poderosa",
+        "teste": {
+          "tipo": "ataque"
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Headshot",
+        "origem": "Atirador (Sniper): 7º Grau",
+        "custo": 14,
+        "alcance": "Arma, Linha",
+        "efeito": "12d10 Perfurante",
+        "descricao": "Contra criatura com ao menos uma cabeça, em acerto crítico natural você atravessa a cabeça e ela morre se não sobreviver sem ela. Se não tiver ou não precisar de cabeça, tiver Ações Lendárias ou o Narrador decidir, ela sofre 6d10 Perfurante extra após o crítico. Sem efeito se o alvo não puder sofrer dano. Requisito: mosquete, 1 munição (perfurante).",
+        "rolagem": "12d10",
+        "tipoDano": "perfurante",
+        "acao": "poderosa",
+        "teste": {
+          "tipo": "ataque"
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Saída Forçada",
+        "origem": "Atirador (Sniper): Auxiliar",
+        "custo": 2,
+        "alcance": "Até 1,5 m, Esfera",
+        "efeito": "Derruba os cercanos",
+        "descricao": "Cercado, gire o mosquete e acerte todas as criaturas ao redor. Cada uma faz Salvaguarda de Destreza para não receber \"Caído\" e perder a reação nesta rodada. Requisito: mosquete (ou algo semelhante).",
+        "rolagem": "",
+        "acao": "reacao",
+        "teste": {
+          "tipo": "salvaguarda",
+          "atributo": "des",
+          "aoPassar": "nada",
+          "aplica": {
+            "condicao": "caido"
+          }
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Manobra Evasiva",
+        "origem": "Atirador (Sniper): Auxiliar",
+        "custo": 6,
+        "alcance": "Pessoal",
+        "efeito": "+3 na CR; recua até 9 m",
+        "descricao": "Ao ser alvo de uma jogada de ataque (comum ou Técnicas), afaste-se até 9 m sem provocar reações de nenhum tipo e receba +3 na CR até o início do seu próximo turno.",
+        "rolagem": "",
+        "acao": "reacao",
+        "reacao": {
+          "gatilho": "ataque_declarado",
+          "alcance": "si",
+          "defesa": 3
+        },
+        "builder": "estilo"
+      },
+      {
+        "nome": "Ruptura",
+        "origem": "Atirador (Sniper): Auxiliar",
+        "custo": 10,
+        "alcance": "Pessoal",
+        "efeito": "8d10 Verdadeiro ao se mover",
+        "descricao": "A próxima jogada de ataque (comum) à distância que acertar causa danos internos: por até 1 minuto, se a criatura se mover voluntariamente, sofre 8d10 de dano Verdadeiro ao fim do turno dela (não se for movida por terceiros). Tratar exige uma ação e Teste de Sabedoria (Medicina) CD 20.",
+        "rolagem": "",
+        "acao": "bonus",
+        "builder": "estilo"
+      }
+    ]
+  }
+}

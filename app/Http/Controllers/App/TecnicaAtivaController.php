@@ -12,6 +12,7 @@ use App\Nucleo\Combate\Equipes;
 use App\Nucleo\Combate\Pipeline;
 use App\Nucleo\Combate\SistemaDeCombate;
 use App\Nucleo\Combate\TecnicasAtivas;
+use App\Nucleo\Combate\Visibilidade;
 use App\Nucleo\Rolagem\Rolador;
 use App\Nucleo\Rolagem\RolagemInvalida;
 use App\Nucleo\Sistemas\RegistroSistemas;
@@ -82,7 +83,7 @@ class TecnicaAtivaController extends Controller
         });
 
         Transmitir::enviar($mesa, 'combate', ['combate' => $depois, 'ator' => $acesso->jogador->id], ['mesa']);
-        AplicarDano::postar($mesa, $acesso, 'todos', "{$atacante->nome} ativa {$d['nome']}: ".$d['rodadas'].' rodada'.($d['rodadas'] > 1 ? 's' : '').", alcance {$d['alcance']} m".(($d['concentracao'] ?? false) ? ' (concentração)' : '').'.');
+        AplicarDano::postar($mesa, $acesso, Visibilidade::mensagem($atacante->id), "{$atacante->nome} ativa {$d['nome']}: ".$d['rodadas'].' rodada'.($d['rodadas'] > 1 ? 's' : '').", alcance {$d['alcance']} m".(($d['concentracao'] ?? false) ? ' (concentração)' : '').'.');
 
         return response()->json(['combate' => $depois]);
     }
@@ -103,7 +104,7 @@ class TecnicaAtivaController extends Controller
             return [$c, $a];
         });
         Transmitir::enviar($mesa, 'combate', ['combate' => $depois[0], 'ator' => $acesso->jogador->id], ['mesa']);
-        AplicarDano::postar($mesa, $acesso, 'todos', "{$depois[1]['nome']} foi encerrada.");
+        AplicarDano::postar($mesa, $acesso, Visibilidade::mensagem($depois[1]['personagem_id']), "{$depois[1]['nome']} foi encerrada.");
 
         return response()->json(['combate' => $depois[0]]);
     }

@@ -10,6 +10,7 @@ use App\Nucleo\Combate\AplicarCondicao;
 use App\Nucleo\Combate\AplicarDano;
 use App\Nucleo\Combate\Duracoes;
 use App\Nucleo\Combate\Equipes;
+use App\Nucleo\Combate\Visibilidade;
 use App\Nucleo\Combate\Pipeline;
 use App\Nucleo\Rolagem\Rolador;
 use App\Nucleo\Rolagem\RolagemInvalida;
@@ -66,6 +67,10 @@ class TecnicaController extends Controller
         $atacante = $mesa->personagens()->findOrFail($d['personagem_id']);
         foreach ($d['alvos'] as $alvoId) {
             Equipes::exigirInimigos($mesa, $atacante->id, (int) $alvoId, 'alvos');
+            // camadas: quem está só na camada do Mestre não é visto pelos jogadores, então a área deles não o atinge
+            if (! $acesso->ehMestre() && Visibilidade::oculto((int) $alvoId)) {
+                throw ValidationException::withMessages(['alvos' => 'Esse alvo não está à vista.']);
+            }
         }
         $ficha = $atacante->fichaCompleta($sistema);
         $variaveis = $sistema->variaveisDeRolagem($ficha, []);
@@ -229,7 +234,7 @@ class TecnicaController extends Controller
     {
         $nomes = Personagem::query()->where('mesa_id', $mesa->id)->whereIn('id', $alvos)->pluck('nome', 'id');
         $mensagem = $mesa->mensagens()->create([
-            'jogador_id' => $acesso->jogador->id, 'personagem_id' => $atacante?->id, 'tipo' => 'tecnica', 'visibilidade' => 'todos',
+            'jogador_id' => $acesso->jogador->id, 'personagem_id' => $atacante?->id, 'tipo' => 'tecnica', 'visibilidade' => 'todos', // os alvos precisam ver o card para rolar a Salvaguarda
             'texto' => "{$t['nome']}: Salvaguarda de ".strtoupper($t['atributo'])." CD {$t['cd']}",
             'dados' => [
                 'rotulo' => $t['nome'], 'estado' => 'aguardando',

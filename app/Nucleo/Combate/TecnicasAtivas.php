@@ -86,12 +86,17 @@ final class TecnicasAtivas
                 continue;
             }
             $atacante = Personagem::query()->where('mesa_id', $mesa->id)->find($a['personagem_id']);
+            // camadas: quem os jogadores não veem (camada do Mestre) não é "criatura que você veja"; o que um personagem oculto faz só o mestre vê
+            $atacanteOculto = Visibilidade::oculto((int) $a['personagem_id']);
+            if (! $atacanteOculto && Visibilidade::oculto($alvoId)) {
+                continue;
+            }
             $d = self::distancia((int) $a['personagem_id'], $alvoId);
             if (! $atacante || ! $d || $d['metros'] > (float) $a['alcance'] + $d['raio'] + Movimento::FOLGA) {
                 continue;
             }
             $mensagem = $mesa->mensagens()->create([
-                'jogador_id' => $acesso->jogador->id, 'personagem_id' => $atacante->id, 'tipo' => 'gatilho', 'visibilidade' => 'todos',
+                'jogador_id' => $acesso->jogador->id, 'personagem_id' => $atacante->id, 'tipo' => 'gatilho', 'visibilidade' => $atacanteOculto ? 'mestre' : 'todos',
                 'texto' => "{$a['nome']}: {$atacante->nome} pode atacar {$alvo->nome}",
                 'dados' => [
                     'rotulo' => $a['nome'], 'estado' => 'pendente', 'ativa_id' => $a['id'],
