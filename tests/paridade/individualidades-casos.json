@@ -1,0 +1,529 @@
+[
+  {
+    "nome": "Nenhuma individualidade (opcional)",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [],
+        "defeitos": []
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "Uma suave com um defeito suave",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "bom-senso"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "mudo"
+          }
+        ]
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "Singularidade sem defeito",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "bom-senso"
+          }
+        ],
+        "defeitos": []
+      }
+    },
+    "contem": "Falta 1 Defeito Suave"
+  },
+  {
+    "nome": "Defeito sem singularidade",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [],
+        "defeitos": [
+          {
+            "id": "mudo"
+          }
+        ]
+      }
+    },
+    "contem": "sem Singularidade do mesmo nível"
+  },
+  {
+    "nome": "Defeito de outro nível",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "bom-senso"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "paranoico"
+          }
+        ]
+      }
+    },
+    "contem": "Falta 1 Defeito Suave"
+  },
+  {
+    "nome": "Média + suave com defeitos de mesmo nível",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "ator"
+          },
+          {
+            "id": "bom-senso"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "paranoico"
+          },
+          {
+            "id": "mudo"
+          }
+        ]
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "5 suaves (5 espaços)",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "bom-senso"
+          },
+          {
+            "id": "amante"
+          },
+          {
+            "id": "beleza-natural"
+          },
+          {
+            "id": "sono-seguro"
+          },
+          {
+            "id": "equilibrio-perfeito"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "mudo"
+          },
+          {
+            "id": "voz-fina"
+          },
+          {
+            "id": "vicio",
+            "escolha": "álcool"
+          },
+          {
+            "id": "teimoso"
+          },
+          {
+            "id": "medroso"
+          }
+        ]
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "6 suaves passam dos espaços",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "bom-senso"
+          },
+          {
+            "id": "amante"
+          },
+          {
+            "id": "beleza-natural"
+          },
+          {
+            "id": "sono-seguro"
+          },
+          {
+            "id": "equilibrio-perfeito"
+          },
+          {
+            "id": "indomavel"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "mudo"
+          },
+          {
+            "id": "voz-fina"
+          },
+          {
+            "id": "teimoso"
+          },
+          {
+            "id": "medroso"
+          },
+          {
+            "id": "trapalhao"
+          },
+          {
+            "id": "narcisista"
+          }
+        ]
+      }
+    },
+    "contem": "ocupam 6 espaços"
+  },
+  {
+    "nome": "Forte (4) + suave (1) = 5",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "zona"
+          },
+          {
+            "id": "bom-senso"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "pacifista"
+          },
+          {
+            "id": "mudo"
+          }
+        ]
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "Média (3) + média (3) passa de 5",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "ator"
+          },
+          {
+            "id": "negativo"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "paranoico"
+          },
+          {
+            "id": "preguicoso"
+          }
+        ]
+      }
+    },
+    "contem": "ocupam 6 espaços"
+  },
+  {
+    "nome": "Espaços extras do mestre",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 1,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "ator"
+          },
+          {
+            "id": "negativo"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "paranoico"
+          },
+          {
+            "id": "preguicoso"
+          }
+        ]
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "Defeitos Variáveis: 1 forte = 4 suaves",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": true,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "zona"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "mudo"
+          },
+          {
+            "id": "voz-fina"
+          },
+          {
+            "id": "teimoso"
+          },
+          {
+            "id": "medroso"
+          }
+        ]
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "Defeitos Variáveis: soma diferente",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": true,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "zona"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "mudo"
+          },
+          {
+            "id": "voz-fina"
+          }
+        ]
+      }
+    },
+    "contem": "devem ser iguais"
+  },
+  {
+    "nome": "Escolha obrigatória (Ambiente Familiar)",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "ambiente-familiar"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "mudo"
+          }
+        ]
+      }
+    },
+    "contem": "informe"
+  },
+  {
+    "nome": "Ambiente Familiar com escolha",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "ambiente-familiar",
+            "escolha": "selva"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "mudo"
+          }
+        ]
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "Forasteiro com opção inválida",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "forasteiro",
+            "escolha": "espada"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "mudo"
+          }
+        ]
+      }
+    },
+    "contem": "opção inválida"
+  },
+  {
+    "nome": "Estudioso sem proficiência",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "estudioso",
+            "escolha": "medicina"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "paranoico"
+          }
+        ]
+      }
+    },
+    "contem": "já ser proficiente"
+  },
+  {
+    "nome": "Estudioso com proficiência",
+    "ficha": {
+      "pericias": {
+        "medicina": 1
+      },
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "estudioso",
+            "escolha": "medicina"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "paranoico"
+          }
+        ]
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "Singularidade repetida",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "bom-senso"
+          },
+          {
+            "id": "bom-senso"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "mudo"
+          },
+          {
+            "id": "voz-fina"
+          }
+        ]
+      }
+    },
+    "contem": "só pode ser escolhido uma vez"
+  },
+  {
+    "nome": "Id desconhecido",
+    "ficha": {
+      "pericias": {},
+      "individualidades": {
+        "variaveis": false,
+        "extras": 0,
+        "travada": false,
+        "singularidades": [
+          {
+            "id": "inventada"
+          }
+        ],
+        "defeitos": [
+          {
+            "id": "mudo"
+          }
+        ]
+      }
+    },
+    "contem": "desconhecida"
+  }
+]
