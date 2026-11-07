@@ -79,6 +79,8 @@ export interface DadosRolagem {
     rotulo: string | null;
     termos: TermoRolagem[];
     total: number;
+    /** A soma dos dados foi limitada (`|N`): `soma` é o que os dados deram e `max` o teto (dados extras de arma Meito). */
+    limite?: { max: number; soma: number };
     /** Marcas do sistema (ex.: ataque crítico), quando houver. */
     sistema?: MarcasDoSistema;
 }
@@ -116,6 +118,8 @@ export function resumoFormula(d: DadosRolagem): string {
 
     let texto = dados.map((p, i) => (i === 0 ? (p.sinal < 0 ? '−' : '') + p.texto : ` ${p.sinal < 0 ? '−' : '+'} ${p.texto}`)).join('');
     if (fixo !== 0 || texto === '') texto += texto === '' ? String(fixo) : ` ${fixo < 0 ? '−' : '+'} ${Math.abs(fixo)}`;
+
+    if (d.limite) texto += ` (dados até ${d.limite.max})`;
 
     return texto;
 }

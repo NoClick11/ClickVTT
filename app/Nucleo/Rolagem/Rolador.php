@@ -8,13 +8,14 @@ use Closure;
  * Núcleo de rolagem, independente de sistema: interpreta uma expressão de dados e a avalia.
  *
  * Gramática (espaços e maiúsculas são ignorados):
+ *   rolagem := expr ('|' NUMERO)?               (`|N`: a soma dos DADOS não passa de N; o bônus fixo entra por fora)
  *   expr    := termo (('+' | '-') termo)*
  *   termo   := fator (('*' | '/') fator)*        (divisão inteira, arredondada para baixo)
  *   fator   := '-' fator | '(' expr ')' | NUMERO | dados | '@' variavel
  *   dados   := NUMERO? 'd' FACES modificador*
  *   modif.  := 'kh' N? | 'k' N? | 'kl' N? | 'dh' N? | 'dl' N? | '!'
  *
- * Exemplos: `1d20+5`, `2d20kh1` (vantagem), `4d6kh3`, `1d8+@for`, `2d6!`.
+ * Exemplos: `1d20+5`, `2d20kh1` (vantagem), `4d6kh3`, `1d8+@for`, `2d6!`, `6d10+3|40` (dados limitados a 40, mais 3).
  * As variáveis (`@for`, `@pericia.percepcao`) vêm do SISTEMA, nunca do cliente: o núcleo só as substitui.
  *
  * O resultado é uma lista de `termos` (cada dado, número e variável, na ordem em que aparecem) e o `total`.
@@ -52,7 +53,7 @@ class Rolador
 
     /**
      * @param  array<string, int|float>  $variaveis  nome (sem `@`, minúsculo) => valor
-     * @return array{expressao: string, termos: array<int, array<string, mixed>>, total: int}
+     * @return array{expressao: string, termos: array<int, array<string, mixed>>, total: int, limite?: array{max: int, soma: int}}
      *
      * @throws RolagemInvalida
      */
@@ -77,11 +78,31 @@ class Rolador
         }
 
         $total = $this->expr(1);
+        // `|N` no fim: a soma dos dados fica limitada a N (o bônus fixo não conta). Ex.: os dados extras de uma arma Meito só
+        // ajudam a Técnica a chegar ao máximo dela.
+        $limite = null;
+        if ($this->olhar() === '|') {
+            $this->i++;
+            $max = $this->digitos();
+            if ($max === '') {
+                throw new RolagemInvalida('Faltou o número depois de "|".');
+            }
+            $soma = 0;
+            foreach ($this->termos as $t) {
+                if (($t['tipo'] ?? null) === 'dados') {
+                    $soma += $t['sinal'] * $t['subtotal'];
+                }
+            }
+            $limite = ['max' => (int) $max, 'soma' => $soma];
+            if ($soma > (int) $max) {
+                $total -= $soma - (int) $max;
+            }
+        }
         if ($this->i < strlen($this->s)) {
             throw new RolagemInvalida("Não entendi \"{$this->s[$this->i]}\" na posição ".($this->i + 1).' da expressão.');
         }
 
-        return ['expressao' => $limpa, 'termos' => $this->termos, 'total' => $total];
+        return ['expressao' => $limpa, 'termos' => $this->termos, 'total' => $total, ...($limite ? ['limite' => $limite] : [])];
     }
 
     private function expr(int $sinal): int

@@ -101,6 +101,7 @@ class ChatController extends Controller
                 'rotulo' => filled($dados['rotulo'] ?? null) ? trim($dados['rotulo']) : null,
                 'termos' => $resultado['termos'],
                 'total' => $resultado['total'],
+                ...(isset($resultado['limite']) ? ['limite' => $resultado['limite']] : []),
                 ...($marcas ? ['sistema' => $marcas] : []),
             ],
         ]);

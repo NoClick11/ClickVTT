@@ -119,6 +119,22 @@ class RoladorTest extends TestCase
         }
     }
 
+    public function test_limite_da_soma_dos_dados_com_pipe(): void
+    {
+        // 4d10 + 2 dados extras = 6d10 (soma 47), limitado a 40; o bônus fixo (+3) fica de fora do limite
+        $r = $this->fixo(10, 9, 8, 7, 6, 7)->rolar('4d10+2d10+3|40');
+        $this->assertSame(40 + 3, $r['total']);
+        $this->assertSame(['max' => 40, 'soma' => 47], $r['limite']);
+        // abaixo do limite nada muda
+        $r = $this->fixo(2, 3, 4, 1, 1, 1)->rolar('4d10+2d10+3|40');
+        $this->assertSame(12 + 3, $r['total']);
+        $this->assertSame(['max' => 40, 'soma' => 12], $r['limite']);
+        // sem pipe: sem limite
+        $this->assertArrayNotHasKey('limite', $this->fixo(5)->rolar('1d10+1'));
+        $this->expectException(RolagemInvalida::class);
+        (new Rolador)->rolar('2d6|');
+    }
+
     #[DataProvider('invalidas')]
     public function test_expressoes_invalidas_sao_rejeitadas(string $expressao): void
     {
