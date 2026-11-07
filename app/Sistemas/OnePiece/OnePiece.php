@@ -5,10 +5,59 @@ namespace App\Sistemas\OnePiece;
 use App\Nucleo\Combate\SistemaDeCombate;
 use App\Nucleo\Efeitos\Formula;
 use App\Nucleo\Sistemas\Sistema;
+use App\Nucleo\Sistemas\SistemaComLoja;
 
 /** Módulo de One Piece: parte das regras do D&D 5e, com atributos, perícias, técnicas e pontos de poder próprios. */
-class OnePiece implements Sistema, SistemaDeCombate
+class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
 {
+    public function catalogoDeLoja(): array
+    {
+        $c = Itens::catalogo();
+
+        return ['categorias' => $c['categorias'], 'raridades' => array_column($c['raridades'], 'id'), 'itens' => $c['itens']];
+    }
+
+    public function moedaDaLoja(): array
+    {
+        return ['campo' => 'belly', 'simbolo' => '฿'];
+    }
+
+    public function itemDaLoja(array $entrada): array
+    {
+        return Itens::paraAMesa($entrada);
+    }
+
+    public function entregarNoInventario(array $ficha, int $itemId, int $qtd): array
+    {
+        foreach ($ficha['inventario'] ?? [] as $s => $secao) {
+            foreach ($secao['itens'] ?? [] as $i => $ref) {
+                if ((int) ($ref['item_id'] ?? 0) === $itemId) {
+                    $ficha['inventario'][$s]['itens'][$i]['qtd'] = min(100000, (int) $ref['qtd'] + $qtd);
+
+                    return $ficha;
+                }
+            }
+        }
+        $nova = ['item_id' => $itemId, 'qtd' => $qtd, 'equipado' => false, 'sintonizado' => false];
+        $inventario = $ficha['inventario'] ?? [];
+        $destino = null;
+        foreach ($inventario as $s => $secao) {
+            if (($secao['secao'] ?? '') === 'Equipamento') {
+                $destino = $s;
+                break;
+            }
+        }
+        $destino ??= $inventario ? array_key_first($inventario) : null;
+        if ($destino === null) {
+            $inventario[] = ['secao' => 'Equipamento', 'itens' => [$nova]];
+        } else {
+            $inventario[$destino]['itens'][] = $nova;
+        }
+        $ficha['inventario'] = $inventario;
+
+        return $ficha;
+    }
+
     public static function slug(): string
     {
         return 'one-piece';

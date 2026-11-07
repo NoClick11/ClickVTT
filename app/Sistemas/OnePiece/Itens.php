@@ -50,4 +50,80 @@ class Itens
 
         return (int) floor($item['preco'] * ($bomEstado ? (float) self::catalogo()['comercio']['vendaDeEquipamentos'] : 0.0));
     }
+
+    /** "฿ 80.000", "฿ 8.000/unidade" ou o texto do livro quando o preço varia. Espelha `precoFormatado` do TS. */
+    public static function precoFormatado(array $i): string
+    {
+        if ($i['preco'] === null) {
+            return $i['precoTexto'] ?? 'Sob consulta';
+        }
+        if (! empty($i['precoTexto'])) {
+            return $i['precoTexto'];
+        }
+        $un = ! empty($i['unidade']) ? '/'.$i['unidade'] : '';
+
+        return '฿ '.number_format((int) $i['preco'], 0, ',', '.').$un;
+    }
+
+    /**
+     * O que a ficha calcula no item: armadura/escudo e, se o dano da arma é fixo, a arma. Espelha `dadosDoSistema` do TS.
+     *
+     * @return array<string, mixed>
+     */
+    public static function dadosDoSistema(array $i): array
+    {
+        $dados = ($i['dados'] ?? []) + ['catalogo' => ['id' => $i['id']]];
+        $a = $i['arma'] ?? null;
+        if ($a && ! empty($a['dano']) && preg_match('/^\d+d\d+$/', $a['dano']) && $i['categoria'] !== 'municao') {
+            $aDistancia = ! empty($a['distancia']) && ! array_filter($a['propriedades'], fn ($p) => str_starts_with($p, 'Arremesso'));
+            $dados['arma'] = [
+                'dano' => $a['dano'],
+                'atributo' => in_array('Acuidade', $a['propriedades'], true) ? 'acuidade' : ($aDistancia ? 'des' : 'for'),
+                'tipoDano' => $a['tipoDano'],
+            ] + ($aDistancia ? ['distancia' => true] : []);
+        }
+
+        return $dados;
+    }
+
+    /** Descrição, dano, propriedades, expertise, raridade e preço, para o item da mesa. Espelha `descricaoParaAMesa` do TS. */
+    public static function descricaoParaAMesa(array $i): string
+    {
+        $a = $i['arma'] ?? null;
+        $partes = [$i['descricao']];
+        if ($a) {
+            $dano = ! empty($a['dano'])
+                ? $a['dano'].' '.$a['tipoDano'].(! empty($a['tiposAlternativos']) ? ' ou '.implode(' ou ', $a['tiposAlternativos']) : '')
+                : (! empty($a['marcial']) ? "dano desarmado +1 passo ({$a['tipoDano']})" : $a['tipoDano']);
+            $partes[] = "Dano: {$dano}.";
+            if ($a['propriedades']) {
+                $partes[] = 'Propriedades: '.implode(', ', $a['propriedades']).'.';
+            }
+            if (! empty($a['expertise'])) {
+                $partes[] = 'Expertise (acerto crítico natural, só com proficiência): '.$a['expertise'];
+            }
+        }
+        $raridade = '';
+        foreach (self::catalogo()['raridades'] as $r) {
+            if ($r['id'] === $i['raridade']) {
+                $raridade = $r['nome'];
+            }
+        }
+        $partes[] = "Raridade: {$raridade}. Preço: ".self::precoFormatado($i).'.';
+
+        return mb_substr(implode("\n", $partes), 0, 2000);
+    }
+
+    /**
+     * Campos do item da mesa a partir de uma entrada do catálogo do sistema.
+     *
+     * @return array<string, mixed>
+     */
+    public static function paraAMesa(array $i): array
+    {
+        return [
+            'nome' => $i['nome'], 'descricao' => self::descricaoParaAMesa($i), 'peso' => (float) $i['peso'], 'equipavel' => (bool) $i['equipavel'],
+            'requer_sintonia' => false, 'efeitos' => [], 'dados' => self::dadosDoSistema($i),
+        ];
+    }
 }
