@@ -102,3 +102,34 @@ test('area: o desenho é a forma alargada pelo raio de um token (a borda toca on
         [1],
     );
 });
+
+// --- limite do cursor pelo alcance da arma ---------------------------------------------------------------------------------------
+import { alcanceMaximoDaArma } from '../../resources/js/app/sistemas/onepiece/alcanceDaArma.ts';
+
+test('area: "Arma" deixa o cursor definir o tamanho, mas nunca além do máximo da arma', () => {
+    const arma = { forma: 'linha', metros: null, maximo: 24 };
+    assert.equal(areaMedida(arma, { x: 0, y: 0 }, { x: 10, y: 0 }, 1).metros, 10); // cursor perto: o tamanho que ele deu
+    assert.equal(areaMedida(arma, { x: 0, y: 0 }, { x: 100, y: 0 }, 1).metros, 24); // cursor longe: trava no máximo
+    assert.equal(areaMedida({ forma: 'cone', metros: null, maximo: 9 }, { x: 0, y: 0 }, { x: 0, y: 50 }, 1).metros, 9);
+    assert.equal(areaMedida({ forma: 'cone', metros: null }, { x: 0, y: 0 }, { x: 0, y: 50 }, 1).metros, 50); // sem máximo conhecido: sem limite
+    assert.equal(areaMedida({ forma: 'cone', metros: 18, maximo: 3 }, { x: 0, y: 0 }, { x: 0, y: 50 }, 1).metros, 18); // tamanho fixo ignora o cursor
+});
+
+test('alcance da arma: à distância usa o máximo do catálogo; corpo a corpo, 1,5 m; várias armas, a maior', () => {
+    const item = (id, dados) => ({ id, nome: 'x', peso: 1, equipavel: true, dados });
+    const itens = {
+        1: item(1, { arma: { dano: '1d12', atributo: 'des', distancia: true }, catalogo: { id: 'mosquete' } }), // 18/24
+        2: item(2, { arma: { dano: '1d6', atributo: 'for' } }), // corpo a corpo
+        3: item(3, { arma: { dano: '1d6', atributo: 'des', distancia: true } }), // à distância sem catálogo
+    };
+    const com = (...ids) => ({
+        tamanho: 'Médio',
+        inventario: [{ secao: 'E', itens: ids.map((i) => ({ item_id: i, qtd: 1, equipado: true, sintonizado: false })) }],
+    });
+    assert.equal(alcanceMaximoDaArma(com(1), itens), 24);
+    assert.equal(alcanceMaximoDaArma(com(2), itens), 1.5);
+    assert.equal(alcanceMaximoDaArma(com(1, 2), itens), 24);
+    assert.equal(alcanceMaximoDaArma(com(3), itens), null); // não dá para saber: sem limite
+    assert.equal(alcanceMaximoDaArma(com(2), itens, 30), 3); // alcance corpo a corpo da ficha (decímetros)
+    assert.equal(alcanceMaximoDaArma({ tamanho: 'Médio', inventario: [] }, itens), null); // sem arma equipada
+});

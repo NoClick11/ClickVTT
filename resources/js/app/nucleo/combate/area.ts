@@ -14,6 +14,8 @@ export interface AreaDeEfeito {
     forma: FormaDeArea;
     /** Tamanho fixo em metros (raio, comprimento); `null` = o cursor define (alcance da arma). */
     metros: number | null;
+    /** Com `metros: null`: o tamanho máximo que o cursor pode dar (o alcance da arma); sem ele, sem limite. */
+    maximo?: number | null;
 }
 
 export interface Ponto {
@@ -31,7 +33,10 @@ export function areaMedida(
     const dx = cursor.x - origem.x;
     const dy = cursor.y - origem.y;
 
-    return { forma: area.forma, metros: area.metros ?? Math.hypot(dx, dy) * metrosPorPx, angulo: Math.atan2(dy, dx) };
+    const doCursor = Math.hypot(dx, dy) * metrosPorPx;
+
+    // o cursor define o tamanho (alcance da arma), nunca além do máximo da Técnica
+    return { forma: area.forma, metros: area.metros ?? Math.min(doCursor, area.maximo ?? Infinity), angulo: Math.atan2(dy, dx) };
 }
 
 /** Um token (centro e meia largura, em pixels do mundo). */

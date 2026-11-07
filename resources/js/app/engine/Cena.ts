@@ -256,7 +256,8 @@ export class Cena {
         else g.poly(d.pontos).fill(preencher).stroke(estilo);
         const dentro = new Set(ids);
         for (const v of this.visuais.values()) v.definirAlvo(dentro.has(v.dto.id) || v.dto.id === this.alvoId);
-        this.reguaTexto.text = `${formatar(medida.metros)} m · ${ids.length} alvo${ids.length === 1 ? '' : 's'}`;
+        const limite = this.gabarito?.area.metros === null && this.gabarito.area.maximo ? ` (máx. ${formatar(this.gabarito.area.maximo)} m)` : '';
+        this.reguaTexto.text = `${formatar(medida.metros)} m${limite} · ${ids.length} alvo${ids.length === 1 ? '' : 's'}`;
         this.reguaTexto.scale.set(1 / this.mundo.scale.x);
         this.reguaTexto.position.set(cursor.x + 12 / this.mundo.scale.x, cursor.y - 24 / this.mundo.scale.x);
         this.reguaTexto.visible = true;

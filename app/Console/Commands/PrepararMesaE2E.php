@@ -53,6 +53,12 @@ class PrepararMesaE2E extends Command
         }
         $ficha['nivel'] = $dados['nivel'];
         $ficha['pp'] = ['atual' => 80, 'porNivel' => 4];
+        // o Atirador empunha um Mosquete do catálogo (alcance 18/24 m): limita as áreas "Arma, Cone/Linha" a 24 m
+        $mosquete = $mesa->itens()->updateOrCreate(['catalogo_id' => 'mosquete'], [
+            'nome' => 'Mosquete', 'peso' => 4, 'equipavel' => true,
+            'dados' => ['arma' => ['dano' => '1d12', 'atributo' => 'des', 'tipoDano' => 'Perfurante', 'proficiente' => true, 'distancia' => true], 'catalogo' => ['id' => 'mosquete']],
+        ]);
+        $ficha['inventario'] = [['secao' => 'Equipamento', 'itens' => [['item_id' => $mosquete->id, 'qtd' => 1, 'equipado' => true, 'sintonizado' => false]]]];
 
         $personagem = function (string $nome, ?object $dono, array $ficha) use ($mesa) {
             $p = $mesa->personagens()->create(['nome' => $nome, 'cor' => '#0ea5e9']);

@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 import { clonar } from '../../../../nucleo/ficha/caminho';
 import CampoNumero from '../../../../nucleo/ui/CampoNumero.vue';
 import CampoTexto from '../../../../nucleo/ui/CampoTexto.vue';
+import { alcanceMaximoDaArma } from '../../alcanceDaArma';
 import { areaDoAlcance } from '../../area';
 import { estilos, useFicha } from '../../contexto';
 import { alcanceComKokuto, USOS_DA_SAIJO } from '../../itens/forja';
@@ -101,7 +102,7 @@ function usar(t: Tecnica) {
         nome: rotuloDoUso(t),
         ...(teste ? { teste: { tipo: teste.tipo, atributo: teste.atributo, aoPassar: teste.aoPassar, aplica: teste.aplica } } : {}),
         desvantagem: !!teste?.desvantagem || (kokuto.value && !!t.armaCortante),
-        area: areaDoAlcance(ampliado?.mudou ? ampliado.texto : t.alcance),
+        area: areaComLimite(ampliado?.mudou ? ampliado.texto : t.alcance),
         ...(t.duracao ? { duracao: t.duracao } : {}),
         dano: expressao ? { expressao, tipo: t.tipoDano?.trim() || null } : null,
         ...(teste?.secundaria ? { secundaria: teste.secundaria } : {}),
@@ -152,6 +153,14 @@ const alternarGrupo = (chave: string) => {
 
 /** A Técnica está ativa no combate (Quick Draw...)? Mostra as rodadas que faltam e deixa encerrar. */
 const ativaDe = (t: Tecnica) => acoes.ativas().find((a) => a.nome === rotuloDoUso(t) || a.nome === t.nome) ?? null;
+
+/** A área da Técnica; "Arma, Cone/Linha" não passa do alcance da arma equipada (o cursor define o tamanho até esse máximo). */
+function areaComLimite(alcance: string) {
+    const area = areaDoAlcance(alcance);
+    if (!area || area.metros !== null) return area;
+
+    return { ...area, maximo: alcanceMaximoDaArma(props.ficha, itens.value, calc.value['alcance.corpo']) };
+}
 
 /** Muda o tipo de teste da técnica ('' = nenhum); a Salvaguarda começa em Destreza, passando = metade do dano. */
 function mudarTeste(i: number, tipo: string) {
