@@ -79,6 +79,10 @@ export interface ModuloSistema {
      * na mesa; emite `update:open`. A loja usará o mesmo catálogo.
      */
     CatalogoDeItens?: Component;
+    /** Loja do jogador (painel flutuante, opcional): catálogo do sistema para comprar e arrastar para a ficha. */
+    Loja?: Component;
+    /** Categorias, raridades e moeda da loja do sistema (alimenta o editor de itens do catálogo). */
+    dadosDaLoja?: { categorias: { id: string; nome: string; grupo: string }[]; raridades: { id: string; nome: string }[]; moeda: string };
     /** Condições do sistema (id, nome, descrição), oferecidas no painel do alvo mirado. */
     condicoes?: { id: string; nome: string; descricao: string }[];
     /** Atributos do sistema (id e sigla), para a salvaguarda do alvo ao aplicar condições. */

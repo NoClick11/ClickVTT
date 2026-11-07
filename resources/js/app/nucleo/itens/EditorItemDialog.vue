@@ -20,6 +20,11 @@ const props = defineProps<{
     item: ItemDto | null;
     modulo: ModuloSistema | null;
     salvar: (campos: NovoItem, id: number | null) => Promise<ItemDto>;
+    /**
+     * Item do catálogo/loja: mostra categoria, raridade e preço (o `item` editado traz esses campos) e os envia junto. As
+     * listas vêm do catálogo do sistema.
+     */
+    loja?: { categorias: { id: string; nome: string; grupo: string }[]; raridades: { id: string; nome: string }[]; moeda: string };
     excluir: (id: number) => Promise<void>;
 }>();
 const emit = defineEmits<{ 'update:open': [boolean]; salvo: [ItemDto] }>();
@@ -31,6 +36,9 @@ const equipavel = ref(true);
 const sintonia = ref(false);
 const efeitos = ref<EfeitoBruto[]>([]);
 const dados = ref<Record<string, unknown> | null>(null);
+const categoria = ref('');
+const raridade = ref('comum');
+const preco = ref(0);
 const erro = ref('');
 const ocupado = ref(false);
 const confirmandoExclusao = ref(false);
@@ -46,6 +54,10 @@ watch(
         sintonia.value = item?.requer_sintonia ?? false;
         efeitos.value = clonar(item?.efeitos ?? []);
         dados.value = clonar(item?.dados ?? null);
+        const extra = item as unknown as { categoria?: string; raridade?: string; preco?: number } | null;
+        categoria.value = extra?.categoria ?? props.loja?.categorias[0]?.id ?? '';
+        raridade.value = extra?.raridade ?? 'comum';
+        preco.value = extra?.preco ?? 0;
         erro.value = '';
         ocupado.value = false;
         confirmandoExclusao.value = false;
@@ -71,7 +83,10 @@ async function enviar() {
                 requer_sintonia: sintonia.value,
                 efeitos: efeitos.value,
                 dados: dados.value,
-            },
+                ...(props.loja
+                    ? { categoria: categoria.value, raridade: raridade.value, preco: Math.max(0, Math.floor(Number(preco.value) || 0)) }
+                    : {}),
+            } as NovoItem,
             props.item?.id ?? null,
         );
         emit('salvo', salvo);
@@ -105,7 +120,9 @@ const rotulo = 'mb-1 block text-[11px] font-semibold uppercase tracking-wider te
     <Dialog :open="open" @update:open="emit('update:open', $event)">
         <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
             <DialogHeader>
-                <DialogTitle class="font-serif text-xl">{{ item ? 'Editar item' : 'Novo item' }}</DialogTitle>
+                <DialogTitle class="font-serif text-xl">{{
+                    loja ? (item ? 'Editar item do catálogo' : 'Novo item do catálogo') : item ? 'Editar item' : 'Novo item'
+                }}</DialogTitle>
                 <DialogDescription
                     >Os efeitos valem enquanto o item estiver equipado (e sintonizado, se exigir). Quem tem o item no inventário ganha os bônus na
                     hora.</DialogDescription
@@ -121,6 +138,26 @@ const rotulo = 'mb-1 block text-[11px] font-semibold uppercase tracking-wider te
                     <label
                         ><span :class="rotulo">Peso (kg)</span
                         ><input v-model.number="peso" type="number" min="0" step="0.05" :class="campo" aria-label="Peso de uma unidade, em quilos"
+                    /></label>
+                </div>
+                <div v-if="loja" class="grid gap-3 sm:grid-cols-3" aria-label="Dados da loja">
+                    <label
+                        ><span :class="rotulo">Categoria da loja</span>
+                        <select v-model="categoria" :class="campo" aria-label="Categoria da loja">
+                            <optgroup v-for="g in [...new Set(loja.categorias.map((c) => c.grupo))]" :key="g" :label="g">
+                                <option v-for="c in loja.categorias.filter((x) => x.grupo === g)" :key="c.id" :value="c.id">{{ c.nome }}</option>
+                            </optgroup>
+                        </select>
+                    </label>
+                    <label
+                        ><span :class="rotulo">Raridade</span>
+                        <select v-model="raridade" :class="campo" aria-label="Raridade">
+                            <option v-for="r in loja.raridades" :key="r.id" :value="r.id">{{ r.nome }}</option>
+                        </select>
+                    </label>
+                    <label
+                        ><span :class="rotulo">Preço ({{ loja.moeda }})</span
+                        ><input v-model.number="preco" type="number" min="0" step="1" :class="campo" aria-label="Preço"
                     /></label>
                 </div>
                 <label

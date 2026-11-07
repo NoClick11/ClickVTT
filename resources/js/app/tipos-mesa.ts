@@ -26,6 +26,8 @@ export type { Combate, Disposicao, FaseCombate, ItemTurno } from './nucleo/comba
 /** Item da mesa (só o mestre cria/edita). `dados` = o que só o sistema entende; `efeitos` = buffs do núcleo. */
 export interface ItemDto {
     id: number;
+    /** Item criado por uma compra na loja (id do catálogo): fica fora da aba Itens do mestre. */
+    catalogo_id?: string | null;
     nome: string;
     descricao: string | null;
     /** Peso de 1 unidade, em kg. */
@@ -44,4 +46,27 @@ export interface NovoItem {
     requer_sintonia: boolean;
     efeitos?: EfeitoBruto[];
     dados?: Record<string, unknown> | null;
+}
+
+/** Item que o mestre criou para o catálogo e a loja da mesa (além dos do sistema). */
+export interface ItemDeCatalogoDto extends Omit<ItemDto, 'catalogo_id'> {
+    categoria: string;
+    raridade: string;
+    /** Preço na moeda do sistema (Belly). */
+    preco: number;
+}
+export interface NovoItemDeCatalogo extends NovoItem {
+    categoria: string;
+    raridade: string;
+    preco: number;
+}
+/** Loja aberta para um jogador: as categorias à venda e o ajuste de preço (%; 100 = preço do livro). */
+export interface LojaAbertaDto {
+    jogador_id: number;
+    categorias: string[];
+    fator: number;
+}
+export interface LojaDoJogadorDto extends LojaAbertaDto {
+    /** Itens que o mestre criou nas categorias desta loja. */
+    itens: ItemDeCatalogoDto[];
 }

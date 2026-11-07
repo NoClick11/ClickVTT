@@ -2,6 +2,7 @@ import { defineAsyncComponent } from 'vue';
 import type { ModuloSistema } from '../../nucleo/sistemas/tipos';
 import { ALVOS_DE_EFEITO, formatoDeResumo, variaveisParaAlvo } from './alvos';
 import { CONDICOES } from './condicoes';
+import { CATEGORIAS, RARIDADES } from './itens/tipos';
 import { ATRIBUTOS, comItemEntregue, type FichaOnePiece } from './regras';
 
 /** Módulo de D&D 5e: a ficha e o editor de dados do item são carregados só quando usados. */
@@ -16,5 +17,7 @@ export const modulo: ModuloSistema = {
     atributos: ATRIBUTOS.map((a) => ({ id: a.id, sigla: a.sigla })),
     condicoes: CONDICOES.map((c) => ({ id: c.id, nome: c.nome, descricao: c.descricao })),
     Construtor: defineAsyncComponent(() => import('./construtor/ConstrutorFicha.vue')),
+    dadosDaLoja: { categorias: CATEGORIAS.filter((c) => !['hospedagem', 'estilo-de-vida'].includes(c.id)), raridades: RARIDADES, moeda: '฿' },
+    Loja: defineAsyncComponent(() => import('./itens/LojaDoJogador.vue')),
     CatalogoDeItens: defineAsyncComponent(() => import('./itens/CatalogoDeItens.vue')),
 };

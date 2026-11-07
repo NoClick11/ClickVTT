@@ -19,3 +19,8 @@ export const personagemSolto = (e: DragEvent): number | null => {
 
     return Number.isInteger(id) && id > 0 ? id : null;
 };
+
+/** Arrastar um item da loja (id do catálogo) para a janela da ficha de um personagem: compra e entrega. */
+export const MIME_LOJA = 'application/x-clickvtt-loja';
+export const arrastandoDaLoja = (e: DragEvent): boolean => Array.from(e.dataTransfer?.types ?? []).includes(MIME_LOJA);
+export const itemDaLojaSolto = (e: DragEvent): string | null => e.dataTransfer?.getData(MIME_LOJA) || null;

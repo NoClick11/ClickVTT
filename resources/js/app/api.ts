@@ -1,7 +1,7 @@
 import type { Criacao, Personagem } from '@/site/types';
 import type { ObjetoDto, PaginaDto } from './engine/tipos';
 import type { ResumoEvento } from './nucleo/combate/reacoes';
-import type { Combate, ItemDto, Mensagem, NovoItem, VisibilidadeRolagem } from './tipos-mesa';
+import type { Combate, ItemDeCatalogoDto, ItemDto, LojaAbertaDto, Mensagem, NovoItem, NovoItemDeCatalogo, VisibilidadeRolagem } from './tipos-mesa';
 
 export class ErroApi extends Error {
     constructor(
@@ -144,6 +144,22 @@ export function apiMesa(mesaId: number, atorId: number) {
         atualizarItem: (id: number, item: NovoItem) => requisitar<ItemDto>(atorId, 'PATCH', r('jogo.itens.update', id), item),
         /** Também tira o item do inventário de todos os personagens da mesa. */
         excluirItem: (id: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.itens.destroy', id)),
+        /** Loja (só o mestre abre e fecha): `jogadores` = 'todos' ou ids; `fator` = ajuste de preço em %. */
+        abrirLoja: (dados: { jogadores: 'todos' | number[]; categorias: string[]; fator?: number }) =>
+            requisitar<{ lojas: LojaAbertaDto[] }>(atorId, 'POST', r('jogo.loja.abrir'), dados),
+        fecharLoja: (jogadores: 'todos' | number[]) => requisitar<{ lojas: LojaAbertaDto[] }>(atorId, 'DELETE', r('jogo.loja.fechar'), { jogadores }),
+        /** Compra (o servidor confere loja aberta, categoria, preço e Belly). `item` = id do catálogo do sistema ou `c:ID` do mestre. */
+        comprarNaLoja: (dados: { personagem_id: number; item: string; qtd?: number }) =>
+            requisitar<{ campos: Record<string, unknown>; item: ItemDto; total: number; saldo: number }>(
+                atorId,
+                'POST',
+                r('jogo.loja.comprar'),
+                dados,
+            ),
+        criarItemDeCatalogo: (item: NovoItemDeCatalogo) => requisitar<ItemDeCatalogoDto>(atorId, 'POST', r('jogo.catalogo.store'), item),
+        atualizarItemDeCatalogo: (id: number, item: NovoItemDeCatalogo) =>
+            requisitar<ItemDeCatalogoDto>(atorId, 'PATCH', r('jogo.catalogo.update', id), item),
+        excluirItemDeCatalogo: (id: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.catalogo.destroy', id)),
         /** Comando de combate (o servidor decide e devolve o estado novo): iniciar, iniciativa, turno, ordem... Ver `CombateService`. */
         comandoCombate: (comando: string, dados: Record<string, unknown> = {}) =>
             requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.comando'), { comando, ...dados }),
