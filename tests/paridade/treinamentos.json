@@ -1,0 +1,872 @@
+{
+  "resumo": [
+    {
+      "nome": "nível 1: sem PT",
+      "ficha": {
+        "nivel": 1,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "esperado": {
+        "ganhos": 0,
+        "gasto": 0,
+        "disponiveis": 0,
+        "comprometidos": 0,
+        "livres": 0
+      }
+    },
+    {
+      "nome": "nível 2: 3 PT",
+      "ficha": {
+        "nivel": 2,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "esperado": {
+        "ganhos": 3,
+        "gasto": 0,
+        "disponiveis": 3,
+        "comprometidos": 0,
+        "livres": 3
+      }
+    },
+    {
+      "nome": "nível 3 ainda 3 PT",
+      "ficha": {
+        "nivel": 3,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "esperado": {
+        "ganhos": 3,
+        "gasto": 0,
+        "disponiveis": 3,
+        "comprometidos": 0,
+        "livres": 3
+      }
+    },
+    {
+      "nome": "nível 4: 6 PT",
+      "ficha": {
+        "nivel": 4,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "esperado": {
+        "ganhos": 6,
+        "gasto": 0,
+        "disponiveis": 6,
+        "comprometidos": 0,
+        "livres": 6
+      }
+    },
+    {
+      "nome": "nível 10: 15 PT",
+      "ficha": {
+        "nivel": 10,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "esperado": {
+        "ganhos": 15,
+        "gasto": 0,
+        "disponiveis": 15,
+        "comprometidos": 0,
+        "livres": 15
+      }
+    },
+    {
+      "nome": "nível 20 continua em 15 PT",
+      "ficha": {
+        "nivel": 20,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "esperado": {
+        "ganhos": 15,
+        "gasto": 0,
+        "disponiveis": 15,
+        "comprometidos": 0,
+        "livres": 15
+      }
+    },
+    {
+      "nome": "Traço Cultural: mod. de Sabedoria 2",
+      "ficha": {
+        "nivel": 4,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 14,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [
+          {
+            "nome": "Traços Culturais"
+          }
+        ],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "esperado": {
+        "ganhos": 8,
+        "gasto": 0,
+        "disponiveis": 8,
+        "comprometidos": 0,
+        "livres": 8
+      }
+    },
+    {
+      "nome": "Traço Cultural com Sabedoria baixa não dá PT",
+      "ficha": {
+        "nivel": 2,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 9,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [
+          {
+            "nome": "Traços Culturais"
+          }
+        ],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "esperado": {
+        "ganhos": 3,
+        "gasto": 0,
+        "disponiveis": 3,
+        "comprometidos": 0,
+        "livres": 3
+      }
+    },
+    {
+      "nome": "sem o Traço Cultural não há PT de sabedoria",
+      "ficha": {
+        "nivel": 2,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 18,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "esperado": {
+        "ganhos": 3,
+        "gasto": 0,
+        "disponiveis": 3,
+        "comprometidos": 0,
+        "livres": 3
+      }
+    },
+    {
+      "nome": "extras do mestre",
+      "ficha": {
+        "nivel": 2,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 4,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "esperado": {
+        "ganhos": 7,
+        "gasto": 0,
+        "disponiveis": 7,
+        "comprometidos": 0,
+        "livres": 7
+      }
+    },
+    {
+      "nome": "gasto dos aprendidos",
+      "ficha": {
+        "nivel": 10,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [
+            {
+              "id": "bom-nadador",
+              "nivel": 2
+            },
+            {
+              "id": "tekkai",
+              "nivel": 2
+            }
+          ],
+          "pedidos": []
+        }
+      },
+      "esperado": {
+        "ganhos": 15,
+        "gasto": 4,
+        "disponiveis": 11,
+        "comprometidos": 0,
+        "livres": 11
+      }
+    },
+    {
+      "nome": "Genialidade Inusitada encarece por grau (1+1+2)",
+      "ficha": {
+        "nivel": 10,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [
+            {
+              "id": "genialidade-inusitada",
+              "nivel": 2
+            },
+            {
+              "id": "genialidade-inusitada",
+              "nivel": 2
+            },
+            {
+              "id": "genialidade-inusitada",
+              "nivel": 2
+            }
+          ],
+          "pedidos": []
+        }
+      },
+      "esperado": {
+        "ganhos": 15,
+        "gasto": 4,
+        "disponiveis": 11,
+        "comprometidos": 0,
+        "livres": 11
+      }
+    },
+    {
+      "nome": "pedidos reservam PT",
+      "ficha": {
+        "nivel": 4,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": [
+            {
+              "id": "tekkai",
+              "dias": 0
+            },
+            {
+              "id": "bom-nadador",
+              "dias": 0
+            }
+          ]
+        }
+      },
+      "esperado": {
+        "ganhos": 6,
+        "gasto": 0,
+        "disponiveis": 6,
+        "comprometidos": 4,
+        "livres": 2
+      }
+    }
+  ],
+  "pedidos": [
+    {
+      "nome": "Bom Nadador com Força 14",
+      "ficha": {
+        "nivel": 4,
+        "atributos": {
+          "for": 14,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "id": "bom-nadador",
+      "opcao": null,
+      "invalido": false
+    },
+    {
+      "nome": "Bom Nadador sem o atributo mínimo",
+      "ficha": {
+        "nivel": 4,
+        "atributos": {
+          "for": 13,
+          "des": 10,
+          "con": 13,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "id": "bom-nadador",
+      "opcao": null,
+      "invalido": true
+    },
+    {
+      "nome": "Tekkai custa 3 PT e há 6",
+      "ficha": {
+        "nivel": 4,
+        "atributos": {
+          "for": 18,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "id": "tekkai",
+      "opcao": null,
+      "invalido": false
+    },
+    {
+      "nome": "Entusiasta de Plantas sem PT",
+      "ficha": {
+        "nivel": 1,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 18,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "id": "entusiasta-de-plantas",
+      "opcao": null,
+      "invalido": true
+    },
+    {
+      "nome": "Entusiasta de Plantas com PT e atributo",
+      "ficha": {
+        "nivel": 2,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 18,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "id": "entusiasta-de-plantas",
+      "opcao": null,
+      "invalido": false
+    },
+    {
+      "nome": "Treinamento de espécie para quem é da espécie",
+      "ficha": {
+        "nivel": 4,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 14,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Anão",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "id": "pequeno-gigante",
+      "opcao": null,
+      "invalido": false
+    },
+    {
+      "nome": "Treinamento de espécie para mestiço",
+      "ficha": {
+        "nivel": 4,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 14,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Anão × Mink",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "id": "pequeno-gigante",
+      "opcao": null,
+      "invalido": false
+    },
+    {
+      "nome": "Treinamento de espécie de outra espécie",
+      "ficha": {
+        "nivel": 4,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 14,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "id": "pequeno-gigante",
+      "opcao": null,
+      "invalido": true
+    },
+    {
+      "nome": "Superior exige o treinamento comum",
+      "ficha": {
+        "nivel": 10,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 20,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "id": "resistencia-a-kairoseki-superior",
+      "opcao": null,
+      "invalido": true
+    },
+    {
+      "nome": "Superior com o treinamento comum",
+      "ficha": {
+        "nivel": 10,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 20,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [
+            {
+              "id": "resistencia-a-kairoseki",
+              "nivel": 2
+            }
+          ],
+          "pedidos": []
+        }
+      },
+      "id": "resistencia-a-kairoseki-superior",
+      "opcao": null,
+      "invalido": false
+    },
+    {
+      "nome": "Corredor pede a opção",
+      "ficha": {
+        "nivel": 4,
+        "atributos": {
+          "for": 15,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "id": "corredor",
+      "opcao": null,
+      "invalido": true
+    },
+    {
+      "nome": "Corredor com a opção",
+      "ficha": {
+        "nivel": 4,
+        "atributos": {
+          "for": 15,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "id": "corredor",
+      "opcao": "longa",
+      "invalido": false
+    },
+    {
+      "nome": "Treinamento não repetível já aprendido",
+      "ficha": {
+        "nivel": 10,
+        "atributos": {
+          "for": 14,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [
+            {
+              "id": "bom-nadador",
+              "nivel": 2
+            }
+          ],
+          "pedidos": []
+        }
+      },
+      "id": "bom-nadador",
+      "opcao": null,
+      "invalido": true
+    },
+    {
+      "nome": "Treinamento já em andamento",
+      "ficha": {
+        "nivel": 10,
+        "atributos": {
+          "for": 14,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": [
+            {
+              "id": "bom-nadador",
+              "dias": 0
+            }
+          ]
+        }
+      },
+      "id": "bom-nadador",
+      "opcao": null,
+      "invalido": true
+    },
+    {
+      "nome": "Autoaperfeiçoamento sem PT livres",
+      "ficha": {
+        "nivel": 6,
+        "atributos": {
+          "for": 16,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [
+            {
+              "id": "autoaperfeicoamento",
+              "nivel": 2
+            }
+          ],
+          "pedidos": []
+        }
+      },
+      "id": "autoaperfeicoamento",
+      "opcao": "for",
+      "invalido": true
+    },
+    {
+      "nome": "Autoaperfeiçoamento repetido com PT",
+      "ficha": {
+        "nivel": 10,
+        "atributos": {
+          "for": 16,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [
+            {
+              "id": "autoaperfeicoamento",
+              "nivel": 2
+            }
+          ],
+          "pedidos": []
+        }
+      },
+      "id": "autoaperfeicoamento",
+      "opcao": "for",
+      "invalido": false
+    },
+    {
+      "nome": "Treinamento inexistente",
+      "ficha": {
+        "nivel": 10,
+        "atributos": {
+          "for": 10,
+          "des": 10,
+          "con": 10,
+          "sab": 10,
+          "pre": 10,
+          "von": 10
+        },
+        "especie": "Humano",
+        "caracteristicas": [],
+        "treinamento": {
+          "extras": 0,
+          "codigo": "",
+          "aprendidos": [],
+          "pedidos": []
+        }
+      },
+      "id": "inventado",
+      "opcao": null,
+      "invalido": true
+    }
+  ]
+}
