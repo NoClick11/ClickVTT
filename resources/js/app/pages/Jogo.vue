@@ -1034,6 +1034,7 @@ async function efeitoDaMunicaoDoChat(mensagem: Mensagem) {
         }
         const token = objetos.value.find((o) => o.tipo === 'token' && o.personagem_id === alvoId);
         if (!token) return avisar('O alvo precisa ter token no mapa para marcar a explosão.');
+        fecharFicha(personagemId); // a ficha sai da frente para marcar a explosão no mapa
         avisar('Marque a explosão no mapa: clique para confirmar, Esc cancela.');
         // o raio de 1,5 m parte do alvo atingido; quem o atirador não pode atingir (aliados, sem fogo amigo) fica de fora
         const naArea = await escolherNaArea({ forma: 'esfera', metros: 1.5 }, token.id, protegidosDe(personagemId));

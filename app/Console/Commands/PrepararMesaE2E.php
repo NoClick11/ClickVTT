@@ -5,6 +5,9 @@ namespace App\Console\Commands;
 use App\Models\Mesa;
 use App\Models\Sistema;
 use App\Models\User;
+use App\Nucleo\Loja\LojaService;
+use App\Sistemas\OnePiece\Itens;
+use App\Sistemas\OnePiece\OnePiece;
 use App\Sistemas\OnePiece\FichaOnePiece;
 use Illuminate\Console\Command;
 
@@ -53,12 +56,16 @@ class PrepararMesaE2E extends Command
         }
         $ficha['nivel'] = $dados['nivel'];
         $ficha['pp'] = ['atual' => 80, 'porNivel' => 4];
-        // o Atirador empunha um Mosquete do catálogo (alcance 18/24 m): limita as áreas "Arma, Cone/Linha" a 24 m
-        $mosquete = $mesa->itens()->updateOrCreate(['catalogo_id' => 'mosquete'], [
-            'nome' => 'Mosquete', 'peso' => 4, 'equipavel' => true,
-            'dados' => ['arma' => ['dano' => '1d12', 'atributo' => 'des', 'tipoDano' => 'Perfurante', 'proficiente' => true, 'distancia' => true, 'alcanceNormal' => 18, 'alcanceMaximo' => 24], 'catalogo' => ['id' => 'mosquete']],
-        ]);
-        $ficha['inventario'] = [['secao' => 'Equipamento', 'itens' => [['item_id' => $mosquete->id, 'qtd' => 1, 'equipado' => true, 'sintonizado' => false]]]];
+        // o Atirador empunha o Mosquete do catálogo (arma por munição, alcance 18/24 m: limita as áreas "Arma, Cone/Linha" a 24 m) e leva munição e um canhão guardado
+        $loja = app(LojaService::class);
+        $sistema = new OnePiece;
+        $catalogo = fn (string $id) => $loja->materializar($mesa, $sistema, Itens::item($id));
+        $ref = fn ($item, int $qtd, bool $equipado = false) => ['item_id' => $item->id, 'qtd' => $qtd, 'equipado' => $equipado, 'sintonizado' => false];
+        $ficha['inventario'] = [['secao' => 'Equipamento', 'itens' => [
+            $ref($catalogo('mosquete'), 1, true), $ref($catalogo('canhao'), 1),
+            $ref($catalogo('municao-esferica'), 5), $ref($catalogo('municao-perfurante'), 3), $ref($catalogo('municao-de-kairoseki'), 2),
+            $ref($catalogo('bola-explosiva'), 2), $ref($catalogo('flecha'), 4),
+        ]]];
 
         $personagem = function (string $nome, ?object $dono, array $ficha) use ($mesa) {
             $p = $mesa->personagens()->create(['nome' => $nome, 'cor' => '#0ea5e9']);
@@ -80,11 +87,12 @@ class PrepararMesaE2E extends Command
         $perto = $personagem('PertoE2E', null, $inimigo());               // NPC inimigo ao alcance (15 m)
         $oculto = $personagem('OcultoE2E', null, $inimigo());             // NPC inimigo ao alcance, mas na camada do Mestre
         $longe = $personagem('LongeE2E', null, $inimigo());               // NPC inimigo fora do alcance (45 m)
-        $aliado = $personagem('AliadoE2E', null, $inimigo());             // NPC ao alcance que o roteiro marca como aliado dos jogadores
+        $aliado = $personagem('AliadoE2E', null, $inimigo());
+        $fruta = $personagem('FrutaE2E', null, [...$inimigo(), 'akuma' => [...$inimigo()['akuma'] ?? [], 'tipo' => 'paramecia']]); // NPC usuário de Akuma no Mi, colado ao Perto (explosão e Kairoseki)             // NPC ao alcance que o roteiro marca como aliado dos jogadores
 
         // 70 px = 1,5 m: o Atirador em (1000, 1000)
-        $token = fn ($p, string $camada, float $dx) => $pagina->objetos()->create([
-            'camada' => $camada, 'tipo' => 'token', 'personagem_id' => $p->id, 'nome' => $p->nome, 'x' => 1000 + $dx, 'y' => 1000, 'largura' => 70, 'altura' => 70, 'z' => 1,
+        $token = fn ($p, string $camada, float $dx, float $dy = 0) => $pagina->objetos()->create([
+            'camada' => $camada, 'tipo' => 'token', 'personagem_id' => $p->id, 'nome' => $p->nome, 'x' => 1000 + $dx, 'y' => 1000 + $dy, 'largura' => 70, 'altura' => 70, 'z' => 1,
         ]);
         $objetos = [
             'a' => $token($atirador, 'jogadores', 0),
@@ -93,6 +101,7 @@ class PrepararMesaE2E extends Command
             'd' => $token($amigo, 'jogadores', 70 * 8),     // 12 m (aliado)
             'e' => $token($longe, 'jogadores', 70 * 30),    // 45 m
             'f' => $token($aliado, 'jogadores', 70 * 5),    // 7,5 m
+            'g' => $token($fruta, 'jogadores', 70 * 6, 70), // colado ao Perto (1,5 m)
         ];
         $item = fn (string $id, $p, int $ini, string $disp) => [
             'id' => $id, 'nome' => $p->nome, 'cor' => '#0ea5e9', 'personagem_id' => $p->id, 'objeto_id' => $objetos[$id]->id,
@@ -106,7 +115,7 @@ class PrepararMesaE2E extends Command
 
         $this->line(json_encode([
             'token' => $mesa->convite_token, 'mesa' => $mesa->id, 'slug' => $mesa->slug,
-            'atirador' => $atirador->id, 'perto' => $perto->id, 'oculto' => $oculto->id, 'amigo' => $amigo->id, 'longe' => $longe->id, 'aliado' => $aliado->id,
+            'atirador' => $atirador->id, 'perto' => $perto->id, 'oculto' => $oculto->id, 'amigo' => $amigo->id, 'longe' => $longe->id, 'aliado' => $aliado->id, 'fruta' => $fruta->id,
         ]));
 
         return self::SUCCESS;

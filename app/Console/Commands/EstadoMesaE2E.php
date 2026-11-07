@@ -19,9 +19,27 @@ class EstadoMesaE2E extends Command
         $pv = fn (string $nome) => Personagem::query()->where('mesa_id', $mesa->id)->where('nome', $nome)->first()?->ficha['pv']['atual'] ?? null;
         $atirador = Personagem::query()->where('mesa_id', $mesa->id)->where('nome', 'AtiradorE2E')->first();
         $c = $mesa->combate ?? [];
+        // inventário do Atirador por item do catálogo (munições e armas) e as condições de cada NPC
+        $qtds = [];
+        foreach ($atirador?->ficha['inventario'] ?? [] as $secao) {
+            foreach ($secao['itens'] ?? [] as $ref) {
+                $item = $mesa->itens()->find($ref['item_id']);
+                $qtds[$item?->catalogo_id ?? ('#'.$ref['item_id'])] = ($qtds[$item?->catalogo_id ?? ('#'.$ref['item_id'])] ?? 0) + $ref['qtd'];
+            }
+        }
+        $condicoes = fn (string $nome) => Personagem::query()->where('mesa_id', $mesa->id)->where('nome', $nome)->first()?->ficha['condicoes'] ?? [];
+        $cards = $mesa->mensagens()->where('tipo', 'tecnica')->orderBy('id')->get()->map(fn ($m) => [
+            'nome' => $m->dados['tecnica']['nome'], 'cd' => $m->dados['tecnica']['cd'], 'estado' => $m->dados['estado'],
+            'alvos' => array_column($m->dados['alvos'], 'nome'), 'dano' => $m->dados['tecnica']['dano']['expressao'] ?? null,
+        ])->all();
         $this->line(json_encode([
             'pp' => $atirador?->ficha['pp']['atual'] ?? null,
             'pv' => ['perto' => $pv('PertoE2E'), 'oculto' => $pv('OcultoE2E'), 'amigo' => $pv('AmigoE2E'), 'longe' => $pv('LongeE2E'), 'aliado' => $pv('AliadoE2E')],
+            'qtds' => $qtds,
+            'condicoes' => ['fruta' => $condicoes('FrutaE2E'), 'perto' => $condicoes('PertoE2E')],
+            'duracoes_fruta' => Personagem::query()->where('mesa_id', $mesa->id)->where('nome', 'FrutaE2E')->first()?->ficha['duracoes'] ?? [],
+            'cards' => $cards,
+            'pv_fruta' => $pv('FrutaE2E'),
             'fogo_amigo' => (bool) $mesa->fogo_amigo,
             'aliado' => (bool) (Personagem::query()->where('mesa_id', $mesa->id)->where('nome', 'AliadoE2E')->first()?->ficha['aliado'] ?? false),
             'rodada' => $c['rodada'] ?? null,
