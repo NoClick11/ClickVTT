@@ -160,6 +160,12 @@ final class Regras
         $base['carga.max'] = 15 * $r['atributos.for'];
         $base['pv.max'] = $f['pv']['max'] ?? 0;
         $base['pp.max'] = $nivel * ($f['pp']['porNivel'] ?? 4);
+        // Alcance corpo a corpo e deslocamentos em decímetros (15 = 1,5 m): efeitos e fórmulas só trabalham com inteiros.
+        $base['alcance.corpo'] = 15;
+        foreach (['normal', 'nado', 'escalada', 'voo'] as $tipo) {
+            $base["movimento.{$tipo}"] = (int) round(($f['movimento'][$tipo] ?? 0) * 10);
+        }
+        $base['dano.distancia.pct'] = 100;
 
         // Fase 3: efeitos sobre os valores-base (as fórmulas veem a fase 2)
         $variaveis = $r + $base;
@@ -178,7 +184,7 @@ final class Regras
             foreach ($secao['itens'] ?? [] as $ref) {
                 $item = $itens[$ref['item_id']] ?? null;
                 $arma = $item['dados']['arma'] ?? null;
-                if ($item === null || ! is_array($arma) || ! self::ativo($ref, $item)) {
+                if ($item === null || ! is_array($arma) || ! self::ativo($ref, $item) || ! self::armaCabe($arma, $f['tamanho'] ?? 'Médio')) {
                     continue;
                 }
                 // Ataque e dano podem usar atributos diferentes; sem `atributoDano`, o dano usa o mesmo do ataque.
@@ -207,6 +213,12 @@ final class Regras
             'dv.max' => $nivel,
             'treinamento.pontos' => max(0, $mod['sab']), // Traços Culturais: pontos de treinamento = mod. SAB positivo
         ];
+    }
+
+    /** O gigante (tamanho Enorme) só usa armas de gigante, e nenhum outro tamanho usa a arma de um gigante. */
+    public static function armaCabe(array $arma, string $tamanho): bool
+    {
+        return ($arma['tamanho'] ?? 'padrao') === 'gigante' ? $tamanho === 'Enorme' : $tamanho !== 'Enorme';
     }
 
     /**
@@ -279,12 +291,16 @@ final class Regras
         if ($dados !== [] && isset($variaveis["arma.{$arma}.dano"]) && ($meta['destaque'] ?? null) !== 'falha') {
             $nome = (string) ($itens[$arma]['nome'] ?? 'Arma');
             $bonus = $variaveis["arma.{$arma}.dano"];
-            $acao = function (string $id, string $rotulo, array $termos, string $rotuloRolagem) use ($arma, $bonus) {
+            // O tipo do dano da arma segue com o botão: a rolagem de dano carrega o tipo para o dano aplicado respeitar resistências.
+            $tipoDano = ($itens[$arma]['dados']['arma']['tipoDano'] ?? null) ?: null;
+            // Arma à distância do anão (Armas Reduzidas): o dano TOTAL sai pela metade (fator aplicado no dano aplicado ao alvo).
+            $fator = ($itens[$arma]['dados']['arma']['distancia'] ?? false) ? max(0, (int) ($variaveis['dano.distancia.pct'] ?? 100)) / 100 : 1;
+            $acao = function (string $id, string $rotulo, array $termos, string $rotuloRolagem) use ($arma, $bonus, $tipoDano, $fator) {
                 $dados = implode('+', $termos);
 
                 return [
                     'id' => $id, 'rotulo' => $rotulo, 'resumo' => $dados.($bonus > 0 ? "+{$bonus}" : ($bonus < 0 ? (string) $bonus : '')),
-                    'expressao' => "{$dados}+@arma.{$arma}.dano", 'rotuloRolagem' => $rotuloRolagem,
+                    'expressao' => "{$dados}+@arma.{$arma}.dano", 'rotuloRolagem' => $rotuloRolagem, 'dano' => ['tipo' => $tipoDano, ...($fator !== 1 ? ['fator' => $fator] : [])],
                 ];
             };
             // O crítico dobra todos os dados: se dobrados passariam do limite do rolador, os extras que sobram ficam de fora.

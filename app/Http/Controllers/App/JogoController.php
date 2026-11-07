@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\App;
 
 use App\Http\Controllers\Controller;
+use App\Nucleo\Combate\CombateService;
+use App\Nucleo\Combate\Pipeline;
+use App\Nucleo\Combate\SistemaDeCombate;
 use App\Models\Jogador;
 use App\Models\Mesa;
 use App\Models\Objeto;
@@ -27,7 +30,7 @@ class JogoController extends Controller
             : redirect()->route('convite.show', $mesa->convite_token);
     }
 
-    public function show(Request $request, Mesa $mesa, Jogador $jogador, RegistroSistemas $sistemas): Response|RedirectResponse
+    public function show(Request $request, Mesa $mesa, Jogador $jogador, RegistroSistemas $sistemas, Pipeline $pipeline): Response|RedirectResponse
     {
         abort_unless($jogador->mesa_id === $mesa->id, 404);
         $acesso = AcessoMesa::resolver($request, $mesa, $jogador->id);
@@ -67,7 +70,11 @@ class JogoController extends Controller
             'meusPersonagens' => $acesso->personagensPermitidos(),
             // Itens da mesa: o mestre vê todos; o jogador só os que aparecem nas fichas que ele controla.
             'itens' => $this->itensVisiveis($mesa, $acesso, $personagens, $sistemas),
-            'combate' => $mesa->combate ?? ['ativo' => false, 'rodada' => 1, 'atual' => null, 'itens' => []],
+            'combate' => CombateService::normalizar($mesa->combate),
+            // Janelas de reação abertas e as ofertas dos personagens que este jogador controla (para quem entra no meio de um ataque).
+            'reacoes' => $pipeline->pendentesPara($mesa, $acesso),
+            // Categorias de ação do sistema da mesa (padrão, poderosa, bônus, livre, reação...): a tela rotula e trava por elas.
+            'categoriasDeAcao' => ($s = $sistemas->resolver($mesa->sistema->slug)) instanceof SistemaDeCombate ? $s->categoriasDeAcao() : [],
             'mensagens' => $mesa->mensagens()->with(['personagem', 'jogador'])->latest('id')->limit(80)->get()->reverse()
                 ->map(fn ($m) => $m->para($acesso->jogador))->filter()->values(),
             'sairUrl' => route('convite.sair', $mesa->convite_token).'?jogador='.$acesso->jogador->id,

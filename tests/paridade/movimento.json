@@ -1,0 +1,8 @@
+[
+    { "nome": "dentro do limite anda tudo", "escala": { "tamanho_quadrado": 100, "distancia_quadrado": 1.5, "unidade": "m" }, "de": [0, 0], "para": [300, 0], "restante": 9, "esperado": { "x": 300, "y": 0, "metros": 4.5, "travou": false } },
+    { "nome": "passa do limite: trava onde acaba (reta horizontal)", "escala": { "tamanho_quadrado": 100, "distancia_quadrado": 1.5, "unidade": "m" }, "de": [0, 0], "para": [1000, 0], "restante": 6, "esperado": { "x": 400, "y": 0, "metros": 6, "travou": true } },
+    { "nome": "diagonal usa a distância real", "escala": { "tamanho_quadrado": 100, "distancia_quadrado": 1.5, "unidade": "m" }, "de": [0, 0], "para": [300, 400], "restante": 3, "esperado": { "x": 120, "y": 160, "metros": 3, "travou": true } },
+    { "nome": "sem deslocamento restante não sai do lugar", "escala": { "tamanho_quadrado": 100, "distancia_quadrado": 1.5, "unidade": "m" }, "de": [50, 50], "para": [500, 50], "restante": 0, "esperado": { "x": 50, "y": 50, "metros": 0, "travou": true } },
+    { "nome": "pés convertem para metros", "escala": { "tamanho_quadrado": 100, "distancia_quadrado": 5, "unidade": "ft" }, "de": [0, 0], "para": [100, 0], "restante": 9, "esperado": { "x": 100, "y": 0, "metros": 1.524, "travou": false } },
+    { "nome": "cabe exato no limite", "escala": { "tamanho_quadrado": 70, "distancia_quadrado": 1.5, "unidade": "m" }, "de": [0, 0], "para": [420, 0], "restante": 9, "esperado": { "x": 420, "y": 0, "metros": 9, "travou": false } }
+]

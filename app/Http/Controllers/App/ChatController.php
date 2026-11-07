@@ -3,15 +3,16 @@
 namespace App\Http\Controllers\App;
 
 use App\Http\Controllers\Controller;
-use App\Models\Jogador;
 use App\Models\Mensagem;
 use App\Models\Mesa;
+use App\Nucleo\Combate\CombateService;
+use App\Nucleo\Combate\Pipeline;
 use App\Nucleo\Rolagem\Rolador;
 use App\Nucleo\Rolagem\RolagemInvalida;
 use App\Nucleo\Sistemas\RegistroSistemas;
 use App\Nucleo\Sistemas\Sistema;
 use App\Support\AcessoMesa;
-use App\Support\Transmitir;
+use App\Support\EntregarMensagem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -42,7 +43,7 @@ class ChatController extends Controller
      * Jogador: `todos` ou `mestre` (eu e o mestre). Mestre: `todos`, `mestre` (só ele) ou `secreto`
      * (jogadores só veem o aviso de que houve rolagem, sem números).
      */
-    public function rolar(Request $request, Mesa $mesa, Rolador $rolador, RegistroSistemas $sistemas): JsonResponse
+    public function rolar(Request $request, Mesa $mesa, Rolador $rolador, RegistroSistemas $sistemas, CombateService $combate, Pipeline $pipeline): JsonResponse
     {
         $acesso = AcessoMesa::exigir($request, $mesa);
         $permitidas = $acesso->ehMestre() ? ['todos', 'mestre', 'secreto'] : ['todos', 'mestre'];
@@ -51,7 +52,21 @@ class ChatController extends Controller
             'rotulo' => ['nullable', 'string', 'max:60'],
             'visibilidade' => ['required', Rule::in($permitidas)],
             'personagem_id' => ['nullable', 'integer', Rule::in($acesso->personagensPermitidos())], // personagem ativo
+            // Rolagem de dano: o tipo (fogo, cortante...) vai junto para o botão "Aplicar" respeitar resistências e imunidades.
+            'dano' => ['nullable', 'array'],
+            'dano.tipo' => ['nullable', 'string', 'max:30'],
+            // Alvo do ataque (token mirado): com o combate em curso, abre a janela de reação e resolve o acerto.
+            'alvo_personagem_id' => ['nullable', 'integer', Rule::exists('personagens', 'id')->where('mesa_id', $mesa->id)],
+            // Ação do combate que esta rolagem gasta (categoria do sistema); recusada se não puder agir agora.
+            'acao' => ['nullable', 'array'],
+            'acao.categoria' => ['required_with:acao', 'string', 'max:20'],
+            'acao.tecnica' => ['nullable', 'boolean'],
+            'dano.fator' => ['nullable', 'numeric', 'between:0,4'], // fração do dano que vale (0,5 = metade, ex.: arma à distância do anão)
         ]);
+
+        if (isset($dados['acao']) && ! empty($dados['personagem_id'])) {
+            $combate->gastar($mesa, $acesso, $dados['personagem_id'], $dados['acao']['categoria'], (bool) ($dados['acao']['tecnica'] ?? false));
+        }
 
         [$sistema, $variaveis, $itens, $ficha] = $this->variaveis($mesa, $dados['personagem_id'] ?? null, $sistemas);
         try {
@@ -61,6 +76,12 @@ class ChatController extends Controller
         }
         // O sistema pode marcar a rolagem (ex.: ataque crítico); o núcleo só guarda e repassa.
         $marcas = $sistema?->metadadosDaRolagem($resultado['termos'], $variaveis, $itens, $ficha) ?? [];
+        if (is_array($dados['dano'] ?? null)) {
+            $marcas['dano'] = [
+                'tipo' => filled($dados['dano']['tipo'] ?? null) ? trim($dados['dano']['tipo']) : null,
+                ...(isset($dados['dano']['fator']) && (float) $dados['dano']['fator'] !== 1.0 ? ['fator' => (float) $dados['dano']['fator']] : []),
+            ];
+        }
 
         $mensagem = $mesa->mensagens()->create([
             'jogador_id' => $acesso->jogador->id,
@@ -77,7 +98,28 @@ class ChatController extends Controller
             ],
         ]);
 
-        return $this->entregar($mesa, $mensagem, $acesso);
+        $resposta = $this->entregar($mesa, $mensagem, $acesso);
+
+        // Ataque contra um alvo mirado: a janela de reação abre (ou o ataque resolve na hora) e a rolagem ganha o resultado.
+        if (! empty($dados['alvo_personagem_id']) && ! empty($dados['personagem_id']) && $this->ehAtaque($resultado['termos'])) {
+            $pipeline->ataqueDeclarado($mesa, $acesso, $mensagem, $dados['personagem_id'], $dados['alvo_personagem_id']);
+
+            return response()->json($mensagem->fresh()->para($acesso->jogador), 201);
+        }
+
+        return $resposta;
+    }
+
+    /** A rolagem é um ataque (usa a variável de ataque: `@ataque` ou `@arma.<id>.ataque`)? */
+    private function ehAtaque(array $termos): bool
+    {
+        foreach ($termos as $t) {
+            if (($t['tipo'] ?? null) === 'variavel' && ($t['nome'] === 'ataque' || preg_match('/^arma\.\d+\.ataque$/', $t['nome']))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -104,29 +146,8 @@ class ChatController extends Controller
     /** Distribui a mensagem: cada canal recebe só o que pode ver. Quem enviou recebe a sua pela resposta. */
     private function entregar(Mesa $mesa, Mensagem $mensagem, AcessoMesa $acesso): JsonResponse
     {
-        $mensagem->load(['personagem', 'jogador']);
-        $autor = $acesso->jogador->id;
-
-        switch ($mensagem->visibilidade) {
-            case 'todos':
-                Transmitir::enviar($mesa, 'mensagem', ['mensagem' => $mensagem->publica(), 'ator' => $autor], ['mesa']);
-                break;
-            case 'secreto':
-                // Aviso sem números para todos; resultado completo só para o mestre.
-                Transmitir::enviar($mesa, 'mensagem', ['mensagem' => $mensagem->publica(), 'ator' => $autor], ['mesa']);
-                Transmitir::enviar($mesa, 'mensagem', ['mensagem' => $mensagem->para($this->mestreFicticio()), 'ator' => $autor, 'substitui' => true], ['mestre']);
-                break;
-            case 'mestre':
-                $canais = $acesso->ehMestre() ? ['mestre'] : ["jogador.{$autor}", 'mestre'];
-                Transmitir::enviar($mesa, 'mensagem', ['mensagem' => $mensagem->para($acesso->jogador), 'ator' => $autor], $canais);
-                break;
-        }
+        EntregarMensagem::para($mesa, $mensagem, $acesso);
 
         return response()->json($mensagem->para($acesso->jogador), 201);
-    }
-
-    private function mestreFicticio(): Jogador
-    {
-        return new Jogador(['papel' => 'mestre']);
     }
 }

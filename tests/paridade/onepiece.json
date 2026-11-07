@@ -1093,5 +1093,587 @@
         "esperado": {
             "treinamento.pontos": 0
         }
+    },
+    {
+        "nome": "onepiece: alcance corpo a corpo e deslocamento em decímetros",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "especie": "",
+            "estilo": "",
+            "profissao": "",
+            "fruta": "",
+            "antecedente": "",
+            "xp": {
+                "atual": 0
+            },
+            "inspiracao": false,
+            "tamanho": "Médio",
+            "movimento": {
+                "normal": 9,
+                "nado": 4.5,
+                "escalada": 0,
+                "voo": 0
+            },
+            "ancestralidade": "",
+            "hospedado": null,
+            "recompensa": 0,
+            "belly": 0,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "sab": 10,
+                "pre": 10,
+                "von": 10
+            },
+            "salvaguardas": [],
+            "pericias": {
+                "atletismo": 0,
+                "acrobacia": 0,
+                "furtividade": 0,
+                "prestidigitacao": 0,
+                "historia": 0,
+                "investigacao": 0,
+                "medicina": 0,
+                "natureza": 0,
+                "sobrevivencia": 0,
+                "atuacao": 0,
+                "enganacao": 0,
+                "intimidacao": 0,
+                "persuasao": 0,
+                "provocacao": 0,
+                "haki": 0,
+                "intuicao": 0,
+                "percepcao": 0,
+                "sobrenatural": 0,
+                "sorte": 0
+            },
+            "deslocamento": "9 m",
+            "pv": {
+                "atual": 0,
+                "max": 0,
+                "temp": 0
+            },
+            "pp": {
+                "atual": 0,
+                "porNivel": 4
+            },
+            "dadosVida": {
+                "restantes": 1,
+                "tipo": "d8"
+            },
+            "exaustao": 0,
+            "sentidos": [],
+            "idiomas": [],
+            "resistencias": [],
+            "imunidades": [],
+            "vulnerabilidades": [],
+            "proficienciasArmas": [],
+            "proficienciasArmaduras": [],
+            "ferramentas": [],
+            "inventario": [],
+            "condicoes": [],
+            "duracoes": [],
+            "caracteristicas": [],
+            "tecnicas": {
+                "atributo": "von",
+                "lista": []
+            },
+            "akuma": {
+                "tipo": "",
+                "despertada": false,
+                "lista": []
+            },
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "sab": 0,
+                    "pre": 0,
+                    "von": 0
+                },
+                "pericias": {
+                    "atletismo": 0,
+                    "acrobacia": 0,
+                    "furtividade": 0,
+                    "prestidigitacao": 0,
+                    "historia": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "sobrevivencia": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "intimidacao": 0,
+                    "persuasao": 0,
+                    "provocacao": 0,
+                    "haki": 0,
+                    "intuicao": 0,
+                    "percepcao": 0,
+                    "sobrenatural": 0,
+                    "sorte": 0
+                }
+            }
+        },
+        "esperado": {
+            "alcance.corpo": 15,
+            "movimento.normal": 90,
+            "movimento.nado": 45,
+            "movimento.voo": 0,
+            "dano.distancia.pct": 100
+        }
+    },
+    {
+        "nome": "onepiece: Braços Longos elevam o alcance a 3 m",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "especie": "",
+            "estilo": "",
+            "profissao": "",
+            "fruta": "",
+            "antecedente": "",
+            "xp": {
+                "atual": 0
+            },
+            "inspiracao": false,
+            "tamanho": "Médio",
+            "movimento": {
+                "normal": 9,
+                "nado": 0,
+                "escalada": 0,
+                "voo": 0
+            },
+            "ancestralidade": "",
+            "hospedado": null,
+            "recompensa": 0,
+            "belly": 0,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "sab": 10,
+                "pre": 10,
+                "von": 10
+            },
+            "salvaguardas": [],
+            "pericias": {
+                "atletismo": 0,
+                "acrobacia": 0,
+                "furtividade": 0,
+                "prestidigitacao": 0,
+                "historia": 0,
+                "investigacao": 0,
+                "medicina": 0,
+                "natureza": 0,
+                "sobrevivencia": 0,
+                "atuacao": 0,
+                "enganacao": 0,
+                "intimidacao": 0,
+                "persuasao": 0,
+                "provocacao": 0,
+                "haki": 0,
+                "intuicao": 0,
+                "percepcao": 0,
+                "sobrenatural": 0,
+                "sorte": 0
+            },
+            "deslocamento": "9 m",
+            "pv": {
+                "atual": 0,
+                "max": 0,
+                "temp": 0
+            },
+            "pp": {
+                "atual": 0,
+                "porNivel": 4
+            },
+            "dadosVida": {
+                "restantes": 1,
+                "tipo": "d8"
+            },
+            "exaustao": 0,
+            "sentidos": [],
+            "idiomas": [],
+            "resistencias": [],
+            "imunidades": [],
+            "vulnerabilidades": [],
+            "proficienciasArmas": [],
+            "proficienciasArmaduras": [],
+            "ferramentas": [],
+            "inventario": [],
+            "condicoes": [],
+            "duracoes": [],
+            "caracteristicas": [
+                {
+                    "nome": "Braços Especiais",
+                    "origem": "Humanos",
+                    "tipo": "passiva",
+                    "efeitos": [
+                        {
+                            "alvo": "alcance.corpo",
+                            "modo": "min",
+                            "valor": 30
+                        }
+                    ]
+                }
+            ],
+            "tecnicas": {
+                "atributo": "von",
+                "lista": []
+            },
+            "akuma": {
+                "tipo": "",
+                "despertada": false,
+                "lista": []
+            },
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "sab": 0,
+                    "pre": 0,
+                    "von": 0
+                },
+                "pericias": {
+                    "atletismo": 0,
+                    "acrobacia": 0,
+                    "furtividade": 0,
+                    "prestidigitacao": 0,
+                    "historia": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "sobrevivencia": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "intimidacao": 0,
+                    "persuasao": 0,
+                    "provocacao": 0,
+                    "haki": 0,
+                    "intuicao": 0,
+                    "percepcao": 0,
+                    "sobrenatural": 0,
+                    "sorte": 0
+                }
+            }
+        },
+        "esperado": {
+            "alcance.corpo": 30
+        }
+    },
+    {
+        "nome": "onepiece: Forma Sulong dobra o deslocamento e dá voo pela metade",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "especie": "",
+            "estilo": "",
+            "profissao": "",
+            "fruta": "",
+            "antecedente": "",
+            "xp": {
+                "atual": 0
+            },
+            "inspiracao": false,
+            "tamanho": "Médio",
+            "movimento": {
+                "normal": 12,
+                "nado": 0,
+                "escalada": 0,
+                "voo": 0
+            },
+            "ancestralidade": "",
+            "hospedado": null,
+            "recompensa": 0,
+            "belly": 0,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "sab": 10,
+                "pre": 10,
+                "von": 10
+            },
+            "salvaguardas": [],
+            "pericias": {
+                "atletismo": 0,
+                "acrobacia": 0,
+                "furtividade": 0,
+                "prestidigitacao": 0,
+                "historia": 0,
+                "investigacao": 0,
+                "medicina": 0,
+                "natureza": 0,
+                "sobrevivencia": 0,
+                "atuacao": 0,
+                "enganacao": 0,
+                "intimidacao": 0,
+                "persuasao": 0,
+                "provocacao": 0,
+                "haki": 0,
+                "intuicao": 0,
+                "percepcao": 0,
+                "sobrenatural": 0,
+                "sorte": 0
+            },
+            "deslocamento": "9 m",
+            "pv": {
+                "atual": 0,
+                "max": 0,
+                "temp": 0
+            },
+            "pp": {
+                "atual": 0,
+                "porNivel": 4
+            },
+            "dadosVida": {
+                "restantes": 1,
+                "tipo": "d8"
+            },
+            "exaustao": 0,
+            "sentidos": [],
+            "idiomas": [],
+            "resistencias": [],
+            "imunidades": [],
+            "vulnerabilidades": [],
+            "proficienciasArmas": [],
+            "proficienciasArmaduras": [],
+            "ferramentas": [],
+            "inventario": [],
+            "condicoes": [],
+            "duracoes": [],
+            "caracteristicas": [
+                {
+                    "nome": "Forma Sulong",
+                    "origem": "Minks",
+                    "tipo": "ativa",
+                    "ativa": true,
+                    "efeitos": [
+                        {
+                            "alvo": "movimento.normal",
+                            "modo": "soma",
+                            "valor": "@movimento.normal"
+                        },
+                        {
+                            "alvo": "movimento.voo",
+                            "modo": "soma",
+                            "valor": "@movimento.normal"
+                        }
+                    ]
+                }
+            ],
+            "tecnicas": {
+                "atributo": "von",
+                "lista": []
+            },
+            "akuma": {
+                "tipo": "",
+                "despertada": false,
+                "lista": []
+            },
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "sab": 0,
+                    "pre": 0,
+                    "von": 0
+                },
+                "pericias": {
+                    "atletismo": 0,
+                    "acrobacia": 0,
+                    "furtividade": 0,
+                    "prestidigitacao": 0,
+                    "historia": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "sobrevivencia": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "intimidacao": 0,
+                    "persuasao": 0,
+                    "provocacao": 0,
+                    "haki": 0,
+                    "intuicao": 0,
+                    "percepcao": 0,
+                    "sobrenatural": 0,
+                    "sorte": 0
+                }
+            }
+        },
+        "esperado": {
+            "movimento.normal": 240,
+            "movimento.voo": 120
+        }
+    },
+    {
+        "nome": "onepiece: Armas Reduzidas deixam o dano à distância em 50%",
+        "parcial": true,
+        "ficha": {
+            "nivel": 1,
+            "especie": "",
+            "estilo": "",
+            "profissao": "",
+            "fruta": "",
+            "antecedente": "",
+            "xp": {
+                "atual": 0
+            },
+            "inspiracao": false,
+            "tamanho": "Médio",
+            "movimento": {
+                "normal": 9,
+                "nado": 0,
+                "escalada": 0,
+                "voo": 0
+            },
+            "ancestralidade": "",
+            "hospedado": null,
+            "recompensa": 0,
+            "belly": 0,
+            "atributos": {
+                "for": 10,
+                "des": 10,
+                "con": 10,
+                "sab": 10,
+                "pre": 10,
+                "von": 10
+            },
+            "salvaguardas": [],
+            "pericias": {
+                "atletismo": 0,
+                "acrobacia": 0,
+                "furtividade": 0,
+                "prestidigitacao": 0,
+                "historia": 0,
+                "investigacao": 0,
+                "medicina": 0,
+                "natureza": 0,
+                "sobrevivencia": 0,
+                "atuacao": 0,
+                "enganacao": 0,
+                "intimidacao": 0,
+                "persuasao": 0,
+                "provocacao": 0,
+                "haki": 0,
+                "intuicao": 0,
+                "percepcao": 0,
+                "sobrenatural": 0,
+                "sorte": 0
+            },
+            "deslocamento": "9 m",
+            "pv": {
+                "atual": 0,
+                "max": 0,
+                "temp": 0
+            },
+            "pp": {
+                "atual": 0,
+                "porNivel": 4
+            },
+            "dadosVida": {
+                "restantes": 1,
+                "tipo": "d8"
+            },
+            "exaustao": 0,
+            "sentidos": [],
+            "idiomas": [],
+            "resistencias": [],
+            "imunidades": [],
+            "vulnerabilidades": [],
+            "proficienciasArmas": [],
+            "proficienciasArmaduras": [],
+            "ferramentas": [],
+            "inventario": [],
+            "condicoes": [],
+            "duracoes": [],
+            "caracteristicas": [
+                {
+                    "nome": "Armas Reduzidas",
+                    "origem": "Anões",
+                    "tipo": "passiva",
+                    "efeitos": [
+                        {
+                            "alvo": "dano.distancia.pct",
+                            "modo": "base",
+                            "valor": 50
+                        }
+                    ]
+                }
+            ],
+            "tecnicas": {
+                "atributo": "von",
+                "lista": []
+            },
+            "akuma": {
+                "tipo": "",
+                "despertada": false,
+                "lista": []
+            },
+            "ajustes": {
+                "proficiencia": 0,
+                "ca": 0,
+                "iniciativa": 0,
+                "cd": 0,
+                "ataque": 0,
+                "cargaMax": 0,
+                "salvaguardas": {
+                    "for": 0,
+                    "des": 0,
+                    "con": 0,
+                    "sab": 0,
+                    "pre": 0,
+                    "von": 0
+                },
+                "pericias": {
+                    "atletismo": 0,
+                    "acrobacia": 0,
+                    "furtividade": 0,
+                    "prestidigitacao": 0,
+                    "historia": 0,
+                    "investigacao": 0,
+                    "medicina": 0,
+                    "natureza": 0,
+                    "sobrevivencia": 0,
+                    "atuacao": 0,
+                    "enganacao": 0,
+                    "intimidacao": 0,
+                    "persuasao": 0,
+                    "provocacao": 0,
+                    "haki": 0,
+                    "intuicao": 0,
+                    "percepcao": 0,
+                    "sobrenatural": 0,
+                    "sorte": 0
+                }
+            }
+        },
+        "esperado": {
+            "dano.distancia.pct": 50
+        }
     }
 ]

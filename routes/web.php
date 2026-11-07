@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\App\BroadcastAuthController;
+use App\Http\Controllers\App\AlvoController;
 use App\Http\Controllers\App\ChatController;
+use App\Http\Controllers\App\EventoDeCombateController;
+use App\Http\Controllers\App\CompanheiroController;
 use App\Http\Controllers\App\CombateController;
 use App\Http\Controllers\App\FichaController;
 use App\Http\Controllers\App\ItemController;
@@ -48,6 +51,9 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::post('paginas/{pagina}/jogadores/{jogador}', [PaginaController::class, 'moverJogador'])->name('paginas.jogador');
     Route::patch('personagens/{personagem}/ficha', [FichaController::class, 'atualizar'])
         ->middleware('throttle:120,1')->name('personagens.ficha');
+    Route::post('personagens/{personagem}/companheiros', [CompanheiroController::class, 'criar'])->middleware('throttle:10,1')->name('personagens.companheiros');
+    Route::post('personagens/{personagem}/dano', [AlvoController::class, 'dano'])->middleware('throttle:60,1')->name('personagens.dano');
+    Route::post('personagens/{personagem}/condicoes', [AlvoController::class, 'condicao'])->middleware('throttle:60,1')->name('personagens.condicoes');
     Route::post('personagens/{personagem}/criacao/atributos-rolados', [FichaController::class, 'rolarAtributos'])
         ->middleware('throttle:20,1')->name('personagens.atributos-rolados');
     Route::post('personagens', [PersonagemDoJogoController::class, 'criar'])->middleware('throttle:30,1')->name('personagens.store');
@@ -63,7 +69,11 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::delete('objetos/{objeto}', [ObjetoController::class, 'destroy'])->name('objetos.destroy');
     Route::post('mensagens', [ChatController::class, 'texto'])->middleware('throttle:60,1')->name('mensagens.store');
     Route::post('rolagens', [ChatController::class, 'rolar'])->middleware('throttle:60,1')->name('rolagens.store');
-    Route::put('combate', [CombateController::class, 'atualizar'])->name('combate.update');
+    Route::post('combate', [CombateController::class, 'comando'])->middleware('throttle:120,1')->name('combate.comando');
+    Route::post('combate/eventos/{evento}/reagir', [EventoDeCombateController::class, 'reagir'])->middleware('throttle:60,1')->name('combate.eventos.reagir');
+    Route::post('combate/eventos/{evento}/encerrar', [EventoDeCombateController::class, 'encerrar'])->middleware('throttle:30,1')->name('combate.eventos.encerrar');
+    Route::post('combate/disparada', [CombateController::class, 'disparada'])->middleware('throttle:60,1')->name('combate.disparada');
+    Route::post('combate/acao', [CombateController::class, 'acao'])->middleware('throttle:240,1')->name('combate.acao');
     Route::post('broadcasting/auth', BroadcastAuthController::class)->name('broadcasting.auth');
 });
 

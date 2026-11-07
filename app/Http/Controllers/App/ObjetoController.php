@@ -4,6 +4,7 @@ namespace App\Http\Controllers\App;
 
 use App\Http\Controllers\Controller;
 use App\Models\Mesa;
+use App\Nucleo\Combate\CombateService;
 use App\Models\Objeto;
 use App\Models\Pagina;
 use App\Support\AcessoMesa;
@@ -111,7 +112,19 @@ class ObjetoController extends Controller
                 && $objeto->pagina_id === $this->paginaDe($mesa, $acesso),
                 403,
             );
+            // Em combate, só o token de quem está no turno se move (o mestre ignora).
+            if ($objeto->tipo === 'token' && CombateService::emCurso($mesa)) {
+                $atual = CombateService::itemAtual(CombateService::normalizar($mesa->combate));
+                abort_unless($atual !== null && $atual['personagem_id'] !== null && $atual['personagem_id'] === $objeto->personagem_id, 403, 'Não é o turno deste personagem.');
+            }
             $dados = $request->validate(['x' => ['required', 'numeric'], 'y' => ['required', 'numeric']]);
+        }
+
+        // Token em combate: o que andou entra no deslocamento do turno; quem não é o mestre trava no limite (como a régua).
+        if ($objeto->tipo === 'token' && isset($dados['x'], $dados['y']) && CombateService::emCurso($mesa)) {
+            $r = app(CombateService::class)->registrarMovimento($mesa, $objeto, (float) $dados['x'], (float) $dados['y'], ! $acesso->ehMestre());
+            $dados['x'] = $r['x'];
+            $dados['y'] = $r['y'];
         }
 
         $objeto->update($dados);

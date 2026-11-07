@@ -71,6 +71,11 @@ class Mesa extends Model
         return $this->hasMany(Item::class);
     }
 
+    public function eventosDeCombate(): HasMany
+    {
+        return $this->hasMany(EventoDeCombate::class);
+    }
+
     public function mensagens(): HasMany
     {
         return $this->hasMany(Mensagem::class);

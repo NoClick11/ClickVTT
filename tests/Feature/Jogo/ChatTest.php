@@ -473,18 +473,18 @@ class ChatTest extends TestCase
         $this->withHeaders(['X-Jogador' => ''])->post(route('jogo.broadcasting.auth', $id), ['channel_name' => "private-mesa.{$id}", 'socket_id' => '1.2'])->assertForbidden();
     }
 
-    public function test_so_o_mestre_altera_o_combate_e_o_estado_chega_aos_jogadores(): void
+    public function test_so_o_mestre_comanda_o_combate_e_o_estado_chega_aos_jogadores(): void
     {
         Event::fake([EventoMesa::class]);
         $c = $this->cenario();
-        $estado = ['ativo' => true, 'rodada' => 2, 'atual' => 'a', 'itens' => [['id' => 'a', 'nome' => 'Aria', 'iniciativa' => 15, 'cor' => '#2563eb', 'personagem_id' => $c->aria->id]]];
+        $rota = route('jogo.combate.comando', $c->mesa->id);
 
-        $this->como($c->ana)->putJson(route('jogo.combate.update', $c->mesa->id), $estado)->assertForbidden();
-        $this->como($c->mestre)->putJson(route('jogo.combate.update', $c->mesa->id), $estado)->assertOk();
+        $this->como($c->ana)->postJson($rota, ['comando' => 'iniciar'])->assertForbidden();
+        $this->como($c->mestre)->postJson($rota, ['comando' => 'adicionar', 'personagem_id' => $c->aria->id, 'iniciativa' => 15])->assertOk();
         Event::assertDispatched(EventoMesa::class, fn ($e) => $e->nome === 'combate' && $e->canais === ['mesa']);
 
         $this->como($c->ana)->get(route('jogo', [$c->mesa->slug, $c->ana->id]))->assertInertia(fn (Assert $p) => $p
-            ->where('combate.ativo', true)->where('combate.rodada', 2)->where('combate.itens.0.nome', 'Aria'));
+            ->where('combate.rodada', 1)->where('combate.itens.0.nome', 'Aria')->where('combate.itens.0.iniciativa', 15));
     }
 
     public function test_jogador_desenha_na_camada_jogadores_e_apaga_so_o_proprio(): void
