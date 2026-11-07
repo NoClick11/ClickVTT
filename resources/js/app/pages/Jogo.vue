@@ -769,7 +769,7 @@ watch(
     { deep: true },
 );
 const jogadoresDaLoja = computed(() => props.jogadores.filter((j) => j.papel !== 'mestre').map((j) => ({ id: j.id, nome: j.nome })));
-async function abrirLoja(dados: { jogadores: 'todos' | number[]; categorias: string[]; fator: number }) {
+async function abrirLoja(dados: { jogadores: 'todos' | number[]; categorias: string[]; raridades: string[]; fator: number }) {
     lojas.value = (await api.abrirLoja(dados)).lojas;
 }
 async function fecharLoja(jogadores: 'todos' | number[]) {

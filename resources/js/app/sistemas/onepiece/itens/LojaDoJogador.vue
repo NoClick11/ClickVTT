@@ -56,7 +56,12 @@ const lista = computed(() =>
     buscarNoCatalogo({ texto: texto.value, categoria: categoria.value, soItens: true, soLoja: true }, [
         ...doMestre.value,
         ...CATALOGO_DE_ITENS,
-    ]).filter((i) => props.loja.categorias.includes(i.categoria) && i.preco !== null),
+    ]).filter(
+        (i) =>
+            props.loja.categorias.includes(i.categoria) &&
+            i.preco !== null &&
+            (!props.loja.raridades?.length || props.loja.raridades.includes(i.raridade)),
+    ),
 );
 const qtd = (id: string) => Math.max(1, Math.min(99, Math.floor(quantidades.value[id] ?? 1)));
 /** Preço de venda ao jogador: o do catálogo vezes o ajuste da loja (%), para cima, como o servidor. */

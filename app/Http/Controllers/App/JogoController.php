@@ -95,7 +95,7 @@ class JogoController extends Controller
             return null;
         }
 
-        return $aberta->paraFront() + ['itens' => app(LojaService::class)->itensProprios($mesa, $aberta->categorias)->map->paraFront()->values()->all()];
+        return $aberta->paraFront() + ['itens' => app(LojaService::class)->itensProprios($mesa, $aberta->categorias, $aberta->raridades ?? [])->map->paraFront()->values()->all()];
     }
 
     /** @return \Illuminate\Support\Collection<int, array> */

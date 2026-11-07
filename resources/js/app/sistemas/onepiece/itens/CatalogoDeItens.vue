@@ -16,7 +16,7 @@ const props = defineProps<{
     jogadores: { id: number; nome: string }[];
     lojas: LojaAbertaDto[];
     proprios: ItemDeCatalogoDto[];
-    abrirLoja: (dados: { jogadores: 'todos' | number[]; categorias: string[]; fator: number }) => Promise<void>;
+    abrirLoja: (dados: { jogadores: 'todos' | number[]; categorias: string[]; raridades: string[]; fator: number }) => Promise<void>;
     fecharLoja: (jogadores: 'todos' | number[]) => Promise<void>;
 }>();
 const emit = defineEmits<{ 'update:open': [boolean]; editar: [id: number | null] }>();
@@ -55,6 +55,14 @@ const meu = (id: string) => id.startsWith('c:');
 const CATEGORIAS_DA_LOJA = CATEGORIAS.filter((c) => !['hospedagem', 'estilo-de-vida'].includes(c.id));
 const quem = ref<number[]>([]);
 const categoriasEscolhidas = ref<string[]>([]);
+/** Raridades à venda: por padrão, todas. */
+const raridadesEscolhidas = ref<string[]>(RARIDADES.map((r) => r.id));
+const alternarRaridade = (id: string) =>
+    (raridadesEscolhidas.value = raridadesEscolhidas.value.includes(id)
+        ? raridadesEscolhidas.value.filter((x) => x !== id)
+        : [...raridadesEscolhidas.value, id]);
+const todasAsCategorias = () =>
+    (categoriasEscolhidas.value = categoriasEscolhidas.value.length === CATEGORIAS_DA_LOJA.length ? [] : CATEGORIAS_DA_LOJA.map((c) => c.id));
 const fator = ref(100);
 const mensagem = ref('');
 const ocupado = ref(false);
@@ -76,11 +84,13 @@ async function abrirAgora() {
     mensagem.value = '';
     if (!quem.value.length) return (mensagem.value = 'Escolha para quem a loja abre.');
     if (!categoriasEscolhidas.value.length) return (mensagem.value = 'Escolha ao menos uma categoria.');
+    if (!raridadesEscolhidas.value.length) return (mensagem.value = 'Escolha ao menos uma raridade.');
     ocupado.value = true;
     try {
         await props.abrirLoja({
             jogadores: todosMarcados.value ? 'todos' : quem.value,
             categorias: categoriasEscolhidas.value,
+            raridades: raridadesEscolhidas.value.length === RARIDADES.length ? [] : raridadesEscolhidas.value,
             fator: Math.max(1, Math.floor(Number(fator.value) || 100)),
         });
         mensagem.value = 'Loja aberta.';
@@ -249,7 +259,12 @@ const aba_ = (ativa: boolean) =>
                     </div>
                 </section>
                 <section class="grid gap-2 rounded-lg border border-preto-700 bg-preto-950/60 p-3" aria-label="Categorias da loja">
-                    <h3 class="text-xs font-semibold uppercase tracking-wide text-ouro-300">Categorias à venda</h3>
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-semibold uppercase tracking-wide text-ouro-300">Categorias à venda</h3>
+                        <button type="button" class="text-xs text-preto-300 hover:text-ouro-200" @click="todasAsCategorias">
+                            Marcar/desmarcar todas
+                        </button>
+                    </div>
                     <div v-for="g in grupos.filter((x) => x !== 'Serviços')" :key="g" class="grid gap-1">
                         <button
                             type="button"
@@ -277,6 +292,27 @@ const aba_ = (ativa: boolean) =>
                         </div>
                     </div>
                     <p class="text-xs text-preto-400">Os itens que você criou entram na loja pela categoria que escolheu para eles.</p>
+                </section>
+                <section class="grid gap-2 rounded-lg border border-preto-700 bg-preto-950/60 p-3" aria-label="Raridades da loja">
+                    <h3 class="text-xs font-semibold uppercase tracking-wide text-ouro-300">Raridades à venda</h3>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button
+                            v-for="r in RARIDADES"
+                            :key="r.id"
+                            type="button"
+                            :aria-pressed="raridadesEscolhidas.includes(r.id)"
+                            :title="r.descricao"
+                            :class="aba_(raridadesEscolhidas.includes(r.id))"
+                            class="!py-0.5 !text-xs"
+                            @click="alternarRaridade(r.id)"
+                        >
+                            {{ r.nome }}
+                        </button>
+                    </div>
+                    <p class="text-xs text-preto-400">
+                        Só entram na loja os itens das categorias marcadas que sejam destas raridades (ex.: tire o Mercado Negro e o Raro para uma
+                        vila pequena).
+                    </p>
                 </section>
                 <section class="flex flex-wrap items-end gap-3 rounded-lg border border-preto-700 bg-preto-950/60 p-3">
                     <label class="grid gap-1 text-xs text-preto-300"
@@ -317,7 +353,12 @@ const aba_ = (ativa: boolean) =>
                     <ul class="grid gap-1">
                         <li v-for="l in lojas" :key="l.jogador_id" class="flex flex-wrap items-center gap-2 text-sm">
                             <strong class="text-preto-100">{{ nomeDe(l.jogador_id) }}</strong>
-                            <span class="text-xs text-preto-400">{{ l.categorias.map(nomeDaCategoria).join(', ') }}</span>
+                            <span class="text-xs text-preto-400"
+                                >{{ l.categorias.map(nomeDaCategoria).join(', ')
+                                }}<template v-if="l.raridades?.length">
+                                    · {{ l.raridades.map((r) => raridadePorId(r as Raridade)?.nome).join(', ') }}</template
+                                ></span
+                            >
                             <span v-if="l.fator !== 100" class="text-xs text-ouro-300">preço {{ l.fator }}%</span>
                             <button
                                 type="button"

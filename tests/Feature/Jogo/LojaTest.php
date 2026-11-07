@@ -100,7 +100,9 @@ class LojaTest extends TestCase
         $id = 'c:'.$criar->json('id');
         $this->como($c->ana)->postJson(route('jogo.catalogo.store', $c->mesa->id), ['nome' => 'x'])->assertForbidden();
         $this->como($c->mestre)->postJson(route('jogo.catalogo.store', $c->mesa->id), ['nome' => 'Ruim', 'categoria' => 'inventada', 'raridade' => 'raro', 'preco' => 1, 'peso' => 1, 'equipavel' => true, 'requer_sintonia' => false])->assertStatus(422);
-        $this->como($c->mestre)->postJson(route('jogo.loja.abrir', $c->mesa->id), ['jogadores' => [$c->ana->id], 'categorias' => ['armas-cortantes'], 'fator' => 150])->assertOk();
+        $this->como($c->mestre)->postJson(route('jogo.loja.abrir', $c->mesa->id), ['jogadores' => [$c->ana->id], 'categorias' => ['armas-cortantes'], 'raridades' => ['comum'], 'fator' => 150])->assertOk();
+        $this->como($c->ana)->postJson(route('jogo.loja.comprar', $c->mesa->id), ['personagem_id' => $c->aria->id, 'item' => $id])->assertStatus(422); // item raro, loja só de comuns
+        $this->como($c->mestre)->postJson(route('jogo.loja.abrir', $c->mesa->id), ['jogadores' => [$c->ana->id], 'categorias' => ['armas-cortantes'], 'raridades' => ['raro', 'comum'], 'fator' => 150])->assertOk();
         // o jogador recebe, na página, só a loja dele com o item do mestre
         $r = $this->como($c->ana)->postJson(route('jogo.loja.comprar', $c->mesa->id), ['personagem_id' => $c->aria->id, 'item' => $id])->assertOk();
         $this->assertSame(750000, $r->json('total')); // 500.000 × 150%

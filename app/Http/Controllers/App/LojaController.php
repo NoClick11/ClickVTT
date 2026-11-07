@@ -32,11 +32,14 @@ class LojaController extends Controller
             'jogadores' => ['required'],
             'categorias' => ['required', 'array', 'min:1'],
             'categorias.*' => ['string', Rule::in($ids)],
+            // Raridades à venda (vazio = todas).
+            'raridades' => ['nullable', 'array'],
+            'raridades.*' => ['string', Rule::in($sistema->catalogoDeLoja()['raridades'])],
             'fator' => ['nullable', 'integer', 'between:1,10000'],
         ]);
         $alvos = $this->jogadoresAlvo($mesa, $dados['jogadores']);
         foreach ($alvos as $j) {
-            $mesa->lojasAbertas()->updateOrCreate(['jogador_id' => $j->id], ['categorias' => array_values(array_unique($dados['categorias'])), 'fator' => $dados['fator'] ?? 100]);
+            $mesa->lojasAbertas()->updateOrCreate(['jogador_id' => $j->id], ['categorias' => array_values(array_unique($dados['categorias'])), 'raridades' => array_values(array_unique($dados['raridades'] ?? [])), 'fator' => $dados['fator'] ?? 100]);
         }
         Transmitir::enviar($mesa, 'loja', ['aberta' => true], $alvos->map(fn ($j) => "jogador.{$j->id}")->all());
 

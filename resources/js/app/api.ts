@@ -145,7 +145,7 @@ export function apiMesa(mesaId: number, atorId: number) {
         /** Também tira o item do inventário de todos os personagens da mesa. */
         excluirItem: (id: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.itens.destroy', id)),
         /** Loja (só o mestre abre e fecha): `jogadores` = 'todos' ou ids; `fator` = ajuste de preço em %. */
-        abrirLoja: (dados: { jogadores: 'todos' | number[]; categorias: string[]; fator?: number }) =>
+        abrirLoja: (dados: { jogadores: 'todos' | number[]; categorias: string[]; raridades?: string[]; fator?: number }) =>
             requisitar<{ lojas: LojaAbertaDto[] }>(atorId, 'POST', r('jogo.loja.abrir'), dados),
         fecharLoja: (jogadores: 'todos' | number[]) => requisitar<{ lojas: LojaAbertaDto[] }>(atorId, 'DELETE', r('jogo.loja.fechar'), { jogadores }),
         /** Compra (o servidor confere loja aberta, categoria, preço e Belly). `item` = id do catálogo do sistema ou `c:ID` do mestre. */

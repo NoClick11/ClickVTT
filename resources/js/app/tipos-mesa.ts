@@ -64,6 +64,8 @@ export interface NovoItemDeCatalogo extends NovoItem {
 export interface LojaAbertaDto {
     jogador_id: number;
     categorias: string[];
+    /** Raridades à venda (vazio = todas). */
+    raridades: string[];
     fator: number;
 }
 export interface LojaDoJogadorDto extends LojaAbertaDto {

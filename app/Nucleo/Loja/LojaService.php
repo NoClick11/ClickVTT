@@ -52,6 +52,9 @@ final class LojaService
         if (! in_array($entrada['categoria'], $loja->categorias, true)) {
             throw ValidationException::withMessages(['item' => 'Este item não está na loja aberta para você.']);
         }
+        if ($loja->raridades && ! in_array($entrada['raridade'], $loja->raridades, true)) {
+            throw ValidationException::withMessages(['item' => 'Esta raridade não está à venda na loja aberta para você.']);
+        }
         $moeda = $sistema->moedaDaLoja();
         $total = $this->total($entrada, $qtd, $loja->fator);
 
@@ -87,9 +90,9 @@ final class LojaService
         return $item;
     }
 
-    /** Itens que o mestre criou para o catálogo e estão nas categorias dadas. @param list<string> $categorias */
-    public function itensProprios(Mesa $mesa, array $categorias)
+    /** Itens que o mestre criou para o catálogo, nas categorias (e raridades, se houver filtro) dadas. @param list<string> $categorias @param list<string> $raridades */
+    public function itensProprios(Mesa $mesa, array $categorias, array $raridades = [])
     {
-        return $mesa->itensDeCatalogo()->whereIn('categoria', $categorias)->orderBy('nome')->get();
+        return $mesa->itensDeCatalogo()->whereIn('categoria', $categorias)->when($raridades, fn ($q) => $q->whereIn('raridade', $raridades))->orderBy('nome')->get();
     }
 }

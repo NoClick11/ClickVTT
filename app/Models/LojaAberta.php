@@ -10,11 +10,11 @@ class LojaAberta extends Model
 {
     protected $table = 'lojas_abertas';
 
-    protected $fillable = ['jogador_id', 'categorias', 'fator'];
+    protected $fillable = ['jogador_id', 'categorias', 'raridades', 'fator'];
 
     protected function casts(): array
     {
-        return ['categorias' => 'array', 'fator' => 'integer'];
+        return ['categorias' => 'array', 'raridades' => 'array', 'fator' => 'integer'];
     }
 
     public function jogador(): BelongsTo
@@ -24,6 +24,6 @@ class LojaAberta extends Model
 
     public function paraFront(): array
     {
-        return ['jogador_id' => $this->jogador_id, 'categorias' => $this->categorias, 'fator' => $this->fator];
+        return ['jogador_id' => $this->jogador_id, 'categorias' => $this->categorias, 'raridades' => $this->raridades ?? [], 'fator' => $this->fator];
     }
 }
