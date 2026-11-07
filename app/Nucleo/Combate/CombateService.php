@@ -82,10 +82,10 @@ final class CombateService
      * @param  array<string, mixed>  $d
      * @return array<string, mixed> o estado novo
      */
-    public function executar(Mesa $mesa, AcessoMesa $acesso, string $comando, array $d, bool $interno = false): array
+    public function executar(Mesa $mesa, AcessoMesa $acesso, string $comando, array $d): array
     {
         $mestreApenas = $comando !== 'iniciativa';
-        abort_if($mestreApenas && ! $interno && ! $acesso->ehMestre(), 403, 'Só o mestre controla o combate.');
+        abort_if($mestreApenas && ! $acesso->ehMestre(), 403, 'Só o mestre controla o combate.');
 
         $antes = null;
         $depois = DB::transaction(function () use ($mesa, $acesso, $comando, $d, &$antes) {
@@ -135,6 +135,11 @@ final class CombateService
             $usos = (int) ($item['acoes'][$categoria] ?? 0);
             // Ataque com arma (Ação "Atacar"): o 1º gasta a Ação; os seguintes valem até o limite de ataques por Ação (Ataque Extra) mais os
             // extras do turno, sem gastar outra Ação. O contador `ataques` zera sozinho a cada turno (junto das demais ações).
+            // Vigília (Overwatch) ativa: o atirador ataca com a arma nos turnos dos outros, sem gastar a Ação (o mestre comanda cada ataque)
+            if ($ataquesPorAcao !== null && $categoria === 'padrao' && $c['atual'] !== $item['id']
+                && collect($c['ativas'])->contains(fn ($a) => ($a['tipo'] ?? '') === 'vigia' && $a['personagem_id'] === $personagemId)) {
+                return $c;
+            }
             if ($ataquesPorAcao !== null && $categoria === 'padrao') {
                 $feitos = (int) ($item['acoes']['ataques'] ?? 0);
                 if ($feitos > 0) {

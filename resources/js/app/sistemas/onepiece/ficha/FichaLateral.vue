@@ -416,13 +416,15 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                         :disabled="!ataquePermitido(a).ok || (a.municao && !municoesDa(a).length)"
                         :aria-expanded="a.municao ? escolhendoMunicao === a.itemId : undefined"
                         :title="
-                            a.municao && !municoesDa(a).length
-                                ? `Sem munição que sirva a ${a.nome} no inventário`
-                                : a.municao
-                                  ? `Escolha a munição para atacar com ${a.nome}`
-                                  : ataquePermitido(a).ok
-                                    ? `Clique para atacar com ${a.nome} (${ataquePermitido(a).feitos > 0 ? 'ataque ' + (ataquePermitido(a).feitos + 1) + ' de ' + ataquePermitido(a).max : 'gasta a ' + acoes.rotulo('padrao').toLowerCase()}). Shift = vantagem, Ctrl = desvantagem.`
-                                    : ataquePermitido(a).motivo
+                            !ataquePermitido(a).ok
+                                ? ataquePermitido(a).motivo
+                                : a.municao && !municoesDa(a).length
+                                  ? `Sem munição que sirva a ${a.nome} no inventário`
+                                  : a.municao
+                                    ? `Escolha a munição para atacar com ${a.nome}`
+                                    : ataquePermitido(a).ok
+                                      ? `Clique para atacar com ${a.nome} (${ataquePermitido(a).feitos > 0 ? 'ataque ' + (ataquePermitido(a).feitos + 1) + ' de ' + ataquePermitido(a).max : 'gasta a ' + acoes.rotulo('padrao').toLowerCase()}). Shift = vantagem, Ctrl = desvantagem.`
+                                      : ataquePermitido(a).motivo
                         "
                         @click="atacarComArma($event, a)"
                     >

@@ -63,6 +63,16 @@ const textoDoChat = async (page) =>
             .innerText()
             .catch(() => '')
     ).replace(/\s+/g, ' ');
+const mirar = async (page, [x, y]) => {
+    await page.getByRole('button', { name: /^Mirar/ }).click();
+    await page.mouse.click(x, y);
+    await page.waitForTimeout(500);
+};
+const abrirFichaDe = async (page, nome) => {
+    await abrirAba(page, 'Personagens');
+    await page.getByLabel(`Abrir a ficha de ${nome}`).click();
+    await page.waitForTimeout(1200);
+};
 const abrirFichaTecnicas = async (page) => {
     await abrirAba(page, 'Personagens');
     await page.getByLabel('Abrir a ficha de AtiradorE2E').click();
@@ -117,84 +127,39 @@ try {
     await jogador.screenshot({ path: path.join(os.tmpdir(), 'e2e-overwatch-jogador.png') });
     console.log(`  (capturas: ${os.tmpdir()}/e2e-overwatch-*.png: a esfera aparece para o jogador e o mestre)`);
 
-    etapa('2. O Perto (dentro da esfera) se move: aparece o card "pode atacar"; o jogador clica e o servidor gasta 1 munição e rola o ataque');
+    etapa('2. Com a Vigília ativa o Atirador ataca nos turnos dos outros, quantas vezes o mestre mandar, sem gastar a Ação');
     const proximo = async () => {
         await mestre.getByLabel('Próximo turno').click();
         await mestre.waitForTimeout(1200);
     };
-    await proximo(); // vez do Perto
-    await mestre.mouse.move(TELA.perto[0], TELA.perto[1]);
-    await mestre.mouse.down();
-    await mestre.mouse.move(TELA.perto[0], TELA.perto[1] - 18, { steps: 5 });
-    await mestre.mouse.up();
-    await mestre.waitForTimeout(1500);
+    await mirar(jogador, TELA.perto);
+    await proximo(); // vez do Perto: não é o turno do Atirador
     s = artisan('e2e:estado');
-    confere(
-        s.vigia_cards.some((c) => c.alvo === 'PertoE2E' && c.motivo === 'se move' && c.estado === 'pendente'),
-        'servidor: mover o Perto dentro da esfera abriu um card "se move"',
-        JSON.stringify(s.vigia_cards),
-    );
-    await abrirAba(jogador, 'Chat');
-    await jogador.waitForTimeout(800);
-    const atacar = jogador.getByRole('button', { name: /^Atacar PertoE2E/ });
-    confere((await atacar.count()) === 1, 'o card "Atacar PertoE2E" aparece no chat do jogador');
-    confere(/se move dentro da esfera/.test(await textoDoChat(jogador)), 'o card diz que a criatura se move dentro da esfera');
-    const municaoAntes = s.qtds['municao-esferica'];
-    await atacar.click();
-    await jogador.waitForTimeout(1800);
-    s = artisan('e2e:estado');
-    confere(
-        s.qtds['municao-esferica'] === municaoAntes - 1,
-        'servidor: 1 munição esférica gasta no ataque',
-        `${municaoAntes} → ${s.qtds['municao-esferica']}`,
-    );
-    const chat = await textoDoChat(jogador);
-    const acertou = /Acerta|Crítico/.test(chat);
-    confere(acertou || /Erra|Falha crítica/.test(chat), `o card mostra o resultado do ataque (${acertou ? 'acerto' : 'erro'})`);
-    if (acertou) {
-        confere(s.pv.perto < 400, 'servidor: o dano da arma com a munição foi aplicado ao Perto', String(s.pv.perto));
-        confere(/Salvaguarda de Constituição/.test(chat), 'o card mostra a Salvaguarda de Constituição do atingido');
-        const card = s.vigia_cards.find((c) => c.alvo === 'PertoE2E');
-        if (card?.salvaguarda === false) confere(s.atual !== 'b', 'servidor: falhou na Constituição e o turno do Perto acabou', String(s.atual));
-        else console.log('  (o Perto passou na Constituição desta vez: o turno dele segue)');
+    confere(s.atual === 'b', 'servidor: é a vez do Perto', String(s.atual));
+    const gastasAntes = JSON.stringify(s.acoes_atirador);
+    for (const n of [1, 2]) {
+        await abrirFichaDe(jogador, 'AtiradorE2E');
+        const botao = jogador.getByRole('button', { name: /^Atacar com Mosquete/ });
+        confere(await botao.isEnabled(), `o botão de atacar com o Mosquete está habilitado no turno do Perto (ataque ${n})`);
+        await botao.click();
+        await jogador
+            .getByRole('list', { name: 'Munição para Mosquete' })
+            .getByRole('button', { name: /Esférica/ })
+            .click();
+        await jogador.waitForTimeout(1500);
+        await jogador.getByLabel('Fechar ficha').click();
     }
+    s = artisan('e2e:estado');
+    confere(
+        s.qtds['municao-esferica'] === 3,
+        'servidor: 2 munições esféricas gastas pelo jogador na escolha dele (5 → 3)',
+        String(s.qtds['municao-esferica']),
+    );
+    confere(JSON.stringify(s.acoes_atirador) === gastasAntes, 'servidor: nenhuma Ação do Atirador foi gasta', JSON.stringify(s.acoes_atirador));
+    confere(s.vigia.length === 1, 'a Vigília continua ativa (atacar não a encerra)');
+    confere(s.vigia_cards.length === 0, 'nada é disparado sozinho: o mestre comanda os ataques');
 
-    etapa('3. O Perto age (Ação) dentro da esfera: novo card; quem está fora ou escondido na camada do Mestre não dispara');
-    const status = (nome, categoria) => api(mestre, 'POST', 'combate/acao', { personagem_id: mesa[nome], categoria });
-    await status('perto', 'padrao');
-    await jogador.waitForTimeout(800);
-    s = artisan('e2e:estado');
-    confere(
-        s.vigia_cards.some((c) => c.alvo === 'PertoE2E' && c.motivo === 'age' && c.estado === 'pendente'),
-        'servidor: agir dentro da esfera abriu um card "age"',
-        JSON.stringify(s.vigia_cards),
-    );
-    const antesDosCards = s.vigia_cards.length;
-    await status('longe', 'padrao'); // 45 m: fora da esfera
-    await status('oculto', 'padrao'); // dentro da esfera, mas na camada do Mestre: não é "criatura que você veja"
-    s = artisan('e2e:estado');
-    confere(
-        s.vigia_cards.length === antesDosCards,
-        'servidor: o Longe (fora) e o Oculto (camada do Mestre) não dispararam nada',
-        JSON.stringify(s.vigia_cards),
-    );
-    await status('aliado', 'padrao'); // NPC do encontro a 1,5 m do Perto, dentro da esfera
-    s = artisan('e2e:estado');
-    confere(
-        s.vigia_cards.some((c) => c.alvo === 'AliadoE2E'),
-        'servidor: o Aliado (NPC não marcado como aliado, dentro da esfera) disparou',
-    );
-    await jogador
-        .getByRole('button', { name: /^Não atacar/ })
-        .first()
-        .click(); // o jogador pode recusar um card
-    await jogador.waitForTimeout(800);
-    confere(
-        artisan('e2e:estado').vigia_cards.some((c) => c.estado === 'ignorado'),
-        'servidor: "Não atacar" marca o card como ignorado',
-    );
-
-    etapa('4. Na vez do Atirador: a Ação bônus move a esfera até 6 m (só uma vez por turno)');
+    etapa('3. Na vez do Atirador: a Ação bônus move a esfera até 6 m (só uma vez por turno)');
     for (let i = 0; i < 8 && artisan('e2e:estado').atual !== 'a'; i++) await proximo();
     confere(artisan('e2e:estado').atual === 'a', 'servidor: de volta à vez do Atirador');
     s = artisan('e2e:estado');
@@ -220,13 +185,24 @@ try {
         'uma segunda Ação bônus no turno é recusada: a esfera não mexe',
     );
 
-    etapa('5. Qualquer outra atividade do Atirador encerra a Vigília');
+    etapa('4. Qualquer outra atividade do Atirador encerra a Vigília');
     await jogador.evaluate(() => (window.__jogadorId = Number(location.pathname.split('/').pop())));
     await api(jogador, 'POST', 'combate/acao', { personagem_id: mesa.atirador, categoria: 'padrao' });
     await jogador.waitForTimeout(1200);
     confere(artisan('e2e:estado').vigia.length === 0, 'servidor: a Vigília acabou quando o Atirador usou uma Ação');
     await abrirAba(jogador, 'Chat');
     confere(/Overwatch foi encerrada/.test(await textoDoChat(jogador)), 'o chat avisa que a Vigília foi encerrada');
+
+    etapa('5. Sem a Vigília, fora do turno o ataque volta a ser bloqueado');
+    await proximo(); // vez do Perto
+    await abrirFichaDe(jogador, 'AtiradorE2E');
+    const bloqueado = jogador.getByRole('button', { name: /^Atacar com Mosquete/ });
+    confere(await bloqueado.isDisabled(), 'o botão de atacar fica desabilitado de novo fora do turno');
+    confere(
+        /seu turno/i.test((await bloqueado.getAttribute('title')) ?? ''),
+        'o motivo diz que não é o turno dele',
+        (await bloqueado.getAttribute('title')) ?? '',
+    );
 } catch (e) {
     falhas++;
     console.log(`\n  ✖ o roteiro parou: ${e.message.split('\n')[0]}`);

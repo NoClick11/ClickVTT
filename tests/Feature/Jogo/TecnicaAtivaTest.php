@@ -253,86 +253,6 @@ class TecnicaAtivaTest extends TestCase
         $this->como($c->mestre); // o mestre pode, mas outro jogador não
     }
 
-    public function test_quem_age_dentro_da_esfera_dispara_o_ataque_e_quem_esta_fora_nao(): void
-    {
-        $c = $this->cenario();
-        $this->armar($c);
-        $this->vigia($c, 700, 0)->assertOk(); // esfera em volta do Perto
-        $combate = app(\App\Nucleo\Combate\CombateService::class);
-        $acesso = fn ($j) => \App\Support\AcessoMesa::class;
-        // o Perto age (Ação) dentro da esfera
-        $this->como($c->mestre)->postJson(route('jogo.combate.acao', $c->mesa->id), ['personagem_id' => $c->perto->id, 'categoria' => 'padrao'])->assertOk();
-        $g = $this->gatilhos($c);
-        $this->assertCount(1, $g);
-        $this->assertTrue($g[0]->dados['vigia']);
-        $this->assertSame('age', $g[0]->dados['motivo']);
-        $this->assertSame('Perto', $g[0]->dados['alvo']['nome']);
-        // o Longe (45 m) age fora da esfera: nada
-        $this->como($c->mestre)->postJson(route('jogo.combate.acao', $c->mesa->id), ['personagem_id' => $c->longe->id, 'categoria' => 'padrao'])->assertOk();
-        $this->assertCount(1, $this->gatilhos($c));
-        // ação livre não conta; e um card pendente por criatura
-        $this->como($c->mestre)->postJson(route('jogo.combate.acao', $c->mesa->id), ['personagem_id' => $c->perto->id, 'categoria' => 'bonus'])->assertOk();
-        $this->assertCount(1, $this->gatilhos($c));
-    }
-
-    public function test_quem_se_move_dentro_da_esfera_dispara_e_o_atirador_que_anda_encerra(): void
-    {
-        $c = $this->cenario();
-        $this->armar($c);
-        $this->vigia($c, 700, 0)->assertOk();
-        $tokenPerto = $c->mesa->paginas()->first()->objetos()->where('personagem_id', $c->perto->id)->first();
-        // de fora da esfera (Longe) para dentro: dispara
-        $tokenLonge = $c->mesa->paginas()->first()->objetos()->where('personagem_id', $c->longe->id)->first();
-        $this->como($c->mestre)->patchJson(route('jogo.objetos.update', [$c->mesa->id, $tokenLonge->id]), ['x' => 770, 'y' => 0])->assertOk();
-        $g = $this->gatilhos($c);
-        $this->assertCount(1, $g);
-        $this->assertSame(['Longe', 'se move'], [$g[0]->dados['alvo']['nome'], $g[0]->dados['motivo']]);
-        // o atirador anda: a Vigília acaba
-        $tokenAtirador = $c->mesa->paginas()->first()->objetos()->where('personagem_id', $c->atirador->id)->first();
-        $this->como($c->mestre)->patchJson(route('jogo.objetos.update', [$c->mesa->id, $tokenAtirador->id]), ['x' => 70, 'y' => 0])->assertOk();
-        $this->assertSame([], $c->mesa->fresh()->combate['ativas']);
-    }
-
-    public function test_o_ataque_da_vigilia_gasta_1_municao_rola_dano_e_a_salvaguarda_encerra_o_turno(): void
-    {
-        $c = $this->cenario(desDoAtirador: 30, caDoAlvo: 5);
-        $this->armar($c);
-        $f = $c->perto->ficha; // CON 1: a Salvaguarda falha sempre contra a CD do atirador
-        $f['atributos']['con'] = 1;
-        $f['ajustes']['ca'] = -30;
-        $c->perto->ficha = $f;
-        $c->perto->save();
-        $this->vigia($c, 700, 0)->assertOk();
-        // é a vez do Perto: ele age e é atingido
-        $this->turno($c);
-        $this->como($c->mestre)->postJson(route('jogo.combate.acao', $c->mesa->id), ['personagem_id' => $c->perto->id, 'categoria' => 'padrao'])->assertOk();
-        $g = $this->gatilhos($c)->first();
-        $this->app->instance(\App\Nucleo\Rolagem\Rolador::class, new \App\Nucleo\Rolagem\Rolador(fn (int $faces) => $faces === 20 ? 10 : 3)); // d20 = 10 (acerta e a Con falha), dados = 3
-        $r = $this->como($c->ana)->postJson(route('jogo.gatilhos.atacar', [$c->mesa->id, $g->id]))->assertOk()->json();
-        $this->assertSame('resolvido', $r['dados']['estado']);
-        $this->assertTrue($r['dados']['ataque']['acerto']);
-        $this->assertLessThan(200, $c->perto->fresh()->ficha['pv']['atual']);               // o dano da arma com a munição foi aplicado
-        $this->assertFalse($r['dados']['salvaguarda']['passou']);
-        $qtd = collect($c->atirador->fresh()->ficha['inventario'][0]['itens'])->firstWhere('item_id', $c->esf->id)['qtd'];
-        $this->assertSame(4, $qtd);                                                         // 1 munição por ataque
-        $this->assertNotSame('b', $c->mesa->fresh()->combate['atual']);                     // falhou na Con: o turno do Perto acabou
-    }
-
-    public function test_sem_municao_o_ataque_da_vigilia_e_recusado(): void
-    {
-        $c = $this->cenario();
-        $this->armar($c);
-        $f = $c->atirador->fresh()->ficha;
-        $f['inventario'][0]['itens'] = [$f['inventario'][0]['itens'][0]]; // só o mosquete
-        $c->atirador->ficha = $f;
-        $c->atirador->save();
-        $this->vigia($c, 700, 0)->assertOk();
-        $this->como($c->mestre)->postJson(route('jogo.combate.acao', $c->mesa->id), ['personagem_id' => $c->perto->id, 'categoria' => 'padrao'])->assertOk();
-        $g = $this->gatilhos($c)->first();
-        $this->como($c->ana)->postJson(route('jogo.gatilhos.atacar', [$c->mesa->id, $g->id]))->assertStatus(422)->assertJsonValidationErrors('municao');
-        $this->assertSame('pendente', $g->fresh()->dados['estado']);
-    }
-
     public function test_mover_a_esfera_custa_a_acao_bonus_ate_6_m_e_nao_encerra_a_vigilia(): void
     {
         $c = $this->cenario();
@@ -349,5 +269,32 @@ class TecnicaAtivaTest extends TestCase
         // qualquer outra atividade (uma Ação) encerra
         $this->como($c->ana)->postJson(route('jogo.combate.acao', $c->mesa->id), ['personagem_id' => $c->atirador->id, 'categoria' => 'padrao'])->assertOk();
         $this->assertSame([], $c->mesa->fresh()->combate['ativas']);
+    }
+
+    public function test_o_atirador_que_anda_ou_age_encerra_a_vigilia_mas_atacar_nos_turnos_dos_outros_e_livre(): void
+    {
+        $c = $this->cenario();
+        $this->armar($c);
+        $mosquete = $c->mesa->itens()->where('catalogo_id', 'mosquete')->first();
+        $ataque = fn () => $this->como($c->ana)->postJson(route('jogo.rolagens.store', $c->mesa->id), [
+            'expressao' => "1d20+@arma.{$mosquete->id}.ataque", 'visibilidade' => 'todos', 'personagem_id' => $c->atirador->id,
+            'acao' => ['categoria' => 'padrao'], 'municao_item_id' => $c->esf->id,
+        ]);
+        $this->turno($c); // vez do Perto: não é o turno do Atirador
+        $ataque()->assertStatus(422)->assertJsonValidationErrors('acao'); // sem Vigília, só no turno dele
+        $this->turno($c);
+        $this->turno($c); // de volta ao Atirador
+        $this->vigia($c, 700, 0)->assertOk();
+        $this->turno($c); // vez do Perto, com a Vigília ativa
+        $ataque()->assertCreated();
+        $ataque()->assertCreated(); // quantos o mestre mandar: nada limita nem gasta a Ação
+        $item = collect($c->mesa->fresh()->combate['itens'])->firstWhere('id', 'a');
+        $this->assertArrayNotHasKey('padrao', $item['acoes']);
+        $this->assertCount(1, $c->mesa->fresh()->combate['ativas']); // atacar não encerra a Vigília
+        // o atirador anda: acaba
+        $token = $c->mesa->paginas()->first()->objetos()->where('personagem_id', $c->atirador->id)->first();
+        $this->como($c->mestre)->patchJson(route('jogo.objetos.update', [$c->mesa->id, $token->id]), ['x' => 70, 'y' => 0])->assertOk();
+        $this->assertSame([], $c->mesa->fresh()->combate['ativas']);
+        $ataque()->assertStatus(422); // sem Vigília, volta a valer o turno
     }
 }

@@ -130,9 +130,9 @@ class ObjetoController extends Controller
 
         $objeto->update($dados);
         Transmitir::cena($mesa, $objeto->pagina_id, $acesso->jogador->id, $this->soMestre($objeto));
-        // Vigília (Overwatch): quem se move dentro da esfera dispara o ataque do atirador; o atirador que anda a encerra
+        // Vigília (Overwatch): o atirador que anda a encerra
         if ($objeto->tipo === 'token' && isset($dados['x'], $dados['y']) && ($de['x'] !== (float) $dados['x'] || $de['y'] !== (float) $dados['y'])) {
-            \App\Nucleo\Combate\TecnicasAtivas::aoMover($mesa, $acesso, $objeto, $de, ['x' => (float) $dados['x'], 'y' => (float) $dados['y']]);
+            \App\Nucleo\Combate\TecnicasAtivas::aoMover($mesa, $acesso, $objeto);
         }
 
         return response()->json($objeto->paraFront());

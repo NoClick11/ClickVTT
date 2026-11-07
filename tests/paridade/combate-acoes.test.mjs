@@ -99,3 +99,13 @@ test('ataques com arma: o 1º gasta a Ação, os seguintes valem até o limite (
     assert.equal(atacar(combate('b', [item('a', 1, { padrao: 1, ataques: 1 }), item('b', 2)]), 1, 2).ok, false);
     assert.equal(atacar(dois, 1, 2, true).ok, true);
 });
+
+test('Vigília (Overwatch) ativa: o atirador ataca com a arma nos turnos dos outros, sem limite e sem gastar a Ação', () => {
+    const base = combate('a', [item('a', 1), item('b', 2)]);
+    const atacar2 = (c) => avaliarAtaque(c, CATEGORIAS, 2, false, 1); // o personagem 2 ataca, mas é a vez do 1
+    assert.equal(atacar2(base).ok, false); // sem Vigília: só no turno dele
+    const vigia = { ...base, ativas: [{ id: 'x', personagem_id: 2, nome: 'Overwatch', rodadas: 10, concentracao: true, alcance: 0, tipo: 'vigia' }] };
+    assert.equal(atacar2(vigia).ok, true);
+    const dosOutros = { ...base, ativas: [{ id: 'x', personagem_id: 1, nome: 'Overwatch', rodadas: 10, concentracao: true, alcance: 0, tipo: 'vigia' }] };
+    assert.equal(atacar2(dosOutros).ok, false); // a Vigília é de outro personagem
+});
