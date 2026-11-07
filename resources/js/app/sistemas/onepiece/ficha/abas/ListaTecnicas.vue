@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronDown } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { clonar } from '../../../../nucleo/ficha/caminho';
 import CampoNumero from '../../../../nucleo/ui/CampoNumero.vue';
@@ -109,6 +110,45 @@ function usar(t: Tecnica) {
     });
 }
 
+/**
+ * O grau da Técnica, para separar a lista: o do Criador, ou lido da origem ("1º Grau", "Auxiliar"). 0 = Auxiliar; null = sem grau
+ * (criadas à mão, Manifestações de Poder, Zoan...).
+ */
+function grauDa(t: Tecnica): number | null {
+    if (t.criador) return t.criador.tipo === 'combate' ? t.criador.grau : t.criador.tipo === 'auxiliar' ? 0 : null;
+    const g = /(\d)\s*º\s*grau/i.exec(t.origem);
+    if (g) return Number(g[1]);
+
+    return /auxiliar/i.test(t.origem) ? 0 : null;
+}
+/** Nível a partir do qual o grau existe (a lista do livro: 1º no 1º, 2º no 3º, 3º no 6º, 4º no 9º, 5º no 12º, 6º no 16º, 7º no 20º). */
+const NIVEL_DO_GRAU = [1, 1, 3, 6, 9, 12, 16, 20];
+/** A lista separada por grau (1º ao 7º, depois as Auxiliares e as sem grau), guardando a posição de cada uma para as edições. */
+const grupos = computed(() => {
+    const porGrau = new Map<number | null, { t: Tecnica; i: number }[]>();
+    props.lista.forEach((t, i) => {
+        const g = grauDa(t);
+        porGrau.set(g, [...(porGrau.get(g) ?? []), { t, i }]);
+    });
+    const ordem = [...porGrau.keys()].sort((a, b) => (a === null ? 1 : b === null ? -1 : a === 0 ? 1 : b === 0 ? -1 : a - b));
+    // sem nenhuma Técnica com grau, a lista fica como era (sem cabeçalhos)
+    if (ordem.every((g) => g === null)) return [{ chave: 'todas', titulo: '', nota: '', itens: props.lista.map((t, i) => ({ t, i })) }];
+
+    return ordem.map((g) => ({
+        chave: String(g),
+        titulo: g === null ? 'Outras Técnicas' : g === 0 ? 'Técnicas Auxiliares' : `${g}º Grau`,
+        nota: g !== null && g > 0 ? `a partir do ${NIVEL_DO_GRAU[g]}º nível` : '',
+        itens: porGrau.get(g)!,
+    }));
+});
+/** Os grupos recolhidos (só nesta tela). */
+const recolhidos = ref(new Set<string>());
+const alternarGrupo = (chave: string) => {
+    const novo = new Set(recolhidos.value);
+    if (!novo.delete(chave)) novo.add(chave);
+    recolhidos.value = novo;
+};
+
 /** Muda o tipo de teste da técnica ('' = nenhum); a Salvaguarda começa em Destreza, passando = metade do dano. */
 function mudarTeste(i: number, tipo: string) {
     mudar((l) => {
@@ -175,269 +215,306 @@ function adicionar() {
                 </button>
             </div>
             <ul class="divide-y divide-preto-800/70 text-sm">
-                <li v-for="(t, i) in lista" :key="i" class="px-3 py-2">
-                    <!-- Jogar: cartão da técnica com o botão Usar. Editar: campos para mudar tudo. -->
-                    <div v-if="!editar" class="flex items-start gap-3">
-                        <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-preto-100">{{ t.nome }}</p>
-                            <p class="text-xs text-preto-400">
-                                <span v-if="t.origem">{{ t.origem }}</span>
-                                <span v-if="t.alcance">
-                                    ·
-                                    <template v-if="alcanceDe(t)?.mudou"
-                                        >{{ alcanceDe(t)!.texto }}
-                                        <span class="text-ouro-300" :title="`Alcance de ${t.alcance} ampliado pela Espada Kokuto`"
-                                            >(Kokuto)</span
-                                        ></template
-                                    ><template v-else>{{ t.alcance }}</template></span
-                                >
-                                <span v-if="t.efeito"> · {{ t.efeito }}</span>
-                            </p>
-                            <p v-if="kokuto && t.armaCortante" class="mt-1 text-[11px] text-ouro-300">
-                                Kokuto: criaturas na área têm desvantagem na Salvaguarda para sofrer metade ou todo o dano.
-                            </p>
-                            <p v-if="t.descricao" class="mt-1 whitespace-pre-wrap break-words text-xs text-preto-300">{{ t.descricao }}</p>
-                        </div>
-                        <div class="shrink-0 text-right">
-                            <p class="font-serif text-base font-bold tabular-nums" :class="cor.texto">{{ t.custo }} PP</p>
-                            <p class="text-[10px] uppercase tracking-wide text-preto-400" :title="'Categoria de ação que a técnica gasta no combate'">
-                                {{ acoes.rotulo(categoria(t)) }}
-                            </p>
-                            <label
-                                v-if="podeDobrar(t)"
-                                class="mt-1 flex items-center justify-end gap-1 text-[10px] text-ouro-200"
-                                :title="`Saijo Ô Wazamono: rola o dano duas vezes e fica com o maior (${usosDaSaijo} de ${USOS_DA_SAIJO} usos; voltam no descanso longo)`"
-                            >
-                                <input
-                                    v-model="dobrar[indiceDe(t)]"
-                                    type="checkbox"
-                                    class="size-3 accent-ouro-500"
-                                    aria-label="Rolar o dano duas vezes (Saijo Ô)"
-                                />
-                                Dano 2× ({{ usosDaSaijo }}/{{ USOS_DA_SAIJO }})
-                            </label>
-                            <button
-                                type="button"
-                                :disabled="!podeUsar(t) || !permitida(t).ok"
-                                class="mt-1 rounded-md border px-3 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 disabled:cursor-not-allowed disabled:opacity-40"
-                                :class="cor.botao"
-                                :title="
-                                    !permitida(t).ok
-                                        ? permitida(t).motivo
-                                        : podeUsar(t)
-                                          ? `Gasta ${t.custo} PP e a ${acoes.rotulo(categoria(t)).toLowerCase()}${t.rolagem ? ' e rola ' + t.rolagem : ''}`
-                                          : `Pontos de poder insuficientes (${ficha.pp.atual} de ${t.custo})`
-                                "
-                                :aria-label="`Usar ${t.nome}, custo ${t.custo} pontos de poder`"
-                                @click="usar(t)"
-                            >
-                                Usar
-                            </button>
-                        </div>
-                    </div>
-                    <div v-else class="grid gap-1.5">
-                        <div class="flex flex-wrap items-center gap-1.5">
-                            <CampoTexto
-                                :model-value="t.nome"
-                                :maximo="120"
-                                aria-label="Nome da técnica"
-                                :class="[estilos.campo, 'min-w-40 flex-1 font-semibold']"
-                                @salvar="mudar((l) => (l[i].nome = $event))"
+                <template v-for="g in grupos" :key="g.chave">
+                    <li v-if="g.titulo" class="bg-preto-900/50 px-3 py-1">
+                        <button
+                            type="button"
+                            class="flex w-full items-center gap-2 text-left text-[11px] font-semibold uppercase tracking-wider focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                            :class="cor.texto"
+                            :aria-expanded="!recolhidos.has(g.chave)"
+                            @click="alternarGrupo(g.chave)"
+                        >
+                            <ChevronDown
+                                class="size-3.5 shrink-0 transition"
+                                :class="recolhidos.has(g.chave) ? '-rotate-90' : ''"
+                                aria-hidden="true"
                             />
-                            <label class="flex items-center gap-1 text-xs text-preto-400"
-                                >PP
-                                <CampoNumero
-                                    :model-value="t.custo"
-                                    :min="0"
-                                    :max="99"
-                                    aria-label="Custo em pontos de poder"
-                                    :class="estilos.ajuste"
-                                    @salvar="mudar((l) => (l[i].custo = $event))"
-                                />
-                            </label>
-                            <button
-                                type="button"
-                                class="text-xs text-preto-500 hover:text-red-300"
-                                :aria-label="`Remover ${t.nome}`"
-                                @click="mudar((l) => l.splice(i, 1))"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                        <div class="grid gap-1.5 sm:grid-cols-3">
-                            <CampoTexto
-                                :model-value="t.origem"
-                                :maximo="120"
-                                placeholder="Origem (estilo, fruta, haki...)"
-                                aria-label="Origem"
-                                :class="estilos.campo"
-                                @salvar="mudar((l) => (l[i].origem = $event))"
-                            />
-                            <CampoTexto
-                                :model-value="t.alcance"
-                                :maximo="60"
-                                placeholder="Alcance"
-                                aria-label="Alcance"
-                                :class="estilos.campo"
-                                @salvar="mudar((l) => (l[i].alcance = $event))"
-                            />
-                            <CampoTexto
-                                :model-value="t.efeito"
-                                :maximo="120"
-                                placeholder="Dano ou efeito"
-                                aria-label="Dano ou efeito"
-                                :class="estilos.campo"
-                                @salvar="mudar((l) => (l[i].efeito = $event))"
-                            />
-                        </div>
-                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-preto-400">
-                            <label
-                                class="flex items-center gap-1.5"
-                                title="A Técnica exige uma arma cortante: as armas Meito equipadas somam dados ao dano dela"
-                                ><input
-                                    type="checkbox"
-                                    class="size-3.5 accent-ouro-500"
-                                    :checked="!!t.armaCortante"
-                                    aria-label="Exige arma cortante"
-                                    @change="mudar((l) => (l[i].armaCortante = ($event.target as HTMLInputElement).checked))"
-                                />
-                                Exige arma cortante</label
-                            >
-                            <label
-                                class="flex items-center gap-1.5"
-                                title="Como a Técnica acerta: jogada de ataque, Salvaguarda de quem está na área, ou automática"
-                                >Teste
-                                <select
-                                    :value="t.teste?.tipo ?? ''"
-                                    aria-label="Teste da técnica"
-                                    class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1"
-                                    @change="mudarTeste(i, ($event.target as HTMLSelectElement).value)"
-                                >
-                                    <option value="">Nenhum</option>
-                                    <option value="ataque">Ataque</option>
-                                    <option value="salvaguarda">Salvaguarda</option>
-                                    <option value="automatico">Automática</option>
-                                </select></label
-                            >
-                            <template v-if="t.teste?.tipo === 'salvaguarda'">
-                                <select
-                                    :value="t.teste.atributo ?? 'des'"
-                                    aria-label="Atributo da Salvaguarda"
-                                    class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1"
-                                    @change="mudar((l) => (l[i].teste!.atributo = ($event.target as HTMLSelectElement).value as AtributoId))"
-                                >
-                                    <option v-for="a in ATRIBUTOS" :key="a.id" :value="a.id">{{ a.sigla }}</option>
-                                </select>
-                                <label class="flex items-center gap-1.5"
-                                    ><input
-                                        type="checkbox"
-                                        class="size-3.5 accent-ouro-500"
-                                        :checked="!!t.teste.desvantagem"
-                                        aria-label="Salvaguarda com desvantagem"
-                                        @change="mudar((l) => (l[i].teste!.desvantagem = ($event.target as HTMLInputElement).checked))"
+                            {{ g.titulo }}
+                            <span class="rounded-full bg-preto-800 px-1.5 text-[10px] font-normal text-preto-300">{{ g.itens.length }}</span>
+                            <span v-if="g.nota" class="ml-auto font-normal normal-case tracking-normal text-preto-500">{{ g.nota }}</span>
+                        </button>
+                    </li>
+                    <template v-if="!recolhidos.has(g.chave)">
+                        <li v-for="{ t, i } in g.itens" :key="i" class="px-3 py-2">
+                            <!-- Jogar: cartão da técnica com o botão Usar. Editar: campos para mudar tudo. -->
+                            <div v-if="!editar" class="flex items-start gap-3">
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-semibold text-preto-100">{{ t.nome }}</p>
+                                    <p class="text-xs text-preto-400">
+                                        <span v-if="t.origem">{{ t.origem }}</span>
+                                        <span v-if="t.alcance">
+                                            ·
+                                            <template v-if="alcanceDe(t)?.mudou"
+                                                >{{ alcanceDe(t)!.texto }}
+                                                <span class="text-ouro-300" :title="`Alcance de ${t.alcance} ampliado pela Espada Kokuto`"
+                                                    >(Kokuto)</span
+                                                ></template
+                                            ><template v-else>{{ t.alcance }}</template></span
+                                        >
+                                        <span v-if="t.efeito"> · {{ t.efeito }}</span>
+                                    </p>
+                                    <p v-if="kokuto && t.armaCortante" class="mt-1 text-[11px] text-ouro-300">
+                                        Kokuto: criaturas na área têm desvantagem na Salvaguarda para sofrer metade ou todo o dano.
+                                    </p>
+                                    <p v-if="t.descricao" class="mt-1 whitespace-pre-wrap break-words text-xs text-preto-300">{{ t.descricao }}</p>
+                                </div>
+                                <div class="shrink-0 text-right">
+                                    <p class="font-serif text-base font-bold tabular-nums" :class="cor.texto">{{ t.custo }} PP</p>
+                                    <p
+                                        class="text-[10px] uppercase tracking-wide text-preto-400"
+                                        :title="'Categoria de ação que a técnica gasta no combate'"
+                                    >
+                                        {{ acoes.rotulo(categoria(t)) }}
+                                    </p>
+                                    <label
+                                        v-if="podeDobrar(t)"
+                                        class="mt-1 flex items-center justify-end gap-1 text-[10px] text-ouro-200"
+                                        :title="`Saijo Ô Wazamono: rola o dano duas vezes e fica com o maior (${usosDaSaijo} de ${USOS_DA_SAIJO} usos; voltam no descanso longo)`"
+                                    >
+                                        <input
+                                            v-model="dobrar[indiceDe(t)]"
+                                            type="checkbox"
+                                            class="size-3 accent-ouro-500"
+                                            aria-label="Rolar o dano duas vezes (Saijo Ô)"
+                                        />
+                                        Dano 2× ({{ usosDaSaijo }}/{{ USOS_DA_SAIJO }})
+                                    </label>
+                                    <button
+                                        type="button"
+                                        :disabled="!podeUsar(t) || !permitida(t).ok"
+                                        class="mt-1 rounded-md border px-3 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 disabled:cursor-not-allowed disabled:opacity-40"
+                                        :class="cor.botao"
+                                        :title="
+                                            !permitida(t).ok
+                                                ? permitida(t).motivo
+                                                : podeUsar(t)
+                                                  ? `Gasta ${t.custo} PP e a ${acoes.rotulo(categoria(t)).toLowerCase()}${t.rolagem ? ' e rola ' + t.rolagem : ''}`
+                                                  : `Pontos de poder insuficientes (${ficha.pp.atual} de ${t.custo})`
+                                        "
+                                        :aria-label="`Usar ${t.nome}, custo ${t.custo} pontos de poder`"
+                                        @click="usar(t)"
+                                    >
+                                        Usar
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-else class="grid gap-1.5">
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <CampoTexto
+                                        :model-value="t.nome"
+                                        :maximo="120"
+                                        aria-label="Nome da técnica"
+                                        :class="[estilos.campo, 'min-w-40 flex-1 font-semibold']"
+                                        @salvar="mudar((l) => (l[i].nome = $event))"
                                     />
-                                    Com desvantagem</label
-                                >
-                                <select
-                                    :value="t.teste.aoPassar ?? 'metade'"
-                                    aria-label="Dano de quem passa na Salvaguarda"
-                                    class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1"
-                                    @change="mudar((l) => (l[i].teste!.aoPassar = ($event.target as HTMLSelectElement).value as 'metade' | 'nada'))"
-                                >
-                                    <option value="metade">Passou: metade do dano</option>
-                                    <option value="nada">Passou: nenhum dano</option>
-                                </select>
-                            </template>
-                            <label class="flex items-center gap-1.5"
-                                ><input
-                                    type="checkbox"
-                                    class="size-3.5 accent-ouro-500"
-                                    :checked="!!t.reacao"
-                                    aria-label="É uma reação a um ataque"
-                                    @change="alternarReacao(i, ($event.target as HTMLInputElement).checked)"
-                                />
-                                Reação a um ataque</label
-                            >
-                            <template v-if="t.reacao">
-                                <select
-                                    :value="t.reacao.alcance"
-                                    aria-label="A quem serve a reação"
-                                    class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1"
-                                    @change="
-                                        mudar((l) => (l[i].reacao!.alcance = ($event.target as HTMLSelectElement).value as 'si' | 'aliado' | 'ambos'))
-                                    "
-                                >
-                                    <option value="si">Só a mim</option>
-                                    <option value="aliado">Aliados</option>
-                                    <option value="ambos">Mim e aliados</option>
-                                </select>
-                                <label class="flex items-center gap-1"
-                                    >Defesa
-                                    <input
-                                        type="number"
-                                        min="-20"
-                                        max="20"
-                                        :value="t.reacao.defesa ?? 0"
-                                        aria-label="Bônus na defesa de quem foi atacado"
-                                        class="w-14 rounded border border-preto-700 bg-preto-950 px-1.5 py-1"
-                                        @change="mudar((l) => (l[i].reacao!.defesa = Number(($event.target as HTMLInputElement).value) || 0))"
+                                    <label class="flex items-center gap-1 text-xs text-preto-400"
+                                        >PP
+                                        <CampoNumero
+                                            :model-value="t.custo"
+                                            :min="0"
+                                            :max="99"
+                                            aria-label="Custo em pontos de poder"
+                                            :class="estilos.ajuste"
+                                            @salvar="mudar((l) => (l[i].custo = $event))"
+                                        />
+                                    </label>
+                                    <button
+                                        type="button"
+                                        class="text-xs text-preto-500 hover:text-red-300"
+                                        :aria-label="`Remover ${t.nome}`"
+                                        @click="mudar((l) => l.splice(i, 1))"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                                <div class="grid gap-1.5 sm:grid-cols-3">
+                                    <CampoTexto
+                                        :model-value="t.origem"
+                                        :maximo="120"
+                                        placeholder="Origem (estilo, fruta, haki...)"
+                                        aria-label="Origem"
+                                        :class="estilos.campo"
+                                        @salvar="mudar((l) => (l[i].origem = $event))"
                                     />
+                                    <CampoTexto
+                                        :model-value="t.alcance"
+                                        :maximo="60"
+                                        placeholder="Alcance"
+                                        aria-label="Alcance"
+                                        :class="estilos.campo"
+                                        @salvar="mudar((l) => (l[i].alcance = $event))"
+                                    />
+                                    <CampoTexto
+                                        :model-value="t.efeito"
+                                        :maximo="120"
+                                        placeholder="Dano ou efeito"
+                                        aria-label="Dano ou efeito"
+                                        :class="estilos.campo"
+                                        @salvar="mudar((l) => (l[i].efeito = $event))"
+                                    />
+                                </div>
+                                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-preto-400">
+                                    <label
+                                        class="flex items-center gap-1.5"
+                                        title="A Técnica exige uma arma cortante: as armas Meito equipadas somam dados ao dano dela"
+                                        ><input
+                                            type="checkbox"
+                                            class="size-3.5 accent-ouro-500"
+                                            :checked="!!t.armaCortante"
+                                            aria-label="Exige arma cortante"
+                                            @change="mudar((l) => (l[i].armaCortante = ($event.target as HTMLInputElement).checked))"
+                                        />
+                                        Exige arma cortante</label
+                                    >
+                                    <label
+                                        class="flex items-center gap-1.5"
+                                        title="Como a Técnica acerta: jogada de ataque, Salvaguarda de quem está na área, ou automática"
+                                        >Teste
+                                        <select
+                                            :value="t.teste?.tipo ?? ''"
+                                            aria-label="Teste da técnica"
+                                            class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1"
+                                            @change="mudarTeste(i, ($event.target as HTMLSelectElement).value)"
+                                        >
+                                            <option value="">Nenhum</option>
+                                            <option value="ataque">Ataque</option>
+                                            <option value="salvaguarda">Salvaguarda</option>
+                                            <option value="automatico">Automática</option>
+                                        </select></label
+                                    >
+                                    <template v-if="t.teste?.tipo === 'salvaguarda'">
+                                        <select
+                                            :value="t.teste.atributo ?? 'des'"
+                                            aria-label="Atributo da Salvaguarda"
+                                            class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1"
+                                            @change="mudar((l) => (l[i].teste!.atributo = ($event.target as HTMLSelectElement).value as AtributoId))"
+                                        >
+                                            <option v-for="a in ATRIBUTOS" :key="a.id" :value="a.id">{{ a.sigla }}</option>
+                                        </select>
+                                        <label class="flex items-center gap-1.5"
+                                            ><input
+                                                type="checkbox"
+                                                class="size-3.5 accent-ouro-500"
+                                                :checked="!!t.teste.desvantagem"
+                                                aria-label="Salvaguarda com desvantagem"
+                                                @change="mudar((l) => (l[i].teste!.desvantagem = ($event.target as HTMLInputElement).checked))"
+                                            />
+                                            Com desvantagem</label
+                                        >
+                                        <select
+                                            :value="t.teste.aoPassar ?? 'metade'"
+                                            aria-label="Dano de quem passa na Salvaguarda"
+                                            class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1"
+                                            @change="
+                                                mudar((l) => (l[i].teste!.aoPassar = ($event.target as HTMLSelectElement).value as 'metade' | 'nada'))
+                                            "
+                                        >
+                                            <option value="metade">Passou: metade do dano</option>
+                                            <option value="nada">Passou: nenhum dano</option>
+                                        </select>
+                                    </template>
+                                    <label class="flex items-center gap-1.5"
+                                        ><input
+                                            type="checkbox"
+                                            class="size-3.5 accent-ouro-500"
+                                            :checked="!!t.reacao"
+                                            aria-label="É uma reação a um ataque"
+                                            @change="alternarReacao(i, ($event.target as HTMLInputElement).checked)"
+                                        />
+                                        Reação a um ataque</label
+                                    >
+                                    <template v-if="t.reacao">
+                                        <select
+                                            :value="t.reacao.alcance"
+                                            aria-label="A quem serve a reação"
+                                            class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1"
+                                            @change="
+                                                mudar(
+                                                    (l) =>
+                                                        (l[i].reacao!.alcance = ($event.target as HTMLSelectElement).value as
+                                                            | 'si'
+                                                            | 'aliado'
+                                                            | 'ambos'),
+                                                )
+                                            "
+                                        >
+                                            <option value="si">Só a mim</option>
+                                            <option value="aliado">Aliados</option>
+                                            <option value="ambos">Mim e aliados</option>
+                                        </select>
+                                        <label class="flex items-center gap-1"
+                                            >Defesa
+                                            <input
+                                                type="number"
+                                                min="-20"
+                                                max="20"
+                                                :value="t.reacao.defesa ?? 0"
+                                                aria-label="Bônus na defesa de quem foi atacado"
+                                                class="w-14 rounded border border-preto-700 bg-preto-950 px-1.5 py-1"
+                                                @change="mudar((l) => (l[i].reacao!.defesa = Number(($event.target as HTMLInputElement).value) || 0))"
+                                            />
+                                        </label>
+                                        <label class="flex items-center gap-1"
+                                            >Cura
+                                            <input
+                                                type="text"
+                                                maxlength="8"
+                                                placeholder="1d8"
+                                                :value="t.reacao.cura ?? ''"
+                                                aria-label="Cura em quem foi atacado (valor ou dados)"
+                                                class="w-16 rounded border border-preto-700 bg-preto-950 px-1.5 py-1 font-mono"
+                                                @change="
+                                                    mudar((l) => (l[i].reacao!.cura = ($event.target as HTMLInputElement).value.trim() || undefined))
+                                                "
+                                            />
+                                        </label>
+                                    </template>
+                                </div>
+                                <label class="flex items-center gap-1.5 text-xs text-preto-400"
+                                    >Categoria de ação
+                                    <select
+                                        :value="t.acao ?? ''"
+                                        aria-label="Categoria de ação da técnica"
+                                        class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1 text-xs"
+                                        @change="
+                                            mudar((l) => (l[i].acao = (($event.target as HTMLSelectElement).value || undefined) as Tecnica['acao']))
+                                        "
+                                    >
+                                        <option value="">Padrão da técnica (poderosa)</option>
+                                        <option v-for="c in CATEGORIAS" :key="c.id" :value="c.id">{{ c.nome }}</option>
+                                    </select>
                                 </label>
-                                <label class="flex items-center gap-1"
-                                    >Cura
-                                    <input
-                                        type="text"
-                                        maxlength="8"
-                                        placeholder="1d8"
-                                        :value="t.reacao.cura ?? ''"
-                                        aria-label="Cura em quem foi atacado (valor ou dados)"
-                                        class="w-16 rounded border border-preto-700 bg-preto-950 px-1.5 py-1 font-mono"
-                                        @change="mudar((l) => (l[i].reacao!.cura = ($event.target as HTMLInputElement).value.trim() || undefined))"
+                                <div class="flex flex-wrap gap-1.5">
+                                    <CampoTexto
+                                        :model-value="t.rolagem"
+                                        :maximo="100"
+                                        placeholder="Rolagem (opcional), ex.: 3d8+@mod.for"
+                                        aria-label="Rolagem da técnica"
+                                        :class="[estilos.campo, 'min-w-48 flex-1 font-mono']"
+                                        @salvar="mudar((l) => (l[i].rolagem = $event))"
                                     />
-                                </label>
-                            </template>
-                        </div>
-                        <label class="flex items-center gap-1.5 text-xs text-preto-400"
-                            >Categoria de ação
-                            <select
-                                :value="t.acao ?? ''"
-                                aria-label="Categoria de ação da técnica"
-                                class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1 text-xs"
-                                @change="mudar((l) => (l[i].acao = (($event.target as HTMLSelectElement).value || undefined) as Tecnica['acao']))"
-                            >
-                                <option value="">Padrão da técnica (poderosa)</option>
-                                <option v-for="c in CATEGORIAS" :key="c.id" :value="c.id">{{ c.nome }}</option>
-                            </select>
-                        </label>
-                        <div class="flex flex-wrap gap-1.5">
-                            <CampoTexto
-                                :model-value="t.rolagem"
-                                :maximo="100"
-                                placeholder="Rolagem (opcional), ex.: 3d8+@mod.for"
-                                aria-label="Rolagem da técnica"
-                                :class="[estilos.campo, 'min-w-48 flex-1 font-mono']"
-                                @salvar="mudar((l) => (l[i].rolagem = $event))"
-                            />
-                            <CampoTexto
-                                :model-value="t.tipoDano ?? ''"
-                                :maximo="30"
-                                list="tipos-de-dano"
-                                placeholder="Tipo do dano (se a rolagem for dano)"
-                                aria-label="Tipo do dano"
-                                :class="[estilos.campo, 'w-56']"
-                                @salvar="mudar((l) => (l[i].tipoDano = $event.trim() || undefined))"
-                            />
-                        </div>
-                        <CampoTexto
-                            :model-value="t.descricao"
-                            :maximo="2000"
-                            placeholder="Descrição"
-                            aria-label="Descrição"
-                            :class="estilos.campo"
-                            @salvar="mudar((l) => (l[i].descricao = $event))"
-                        />
-                    </div>
-                </li>
+                                    <CampoTexto
+                                        :model-value="t.tipoDano ?? ''"
+                                        :maximo="30"
+                                        list="tipos-de-dano"
+                                        placeholder="Tipo do dano (se a rolagem for dano)"
+                                        aria-label="Tipo do dano"
+                                        :class="[estilos.campo, 'w-56']"
+                                        @salvar="mudar((l) => (l[i].tipoDano = $event.trim() || undefined))"
+                                    />
+                                </div>
+                                <CampoTexto
+                                    :model-value="t.descricao"
+                                    :maximo="2000"
+                                    placeholder="Descrição"
+                                    aria-label="Descrição"
+                                    :class="estilos.campo"
+                                    @salvar="mudar((l) => (l[i].descricao = $event))"
+                                />
+                            </div>
+                        </li>
+                    </template>
+                </template>
                 <li v-if="!lista.length" class="px-3 py-3 text-center text-xs text-preto-500">
                     {{ vazio }}{{ editar ? '' : ' No modo Editar você adiciona.' }}
                 </li>
