@@ -81,6 +81,9 @@ export interface DadosRolagem {
     total: number;
     /** A soma dos dados foi limitada (`|N`): `soma` é o que os dados deram e `max` o teto (dados extras de arma Meito). */
     limite?: { max: number; soma: number };
+    /** Rolagem repetida (`^2`): o total de cada tentativa e qual ficou (a maior). */
+    repeticoes?: number[];
+    escolhida?: number;
     /** Marcas do sistema (ex.: ataque crítico), quando houver. */
     sistema?: MarcasDoSistema;
 }
@@ -120,6 +123,7 @@ export function resumoFormula(d: DadosRolagem): string {
     if (fixo !== 0 || texto === '') texto += texto === '' ? String(fixo) : ` ${fixo < 0 ? '−' : '+'} ${Math.abs(fixo)}`;
 
     if (d.limite) texto += ` (dados até ${d.limite.max})`;
+    if (d.repeticoes?.length) texto += ` · rolou ${d.repeticoes.length}×: ${d.repeticoes.join(' e ')}, ficou ${Math.max(...d.repeticoes)}`;
 
     return texto;
 }

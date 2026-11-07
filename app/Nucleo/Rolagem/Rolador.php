@@ -8,7 +8,7 @@ use Closure;
  * Núcleo de rolagem, independente de sistema: interpreta uma expressão de dados e a avalia.
  *
  * Gramática (espaços e maiúsculas são ignorados):
- *   rolagem := expr ('|' NUMERO)?               (`|N`: a soma dos DADOS não passa de N; o bônus fixo entra por fora)
+ *   rolagem := expr ('|' NUMERO)? ('^' 2|3)?    (`|N`: a soma dos DADOS não passa de N; `^2`: rola tudo 2 vezes e fica a maior)
  *   expr    := termo (('+' | '-') termo)*
  *   termo   := fator (('*' | '/') fator)*        (divisão inteira, arredondada para baixo)
  *   fator   := '-' fator | '(' expr ')' | NUMERO | dados | '@' variavel
@@ -53,7 +53,7 @@ class Rolador
 
     /**
      * @param  array<string, int|float>  $variaveis  nome (sem `@`, minúsculo) => valor
-     * @return array{expressao: string, termos: array<int, array<string, mixed>>, total: int, limite?: array{max: int, soma: int}}
+     * @return array{expressao: string, termos: array<int, array<string, mixed>>, total: int, limite?: array{max: int, soma: int}, repeticoes?: list<int>, escolhida?: int}
      *
      * @throws RolagemInvalida
      */
@@ -67,15 +67,46 @@ class Rolador
             throw new RolagemInvalida('Expressão longa demais (máximo '.self::MAX_EXPRESSAO.' caracteres).');
         }
 
-        $this->s = $limpa;
-        $this->i = 0;
+        // `^N` no fim (2 ou 3): a expressão inteira é rolada N vezes e fica a MAIOR (ex.: a Saijo Ô Wazamono rola o dano duas vezes).
+        $vezes = 1;
+        if (preg_match('/\^(\d)$/', $limpa, $m)) {
+            $vezes = (int) $m[1];
+            if ($vezes < 2 || $vezes > 3) {
+                throw new RolagemInvalida('Use "^2" ou "^3" para rolar a expressão 2 ou 3 vezes e ficar com a maior.');
+            }
+            $limpa = substr($limpa, 0, -2);
+        }
         $this->dadosRolados = 0;
-        $this->profundidade = 0;
-        $this->termos = [];
         $this->variaveis = [];
         foreach ($variaveis as $nome => $valor) {
             $this->variaveis[strtolower((string) $nome)] = (int) round($valor);
         }
+        $tentativas = [];
+        for ($n = 0; $n < $vezes; $n++) {
+            $tentativas[] = $this->avaliar($limpa);
+        }
+        $melhor = 0;
+        foreach ($tentativas as $idx => $t) {
+            if ($t['total'] > $tentativas[$melhor]['total']) {
+                $melhor = $idx;
+            }
+        }
+        $r = $tentativas[$melhor];
+
+        return [
+            'expressao' => $limpa.($vezes > 1 ? "^{$vezes}" : ''), 'termos' => $r['termos'], 'total' => $r['total'],
+            ...($r['limite'] ? ['limite' => $r['limite']] : []),
+            ...($vezes > 1 ? ['repeticoes' => array_column($tentativas, 'total'), 'escolhida' => $melhor] : []),
+        ];
+    }
+
+    /** @return array{termos: array<int, array<string, mixed>>, total: int, limite: array{max: int, soma: int}|null} */
+    private function avaliar(string $limpa): array
+    {
+        $this->s = $limpa;
+        $this->i = 0;
+        $this->profundidade = 0;
+        $this->termos = [];
 
         $total = $this->expr(1);
         // `|N` no fim: a soma dos dados fica limitada a N (o bônus fixo não conta). Ex.: os dados extras de uma arma Meito só
@@ -102,7 +133,7 @@ class Rolador
             throw new RolagemInvalida("Não entendi \"{$this->s[$this->i]}\" na posição ".($this->i + 1).' da expressão.');
         }
 
-        return ['expressao' => $limpa, 'termos' => $this->termos, 'total' => $total, ...($limite ? ['limite' => $limite] : [])];
+        return ['termos' => $this->termos, 'total' => $total, 'limite' => $limite];
     }
 
     private function expr(int $sinal): int

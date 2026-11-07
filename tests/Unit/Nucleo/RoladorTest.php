@@ -135,6 +135,27 @@ class RoladorTest extends TestCase
         (new Rolador)->rolar('2d6|');
     }
 
+    public function test_circunflexo_rola_duas_vezes_e_fica_com_a_maior(): void
+    {
+        // 1ª rolagem soma 7, 2ª soma 14: fica a segunda; as duas aparecem em `repeticoes`
+        $r = $this->fixo(3, 4, 6, 8)->rolar('2d10+1^2');
+        $this->assertSame(15, $r['total']);
+        $this->assertSame([8, 15], $r['repeticoes']);
+        $this->assertSame(1, $r['escolhida']);
+        $this->assertSame([6, 8], $r['termos'][0]['resultados']); // os dados exibidos são os da rolagem escolhida
+        // a primeira maior: fica a primeira
+        $r = $this->fixo(9, 9, 1, 1)->rolar('2d10^2');
+        $this->assertSame(18, $r['total']);
+        $this->assertSame(0, $r['escolhida']);
+        // junto do limite: cada rolagem respeita o teto
+        $r = $this->fixo(10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1)->rolar('4d10+2d10|40^2');
+        $this->assertSame(40, $r['total']);
+        $this->assertSame('4d10+2d10|40^2', $r['expressao']);
+        $this->assertSame(1, count(array_filter($r['termos'], fn ($t) => $t['tipo'] === 'dados')) - 1);
+        $this->expectException(RolagemInvalida::class);
+        (new Rolador)->rolar('1d6^9');
+    }
+
     #[DataProvider('invalidas')]
     public function test_expressoes_invalidas_sao_rejeitadas(string $expressao): void
     {
