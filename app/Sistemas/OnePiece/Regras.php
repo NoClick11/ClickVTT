@@ -376,21 +376,22 @@ final class Regras
         }
 
         $dados = self::dadosDeDano($ficha, $itens, $arma, $variaveis, $municao);
+        // A munição gasta e o revestimento aparecem no card mesmo no 1 natural (a munição foi gasta); o botão do efeito só vale no acerto
+        if ($municao) {
+            $meta['municao'] = ['id' => $municao['id'], 'nome' => $municao['nome'], 'nota' => $municao['nota'],
+                // o que a munição faz ao acertar: o card oferece o botão (Enfraquecido, explosão)
+                ...(in_array($municao['id'], ['bola-explosiva', 'municao-de-kairoseki'], true) ? ['efeito' => $municao['id'] === 'bola-explosiva' ? 'explosao' : 'kairoseki'] : [])];
+        }
+        // Arma revestida de Kairoseki (Ferreiro): cada acerto oferece o Enfraquecido (a munição escolhida, se houver, continua valendo no dano)
+        if (($itens[$arma]['dados']['arma']['melhoria'] ?? null) === 'kairoseki' && ! isset($meta['municao']['efeito'])) {
+            $meta['municao'] = [...($meta['municao'] ?? ['id' => 'revestimento-kairoseki', 'nome' => 'Revestimento de Kairoseki', 'nota' => '']), 'efeito' => 'kairoseki',
+                'nota' => trim(($meta['municao']['nota'] ?? '').' Arma revestida de Kairoseki: ao acertar um usuário de Akuma no Mi, ele fica Enfraquecido até o fim do próximo turno.')];
+        }
         if ($dados !== [] && isset($variaveis["arma.{$arma}.dano"]) && ($meta['destaque'] ?? null) !== 'falha') {
             $nome = (string) ($itens[$arma]['nome'] ?? 'Arma');
             $bonus = $variaveis["arma.{$arma}.dano"];
             // O tipo do dano da arma segue com o botão: a rolagem de dano carrega o tipo para o dano aplicado respeitar resistências.
             $tipoDano = ($municao['tipo'] ?? $itens[$arma]['dados']['arma']['tipoDano'] ?? null) ?: null;
-            if ($municao) {
-                $meta['municao'] = ['id' => $municao['id'], 'nome' => $municao['nome'], 'nota' => $municao['nota'],
-                    // o que a munição faz ao acertar: o card oferece o botão (Enfraquecido, explosão)
-                    ...(in_array($municao['id'], ['bola-explosiva', 'municao-de-kairoseki'], true) ? ['efeito' => $municao['id'] === 'bola-explosiva' ? 'explosao' : 'kairoseki'] : [])];
-            }
-            // Arma revestida de Kairoseki (Ferreiro): cada acerto oferece o Enfraquecido (a munição escolhida, se houver, continua valendo no dano)
-            if (($itens[$arma]['dados']['arma']['melhoria'] ?? null) === 'kairoseki' && ! isset($meta['municao']['efeito'])) {
-                $meta['municao'] = [...($meta['municao'] ?? ['id' => 'revestimento-kairoseki', 'nome' => 'Revestimento de Kairoseki', 'nota' => '']), 'efeito' => 'kairoseki',
-                    'nota' => trim(($meta['municao']['nota'] ?? '').' Arma revestida de Kairoseki: ao acertar um usuário de Akuma no Mi, ele fica Enfraquecido até o fim do próximo turno.')];
-            }
             // Arma à distância do anão (Armas Reduzidas): o dano TOTAL sai pela metade (fator aplicado no dano aplicado ao alvo).
             $fator = ($itens[$arma]['dados']['arma']['distancia'] ?? false) ? max(0, (int) ($variaveis['dano.distancia.pct'] ?? 100)) / 100 : 1;
             $acao = function (string $id, string $rotulo, array $termos, string $rotuloRolagem) use ($arma, $bonus, $tipoDano, $fator) {
