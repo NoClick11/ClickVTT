@@ -12,6 +12,7 @@
         "e2e:quick-draw": "node tests/e2e/quick-draw.mjs",
         "e2e:municao": "node tests/e2e/municao.mjs",
         "e2e:overwatch": "node tests/e2e/overwatch.mjs",
+        "e2e:atirador": "node tests/e2e/atirador-tecnicas.mjs",
         "e2e:ficha": "node --experimental-strip-types tests/e2e/gerar-ficha.mjs"
     },
     "devDependencies": {
