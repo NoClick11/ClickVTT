@@ -122,7 +122,7 @@ export const ESPECIES: EspecieDados[] = [
                     id: 'aptidao-natural',
                     nome: 'Aptidão Natural',
                     descricao: 'Você escolhe uma perícia na qual possa usar o seu Bônus de Proficiência e dobra o seu Bônus de Proficiência nela.',
-                    escolhaPericias: { quantidade: 1, nivel: 2, excluir: [] },
+                    escolhaPericias: { quantidade: 1, nivel: 2, excluir: [], soProficientes: true },
                 },
             },
             {

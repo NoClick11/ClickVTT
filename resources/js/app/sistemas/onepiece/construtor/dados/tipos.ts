@@ -3,7 +3,7 @@
  * direto nos testes. Cada espécie nova é só um item novo em `especies.ts`, sem mudar a lógica.
  */
 import type { EfeitoBruto } from '../../../../nucleo/efeitos/efeitos.ts';
-import type { AcaoCaracteristica, AtributoId, CategoriaDeAcao, Tecnica } from '../../regras.ts';
+import type { AcaoCaracteristica, AtributoId, CategoriaDeAcao, ReacaoDeCombate, Tecnica } from '../../regras.ts';
 
 export type Preconceito = 'Inexistente' | 'Débil' | 'Medíocre' | 'Severo';
 export const NIVEIS_PRECONCEITO: Preconceito[] = ['Inexistente', 'Débil', 'Medíocre', 'Severo'];
@@ -22,6 +22,11 @@ export interface EscolhaPericias {
     nivel: 1 | 2;
     /** Perícias que não podem ser escolhidas. */
     excluir: string[];
+    /**
+     * Só vale para perícias em que o personagem JÁ tem proficiência por outra fonte (Aptidão Natural). Como o estilo, que dá
+     * perícias, vem depois, essa escolha é feita e conferida na etapa do estilo.
+     */
+    soProficientes?: boolean;
     /** O jogador pode trocar UMA das perícias por este traço (ex.: Singularidade no lugar de perícia). */
     troca?: { rotulo: string; traco: TracoDados };
 }
@@ -33,7 +38,7 @@ export interface TracoDados {
     descricao: string;
     /** `ativa` tem interruptor (buffs que o jogador liga); o padrão é passiva. */
     tipo?: 'ativa' | 'passiva';
-    usos?: { max?: number; porNivel?: boolean; descanso?: 'curto' | 'longo' };
+    usos?: { max?: number; porNivel?: boolean; porProf?: boolean; formula?: string; descanso?: 'curto' | 'longo' };
     efeitos?: EfeitoBruto[];
     resistencias?: string[];
     imunidades?: string[];
@@ -51,6 +56,8 @@ export interface TracoDados {
     grupoRodada?: string;
     /** Forma alternativa (junto da jogada de ataque): quantas vezes (contador próprio). */
     alternativo?: number;
+    /** Reação a um ataque (Aparar): a característica oferece a defesa a quem foi atacado. */
+    reacao?: ReacaoDeCombate;
     /** Botões da característica (condição no alvo, hospedar-se, dado extra). */
     acoes?: AcaoCaracteristica[];
     /** Técnicas que o traço dá (ex.: a esfera de fogo dos Lunarianos): entram na lista de técnicas, marcadas como do assistente. */
@@ -66,6 +73,11 @@ export interface TracoDados {
     falhas?: TracoDados[];
     /** O traço pede o campo de Ancestralidade (traços Zoan em texto). */
     pedeAncestralidade?: boolean;
+    /** A característica só vale a partir deste nível do personagem (e, se houver, até `nivelMax`). */
+    nivelMin?: number;
+    nivelMax?: number;
+    /** Habilidade Básica de que o traço faz parte (catálogo das Habilidades Básicas). */
+    hb?: string;
 }
 
 export interface VarianteDados {

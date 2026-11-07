@@ -4,8 +4,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import type { Criacao } from '@/site/types';
 import { Check, Dices, Minus, Plus } from 'lucide-vue-next';
 import { computed, reactive, ref, watch } from 'vue';
-import { ATRIBUTOS, comSinal, modificador, PERICIAS, type AtributoId, type Caracteristica, type Tecnica } from '../regras';
+import { FOCO_EXCLUI, profissaoPorId, PROFISSOES, SEM_PROFISSAO } from '../profissoes/dados';
+import type { ProfissoesFicha } from '../profissoes/regras';
+import { ATRIBUTOS, comSinal, modificador, PERICIAS, PERICIAS_ESCOLHIVEIS, type AtributoId, type Caracteristica, type Tecnica } from '../regras';
+import { antecedentePorId, ANTECEDENTES } from './dados/antecedentes';
 import { ESPECIES } from './dados/especies';
+import { estiloPorId, ESTILOS } from './dados/estilos';
+import { HABILIDADES_BASICAS, hbPorId, OPCOES_QUEBRADOR } from './dados/habilidades-basicas';
 import { AVISO_VARIACAO_RARA, VARIACOES_RARAS } from './dados/variacoes';
 import {
     atributosFinais,
@@ -18,7 +23,9 @@ import {
     ETAPAS,
     fisicoDe,
     mesticoDaMesmaEspecie,
+    pedidosDaEtapaEscolhas,
     pedidosDePericia,
+    periciasJaProficientes,
     PONTOS_DE_COMPRA,
     problemasDaEtapa,
     pvInicial,
@@ -39,7 +46,15 @@ import {
 const props = defineProps<{
     open: boolean;
     personagem: { id: number; nome: string; cor: string };
-    ficha: { nivel?: number; caracteristicas?: Caracteristica[]; tecnicas?: { lista: Tecnica[] } };
+    ficha: {
+        nivel?: number;
+        caracteristicas?: Caracteristica[];
+        tecnicas?: { lista: Tecnica[] };
+        proficienciasArmas?: string[];
+        habilidadesBasicas?: { id: string; nivel: number; opcao?: string }[];
+        profissoes?: Partial<ProfissoesFicha>;
+        ferramentas?: { nome: string; prof: 0 | 1 | 2; atributo: AtributoId }[];
+    };
     criacao: Criacao | null;
     salvar: (campos: Record<string, unknown>, criacao: Criacao) => Promise<void>;
     rolarAtributos: () => Promise<number[]>;
@@ -100,11 +115,7 @@ async function avancar() {
 const voltar = () => (etapa.value = proximaEtapa(-1));
 
 async function concluir() {
-    const { campos } = camposDaCriacao(e, {
-        caracteristicas: props.ficha.caracteristicas,
-        tecnicas: props.ficha.tecnicas?.lista,
-        nivel: props.ficha.nivel,
-    });
+    const { campos } = camposDaCriacao(e, atualDaFicha());
     if (await guardar('resumo', true, campos)) {
         // Traços com companheiro (Kuja): a mesa cria o personagem com a ficha pronta (pedir de novo não duplica)
         for (const t of todosOsTracos(e)) if (t.traco.companheiro) await props.criarCompanheiro?.(t.traco.companheiro).catch(() => undefined);
@@ -112,9 +123,90 @@ async function concluir() {
         emit('update:open', false);
     }
 }
-const resultado = computed(() =>
-    camposDaCriacao(e, { caracteristicas: props.ficha.caracteristicas, tecnicas: props.ficha.tecnicas?.lista, nivel: props.ficha.nivel }),
+const resultado = computed(() => camposDaCriacao(e, atualDaFicha()));
+function atualDaFicha() {
+    return {
+        caracteristicas: props.ficha.caracteristicas,
+        tecnicas: props.ficha.tecnicas?.lista,
+        nivel: props.ficha.nivel,
+        proficienciasArmas: props.ficha.proficienciasArmas,
+        habilidadesBasicas: props.ficha.habilidadesBasicas,
+        profissoes: props.ficha.profissoes,
+        ferramentas: props.ficha.ferramentas,
+    };
+}
+
+// --- etapa 3c: profissão -----------------------------------------------------------------------------------------------
+const profissaoEscolhida = computed(() => profissaoPorId(e.profissao?.id));
+const semProfissao = computed(() => e.profissao?.id === 'nenhuma');
+/** As perícias entre as quais escolher: as da profissão, ou (sem profissão) todas menos Haki, Sobrenatural, Sorte e Ofício. */
+const periciasDaProfissao = computed(() =>
+    semProfissao.value
+        ? PERICIAS.filter((p) => !FOCO_EXCLUI.includes(p.id))
+        : PERICIAS.filter((p) => profissaoEscolhida.value?.pericias.includes(p.id)),
 );
+function escolherProfissao(id: string) {
+    e.profissao = { id, pericias: [] };
+}
+function alternarPericiaDaProfissao(id: string) {
+    if (!e.profissao) return;
+    const lista = e.profissao.pericias;
+    const i = lista.indexOf(id);
+    if (i >= 0) lista.splice(i, 1);
+    else if (lista.length < 2) lista.push(id);
+    else e.profissao.pericias = [lista[1], id];
+}
+// --- etapa 3b: antecedente -------------------------------------------------------------------------------------------
+const antecedenteEscolhido = computed(() => antecedentePorId(e.antecedente?.id));
+const featuresDeOutros = computed(() => ANTECEDENTES.filter((a) => a.id !== e.antecedente?.id));
+/** Escolher um antecedente zera a perícia, a característica trocada e sugere o atributo recomendado (se for um só). */
+function escolherAntecedente(id: string) {
+    const a = antecedentePorId(id);
+    if (!a) return;
+    e.antecedente = { id, pericia: '', atributo: a.atributos.length === 1 ? a.atributos[0] : null, personalizado: false, caracteristicaDe: null };
+}
+function personalizarAntecedente(ligado: boolean) {
+    if (!e.antecedente) return;
+    e.antecedente.personalizado = ligado;
+    if (!ligado) {
+        e.antecedente.caracteristicaDe = null;
+        const a = antecedenteEscolhido.value;
+        if (a && !a.pericias.includes(e.antecedente.pericia)) e.antecedente.pericia = '';
+    }
+}
+
+// --- etapa 4: estilo de luta -------------------------------------------------------------------------------------
+const opcoesProdigio = [
+    { id: 'corpo', nome: 'Corpo a corpo' },
+    { id: 'distancia', nome: 'À distância' },
+];
+function escolherOpcaoDaHB(opcao: string) {
+    if (!e.hb) return;
+    e.hbOpcoes = { ...(e.hbOpcoes ?? {}), [e.hb]: [opcao] };
+}
+const estiloEscolhido = computed(() => estiloPorId(e.estilo.id));
+/** Escolher um estilo do catálogo preenche nome e dado e zera as escolhas dele; `null` volta ao estilo provisório. */
+function escolherEstilo(id: string | null) {
+    const est = estiloPorId(id);
+    e.estilo = est
+        ? {
+              id: est.id,
+              nome: est.nome,
+              dado: est.dado,
+              primario: est.atributosPrimarios.length === 1 ? est.atributosPrimarios[0] : null,
+              caminho: est.caminhos?.[0]?.id ?? null,
+              armaFavorita: null,
+              hbInata: null,
+              pericias: [],
+          }
+        : { id: '', nome: '', dado: 'd8', primario: null, caminho: null, armaFavorita: null, hbInata: null, pericias: [] };
+}
+function alternarPericiaDoEstilo(id: string) {
+    const lista = e.estilo.pericias ?? (e.estilo.pericias = []);
+    const i = lista.indexOf(id);
+    if (i >= 0) lista.splice(i, 1);
+    else if (lista.length < (estiloEscolhido.value?.pericias ?? 0)) lista.push(id);
+}
 
 // --- etapa 1: espécie --------------------------------------------------------------------------------------------
 function trocarModo(modo: Escolhas['modo']) {
@@ -159,7 +251,10 @@ const foco = ref<string | null>(null);
 const especieEmFoco = computed(() => especiePorId(foco.value ?? e.especies[e.especies.length - 1] ?? ''));
 
 // --- etapa 2: escolhas ------------------------------------------------------------------------------------------------
-const pedidos = computed(() => pedidosDePericia(e));
+const pedidos = computed(() => pedidosDaEtapaEscolhas(e));
+/** Aptidão Natural e afins: escolhidas na etapa do estilo, entre as perícias que o personagem já tem. */
+const pedidosDeAptidao = computed(() => pedidosDePericia(e).filter((p) => p.traco.escolhaPericias?.soProficientes));
+const proficientes = computed(() => periciasJaProficientes(e));
 const nFalhas = computed(() => quantidadeDeFalhas(e));
 const falhasDisponiveis = computed(() => ESPECIES.find((x) => x.id === 'humano')!.dificuldade.falhas ?? []);
 const ehHumano = computed(() => e.especies.some((id) => id === 'humano'));
@@ -539,7 +634,7 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1.5 text-sm 
                         </label>
                         <div class="flex flex-wrap gap-1.5" role="group">
                             <button
-                                v-for="p in PERICIAS.filter((x) => !pedido.traco.escolhaPericias!.excluir.includes(x.id))"
+                                v-for="p in PERICIAS_ESCOLHIVEIS.filter((x) => !pedido.traco.escolhaPericias!.excluir.includes(x.id))"
                                 :key="p.id"
                                 type="button"
                                 :class="[cartao, 'px-2.5 py-1 text-xs', periciasDe(pedido.traco.id).includes(p.id) ? ativo : inativo]"
@@ -642,27 +737,427 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1.5 text-sm 
                     </div>
                 </section>
 
+                <!-- 3b. ANTECEDENTE -->
+                <section v-else-if="etapa === 'antecedente'" class="grid max-w-3xl gap-3" aria-label="Antecedente">
+                    <p class="rounded-lg border border-preto-700 bg-preto-900/60 p-3 text-xs text-preto-300">
+                        O passado do personagem: dá proficiência em uma perícia, +2 em um atributo (até 20) e uma Característica Especial. Pode
+                        personalizar: trocar a característica por a de outro antecedente, escolher outra perícia e outro atributo.
+                    </p>
+                    <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="group" aria-label="Antecedentes">
+                        <button
+                            v-for="a in ANTECEDENTES"
+                            :key="a.id"
+                            type="button"
+                            :class="[cartao, e.antecedente?.id === a.id ? ativo : inativo]"
+                            :aria-pressed="e.antecedente?.id === a.id"
+                            @click="escolherAntecedente(a.id)"
+                        >
+                            <span class="font-serif text-base font-semibold">{{ a.nome }}</span>
+                            <span class="block text-xs text-preto-400"
+                                >{{ a.caracteristica.nome }} · {{ a.atributos.map((x) => x.toUpperCase()).join(' ou ') }}</span
+                            >
+                        </button>
+                    </div>
+                    <template v-if="antecedenteEscolhido && e.antecedente">
+                        <p class="rounded-lg border border-preto-700 bg-preto-900/60 p-3 text-xs text-preto-300">
+                            {{ antecedenteEscolhido.descricao }}
+                        </p>
+                        <label class="flex items-center gap-2 text-sm text-preto-200">
+                            <input
+                                :checked="e.antecedente.personalizado"
+                                type="checkbox"
+                                class="size-4 accent-ouro-500"
+                                @change="personalizarAntecedente(($event.target as HTMLInputElement).checked)"
+                            />
+                            Personalizar (qualquer perícia e a característica especial de outro antecedente)
+                        </label>
+                        <div class="grid gap-1">
+                            <span :class="rotulo">Perícia</span>
+                            <div class="flex flex-wrap gap-1.5" role="group" aria-label="Perícia do antecedente">
+                                <button
+                                    v-for="p in PERICIAS_ESCOLHIVEIS.filter(
+                                        (x) => e.antecedente!.personalizado || antecedenteEscolhido!.pericias.includes(x.id),
+                                    )"
+                                    :key="p.id"
+                                    type="button"
+                                    :class="[cartao, 'px-2.5 py-1 text-xs', e.antecedente.pericia === p.id ? ativo : inativo]"
+                                    :aria-pressed="e.antecedente.pericia === p.id"
+                                    @click="e.antecedente.pericia = p.id"
+                                >
+                                    {{ p.nome }}
+                                </button>
+                            </div>
+                        </div>
+                        <div class="grid gap-1">
+                            <span :class="rotulo">Atributo +2 (máximo 20)</span>
+                            <div class="grid grid-cols-3 gap-2 sm:grid-cols-6" role="group" aria-label="Atributo do antecedente">
+                                <button
+                                    v-for="a in ATRIBUTOS"
+                                    :key="a.id"
+                                    type="button"
+                                    :class="[cartao, 'text-center', e.antecedente.atributo === a.id ? ativo : inativo]"
+                                    :aria-pressed="e.antecedente.atributo === a.id"
+                                    @click="e.antecedente.atributo = a.id"
+                                >
+                                    <span class="block font-semibold"
+                                        >{{ a.sigla }}{{ antecedenteEscolhido.atributos.includes(a.id) ? ' ★' : '' }}</span
+                                    >
+                                    <span class="block text-xs text-preto-400">+2</span>
+                                </button>
+                            </div>
+                            <p class="text-xs text-preto-400">
+                                ★ = recomendado para este antecedente. O +2 é somado ao valor do atributo definido na etapa Atributos e nunca passa de
+                                20.
+                            </p>
+                        </div>
+                        <div v-if="e.antecedente.personalizado" class="grid gap-1">
+                            <span :class="rotulo">Característica especial</span>
+                            <select v-model="e.antecedente.caracteristicaDe" :class="campo" aria-label="Característica especial">
+                                <option :value="null">A do próprio antecedente ({{ antecedenteEscolhido.caracteristica.nome }})</option>
+                                <option v-for="o in featuresDeOutros" :key="o.id" :value="o.id">{{ o.caracteristica.nome }} ({{ o.nome }})</option>
+                            </select>
+                        </div>
+                        <div class="rounded-lg border border-ouro-500/30 bg-ouro-500/5 p-3">
+                            <p class="font-serif text-base font-semibold text-ouro-200">
+                                {{
+                                    (e.antecedente.personalizado && e.antecedente.caracteristicaDe
+                                        ? antecedentePorId(e.antecedente.caracteristicaDe)
+                                        : antecedenteEscolhido
+                                    )?.caracteristica.nome
+                                }}
+                            </p>
+                            <p class="text-xs leading-relaxed text-preto-200">
+                                {{
+                                    (e.antecedente.personalizado && e.antecedente.caracteristicaDe
+                                        ? antecedentePorId(e.antecedente.caracteristicaDe)
+                                        : antecedenteEscolhido
+                                    )?.caracteristica.descricao
+                                }}
+                            </p>
+                        </div>
+                    </template>
+                </section>
+
+                <!-- 3c. PROFISSÃO -->
+                <section v-else-if="etapa === 'profissao'" class="grid max-w-3xl gap-3" aria-label="Profissão">
+                    <p class="rounded-lg border border-preto-700 bg-preto-900/60 p-3 text-xs text-preto-300">
+                        Sua função na tripulação. Você recebe proficiência em 2 perícias da profissão, nas ferramentas dela, as características únicas
+                        e a perícia <b>Ofício</b> treinada: o Bônus de Proficiência vale em Testes de QUALQUER atributo ligados à profissão. Novas
+                        profissões só nos níveis 5, 10, 15 e 20.
+                    </p>
+                    <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="group" aria-label="Profissões">
+                        <button
+                            v-for="p in PROFISSOES"
+                            :key="p.id"
+                            type="button"
+                            :class="[cartao, e.profissao?.id === p.id ? ativo : inativo]"
+                            :aria-pressed="e.profissao?.id === p.id"
+                            @click="escolherProfissao(p.id)"
+                        >
+                            <span class="font-serif text-base font-semibold">{{ p.nome }}</span>
+                            <span class="block text-xs text-preto-400">{{ p.resumo }}</span>
+                        </button>
+                        <button
+                            type="button"
+                            :class="[cartao, semProfissao ? ativo : inativo]"
+                            :aria-pressed="semProfissao"
+                            @click="escolherProfissao('nenhuma')"
+                        >
+                            <span class="font-serif text-base font-semibold">{{ SEM_PROFISSAO.nome }}</span>
+                            <span class="block text-xs text-preto-400">Ajudante Perfeito, Foco, Parceiro de Treino e Tempo Livre.</span>
+                        </button>
+                    </div>
+                    <template v-if="e.profissao?.id && (profissaoEscolhida || semProfissao)">
+                        <div class="grid gap-1">
+                            <span :class="rotulo"
+                                >Perícias ({{ e.profissao.pericias.length }}/2){{
+                                    semProfissao ? ' — Foco, exceto Haki, Sobrenatural e Sorte' : ''
+                                }}</span
+                            >
+                            <div class="flex flex-wrap gap-1.5" role="group" aria-label="Perícias da profissão">
+                                <button
+                                    v-for="p in periciasDaProfissao"
+                                    :key="p.id"
+                                    type="button"
+                                    :class="[cartao, 'px-2.5 py-1 text-xs', e.profissao.pericias.includes(p.id) ? ativo : inativo]"
+                                    :aria-pressed="e.profissao.pericias.includes(p.id)"
+                                    @click="alternarPericiaDaProfissao(p.id)"
+                                >
+                                    {{ p.nome }}
+                                </button>
+                            </div>
+                        </div>
+                        <template v-if="profissaoEscolhida">
+                            <p class="text-xs text-preto-400">
+                                <b>{{ profissaoEscolhida.ferramenta }}</b> (proficiência) · Ofício ({{ profissaoEscolhida.nome }}) treinado
+                            </p>
+                            <details class="rounded-lg border border-preto-700 bg-preto-900/60 p-3 text-xs text-preto-300">
+                                <summary class="cursor-pointer font-semibold text-preto-200">Itens iniciais (o mestre entrega)</summary>
+                                <ul class="mt-1 list-disc pl-5">
+                                    <li v-for="i in profissaoEscolhida.itens" :key="i">{{ i }}</li>
+                                </ul>
+                            </details>
+                            <details class="rounded-lg border border-preto-700 bg-preto-900/60 p-3 text-xs text-preto-300">
+                                <summary class="cursor-pointer font-semibold text-preto-200">Testes de Atributo da profissão</summary>
+                                <ul class="mt-1 list-disc pl-5">
+                                    <li v-for="t in profissaoEscolhida.testes" :key="t">{{ t }}</li>
+                                </ul>
+                            </details>
+                            <div class="grid gap-2">
+                                <div
+                                    v-for="t in profissaoEscolhida.tracos"
+                                    :key="t.id"
+                                    class="rounded-lg border border-ouro-500/30 bg-ouro-500/5 p-3"
+                                >
+                                    <p class="font-serif text-base font-semibold text-ouro-200">{{ t.nome }}</p>
+                                    <p class="line-clamp-4 text-xs leading-relaxed text-preto-200">
+                                        {{ t.descricao.replace(/\{(cd|bellys|dado):(\d+)\}/g, '$2') }}
+                                    </p>
+                                </div>
+                            </div>
+                        </template>
+                        <div v-else class="grid gap-2">
+                            <div v-for="t in SEM_PROFISSAO.tracos" :key="t.id" class="rounded-lg border border-ouro-500/30 bg-ouro-500/5 p-3">
+                                <p class="font-serif text-base font-semibold text-ouro-200">{{ t.nome }}</p>
+                                <p class="text-xs leading-relaxed text-preto-200">{{ t.descricao }}</p>
+                            </div>
+                        </div>
+                    </template>
+                </section>
+
                 <!-- 4. ESTILO DE LUTA (provisório) -->
                 <section v-else-if="etapa === 'estilo'" class="grid max-w-xl gap-3" aria-label="Estilo de luta">
-                    <p class="rounded-lg border border-preto-700 bg-preto-900/60 p-3 text-xs text-preto-300">
-                        O catálogo de estilos de luta ainda não existe: por enquanto escreva o nome e escolha o dado de vida do estilo. Quando os
-                        estilos forem adicionados, esta etapa vira uma lista.
-                    </p>
-                    <label class="grid gap-1"
-                        ><span :class="rotulo">Estilo de luta</span
-                        ><input v-model="e.estilo.nome" type="text" maxlength="80" :class="campo" placeholder="Ex.: Espadachim"
-                    /></label>
-                    <label class="grid gap-1"
-                        ><span :class="rotulo">Dado de vida do estilo</span
-                        ><select v-model="e.estilo.dado" :class="campo">
-                            <option v-for="d in DADOS_DE_VIDA" :key="d" :value="d">{{ d }}</option>
-                        </select></label
-                    >
+                    <div class="grid gap-2 sm:grid-cols-2" role="group" aria-label="Estilo de luta">
+                        <button
+                            v-for="est in ESTILOS"
+                            :key="est.id"
+                            type="button"
+                            :class="[cartao, e.estilo.id === est.id ? ativo : inativo]"
+                            :aria-pressed="e.estilo.id === est.id"
+                            @click="escolherEstilo(est.id)"
+                        >
+                            <span class="font-serif text-base font-semibold">{{ est.nome }}</span>
+                            <span class="block text-xs text-preto-400"
+                                >{{ est.dado }} · atributo primário {{ est.atributosPrimarios.map((a) => a.toUpperCase()).join(' ou ') }}</span
+                            >
+                        </button>
+                        <button
+                            type="button"
+                            :class="[cartao, !e.estilo.id ? ativo : inativo]"
+                            :aria-pressed="!e.estilo.id"
+                            @click="escolherEstilo(null)"
+                        >
+                            <span class="font-serif text-base font-semibold">Outro (provisório)</span>
+                            <span class="block text-xs text-preto-400">Nome e dado de vida à mão, até o estilo entrar no catálogo.</span>
+                        </button>
+                    </div>
+                    <template v-if="estiloEscolhido">
+                        <p class="rounded-lg border border-preto-700 bg-preto-900/60 p-3 text-xs text-preto-300">{{ estiloEscolhido.descricao }}</p>
+                        <p class="text-xs text-preto-400">
+                            Salvaguardas: {{ estiloEscolhido.salvaguardas.map((s) => s.toUpperCase()).join(', ') }} · Proficiência:
+                            {{ estiloEscolhido.proficiencias.join(', ') }}
+                        </p>
+                        <div v-if="estiloEscolhido.atributosPrimarios.length > 1" class="grid gap-1">
+                            <span :class="rotulo">Atributo primário</span>
+                            <div class="flex flex-wrap gap-2" role="group" aria-label="Atributo primário">
+                                <button
+                                    v-for="a in estiloEscolhido.atributosPrimarios"
+                                    :key="a"
+                                    type="button"
+                                    :class="[cartao, e.estilo.primario === a ? ativo : inativo]"
+                                    :aria-pressed="e.estilo.primario === a"
+                                    @click="e.estilo.primario = a"
+                                >
+                                    {{ ATRIBUTOS.find((x) => x.id === a)?.nome }}
+                                </button>
+                            </div>
+                        </div>
+                        <div v-if="estiloEscolhido.caminhos?.length" class="grid gap-1">
+                            <span :class="rotulo">Caminho</span>
+                            <div class="grid gap-2 sm:grid-cols-2" role="group" aria-label="Caminho">
+                                <button
+                                    v-for="c in estiloEscolhido.caminhos"
+                                    :key="c.id"
+                                    type="button"
+                                    :class="[cartao, e.estilo.caminho === c.id ? ativo : inativo]"
+                                    :aria-pressed="e.estilo.caminho === c.id"
+                                    @click="e.estilo.caminho = c.id"
+                                >
+                                    <span class="font-semibold">{{ c.nome }}</span>
+                                    <span class="block text-xs text-preto-400">{{ c.descricao }}</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="grid gap-1">
+                            <span :class="rotulo">Arma favorita</span>
+                            <div class="flex flex-wrap gap-2" role="group" aria-label="Arma favorita">
+                                <button
+                                    v-for="a in estiloEscolhido.armasFavoritas"
+                                    :key="a"
+                                    type="button"
+                                    :class="[cartao, e.estilo.armaFavorita === a ? ativo : inativo]"
+                                    :aria-pressed="e.estilo.armaFavorita === a"
+                                    @click="e.estilo.armaFavorita = a"
+                                >
+                                    {{ a }}
+                                </button>
+                            </div>
+                        </div>
+                        <div class="grid gap-1">
+                            <span :class="rotulo">Habilidade Básica Inata</span>
+                            <div class="flex flex-wrap gap-2" role="group" aria-label="Habilidade Básica Inata">
+                                <button
+                                    v-for="h in estiloEscolhido.habilidadesInatas"
+                                    :key="h.id"
+                                    type="button"
+                                    :class="[cartao, e.estilo.hbInata === h.id ? ativo : inativo]"
+                                    :aria-pressed="e.estilo.hbInata === h.id"
+                                    @click="e.estilo.hbInata = h.id"
+                                >
+                                    {{ h.nome }}
+                                </button>
+                            </div>
+                        </div>
+                        <div class="grid gap-1">
+                            <span :class="rotulo">Perícias do estilo ({{ e.estilo.pericias?.length ?? 0 }}/{{ estiloEscolhido.pericias }})</span>
+                            <div class="flex flex-wrap gap-1.5" role="group" aria-label="Perícias do estilo">
+                                <button
+                                    v-for="p in PERICIAS_ESCOLHIVEIS"
+                                    :key="p.id"
+                                    type="button"
+                                    :class="[cartao, 'px-2 py-1 text-xs', e.estilo.pericias?.includes(p.id) ? ativo : inativo]"
+                                    :aria-pressed="!!e.estilo.pericias?.includes(p.id)"
+                                    @click="alternarPericiaDoEstilo(p.id)"
+                                >
+                                    {{ p.nome }}
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <label class="grid gap-1"
+                            ><span :class="rotulo">Estilo de luta</span
+                            ><input v-model="e.estilo.nome" type="text" maxlength="80" :class="campo" placeholder="Ex.: Espadachim"
+                        /></label>
+                        <label class="grid gap-1"
+                            ><span :class="rotulo">Dado de vida do estilo</span
+                            ><select v-model="e.estilo.dado" :class="campo">
+                                <option v-for="d in DADOS_DE_VIDA" :key="d" :value="d">{{ d }}</option>
+                            </select></label
+                        >
+                    </template>
                     <p class="text-xs text-preto-400">
                         PV no nível 1 = {{ e.estilo.dado }} no máximo ({{ e.estilo.dado.slice(1) }}) + mod. de Constituição + PV base da espécie ({{
                             fisico?.pv ?? 0
                         }}).
                     </p>
+                    <!-- Aptidão Natural: entre as perícias em que já há proficiência (Adaptação e as do estilo) -->
+                    <div v-for="pedido in pedidosDeAptidao" :key="pedido.traco.id" class="grid gap-1">
+                        <span :class="rotulo"
+                            >{{ pedido.traco.nome }}: escolha {{ pedido.quantidade }} perícia em que já seja proficiente (proficiência dobrada)</span
+                        >
+                        <p v-if="!proficientes.length" class="text-xs text-preto-400">
+                            Você ainda não tem nenhuma: escolha as do estilo e de Adaptação antes.
+                        </p>
+                        <div class="flex flex-wrap gap-1.5" role="group" :aria-label="pedido.traco.nome">
+                            <button
+                                v-for="p in PERICIAS_ESCOLHIVEIS.filter((x) => proficientes.includes(x.id))"
+                                :key="p.id"
+                                type="button"
+                                :class="[cartao, 'px-2.5 py-1 text-xs', periciasDe(pedido.traco.id).includes(p.id) ? ativo : inativo]"
+                                :aria-pressed="periciasDe(pedido.traco.id).includes(p.id)"
+                                @click="alternarLista(periciasDe(pedido.traco.id), p.id, pedido.quantidade)"
+                            >
+                                {{ p.nome }}
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4b. HABILIDADE BÁSICA -->
+                <section v-else-if="etapa === 'habilidades'" class="grid max-w-3xl gap-3" aria-label="Habilidade Básica">
+                    <p v-if="!estiloEscolhido" class="rounded-lg border border-preto-700 bg-preto-900/60 p-3 text-xs text-preto-300">
+                        As Habilidades Básicas acompanham os estilos do catálogo. Com o estilo provisório não há o que escolher: avance.
+                    </p>
+                    <template v-else>
+                        <p class="rounded-lg border border-preto-700 bg-preto-900/60 p-3 text-xs text-preto-300">
+                            Escolha 1 Habilidade Básica. Você ganha outra no 2º e no 3º nível (pelo "Subir de nível") e a Inata ({{
+                                hbPorId(e.estilo.hbInata)?.nome
+                            }}) já está garantida. Nenhuma se repete.
+                        </p>
+                        <div class="grid gap-2 sm:grid-cols-2" role="group" aria-label="Habilidades Básicas">
+                            <button
+                                v-for="h in HABILIDADES_BASICAS"
+                                :key="h.id"
+                                type="button"
+                                :disabled="h.id === e.estilo.hbInata"
+                                :class="[cartao, e.hb === h.id ? ativo : inativo, h.id === e.estilo.hbInata ? 'opacity-40' : '']"
+                                :aria-pressed="e.hb === h.id"
+                                @click="e.hb = h.id"
+                            >
+                                <span class="font-semibold">{{ h.nome }}</span>
+                                <span class="block text-xs text-preto-400">{{ h.resumo }}</span>
+                            </button>
+                        </div>
+                        <div v-if="e.hb && hbPorId(e.hb)?.escolha === 'prodigio'" class="grid gap-1">
+                            <span :class="rotulo">Crítico Marcial vale para</span>
+                            <div class="flex gap-2" role="group" aria-label="Crítico Marcial">
+                                <button
+                                    v-for="o in opcoesProdigio"
+                                    :key="o.id"
+                                    type="button"
+                                    :class="[cartao, e.hbOpcoes?.[e.hb]?.[0] === o.id ? ativo : inativo]"
+                                    @click="escolherOpcaoDaHB(o.id)"
+                                >
+                                    {{ o.nome }}
+                                </button>
+                            </div>
+                        </div>
+                        <div v-if="e.hb && hbPorId(e.hb)?.escolha === 'quebrador'" class="grid gap-1">
+                            <span :class="rotulo">Quebrador de Regras</span>
+                            <div class="grid gap-2 sm:grid-cols-2" role="group" aria-label="Quebrador de Regras">
+                                <button
+                                    v-for="o in OPCOES_QUEBRADOR"
+                                    :key="o.id"
+                                    type="button"
+                                    :class="[cartao, e.hbOpcoes?.[e.hb]?.[0] === o.id ? ativo : inativo]"
+                                    @click="escolherOpcaoDaHB(o.id)"
+                                >
+                                    <span class="font-semibold">{{ o.nome }}</span>
+                                    <span class="block text-xs text-preto-400">{{ o.descricao }}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </section>
+
+                <!-- 4c. APTIDÃO PARA HAKI -->
+                <section v-else-if="etapa === 'haki'" class="grid max-w-xl gap-3" aria-label="Aptidão para Haki">
+                    <p class="rounded-lg border border-preto-700 bg-preto-900/60 p-3 text-xs text-preto-300">
+                        Escolha o tipo de Haki com o qual você tem mais afinidade. Ao despertá-lo (a partir do 8º nível ou quando o Narrador liberar)
+                        você recebe 2 Pontos de Ambição adicionais. O Haki do Rei só pode ser a afinidade se o Narrador já definiu que você o possui
+                        (então ajuste na aba Haki).
+                    </p>
+                    <div class="grid gap-2 sm:grid-cols-2" role="group" aria-label="Afinidade com Haki">
+                        <button
+                            v-for="a in [
+                                {
+                                    id: 'armamento',
+                                    nome: 'Haki do Armamento',
+                                    descricao: 'Reveste o corpo e as armas: defesa e ataques fortalecidos.',
+                                },
+                                { id: 'observacao', nome: 'Haki da Observação', descricao: 'Percebe presenças e prevê movimentos.' },
+                            ] as const"
+                            :key="a.id"
+                            type="button"
+                            :class="[cartao, e.hakiAfinidade === a.id ? ativo : inativo]"
+                            :aria-pressed="e.hakiAfinidade === a.id"
+                            @click="e.hakiAfinidade = a.id"
+                        >
+                            <span class="font-semibold">{{ a.nome }}</span>
+                            <span class="block text-xs text-preto-400">{{ a.descricao }}</span>
+                        </button>
+                    </div>
                 </section>
 
                 <!-- 5. ATRIBUTOS -->
@@ -743,7 +1238,30 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1.5 text-sm 
                         <div class="rounded-lg border border-preto-700 bg-preto-950 p-3">
                             <span :class="rotulo">Estilo de luta</span>
                             <p class="font-serif text-lg font-semibold">{{ e.estilo.nome }}</p>
-                            <p class="text-xs text-preto-400">dado de vida {{ e.estilo.dado }}</p>
+                            <p class="text-xs text-preto-400">
+                                dado de vida {{ e.estilo.dado }}<template v-if="estiloEscolhido"> · {{ e.estilo.armaFavorita }}</template>
+                            </p>
+                        </div>
+                        <div class="rounded-lg border border-preto-700 bg-preto-950 p-3">
+                            <span :class="rotulo">Antecedente</span>
+                            <p class="font-serif text-lg font-semibold">{{ antecedenteEscolhido?.nome }}</p>
+                            <p class="text-xs text-preto-400">
+                                {{ PERICIAS.find((x) => x.id === e.antecedente?.pericia)?.nome }} · +2 {{ e.antecedente?.atributo?.toUpperCase() }} ·
+                                {{
+                                    (e.antecedente?.personalizado && e.antecedente.caracteristicaDe
+                                        ? antecedentePorId(e.antecedente.caracteristicaDe)
+                                        : antecedenteEscolhido
+                                    )?.caracteristica.nome
+                                }}
+                            </p>
+                        </div>
+                        <div class="rounded-lg border border-preto-700 bg-preto-950 p-3">
+                            <span :class="rotulo">Profissão</span>
+                            <p class="font-serif text-lg font-semibold">{{ semProfissao ? SEM_PROFISSAO.nome : profissaoEscolhida?.nome }}</p>
+                            <p class="text-xs text-preto-400">
+                                {{ (e.profissao?.pericias ?? []).map((id) => PERICIAS.find((x) => x.id === id)?.nome).join(' e ')
+                                }}{{ semProfissao ? '' : ' · Ofício treinado' }}
+                            </p>
                         </div>
                         <div class="rounded-lg border border-preto-700 bg-preto-950 p-3">
                             <span :class="rotulo">PV (nível 1)</span>
