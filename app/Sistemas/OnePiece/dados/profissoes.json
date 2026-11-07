@@ -1,0 +1,265 @@
+{
+  "profissoes": [
+    {
+      "id": "adestrador",
+      "nome": "Adestrador",
+      "pericias": [
+        "acrobacia",
+        "atuacao",
+        "intuicao",
+        "percepcao",
+        "persuasao",
+        "sobrevivencia"
+      ],
+      "ferramenta": "Ferramentas de Adestrador"
+    },
+    {
+      "id": "arqueologo",
+      "nome": "Arqueólogo",
+      "pericias": [
+        "historia",
+        "intuicao",
+        "investigacao",
+        "percepcao",
+        "persuasao",
+        "sobrevivencia"
+      ],
+      "ferramenta": "Ferramentas de Arqueólogo"
+    },
+    {
+      "id": "botanico",
+      "nome": "Botânico",
+      "pericias": [
+        "historia",
+        "intuicao",
+        "investigacao",
+        "natureza",
+        "percepcao",
+        "sobrevivencia"
+      ],
+      "ferramenta": "Ferramentas de Botânico"
+    },
+    {
+      "id": "cacador-de-recompensas",
+      "nome": "Caçador de Recompensas",
+      "pericias": [
+        "furtividade",
+        "intimidacao",
+        "investigacao",
+        "percepcao",
+        "persuasao",
+        "sobrevivencia"
+      ],
+      "ferramenta": "Ferramentas de Caçador de Recompensas"
+    },
+    {
+      "id": "carpinteiro",
+      "nome": "Carpinteiro",
+      "pericias": [
+        "acrobacia",
+        "atletismo",
+        "historia",
+        "investigacao",
+        "persuasao",
+        "prestidigitacao"
+      ],
+      "ferramenta": "Ferramentas de Carpinteiro"
+    },
+    {
+      "id": "cientista",
+      "nome": "Cientista",
+      "pericias": [
+        "investigacao",
+        "intuicao",
+        "medicina",
+        "percepcao",
+        "prestidigitacao",
+        "natureza"
+      ],
+      "ferramenta": "Ferramentas de Cientista"
+    },
+    {
+      "id": "contrabandista",
+      "nome": "Contrabandista",
+      "pericias": [
+        "enganacao",
+        "furtividade",
+        "intimidacao",
+        "intuicao",
+        "persuasao",
+        "provocacao"
+      ],
+      "ferramenta": "Ferramentas de Contrabandista"
+    },
+    {
+      "id": "cozinheiro",
+      "nome": "Cozinheiro",
+      "pericias": [
+        "atuacao",
+        "intuicao",
+        "persuasao",
+        "prestidigitacao",
+        "provocacao",
+        "sobrevivencia"
+      ],
+      "ferramenta": "Ferramentas de Cozinheiro"
+    },
+    {
+      "id": "engenheiro",
+      "nome": "Engenheiro",
+      "pericias": [
+        "historia",
+        "intuicao",
+        "investigacao",
+        "percepcao",
+        "prestidigitacao",
+        "sobrevivencia"
+      ],
+      "ferramenta": "Ferramentas de Engenheiro"
+    },
+    {
+      "id": "espiao",
+      "nome": "Espião",
+      "pericias": [
+        "enganacao",
+        "furtividade",
+        "intuicao",
+        "investigacao",
+        "percepcao",
+        "prestidigitacao"
+      ],
+      "ferramenta": "Ferramentas de Espião"
+    },
+    {
+      "id": "farmaceutico",
+      "nome": "Farmacêutico",
+      "pericias": [
+        "historia",
+        "intuicao",
+        "investigacao",
+        "medicina",
+        "natureza",
+        "percepcao"
+      ],
+      "ferramenta": "Ferramentas de Farmacêutico"
+    },
+    {
+      "id": "ferreiro",
+      "nome": "Ferreiro",
+      "pericias": [
+        "atletismo",
+        "historia",
+        "intuicao",
+        "investigacao",
+        "percepcao",
+        "prestidigitacao"
+      ],
+      "ferramenta": "Ferramentas de Ferreiro"
+    },
+    {
+      "id": "informante",
+      "nome": "Informante",
+      "pericias": [
+        "enganacao",
+        "furtividade",
+        "investigacao",
+        "intuicao",
+        "percepcao",
+        "persuasao"
+      ],
+      "ferramenta": "Ferramentas de Informante"
+    },
+    {
+      "id": "inventor",
+      "nome": "Inventor",
+      "pericias": [
+        "historia",
+        "investigacao",
+        "intuicao",
+        "natureza",
+        "prestidigitacao",
+        "percepcao"
+      ],
+      "ferramenta": "Ferramentas de Inventor"
+    },
+    {
+      "id": "jornalista",
+      "nome": "Jornalista",
+      "pericias": [
+        "enganacao",
+        "historia",
+        "investigacao",
+        "intuicao",
+        "percepcao",
+        "persuasao"
+      ],
+      "ferramenta": "Ferramentas de Jornalista"
+    },
+    {
+      "id": "medico",
+      "nome": "Médico",
+      "pericias": [
+        "intuicao",
+        "investigacao",
+        "medicina",
+        "percepcao",
+        "prestidigitacao",
+        "sobrevivencia"
+      ],
+      "ferramenta": "Ferramentas de Médico"
+    },
+    {
+      "id": "musico",
+      "nome": "Músico",
+      "pericias": [
+        "atuacao",
+        "enganacao",
+        "furtividade",
+        "intimidacao",
+        "persuasao",
+        "prestidigitacao",
+        "provocacao"
+      ],
+      "ferramenta": "Instrumento musical"
+    },
+    {
+      "id": "navegador",
+      "nome": "Navegador",
+      "pericias": [
+        "enganacao",
+        "intuicao",
+        "investigacao",
+        "percepcao",
+        "persuasao",
+        "sobrevivencia"
+      ],
+      "ferramenta": "Ferramentas de Navegador"
+    },
+    {
+      "id": "psiquiatra",
+      "nome": "Psiquiatra",
+      "pericias": [
+        "intuicao",
+        "investigacao",
+        "medicina",
+        "percepcao",
+        "persuasao",
+        "provocacao"
+      ],
+      "ferramenta": "Ferramentas de Psiquiatra"
+    },
+    {
+      "id": "timoneiro",
+      "nome": "Timoneiro",
+      "pericias": [
+        "atletismo",
+        "atuacao",
+        "intuicao",
+        "percepcao",
+        "persuasao",
+        "prestidigitacao"
+      ],
+      "ferramenta": "Ferramentas de Timoneiro"
+    }
+  ]
+}
