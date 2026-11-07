@@ -1493,6 +1493,19 @@
     "dados": {
       "catalogo": {
         "id": "canhao"
+      },
+      "arma": {
+        "atributo": "des",
+        "tipoDano": "Conforme a munição",
+        "municao": true,
+        "distancia": true,
+        "alcanceNormal": 21,
+        "alcanceMaximo": 30,
+        "forja": {
+          "expertise": [
+            "deslocamento-6"
+          ]
+        }
       }
     }
   },
@@ -1519,6 +1532,19 @@
     "dados": {
       "catalogo": {
         "id": "mosquete"
+      },
+      "arma": {
+        "atributo": "des",
+        "tipoDano": "Conforme a munição",
+        "municao": true,
+        "distancia": true,
+        "alcanceNormal": 18,
+        "alcanceMaximo": 24,
+        "forja": {
+          "expertise": [
+            "critico-16"
+          ]
+        }
       }
     }
   },
@@ -1545,6 +1571,19 @@
     "dados": {
       "catalogo": {
         "id": "pistola"
+      },
+      "arma": {
+        "atributo": "des",
+        "tipoDano": "Conforme a munição",
+        "municao": true,
+        "distancia": true,
+        "alcanceNormal": 9,
+        "alcanceMaximo": 15,
+        "forja": {
+          "expertise": [
+            "dois-ataques"
+          ]
+        }
       }
     }
   },
@@ -1662,6 +1701,19 @@
     "dados": {
       "catalogo": {
         "id": "arco"
+      },
+      "arma": {
+        "atributo": "des",
+        "tipoDano": "Conforme a munição",
+        "municao": true,
+        "distancia": true,
+        "alcanceNormal": 18,
+        "alcanceMaximo": 24,
+        "forja": {
+          "expertise": [
+            "enfurecido"
+          ]
+        }
       }
     }
   },
@@ -1892,6 +1944,19 @@
     "dados": {
       "catalogo": {
         "id": "zarabatana"
+      },
+      "arma": {
+        "atributo": "des",
+        "tipoDano": "Conforme a munição",
+        "municao": true,
+        "distancia": true,
+        "alcanceNormal": 6,
+        "alcanceMaximo": 9,
+        "forja": {
+          "expertise": [
+            "impedido"
+          ]
+        }
       }
     }
   },

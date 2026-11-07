@@ -66,6 +66,8 @@ export interface MarcasDoSistema {
     destaque?: 'critico' | 'falha';
     /** Andamento do ataque contra um alvo: janela de reação aberta (`aguardando`) ou resolvido (acertou ou errou). */
     resolucao?: Resolucao;
+    /** Munição gasta neste ataque (arma por munição); `nota` traz o efeito especial (explosiva, kairoseki). */
+    municao?: { nome: string; nota: string };
     /** Esta rolagem é um dano que pode ser aplicado a um alvo (o tipo pode ser nulo). */
     dano?: { tipo: string | null };
     /** Botões do card (ex.: Dano, Dano crítico). */

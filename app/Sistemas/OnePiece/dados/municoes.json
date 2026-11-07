@@ -1,0 +1,24 @@
+{
+  "armas": {
+    "pistola": [
+      "municao-esferica",
+      "municao-perfurante",
+      "municao-de-kairoseki"
+    ],
+    "mosquete": [
+      "municao-esferica",
+      "municao-perfurante",
+      "municao-de-kairoseki"
+    ],
+    "canhao": [
+      "bola-de-chumbo",
+      "bola-explosiva"
+    ],
+    "arco": [
+      "flecha"
+    ],
+    "zarabatana": [
+      "dardo"
+    ]
+  }
+}

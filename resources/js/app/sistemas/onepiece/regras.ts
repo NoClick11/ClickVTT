@@ -115,7 +115,10 @@ export interface ItemInventario {
 export interface DadosItemOnePiece {
     armadura?: { tipo: 'leve' | 'media' | 'pesada' | 'escudo'; base: number };
     arma?: {
-        dano: string;
+        /** Dado da arma; ausente em arma por munição (`municao`), que usa o dado da munição escolhida ao atacar. */
+        dano?: string;
+        /** Arma por munição (pistola, mosquete, arco...): ao atacar escolhe-se a munição, que dá o dado e o tipo do dano e gasta 1 unidade. */
+        municao?: boolean;
         /** Atributo cujo modificador entra no ataque e no dano: qualquer um, ou `acuidade` (o maior entre Força e Destreza). */
         atributo: AtributoId | 'acuidade';
         /** Atributo do dano; sem ele (ou `null`), o dano usa o mesmo do ataque. `nenhum` = dano sem modificador. */
@@ -686,7 +689,7 @@ export function modoDaRolagem(efeitos: Efeito[], variavel: string): Rolagem {
  */
 export function dadosDeDano(f: FichaOnePiece, itens: ItensPorId, itemId: number, valores: Record<string, number> = {}): string[] {
     const arma = (itens[itemId]?.dados as DadosItemOnePiece | null | undefined)?.arma;
-    if (!arma || typeof arma.dano !== 'string') return [];
+    if (!arma || arma.municao || typeof arma.dano !== 'string') return [];
 
     // O dado da arma sobe os degraus do tipo dela (corpo a corpo ou à distância); os extras não
     const dados = [degrau(danoComForja(arma.dano, arma.forja), valores[arma.distancia ? 'passo.distancia' : 'passo.corpo'] ?? 0)];
@@ -719,6 +722,10 @@ export interface ArmaAtiva {
     expertise: string[];
     /** Arma à distância: os ataques extras à distância (Engatilhado) valem só nela. */
     distancia: boolean;
+    /** Arma por munição: o dado do dano vem da munição escolhida ao atacar. */
+    municao: boolean;
+    /** O id do item do catálogo que esta arma é (para saber qual munição serve), se houver. */
+    catalogoId: string | null;
 }
 
 /** Uma arma equipada com a forja pedida (Saijo Ô Wazamono, Espada Kokuto). Espelha `Regras::saijoEquipada`. */
@@ -789,6 +796,8 @@ export function armasAtivas(f: FichaOnePiece, itens: ItensPorId, valores: Record
                 etiquetas: etiquetasDaForja(arma.forja),
                 expertise: arma.proficiente ? (arma.forja?.expertise ?? []) : [],
                 distancia: !!arma.distancia,
+                municao: !!arma.municao,
+                catalogoId: ((item?.dados as { catalogo?: { id?: string } } | null | undefined)?.catalogo?.id as string | undefined) ?? null,
             });
         }
     }

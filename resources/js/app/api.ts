@@ -102,6 +102,7 @@ export function apiMesa(mesaId: number, atorId: number) {
             acao?: { categoria: string; tecnica?: boolean },
             alvoPersonagemId?: number | null,
             tecnica?: { nome: string; dano?: { expressao: string; tipo: string | null } | null; secundaria?: object | null },
+            municaoItemId?: number,
         ) =>
             requisitar<Mensagem>(atorId, 'POST', r('jogo.rolagens.store'), {
                 ...(alvoPersonagemId ? { alvo_personagem_id: alvoPersonagemId } : {}),
@@ -120,6 +121,7 @@ export function apiMesa(mesaId: number, atorId: number) {
                 personagem_id: personagemId,
                 ...(dano ? { dano } : {}),
                 ...(acao ? { acao } : {}),
+                ...(municaoItemId ? { municao_item_id: municaoItemId } : {}),
             }),
         /** Técnica de Salvaguarda: abre o card no chat com os alvos da área (a CD e o dano saem do servidor). */
         abrirSalvaguarda: (dados: {

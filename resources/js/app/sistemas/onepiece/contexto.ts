@@ -67,7 +67,7 @@ export interface ContextoFicha {
      */
     usarTecnica: (uso: UsoDeTecnica) => void;
     /** Teste de d20 + variável: Shift = vantagem, Ctrl/Alt = desvantagem. `acao`: a categoria que a rolagem gasta no combate. */
-    d20: (evento: MouseEvent, variavel: string, rotulo: string, acao?: { categoria: string; tecnica?: boolean }) => void;
+    d20: (evento: MouseEvent, variavel: string, rotulo: string, acao?: { categoria: string; tecnica?: boolean }, municaoItemId?: number) => void;
 }
 
 /** O dano que a Técnica rola (a expressão já com os dados da Meito e o tipo) e a Salvaguarda do efeito dela. */

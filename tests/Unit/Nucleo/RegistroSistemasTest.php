@@ -31,7 +31,7 @@ class SistemaFalso implements Sistema
         return [];
     }
 
-    public function metadadosDaRolagem(array $termos, array $variaveis, array $itens = [], array $ficha = []): array
+    public function metadadosDaRolagem(array $termos, array $variaveis, array $itens = [], array $ficha = [], array $contexto = []): array
     {
         return [];
     }

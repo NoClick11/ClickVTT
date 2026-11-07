@@ -20,6 +20,8 @@ const tipo = ref<Tipo>(inicial.armadura ? 'armadura' : inicial.arma ? 'arma' : '
 const armadura = ref({ tipo: inicial.armadura?.tipo ?? 'leve', base: inicial.armadura?.base ?? 11 });
 const arma = ref({
     dano: inicial.arma?.dano ?? '1d8',
+    /** Arma por munição: o dado e o tipo do dano vêm da munição escolhida ao atacar. */
+    municao: inicial.arma?.municao === true,
     atributo: inicial.arma?.atributo ?? 'for',
     /** Vazio = o dano usa o mesmo atributo do ataque. */
     atributoDano: (inicial.arma?.atributoDano ?? '') as string,
@@ -113,7 +115,7 @@ function montar(): Record<string, unknown> | null {
 
         return {
             arma: {
-                dano: a.dano.trim(),
+                ...(a.municao ? { municao: true } : { dano: a.dano.trim() }),
                 atributo: a.atributo,
                 ...(a.atributoDano ? { atributoDano: a.atributoDano } : {}),
                 ...(a.tipoDano.trim() ? { tipoDano: a.tipoDano.trim() } : {}),
@@ -186,7 +188,10 @@ const campoLinha = campo.replace('w-full ', '');
         </div>
 
         <div v-if="tipo === 'arma'" class="grid gap-2 sm:grid-cols-3">
-            <label
+            <label class="flex items-center gap-2 text-xs text-preto-200 sm:col-span-3"
+                ><input v-model="arma.municao" type="checkbox" class="size-4 accent-ouro-400" />Dano pela munição (pistola, arco...): escolhe a munição ao atacar</label
+            >
+            <label v-if="!arma.municao"
                 ><span :class="rotulo">Dano (dados)</span
                 ><input
                     v-model="arma.dano"

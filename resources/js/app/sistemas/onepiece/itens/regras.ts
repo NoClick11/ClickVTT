@@ -102,7 +102,17 @@ export function alcanceDaArmaDoCatalogo(a: { distancia?: [number, number]; propr
 export function dadosDoSistema(i: ItemDoCatalogo): DadosItemOnePiece & { catalogo: { id: string } } {
     const dados: DadosItemOnePiece & { catalogo: { id: string } } = { ...(i.dados ?? {}), catalogo: { id: i.id } };
     const a = i.arma;
-    if (a && a.dano && /^\d+d\d+$/.test(a.dano) && i.categoria !== 'municao') {
+    if (a && a.porMunicao && i.categoria !== 'municao') {
+        // pistola, mosquete, canhão, arco, zarabatana: o dado e o tipo do dano vêm da munição escolhida ao atacar
+        dados.arma = {
+            atributo: 'des',
+            tipoDano: a.tipoDano,
+            municao: true,
+            distancia: true,
+            ...alcanceDaArmaDoCatalogo(a),
+            ...(a.expertiseId ? { forja: { expertise: [a.expertiseId] } } : {}),
+        };
+    } else if (a && a.dano && /^\d+d\d+$/.test(a.dano) && i.categoria !== 'municao') {
         const acuidade = a.propriedades.includes('Acuidade');
         const aDistancia = !!a.distancia && !a.propriedades.some((p) => p.startsWith('Arremesso'));
         dados.arma = {

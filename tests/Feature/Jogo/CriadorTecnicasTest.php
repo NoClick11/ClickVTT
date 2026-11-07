@@ -190,7 +190,7 @@ class CriadorTecnicasTest extends TestCase
             $r->assertCreated();
             $this->assertSame($corpo['dados']['catalogo']['id'], $r->json('dados.catalogo.id'), $corpo['nome']);
             if (isset($corpo['dados']['arma'])) {
-                $this->assertSame($corpo['dados']['arma']['dano'], $r->json('dados.arma.dano'), $corpo['nome']);
+                $this->assertSame($corpo['dados']['arma']['dano'] ?? null, $r->json('dados.arma.dano'), $corpo['nome']);
             }
         }
         // o jogador não cria itens (nem do catálogo)

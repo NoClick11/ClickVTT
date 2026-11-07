@@ -77,6 +77,7 @@ const estiloBotao = (a: AcaoDaRolagem, indice: number) =>
             <header class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
                     <h4 class="truncate font-serif text-[15px] font-semibold leading-tight text-ouro-50">{{ titulo }}</h4>
+                    <p v-if="dados.sistema?.municao?.nota" class="mt-0.5 text-[11px] leading-snug text-preto-300">{{ dados.sistema.municao.nota }}</p>
                     <p class="mt-0.5 truncate font-mono text-[11px] text-preto-400">{{ resumoFormula(dados) }}</p>
                 </div>
                 <div class="flex shrink-0 gap-1">

@@ -11,16 +11,52 @@ import IndicadorD20 from '../../../nucleo/ui/IndicadorD20.vue';
 import { condicaoPorId } from '../condicoes';
 import { estilos, useFicha } from '../contexto';
 import EfeitosDialog from '../EfeitosDialog.vue';
+import { itemDoCatalogo } from '../itens';
+import { municoesDaArma } from '../itens/municoes';
 import { camposDoDadoDeVida, comSinal, DADOS_DE_VIDA, hakiDesligado, textoDeMovimento, type FichaOnePiece } from '../regras';
 
 const props = defineProps<{ ficha: FichaOnePiece; personagem: PersonagemFicha }>();
-const { editar, calc, salvar, rolar, d20, modoDe, armas, origens, acoes, rodada } = useFicha();
+const { editar, calc, salvar, rolar, d20, modoDe, armas, origens, acoes, rodada, itens } = useFicha();
 /** Ataques com arma: o 1º gasta a Ação; os seguintes valem até o limite (Ataque Extra e afins, mais os extras do turno). */
 const ataquesDaAcao = (distancia: boolean) =>
     Math.max(1, (calc.value['ataques.acao'] ?? 1) + (distancia ? (calc.value['ataques.distancia'] ?? 0) : 0));
 const ataquePermitido = (a: { distancia: boolean }) => acoes.ataque(ataquesDaAcao(a.distancia));
 /** O contador do turno (a melhor arma é a referência: a de distância soma o Engatilhado). */
 const contador = computed(() => acoes.ataque(Math.max(...armas.value.map((a) => ataquesDaAcao(a.distancia)), ataquesDaAcao(false))));
+/**
+ * Arma por munição (pistola, mosquete, arco...): o clique abre a lista das munições do inventário que servem a ela (pelo nome, Cap. 8); a escolhida dá o
+ * dado e o tipo do dano e gasta 1 unidade. O servidor confere tudo de novo.
+ */
+const escolhendoMunicao = ref<number | null>(null);
+interface PilhaDeMunicao {
+    itemId: number;
+    nome: string;
+    qtd: number;
+    dano: string | null;
+    tipoDano: string | null;
+}
+const municoesDa = (a: { catalogoId: string | null }): PilhaDeMunicao[] => {
+    const aceitas = municoesDaArma(a.catalogoId);
+    const pilhas: PilhaDeMunicao[] = [];
+    for (const secao of props.ficha.inventario ?? []) {
+        for (const ref of secao.itens ?? []) {
+            const idDoCatalogo = (itens.value[ref.item_id]?.dados as { catalogo?: { id?: string } } | null | undefined)?.catalogo?.id;
+            if (!idDoCatalogo || ref.qtd <= 0 || !aceitas.includes(idDoCatalogo)) continue;
+            const entrada = itemDoCatalogo(idDoCatalogo);
+            pilhas.push({ itemId: ref.item_id, nome: entrada?.nome ?? 'Munição', qtd: ref.qtd, dano: entrada?.arma?.dano ?? null, tipoDano: entrada?.arma?.tipoDano ?? null });
+        }
+    }
+
+    return pilhas;
+};
+function atacarComArma(evento: MouseEvent, a: { itemId: number; nome: string; municao: boolean }) {
+    if (!a.municao) return d20(evento, `arma.${a.itemId}.ataque`, a.nome, { categoria: 'padrao' });
+    escolhendoMunicao.value = escolhendoMunicao.value === a.itemId ? null : a.itemId;
+}
+function atirar(evento: MouseEvent, a: { itemId: number; nome: string }, pilha: PilhaDeMunicao) {
+    escolhendoMunicao.value = null;
+    d20(evento, `arma.${a.itemId}.ataque`, `${a.nome} (${pilha.nome})`, { categoria: 'padrao' }, pilha.itemId);
+}
 /** Só com o combate em curso o contador de ataques do turno faz sentido. */
 const emCombate = computed(() => rodada.value !== null);
 
@@ -357,13 +393,18 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                         type="button"
                         class="group flex min-h-12 w-full items-center gap-2.5 rounded-lg border border-preto-700 bg-gradient-to-br from-preto-800/70 to-preto-950 px-2 py-1.5 text-left transition hover:border-ouro-400 hover:from-ouro-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                         :aria-label="`Atacar com ${a.nome}: ${comSinal(a.ataque)} para acertar, dano ${a.dano}${a.danoBonus ? comSinal(a.danoBonus) : ''}`"
-                        :disabled="!ataquePermitido(a).ok"
+                        :disabled="!ataquePermitido(a).ok || (a.municao && !municoesDa(a).length)"
+                        :aria-expanded="a.municao ? escolhendoMunicao === a.itemId : undefined"
                         :title="
-                            ataquePermitido(a).ok
+                            a.municao && !municoesDa(a).length
+                                ? `Sem munição que sirva a ${a.nome} no inventário`
+                                : a.municao
+                                  ? `Escolha a munição para atacar com ${a.nome}`
+                                  : ataquePermitido(a).ok
                                 ? `Clique para atacar com ${a.nome} (${ataquePermitido(a).feitos > 0 ? 'ataque ' + (ataquePermitido(a).feitos + 1) + ' de ' + ataquePermitido(a).max : 'gasta a ' + acoes.rotulo('padrao').toLowerCase()}). Shift = vantagem, Ctrl = desvantagem.`
                                 : ataquePermitido(a).motivo
                         "
-                        @click="d20($event, `arma.${a.itemId}.ataque`, a.nome, { categoria: 'padrao' })"
+                        @click="atacarComArma($event, a)"
                     >
                         <span class="relative size-8 shrink-0 transition group-hover:scale-110">
                             <DadoIcone :faces="20" />
@@ -383,8 +424,10 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                                 >{{ a.nome }}</span
                             >
                             <span class="mt-0.5 block truncate font-mono text-[11px] text-preto-400"
-                                >{{ a.dano }}{{ a.danoBonus ? comSinal(a.danoBonus) : ''
-                                }}<template v-if="a.tipoDano"> · {{ a.tipoDano }}</template></span
+                                ><template v-if="a.municao">dano pela munição{{ a.danoBonus ? comSinal(a.danoBonus) : '' }}</template
+                                ><template v-else
+                                    >{{ a.dano }}{{ a.danoBonus ? comSinal(a.danoBonus) : '' }}<template v-if="a.tipoDano"> · {{ a.tipoDano }}</template></template
+                                ></span
                             >
                             <span
                                 v-if="a.etiquetas.length"
@@ -403,6 +446,24 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                             >
                         </span>
                     </button>
+                    <ul
+                        v-if="a.municao && escolhendoMunicao === a.itemId"
+                        class="mt-1 grid gap-1 rounded-lg border border-ouro-500/30 bg-preto-950/90 p-1.5"
+                        :aria-label="`Munição para ${a.nome}`"
+                    >
+                        <li v-for="pilha in municoesDa(a)" :key="pilha.itemId">
+                            <button
+                                type="button"
+                                class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-preto-100 transition hover:bg-ouro-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                                :title="`Atirar com ${pilha.nome}: gasta 1 unidade`"
+                                @click="atirar($event, a, pilha)"
+                            >
+                                <span class="flex-1 font-semibold">{{ pilha.nome }}</span>
+                                <span class="font-mono text-[11px] text-preto-400">{{ pilha.dano }} {{ pilha.tipoDano }}</span>
+                                <span class="rounded bg-preto-800 px-1.5 text-[11px] tabular-nums text-ouro-200">×{{ pilha.qtd }}</span>
+                            </button>
+                        </li>
+                    </ul>
                 </li>
             </ul>
             <p v-else class="text-[10px] text-preto-500">Equipe uma arma (o mestre cria o item com dado de dano) e ela aparece aqui.</p>

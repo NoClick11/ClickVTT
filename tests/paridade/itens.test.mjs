@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { CATALOGO_DE_ITENS, CATEGORIAS, RARIDADES, itemDoCatalogo, itensDaCategoria } from '../../resources/js/app/sistemas/onepiece/itens/index.ts';
+import { MUNICOES_DA_ARMA, municoesDaArma, TODAS_AS_MUNICOES } from '../../resources/js/app/sistemas/onepiece/itens/municoes.ts';
 import { buscarNoCatalogo, dadosDoSistema, itemParaAMesa, pesoFormatado, precoDeCompra, precoDeVenda, precoFormatado } from '../../resources/js/app/sistemas/onepiece/itens/regras.ts';
 
 const catalogo = JSON.parse(readFileSync(new URL('../../app/Sistemas/OnePiece/dados/itens.json', import.meta.url), 'utf8'));
@@ -121,9 +122,23 @@ test('itens: conversão para o item da mesa (arma, escudo, vínculo com o catál
     assert.deepEqual([dadosDoSistema(itemDoCatalogo('lanca')).arma.alcanceNormal].length, 1); // arma com Alcance/Arremesso também leva alcance
     assert.equal(dadosDoSistema(itemDoCatalogo('shuriken')).arma.atributo, 'acuidade');
     assert.equal(dadosDoSistema(itemDoCatalogo('bastao')).arma, undefined); // marcial: dano vem do desarmado
-    assert.equal(dadosDoSistema(itemDoCatalogo('pistola')).arma, undefined); // dano pela munição
+    const pistola = dadosDoSistema(itemDoCatalogo('pistola')).arma; // dano pela munição escolhida ao atacar
+    assert.equal(pistola.municao, true);
+    assert.equal(pistola.dano, undefined);
+    assert.equal(pistola.atributo, 'des');
     assert.equal(dadosDoSistema(itemDoCatalogo('flecha')).arma, undefined); // munição não é arma
     assert.deepEqual(dadosDoSistema(itemDoCatalogo('escudo-de-ferro')).armadura, { tipo: 'escudo', base: 1 });
     assert.ok(itemParaAMesa(itemDoCatalogo('dinamite')).descricao.length <= 2000);
     for (const i of CATALOGO_DE_ITENS) assert.ok(itemParaAMesa(i).descricao.length <= 2000, i.id);
+});
+
+test('a munição de cada arma confere com o servidor e todas existem no catálogo', () => {
+    const php = JSON.parse(readFileSync(new URL('../../app/Sistemas/OnePiece/dados/municoes.json', import.meta.url), 'utf8'));
+    assert.deepEqual(JSON.parse(JSON.stringify(MUNICOES_DA_ARMA)), php.armas);
+    for (const [arma, municoes] of Object.entries(MUNICOES_DA_ARMA)) {
+        assert.ok(itemDoCatalogo(arma), arma);
+        for (const m of municoes) assert.equal(itemDoCatalogo(m)?.categoria, 'municao', m);
+    }
+    assert.deepEqual(municoesDaArma('arco'), ['flecha']);
+    assert.deepEqual(municoesDaArma(null), TODAS_AS_MUNICOES); // arma sem item do catálogo: qualquer munição
 });

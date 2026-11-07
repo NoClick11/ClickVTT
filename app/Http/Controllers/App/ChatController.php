@@ -65,6 +65,8 @@ class ChatController extends Controller
             'acao.tecnica' => ['nullable', 'boolean'],
             'dano.fator' => ['nullable', 'numeric', 'between:0,4'], // fração do dano que vale (0,5 = metade, ex.: arma à distância do anão)
             // Ataque de uma Técnica: o card do chat oferece o dano dela (e o crítico) depois do acerto, e mostra a Salvaguarda do efeito.
+            // Arma por munição (pistola, arco...): a munição do inventário escolhida para este ataque (gasta 1 unidade)
+            'municao_item_id' => ['nullable', 'integer'],
             'tecnica' => ['nullable', 'array'],
             'tecnica.nome' => ['required_with:tecnica', 'string', 'max:120'],
             'tecnica.dano' => ['nullable', 'array'],
@@ -85,6 +87,11 @@ class ChatController extends Controller
             \App\Nucleo\Combate\Equipes::exigirPodeAtingir($mesa, (int) $dados['personagem_id'], (int) $dados['alvo_personagem_id'], 'alvo_personagem_id');
         }
         [$sistema, $variaveis, $itens, $ficha] = $this->variaveis($mesa, $dados['personagem_id'] ?? null, $sistemas);
+        // Arma por munição: a munição escolhida tem de existir, servir à arma e ter unidades; o que ela dá é o dado do dano
+        $municao = null;
+        if (preg_match('/@arma\.(\d+)\.ataque/', $dados['expressao'], $m) && ($itens[(int) $m[1]]['dados']['arma']['municao'] ?? false)) {
+            $municao = \App\Sistemas\OnePiece\Municoes::escolhida($ficha, $itens, (int) $m[1], isset($dados['municao_item_id']) ? (int) $dados['municao_item_id'] : null);
+        }
         if (isset($dados['acao']) && ! empty($dados['personagem_id'])) {
             $combate->gastar($mesa, $acesso, $dados['personagem_id'], $dados['acao']['categoria'], (bool) ($dados['acao']['tecnica'] ?? false), $this->ataquesPorAcao($dados['expressao'], $variaveis, $itens));
         }
@@ -98,7 +105,10 @@ class ChatController extends Controller
             \App\Sistemas\OnePiece\ConsumoDaSaijo::consumir($mesa, $dados['personagem_id'] ?? null, $sistema, $itens, $ficha);
         }
         // O sistema pode marcar a rolagem (ex.: ataque crítico); o núcleo só guarda e repassa.
-        $marcas = $sistema?->metadadosDaRolagem($resultado['termos'], $variaveis, $itens, $ficha) ?? [];
+        $marcas = $sistema?->metadadosDaRolagem($resultado['termos'], $variaveis, $itens, $ficha, ['municao' => $municao]) ?? [];
+        if ($municao) {
+            \App\Sistemas\OnePiece\Municoes::consumir($mesa, (int) $dados['personagem_id'], $municao['item_id']);
+        }
         if (is_array($dados['tecnica'] ?? null) && $this->ehAtaque($resultado['termos'])) {
             $marcas = [...$marcas, ...$this->marcasDoAtaqueDeTecnica($dados['tecnica'], $resultado['termos'])];
         }

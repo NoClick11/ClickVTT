@@ -339,7 +339,7 @@ final class Regras
      * @param  array<string, mixed>  $ficha  a ficha do personagem (para os dados extras dos buffs)
      * @return array<string, mixed>
      */
-    public static function metadadosDaRolagem(array $termos, array $variaveis, array $itens = [], array $ficha = []): array
+    public static function metadadosDaRolagem(array $termos, array $variaveis, array $itens = [], array $ficha = [], ?array $municao = null): array
     {
         $arma = null;
         foreach ($termos as $t) {
@@ -375,12 +375,15 @@ final class Regras
             }
         }
 
-        $dados = self::dadosDeDano($ficha, $itens, $arma, $variaveis);
+        $dados = self::dadosDeDano($ficha, $itens, $arma, $variaveis, $municao);
         if ($dados !== [] && isset($variaveis["arma.{$arma}.dano"]) && ($meta['destaque'] ?? null) !== 'falha') {
             $nome = (string) ($itens[$arma]['nome'] ?? 'Arma');
             $bonus = $variaveis["arma.{$arma}.dano"];
             // O tipo do dano da arma segue com o botão: a rolagem de dano carrega o tipo para o dano aplicado respeitar resistências.
-            $tipoDano = ($itens[$arma]['dados']['arma']['tipoDano'] ?? null) ?: null;
+            $tipoDano = ($municao['tipo'] ?? $itens[$arma]['dados']['arma']['tipoDano'] ?? null) ?: null;
+            if ($municao) {
+                $meta['municao'] = ['nome' => $municao['nome'], 'nota' => $municao['nota']];
+            }
             // Arma à distância do anão (Armas Reduzidas): o dano TOTAL sai pela metade (fator aplicado no dano aplicado ao alvo).
             $fator = ($itens[$arma]['dados']['arma']['distancia'] ?? false) ? max(0, (int) ($variaveis['dano.distancia.pct'] ?? 100)) / 100 : 1;
             $acao = function (string $id, string $rotulo, array $termos, string $rotuloRolagem) use ($arma, $bonus, $tipoDano, $fator) {
@@ -440,9 +443,17 @@ final class Regras
      * @param  array<int, array>  $itens
      * @return list<string>
      */
-    public static function dadosDeDano(array $f, array $itens, int $itemId, array $variaveis = []): array
+    public static function dadosDeDano(array $f, array $itens, int $itemId, array $variaveis = [], ?array $municao = null): array
     {
         $arma = $itens[$itemId]['dados']['arma'] ?? null;
+        // arma por munição: o dado base é o da munição escolhida (sem ela não há dano)
+        if (is_array($arma) && ! empty($arma['municao'])) {
+            if (! $municao) {
+                return [];
+            }
+            $arma['dano'] = $municao['dano'];
+            $arma['forja'] = null;
+        }
         if (! is_array($arma) || ! is_string($arma['dano'] ?? null)) {
             return [];
         }

@@ -74,7 +74,15 @@ class Itens
     {
         $dados = ($i['dados'] ?? []) + ['catalogo' => ['id' => $i['id']]];
         $a = $i['arma'] ?? null;
-        if ($a && ! empty($a['dano']) && preg_match('/^\d+d\d+$/', $a['dano']) && $i['categoria'] !== 'municao') {
+        if ($a && ! empty($a['porMunicao']) && $i['categoria'] !== 'municao') {
+            // pistola, mosquete, canhão, arco, zarabatana: o dado e o tipo do dano vêm da munição escolhida ao atacar
+            $dados['arma'] = [
+                'atributo' => 'des',
+                'tipoDano' => $a['tipoDano'],
+                'municao' => true,
+                'distancia' => true,
+            ] + self::alcanceDaArma($a) + (! empty($a['expertiseId']) ? ['forja' => ['expertise' => [$a['expertiseId']]]] : []);
+        } elseif ($a && ! empty($a['dano']) && preg_match('/^\d+d\d+$/', $a['dano']) && $i['categoria'] !== 'municao') {
             $aDistancia = ! empty($a['distancia']) && ! array_filter($a['propriedades'], fn ($p) => str_starts_with($p, 'Arremesso'));
             $dados['arma'] = [
                 'dano' => $a['dano'],

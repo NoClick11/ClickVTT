@@ -792,12 +792,13 @@ type RolagemDaFicha = [
     acao?: { categoria: string; tecnica?: boolean },
     alvoPersonagemId?: number | null,
     tecnica?: { nome: string; dano?: { expressao: string; tipo: string | null } | null; secundaria?: object | null },
+    municaoItemId?: number,
 ];
 
 /** Rolagem vinda da ficha: as `@variáveis` são resolvidas no servidor pela ficha salva do personagem. */
-async function rolarDaFicha(personagemId: number, ...[expressao, rotulo, aoRolar, dano, acao, alvoPersonagemId, tecnica]: RolagemDaFicha) {
+async function rolarDaFicha(personagemId: number, ...[expressao, rotulo, aoRolar, dano, acao, alvoPersonagemId, tecnica, municaoItemId]: RolagemDaFicha) {
     try {
-        const m = await api.rolar(expressao, 'todos', personagemId, rotulo, dano, acao, alvoPersonagemId, tecnica);
+        const m = await api.rolar(expressao, 'todos', personagemId, rotulo, dano, acao, alvoPersonagemId, tecnica, municaoItemId);
         aoNovaMensagem(m);
         if (m.dados) aoRolar?.(m.dados.total);
     } catch (e) {

@@ -36,6 +36,7 @@ const emit = defineEmits<{
         acao?: { categoria: string; tecnica?: boolean },
         alvoPersonagemId?: number | null,
         tecnica?: { nome: string; dano?: DanoDaTecnica | null; secundaria?: EfeitoSecundario | null },
+        municaoItemId?: number,
     ];
     /** Usar uma Técnica: a mesa escolhe os alvos (a área no mapa), cobra o custo e rola ou abre a Salvaguarda no chat. */
     usarTecnica: [uso: UsoDeTecnica];
@@ -112,7 +113,7 @@ provide(CHAVE_FICHA, {
         todas: () => acoesDoCombate.categorias.value,
     },
     // Shift = vantagem, Ctrl/Alt = desvantagem (manual vence); sem tecla, valem os efeitos dos itens.
-    d20: (evento, variavel, rotulo, acao) => {
+    d20: (evento, variavel, rotulo, acao, municaoItemId) => {
         const manual = evento.shiftKey ? 'vantagem' : evento.ctrlKey || evento.altKey ? 'desvantagem' : null;
         const modo = manual ?? modoDe(variavel);
         const dados = modo === 'vantagem' ? '2d20kh1' : modo === 'desvantagem' ? '2d20kl1' : '1d20';
@@ -126,6 +127,8 @@ provide(CHAVE_FICHA, {
             undefined,
             acao,
             ehAtaque ? alvoDoAtaque.value : null,
+            undefined,
+            municaoItemId,
         );
     },
 });

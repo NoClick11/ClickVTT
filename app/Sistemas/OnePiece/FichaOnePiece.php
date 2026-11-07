@@ -501,7 +501,9 @@ final class FichaOnePiece
         return [
             'dados.armadura.tipo' => ['required_with:dados.armadura.base', 'string', Rule::in(self::TIPOS_ARMADURA)],
             'dados.armadura.base' => ['required_with:dados.armadura.tipo', 'integer:strict', 'between:0,30'],
-            'dados.arma.dano' => ['required_with:dados.arma.atributo', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/', function (string $atributo, mixed $v, \Closure $fail) {
+            // Arma por munição (pistola, arco...) não tem dado: ele vem da munição escolhida ao atacar
+            'dados.arma.municao' => ['boolean:strict'],
+            'dados.arma.dano' => ['exclude_if:dados.arma.municao,true', 'required_with:dados.arma.atributo', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/', function (string $atributo, mixed $v, \Closure $fail) {
                 // A forja da arma (Meito só em cortantes, Kokuto/Yoto só em Meito, Balanço exige Densidade...) é conferida junto do dano.
                 $forja = request()->input('dados.arma.forja');
                 if (is_array($forja)) {
@@ -510,7 +512,7 @@ final class FichaOnePiece
                     }
                 }
             }],
-            'dados.arma.atributo' => ['required_with:dados.arma.dano', 'string', Rule::in([...self::ATRIBUTOS, 'acuidade'])],
+            'dados.arma.atributo' => ['required_with:dados.arma.dano,dados.arma.municao', 'string', Rule::in([...self::ATRIBUTOS, 'acuidade'])],
             // Atributo do dano; sem ele, o dano usa o mesmo do ataque. `nenhum` = dano sem modificador (mão secundária).
             'dados.arma.atributoDano' => ['nullable', 'string', Rule::in([...self::ATRIBUTOS, 'acuidade', 'nenhum'])],
             'dados.arma.tipoDano' => ['nullable', 'string', 'max:30'],
@@ -530,8 +532,8 @@ final class FichaOnePiece
             // Arma à distância (o anão com Armas Reduzidas causa metade do dano) e tamanho da arma (gigantes só usam armas de gigante).
             'dados.arma.distancia' => ['boolean:strict'],
             // Alcance (m) é OBRIGATÓRIO em toda arma: à distância, normal e máximo; corpo a corpo, o alcance da arma nos dois
-            'dados.arma.alcanceNormal' => ['required_with:dados.arma.dano', 'numeric', 'between:0.5,1000'],
-            'dados.arma.alcanceMaximo' => ['required_with:dados.arma.dano', 'numeric', 'between:0.5,1000', 'gte:dados.arma.alcanceNormal'],
+            'dados.arma.alcanceNormal' => ['required_with:dados.arma.dano,dados.arma.municao', 'numeric', 'between:0.5,1000'],
+            'dados.arma.alcanceMaximo' => ['required_with:dados.arma.dano,dados.arma.municao', 'numeric', 'between:0.5,1000', 'gte:dados.arma.alcanceNormal'],
             'dados.arma.tamanho' => ['nullable', 'string', Rule::in(['padrao', 'gigante'])],
             'dados.arma.margemCritica' => ['integer:strict', 'between:10,20'], // d20 puro igual ou maior é crítico (padrão 20)
             // Forja da arma (Meito, Kokuto, Yoto, Expertise e melhorias de Pontos de Forja); o conteúdo é conferido por `Forja::problemas`.
