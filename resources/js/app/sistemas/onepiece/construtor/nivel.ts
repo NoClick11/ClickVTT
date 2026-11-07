@@ -8,11 +8,12 @@
  */
 import { camposDaAkuma } from '../akuma/regras.ts';
 import { ATRIBUTOS, bonusProficiencia, usosMax, type AtributoId, type Caracteristica, type FichaOnePiece } from '../regras.ts';
-import { estiloPorId, tecnicaDoEstilo, tecnicasDoEstiloNoNivel } from './dados/estilos.ts';
+import { estiloPorId, tecnicaDoEstilo, tecnicasDoEstiloNoNivel, tracosDoEstiloNoNivel } from './dados/estilos.ts';
 import { hbPorId, OPCOES_QUEBRADOR } from './dados/habilidades-basicas.ts';
 import { maestriaPorId, NIVEIS_DE_MAESTRIA, problemasDaMaestria } from './dados/maestrias.ts';
 import {
     atributosComAprimoramentoInato,
+    caracteristicaDe,
     caracteristicasDaMaestria,
     caracteristicasDasHB,
     dadoDeVidaFinal,
@@ -202,8 +203,14 @@ export function camposDoNivel(f: FichaOnePiece, esc: EscolhasDoNivel): Record<st
         campos.maestria = maestriaId;
         campos.tracosDeMaestria = tracosM;
     }
+    // traços do estilo que passam a valer neste nível (os de nível maior não vêm na criação)
+    const jaTem = new Set((f.caracteristicas ?? []).filter((c) => c.builder === 'estilo' && !c.hb).map((c) => c.nome));
+    const tracosNovos = tracosDoEstiloNoNivel(estilo, f.estiloCaminho, novo)
+        .filter((t) => !jaTem.has(t.nome))
+        .map((traco) => caracteristicaDe({ traco, origem: estilo.nome, builder: 'estilo' }, novo));
     campos.caracteristicas = [
         ...(f.caracteristicas ?? []).filter((c) => !c.hb && c.builder !== 'maestria').map(ajustar),
+        ...tracosNovos,
         ...novasHB,
         ...caracteristicasDaMaestria(maestriaId, tracosM, novo),
     ];

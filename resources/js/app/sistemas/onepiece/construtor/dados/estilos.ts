@@ -662,6 +662,11 @@ export function tracosDoEstiloEscolhido(estilo: EstiloDados, caminho: string | n
     });
 }
 
+/** Os traços do estilo que o personagem já tem neste nível (os de nível maior entram ao subir de nível). */
+export function tracosDoEstiloNoNivel(estilo: EstiloDados, caminho: string | null | undefined, nivel: number): TracoDados[] {
+    return tracosDoEstiloEscolhido(estilo, caminho).filter((t) => (t.nivelMin ?? 1) <= nivel);
+}
+
 /** As técnicas do estilo que o personagem já tem neste nível (as do outro caminho só depois de `herdaTudoEm`). */
 export function tecnicasDoEstiloNoNivel(
     estilo: EstiloDados,

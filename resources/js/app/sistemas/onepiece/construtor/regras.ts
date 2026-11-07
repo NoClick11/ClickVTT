@@ -27,7 +27,7 @@ import {
 } from '../regras.ts';
 import { antecedentePorId, comAumentoDeAntecedente } from './dados/antecedentes.ts';
 import { ESPECIES, TRACO_CULTURAL } from './dados/especies.ts';
-import { atributoPrimarioDe, estiloPorId, tecnicaDoEstilo, tecnicasDoEstiloNoNivel, tracosDoEstiloEscolhido } from './dados/estilos.ts';
+import { atributoPrimarioDe, estiloPorId, tecnicaDoEstilo, tecnicasDoEstiloNoNivel, tracosDoEstiloNoNivel } from './dados/estilos.ts';
 import { hbPorId, OPCOES_QUEBRADOR } from './dados/habilidades-basicas.ts';
 import { maestriaPorId } from './dados/maestrias.ts';
 import { NIVEIS_PRECONCEITO, type EspecieDados, type Movimento, type TracoDados, type VarianteDados } from './dados/tipos.ts';
@@ -753,7 +753,7 @@ export function camposDaCriacao(
         geradas.push(...caracteristicasDasHB(hbs, atributoPrimarioDe(estilo, e.estilo.primario) ?? estilo.atributosPrimarios[0], nivel, dadoBase));
     if (estilo)
         geradas.push(
-            ...tracosDoEstiloEscolhido(estilo, e.estilo.caminho).map((traco) =>
+            ...tracosDoEstiloNoNivel(estilo, e.estilo.caminho, nivel).map((traco) =>
                 caracteristicaDe({ traco, origem: estilo.nome, builder: 'estilo' }, nivel),
             ),
         );

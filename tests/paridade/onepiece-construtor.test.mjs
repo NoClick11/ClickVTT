@@ -430,15 +430,20 @@ test('Atirador: PV d8, salvaguardas DES e SAB, 3 perícias, atributo primário e
     assert.ok(campos.proficienciasArmas.includes('Armas de Fogo'));
 });
 
-test('Atirador: as características do caminho vêm com o nível mínimo; o outro caminho só no 11º (Rei Atirador)', () => {
+test('Atirador: no 1º nível só vêm as características do nível; as outras entram ao subir (o outro caminho só no 11º)', () => {
     const nomes = (c) => c.caracteristicas.map((x) => x.nome);
     const { campos } = camposDaCriacao(atirador('sniper'));
     assert.ok(nomes(campos).includes('Corrida Contínua'));
-    const gunFu = campos.caracteristicas.find((c) => c.nome === 'Gun-Fu');
-    assert.equal(gunFu.nivelMin, 11); // do Duelista, só com o Rei Atirador
-    assert.equal(campos.caracteristicas.find((c) => c.nome === 'Corrida Contínua').nivelMin, undefined);
-    assert.equal(campos.caracteristicas.find((c) => c.nome === 'Guarda Astuta: Sentido de Perigo').nivelMin, 6);
-    assert.ok(campos.caracteristicas.every((c) => c.builder === 'estilo' || c.builder === 'especie' || c.builder === 'variacao' || !c.builder));
+    for (const n of ['Gun-Fu', 'Guarda Astuta: Sentido de Perigo', 'Guarda Astuta: Rompante Defensivo', 'Atirador de Elite'])
+        assert.ok(!nomes(campos).includes(n), `${n} não vem no 1º nível`);
+    assert.ok(campos.caracteristicas.every((c) => (c.nivelMin ?? 1) <= 1));
+    const no = (nivel) => nomes(camposDaCriacao(atirador('sniper'), { nivel }).campos);
+    assert.ok(no(2).includes('Guarda Astuta: Rompante Defensivo'));
+    assert.ok(!no(5).includes('Guarda Astuta: Sentido de Perigo'));
+    assert.ok(no(6).includes('Guarda Astuta: Sentido de Perigo'));
+    assert.ok(!no(10).includes('Gun-Fu'));
+    assert.ok(no(11).includes('Gun-Fu')); // Rei Atirador
+    assert.ok(camposDaCriacao(atirador('sniper')).campos.caracteristicas.every((c) => c.builder === 'estilo' || c.builder === 'especie' || c.builder === 'variacao' || !c.builder));
 });
 
 test('Atirador: as técnicas entram pelo nível (1º: técnica de combate e auxiliar; o outro caminho só no 11º)', () => {
@@ -570,6 +575,9 @@ test('subir de nível: o 2º nível exige HB (sem repetir), dá PP, técnicas e 
     assert.equal(campos['pv.max'], f.pv.max + 6);
     assert.ok(campos.caracteristicas.some((c) => c.hb === 'sortudo'));
     assert.equal(campos.habilidadesBasicas.length, 3);
+    // os traços do estilo do 2º nível entram agora (e não duplicam ao subir de novo)
+    assert.ok(!f.caracteristicas.some((c) => c.nome === 'Guarda Astuta: Rompante Defensivo'));
+    assert.equal(campos.caracteristicas.filter((c) => c.nome === 'Guarda Astuta: Rompante Defensivo').length, 1);
 });
 
 test('subir de nível: o 3º nível traz a 2ª técnica de combate e o 4º dá AVA (+2 ou +1/+1, teto 20) ou troca por HB', () => {
