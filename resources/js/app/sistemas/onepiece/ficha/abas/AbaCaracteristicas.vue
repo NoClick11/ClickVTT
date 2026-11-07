@@ -6,7 +6,15 @@ import { clonar } from '../../../../nucleo/ficha/caminho';
 import { formatoDeResumo } from '../../alvos';
 import { estilos, useFicha } from '../../contexto';
 import EditorCaracteristicaDialog from '../../EditorCaracteristicaDialog.vue';
-import { comBuffAlternado, expandirRolagem, usosMax, type AcaoCaracteristica, type Caracteristica, type FichaOnePiece } from '../../regras';
+import {
+    comBuffAlternado,
+    expandirRolagem,
+    hakiDesligado,
+    usosMax,
+    type AcaoCaracteristica,
+    type Caracteristica,
+    type FichaOnePiece,
+} from '../../regras';
 
 const props = defineProps<{ ficha: FichaOnePiece }>();
 const { editar, salvar, calc, rolar, rodada, acao: executarAcao, acoes, modoDe } = useFicha();
@@ -106,7 +114,8 @@ const maxUsos = (c: Caracteristica) => usosMax(c, calc.value.prof, calc.value.ni
 const gastaUso = (c: Caracteristica) => !c.ativa && !!c.usos && maxUsos(c) > 0;
 const semUsos = (c: Caracteristica) => gastaUso(c) && c.usos!.atual <= 0;
 /** Os efeitos de uma ativa desligada não contam: aparecem apagados. */
-const conta = (c: Caracteristica) => c.tipo === 'passiva' || c.ativa === true;
+const apagada = (c: Caracteristica) => hakiDesligado(c, props.ficha);
+const conta = (c: Caracteristica) => !apagada(c) && (c.tipo === 'passiva' || c.ativa === true);
 
 // criar e editar (diálogo)
 const dialogoAberto = ref(false);
@@ -150,7 +159,9 @@ function aoSalvar(c: Caracteristica) {
                                     title="Categoria de ação que esta característica gasta"
                                     >{{ acoes.rotulo(c.acao) }}</span
                                 ></span
-                            ><span class="block truncate text-xs text-preto-400">{{ c.origem }}</span></span
+                            ><span class="block truncate text-xs text-preto-400"
+                                >{{ c.origem }}<template v-if="apagada(c)"> · Haki desligado</template></span
+                            ></span
                         >
                         <!-- interruptor do buff: só para ativas que têm efeitos -->
                         <button
@@ -167,7 +178,7 @@ function aoSalvar(c: Caracteristica) {
                                       ? 'cursor-not-allowed border-preto-700 text-preto-500 opacity-60'
                                       : 'border-preto-600 text-preto-300 hover:border-ouro-500/50 hover:text-ouro-100'
                             "
-                            :disabled="semUsos(c) || !podeLigar(c).ok"
+                            :disabled="semUsos(c) || !podeLigar(c).ok || apagada(c)"
                             :title="
                                 !podeLigar(c).ok
                                     ? podeLigar(c).motivo
@@ -244,7 +255,7 @@ function aoSalvar(c: Caracteristica) {
                                 <button
                                     type="button"
                                     class="rounded-md border border-red-400/50 px-2 py-0.5 text-xs font-semibold text-red-100 transition hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 disabled:opacity-40"
-                                    :disabled="!c.usos || c.usos.atual <= 0 || naRodadaBloqueada(c) || !acoes.pode(a.acao).ok"
+                                    :disabled="apagada(c) || !c.usos || c.usos.atual <= 0 || naRodadaBloqueada(c) || !acoes.pode(a.acao).ok"
                                     :title="acoes.pode(a.acao).ok ? undefined : acoes.pode(a.acao).motivo"
                                     @click="rolarDadoExtra(i, a.acao)"
                                 >
@@ -255,7 +266,7 @@ function aoSalvar(c: Caracteristica) {
                                 v-else
                                 type="button"
                                 class="rounded-md border border-ouro-500/50 px-2 py-0.5 text-xs font-semibold text-ouro-100 transition hover:bg-ouro-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
-                                :disabled="!acoes.pode(a.acao).ok || (a.usa && (!c.usos || c.usos.atual <= 0))"
+                                :disabled="apagada(c) || !acoes.pode(a.acao).ok || (a.usa && (!c.usos || c.usos.atual <= 0))"
                                 :title="
                                     acoes.pode(a.acao).ok
                                         ? a.alvo === 'mirado'

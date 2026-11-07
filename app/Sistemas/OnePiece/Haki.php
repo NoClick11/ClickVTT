@@ -37,6 +37,7 @@ class Haki
     public static function padrao(): array
     {
         return [
+            'ativo' => false,
             'liberado' => false,
             'rei' => false,
             'prematuroNivel' => 0,

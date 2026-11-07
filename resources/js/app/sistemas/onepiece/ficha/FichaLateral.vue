@@ -11,7 +11,7 @@ import IndicadorD20 from '../../../nucleo/ui/IndicadorD20.vue';
 import { condicaoPorId } from '../condicoes';
 import { estilos, useFicha } from '../contexto';
 import EfeitosDialog from '../EfeitosDialog.vue';
-import { camposDoDadoDeVida, comSinal, DADOS_DE_VIDA, textoDeMovimento, type FichaOnePiece } from '../regras';
+import { camposDoDadoDeVida, comSinal, DADOS_DE_VIDA, hakiDesligado, textoDeMovimento, type FichaOnePiece } from '../regras';
 
 const props = defineProps<{ ficha: FichaOnePiece; personagem: PersonagemFicha }>();
 const { editar, calc, salvar, rolar, d20, modoDe, armas, origens, acoes } = useFicha();
@@ -39,7 +39,11 @@ const deslocamentoTexto = computed(() => {
 const alcanceCorpo = computed(() => String((calc.value['alcance.corpo'] ?? 15) / 10).replace('.', ',') + ' m');
 /** Etiquetas de combate das características que valem agora (passivas e ativas ligadas). */
 const etiquetas = computed(() => [
-    ...new Set(props.ficha.caracteristicas.filter((c) => c.tipo === 'passiva' || c.ativa === true).flatMap((c) => c.etiquetas ?? [])),
+    ...new Set(
+        props.ficha.caracteristicas
+            .filter((c) => !hakiDesligado(c, props.ficha) && (c.tipo === 'passiva' || c.ativa === true))
+            .flatMap((c) => c.etiquetas ?? []),
+    ),
 ]);
 const efeitosAberto = ref(false);
 const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) => condicaoPorId(id)).filter((c) => c !== undefined));

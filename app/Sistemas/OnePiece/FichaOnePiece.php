@@ -152,6 +152,7 @@ final class FichaOnePiece
         $r['estiloId'] = ['nullable', 'string', 'max:40'];
         // Haki: `liberado`, `rei`, `prematuroNivel`, `extras` e `restritos` só o mestre grava (FichaController); o resto é do dono
         $r['haki'] = ['array'];
+        $r['haki.ativo'] = ['boolean:strict'];
         foreach (['liberado', 'rei'] as $c) {
             $r["haki.{$c}"] = ['boolean:strict'];
         }

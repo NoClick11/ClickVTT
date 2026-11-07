@@ -60,6 +60,12 @@ final class Regras
     }
 
     /** A característica vale neste nível? Sem `nivelMin`/`nivelMax` vale sempre. */
+    /** Características do Haki só valem com o interruptor "Haki ativo" ligado. */
+    public static function hakiDesligado(array $c, array $ficha): bool
+    {
+        return ($c['builder'] ?? null) === 'haki' && empty($ficha['haki']['ativo']);
+    }
+
     public static function ativaNoNivel(array $c, int $nivel): bool
     {
         return $nivel >= (int) ($c['nivelMin'] ?? 1) && $nivel <= (int) ($c['nivelMax'] ?? 99);
@@ -108,7 +114,7 @@ final class Regras
         // Características com buffs: a passiva sempre vale; a ativa, só ligada (ex.: Fúria, Aura de Proteção).
         // Uma característica de nível (`nivelMin`/`nivelMax`, ex.: as faixas das Habilidades Básicas) só vale dentro da faixa.
         foreach ($f['caracteristicas'] ?? [] as $c) {
-            if (! self::ativaNoNivel($c, (int) ($f['nivel'] ?? 1))) {
+            if (! self::ativaNoNivel($c, (int) ($f['nivel'] ?? 1)) || self::hakiDesligado($c, $f)) {
                 continue;
             }
             $vale = ($c['tipo'] ?? 'passiva') === 'passiva' || ($c['ativa'] ?? false) === true;

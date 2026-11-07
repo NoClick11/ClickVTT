@@ -241,4 +241,20 @@ class HakiFichaTest extends TestCase
         $this->editar($c, $c->ana, ['profissoes' => $feito])->assertForbidden();
         $this->editar($c, $c->mestre, ['profissoes' => $feito])->assertOk();
     }
+
+    public function test_interruptor_do_haki_e_do_dono_e_as_caracteristicas_so_valem_ligado(): void
+    {
+        $c = $this->cenario();
+        $this->editar($c, $c->mestre, ['haki.liberado' => true])->assertOk();
+        $this->editar($c, $c->ana, ['haki.ativo' => true])->assertOk();
+        $this->assertTrue($c->aria->fresh()->ficha['haki']['ativo']);
+        $base = array_replace_recursive(\App\Sistemas\OnePiece\FichaOnePiece::padrao(), [
+            'nivel' => 5,
+            'caracteristicas' => [['nome' => 'Endurecimento', 'origem' => 'Haki', 'tipo' => 'passiva', 'builder' => 'haki', 'efeitos' => [['alvo' => 'pv.max', 'modo' => 'soma', 'valor' => 7]]]],
+        ]);
+        $ficha = [...$base, 'haki' => [...$base['haki'], 'ativo' => true]];
+        $ligado = \App\Sistemas\OnePiece\Regras::calcular($ficha);
+        $desligado = \App\Sistemas\OnePiece\Regras::calcular([...$ficha, 'haki' => [...$ficha['haki'], 'ativo' => false]]);
+        $this->assertSame(7, $ligado['pv.max'] - $desligado['pv.max']);
+    }
 }

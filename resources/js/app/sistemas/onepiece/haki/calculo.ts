@@ -13,6 +13,8 @@ export interface TalentoComprado {
 export interface HakiFicha {
     /** O mestre liberou o Haki (despertar manual); no 8º nível ele desperta sozinho. */
     liberado: boolean;
+    /** O jogador liga o Haki (interruptor): só então as características do Haki valem. */
+    ativo: boolean;
     /** O mestre revelou o Haki do Rei. */
     rei: boolean;
     /** Nível em que o mestre marcou o despertar prematuro (0 = não). */
@@ -33,6 +35,7 @@ export const PA_POR_NIVEL = 12;
 export const PA_DA_AFINIDADE = 2;
 
 export const hakiPadrao = (): HakiFicha => ({
+    ativo: false,
     liberado: false,
     rei: false,
     prematuroNivel: 0,

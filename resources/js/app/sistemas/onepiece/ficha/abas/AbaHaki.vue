@@ -213,6 +213,32 @@ const botaoMestre = `${botao} border-ouro-500/50 text-ouro-100 hover:bg-ouro-500
 
         <p v-if="!desperto && !mestre" class="text-sm text-preto-300">O Haki deste personagem ainda não despertou.</p>
         <template v-if="desperto || mestre">
+            <section
+                class="flex flex-wrap items-center gap-3 rounded-lg border p-3"
+                :class="h.ativo ? 'border-green-400/60 bg-green-500/10' : 'border-preto-700 bg-preto-900/60'"
+                aria-label="Ativar o Haki"
+            >
+                <button
+                    type="button"
+                    role="switch"
+                    :aria-checked="h.ativo"
+                    aria-label="Haki ativo"
+                    class="relative h-7 w-12 shrink-0 rounded-full border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                    :class="h.ativo ? 'border-green-400 bg-green-500/40' : 'border-preto-600 bg-preto-800'"
+                    @click="salvar({ 'haki.ativo': !h.ativo })"
+                >
+                    <span class="absolute top-0.5 size-5 rounded-full bg-white transition-all" :class="h.ativo ? 'left-6' : 'left-0.5'" />
+                </button>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold" :class="h.ativo ? 'text-green-200' : 'text-preto-200'">
+                        {{ h.ativo ? 'Haki ativado' : 'Haki desligado' }}
+                    </p>
+                    <p class="text-xs text-preto-400">
+                        Os benefícios dos talentos comprados só valem com o Haki ativado: ligue quando for usá-lo e desligue para encerrar. Desligado,
+                        eles aparecem apagados nas Características e não entram na ficha nem nas reações.
+                    </p>
+                </div>
+            </section>
             <p v-if="!desperto" class="rounded-lg border border-preto-700 bg-preto-900/60 p-3 text-xs text-preto-300">
                 O Haki ainda não despertou (nível menor que 8 e não liberado). O jogador não vê esta aba até você liberar.
             </p>

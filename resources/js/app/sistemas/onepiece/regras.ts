@@ -357,6 +357,9 @@ export function textoDeMovimento(m: { normal: number; nado: number; escalada: nu
         .join(' · ');
 }
 
+/** Características do Haki só valem com o interruptor "Haki ativo" ligado (aba Haki). Espelha `Regras::hakiDesligado`. */
+export const hakiDesligado = (c: { builder?: string }, f: { haki?: { ativo?: boolean } }): boolean => c.builder === 'haki' && !f.haki?.ativo;
+
 /** A característica vale neste nível? Sem `nivelMin`/`nivelMax` vale sempre. Espelha `Regras::ativaNoNivel`. */
 export const ativaNoNivel = (c: { nivelMin?: number; nivelMax?: number }, nivel: number): boolean =>
     nivel >= (c.nivelMin ?? 1) && nivel <= (c.nivelMax ?? 99);
@@ -429,7 +432,7 @@ export function efeitosAtivos(f: FichaOnePiece, itens: ItensPorId): Efeito[] {
 
     // Características com buffs: a passiva sempre vale; a ativa, só ligada (ex.: Fúria, Aura de Proteção)
     for (const c of f.caracteristicas ?? []) {
-        if (!ativaNoNivel(c, Number(f.nivel))) continue;
+        if (!ativaNoNivel(c, Number(f.nivel)) || hakiDesligado(c, f)) continue;
         const vale = (c.tipo ?? 'passiva') === 'passiva' || c.ativa === true;
         if (vale && c.efeitos?.length) efeitos.push(...deFonte(c.nome ?? 'Característica', c.efeitos));
     }

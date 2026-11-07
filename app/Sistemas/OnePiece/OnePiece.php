@@ -108,7 +108,7 @@ class OnePiece implements Sistema, SistemaDeCombate
             }
         }
         foreach ($ficha['caracteristicas'] ?? [] as $i => $c) {
-            if (! Regras::ativaNoNivel($c, $nivel)) {
+            if (! Regras::ativaNoNivel($c, $nivel) || Regras::hakiDesligado($c, $ficha)) {
                 continue;
             }
             if (! isset($c['usos']) || (int) $c['usos']['atual'] > 0) {

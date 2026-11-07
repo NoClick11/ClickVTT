@@ -135,8 +135,12 @@ test('haki: o estágio Treinado dá proficiência na perícia Haki; Pontos de Es
     let h = { ...hakiPadrao(), extras: 200 };
     const semTreino = analisar({ ...base, haki: h }).valores['pericia.haki'];
     for (const id of ['ataque-infuso', 'endurecimento-defensivo', 'antecipacao', 'antevisao', 'previsao']) h = comprar(h, id);
-    const f = { ...base, haki: h, caracteristicas: caracteristicasDoHaki(h, 20) };
+    const f = { ...base, haki: { ...h, ativo: true }, caracteristicas: caracteristicasDoHaki(h, 20) };
     const treinado = analisar(f).valores;
     assert.equal(treinado['pericia.haki'], semTreino + 6); // proficiência de +6 no 20º nível
     assert.equal(treinado['escudo.max'], 20); // Endurecimento Defensivo (forma base)
+    // Haki desligado: os benefícios das características não valem (a proficiência do estágio é da ficha, não do interruptor)
+    const desligado = analisar({ ...f, haki: { ...h, ativo: false } }).valores;
+    assert.equal(desligado['escudo.max'], 0);
+    assert.equal(desligado['pericia.haki'], treinado['pericia.haki']);
 });
