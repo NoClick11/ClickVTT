@@ -13,7 +13,7 @@ import {
     pvInicial,
     todosOsTracos,
 } from '../../resources/js/app/sistemas/onepiece/construtor/regras.ts';
-import { calcular } from '../../resources/js/app/sistemas/onepiece/regras.ts';
+import { armaCabe, calcular } from '../../resources/js/app/sistemas/onepiece/regras.ts';
 
 const base = { for: 15, des: 14, con: 13, sab: 12, pre: 10, von: 8 };
 const feito = (extra = {}) => ({
@@ -96,7 +96,14 @@ test('humano: Adaptação pede 3 perícias (sem Haki) e Aspectos Humanos pede 1 
     assert.equal(campos['pericias.atletismo'], 1);
     assert.equal(campos['pericias.furtividade'], 2); // Aptidão Natural: dobra a proficiência
     const orgulho = campos.caracteristicas.find((c) => c.nome.includes('Orgulho'));
-    assert.deepEqual(orgulho.efeitos, [{ alvo: 'teste.pre', modo: 'soma', valor: -1 }]);
+    assert.equal(orgulho.efeitos[0].alvo, 'teste.pre');
+    assert.deepEqual(
+        orgulho.efeitos
+            .slice(1)
+            .map((x) => x.alvo)
+            .sort(),
+        ['pericia.atuacao', 'pericia.enganacao', 'pericia.intimidacao', 'pericia.persuasao', 'pericia.provocacao'],
+    ); // vale também para as perícias de Presença
     const proibida = { ...e, pericias: { ...e.pericias, adaptacao: ['haki', 'atletismo', 'acrobacia'] } };
     assert.ok(problemasDaEtapa(proibida, 'escolhas').some((p) => p.includes('não permitida')));
 });
@@ -154,7 +161,11 @@ test('celestial: Herança Cultural pede 2 perícias ou 1 + Haki da Observação 
 test('anão: tamanho Miúdo, Piscar com 3 usos e -10 em Intuição', () => {
     const { campos } = camposDaCriacao(feito({ especies: ['anao'], variantes: [null] }));
     assert.equal(campos.tamanho, 'Miúdo');
-    assert.equal(campos.caracteristicas.find((c) => c.nome === 'Corpo Pequeno').usos.max, 3);
+    assert.equal(campos.caracteristicas.find((c) => c.nome === 'Piscar').usos.max, 3);
+    const fadas = campos.caracteristicas.find((c) => c.nome === 'Andar das Fadas');
+    assert.deepEqual(fadas.efeitos, [{ alvo: 'pericia.furtividade', modo: 'vantagem' }]);
+    assert.equal(fadas.tipo, 'ativa');
+    assert.ok(campos.caracteristicas.some((c) => c.nome === 'Estômago Pequeno'));
     assert.deepEqual(campos.caracteristicas.find((c) => c.nome === 'Ingenuidade Anormal').efeitos, [
         { alvo: 'pericia.intuicao', modo: 'soma', valor: -10 },
     ]);
@@ -271,4 +282,114 @@ test('todas as espécies têm dados completos', () => {
         assert.ok(e.pv > 0 && e.nome && e.dificuldade && (e.beneficios.length || e.variantes?.length), e.id);
         assert.ok(e.movimento.normal > 0, e.id);
     }
+});
+
+test('Heat/Electro: um uso por rodada no grupo, forma alternativa de 5 usos e ficha de combate', () => {
+    const { campos } = camposDaCriacao(feito({ especies: ['lunariano'], variantes: [null] }));
+    const heat = campos.caracteristicas.find((c) => c.nome === 'Heat');
+    assert.equal(heat.grupoRodada, 'ofensivo');
+    assert.deepEqual(heat.alternativo, { atual: 5, max: 5 });
+    const fogo = campos.caracteristicas.find((c) => c.nome === 'Manipulação do Fogo');
+    assert.ok(fogo.etiquetas.includes('Resistência a fogo'));
+    // a esfera de fogo vira técnica pronta (ataque à distância, 1d4 de fogo), marcada como do assistente
+    const esfera = campos['tecnicas.lista'].find((t) => t.nome === 'Esfera de Fogo');
+    assert.deepEqual([esfera.rolagem, esfera.tipoDano, esfera.custo, esfera.builder], ['1d4', 'fogo', 0, 'especie']);
+});
+
+test('refazer a criação preserva técnicas manuais e troca as do assistente', () => {
+    const manual = { nome: 'Minha', origem: '', custo: 1, alcance: '', efeito: '', rolagem: '', descricao: '' };
+    const velha = { ...manual, nome: 'Velha', builder: 'especie' };
+    const { campos } = camposDaCriacao(feito({ especies: ['lunariano'], variantes: [null] }), { tecnicas: [manual, velha] });
+    const nomes = campos['tecnicas.lista'].map((t) => t.nome);
+    assert.ok(nomes.includes('Minha') && nomes.includes('Esfera de Fogo') && !nomes.includes('Velha'));
+});
+
+test('anão: Armas Reduzidas põe o dano à distância em 50% e Hóspede Feérico tem o botão de hospedar', () => {
+    const { campos } = camposDaCriacao(feito({ especies: ['anao'], variantes: [null] }));
+    const reduzidas = campos.caracteristicas.find((c) => c.nome === 'Armas Reduzidas');
+    assert.deepEqual(reduzidas.efeitos, [{ alvo: 'dano.distancia.pct', modo: 'base', valor: 50 }]);
+    const mista = camposDaCriacao(
+        feito({
+            modo: 'mestico',
+            especies: ['anao', 'gigante'],
+            variantes: [null, null],
+            beneficiosMestico: ['hospede-feerico', 'corpo-assustador'],
+            dificuldadeMestico: 0,
+            dificuldadeExtra: 1,
+            doisMundos: 'cultural',
+        }),
+    );
+    const hospede = mista.campos.caracteristicas.find((c) => c.nome === 'Hóspede Feérico');
+    assert.equal(hospede.acoes[0].tipo, 'hospedar');
+});
+
+test('Braços e Pernas Longos: alcance de 3 m; Sulong: deslocamento dobrado e voo', () => {
+    const bracos = camposDaCriacao(
+        feito({
+            especies: ['humano'],
+            variantes: ['bracos-longos'],
+            pericias: { adaptacao: ['atletismo', 'acrobacia', 'percepcao'] },
+            falhas: ['gula'],
+        }),
+    ).campos;
+    assert.equal(calcular({ ...fichaDe(bracos), movimento: { normal: 9, nado: 0, escalada: 0, voo: 0 } }, {})['alcance.corpo'], 30);
+    const mink = camposDaCriacao(feito({ especies: ['mink'], variantes: ['meao'] })).campos;
+    const sulong = mink.caracteristicas.find((c) => c.nome === 'Forma Sulong');
+    const ficha = { ...fichaDe(mink), movimento: { normal: 18, nado: 4.5, escalada: 0, voo: 0 }, caracteristicas: [{ ...sulong, ativa: true }] };
+    const r = calcular(ficha, {});
+    assert.equal(r['movimento.normal'], 360); // 18 m dobrado (36 m)
+    assert.equal(r['movimento.voo'], 180); // voo = metade do deslocamento dobrado
+});
+
+test('Instintos Animalescos (Mink) tem a salvaguarda de Vontade CD 15 com Atordoado 1d4 até o dano', () => {
+    const { campos } = camposDaCriacao(feito({ especies: ['mink'], variantes: ['robusto'] }));
+    const a = campos.caracteristicas.find((c) => c.nome === 'Instintos Animalescos').acoes[0];
+    assert.deepEqual([a.condicao, a.atributo, a.cd, a.turnos, a.aoDano, a.alvo], ['atordoado', 'von', 15, '1d4', true, 'proprio']);
+});
+
+test('Kuja: Cobra Companheira pede o companheiro e tem Restringir (Força CD 16) no alvo', () => {
+    const e = feito({
+        especies: ['humano'],
+        variantes: ['kuja'],
+        pericias: { adaptacao: ['atletismo', 'acrobacia', 'percepcao'] },
+        falhas: ['gula', 'ira'],
+    });
+    const tracos = todosOsTracos(e);
+    assert.equal(tracos.find((t) => t.traco.id === 'cobra-companheira').traco.companheiro, 'cobra-belica');
+    const cobra = camposDaCriacao(e).campos.caracteristicas.find((c) => c.nome === 'Cobra Companheira');
+    assert.deepEqual(
+        cobra.acoes.map((a) => [a.condicao, a.cd, a.alvo]),
+        [
+            ['incapacitado', 16, 'mirado'],
+            ['agarrado', 16, 'mirado'],
+        ],
+    );
+});
+
+test('variações raras: Mente Solar imune a efeitos mentais e Poder Maligno com dado extra', () => {
+    const mente = camposDaCriacao(
+        feito({ especies: ['lunariano'], variantes: [null], variacaoRara: 'bucaneiro', beneficioSubstituido: 'heat' }),
+    ).campos;
+    assert.ok(['Enfeitiçado', 'Amedrontado'].every((c) => mente.imunidades.includes(c)));
+    const poder = camposDaCriacao(
+        feito({ especies: ['lunariano'], variantes: [null], variacaoRara: 'sangue-ancestral', beneficioSubstituido: 'heat' }),
+    ).campos.caracteristicas.find((c) => c.nome === 'Poder Maligno');
+    assert.equal(poder.grupoRodada, 'ofensivo');
+    assert.equal(poder.acoes[0].tipo, 'dadoExtra');
+    assert.equal(poder.tipo, 'passiva');
+});
+
+test('gigante só usa arma de gigante e os demais não usam a dele', () => {
+    assert.equal(armaCabe({ tamanho: 'gigante' }, 'Enorme'), true);
+    assert.equal(armaCabe({}, 'Enorme'), false);
+    assert.equal(armaCabe({ tamanho: 'gigante' }, 'Médio'), false);
+    assert.equal(armaCabe({ tamanho: 'padrao' }, 'Médio'), true);
+    const arma = { nome: 'Espada', peso: 1, equipavel: true, dados: { arma: { dano: '1d8', atributo: 'for', proficiente: true } } };
+    const ficha = {
+        ...fichaDe(camposDaCriacao(feito({ especies: ['gigante'], variantes: [null] })).campos),
+        tamanho: 'Enorme',
+        inventario: [{ secao: 'E', itens: [{ item_id: 1, qtd: 1, equipado: true, sintonizado: false }] }],
+    };
+    assert.ok(!('arma.1.ataque' in calcular(ficha, { 1: arma }))); // arma comum não serve a um gigante
+    assert.ok('arma.1.ataque' in calcular(ficha, { 1: { ...arma, dados: { arma: { ...arma.dados.arma, tamanho: 'gigante' } } } }));
 });

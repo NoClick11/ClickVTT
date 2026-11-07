@@ -3,7 +3,7 @@
  * direto nos testes. Cada espécie nova é só um item novo em `especies.ts`, sem mudar a lógica.
  */
 import type { EfeitoBruto } from '../../../../nucleo/efeitos/efeitos.ts';
-import type { AtributoId } from '../../regras.ts';
+import type { AcaoCaracteristica, AtributoId, CategoriaDeAcao, Tecnica } from '../../regras.ts';
 
 export type Preconceito = 'Inexistente' | 'Débil' | 'Medíocre' | 'Severo';
 export const NIVEIS_PRECONCEITO: Preconceito[] = ['Inexistente', 'Débil', 'Medíocre', 'Severo'];
@@ -43,6 +43,22 @@ export interface TracoDados {
     movimento?: Partial<Movimento>;
     /** Categoria de tamanho que o traço define (ex.: Colosso → Grande). */
     tamanho?: string;
+    /** Categoria de ação que ligar/usar o traço gasta no combate. */
+    acao?: CategoriaDeAcao;
+    /** Etiquetas de combate mostradas na ficha (ex.: "Ignora terreno difícil"). */
+    etiquetas?: string[];
+    /** Limite de um uso por rodada compartilhado entre as características do mesmo grupo (ex.: `ofensivo`). */
+    grupoRodada?: string;
+    /** Forma alternativa (junto da jogada de ataque): quantas vezes (contador próprio). */
+    alternativo?: number;
+    /** Botões da característica (condição no alvo, hospedar-se, dado extra). */
+    acoes?: AcaoCaracteristica[];
+    /** Técnicas que o traço dá (ex.: a esfera de fogo dos Lunarianos): entram na lista de técnicas, marcadas como do assistente. */
+    tecnicas?: Omit<Tecnica, 'builder'>[];
+    /** Cria um companheiro com ficha própria ao concluir (ex.: a Cobra Bélica das Kujas). */
+    companheiro?: 'cobra-belica';
+    /** O traço vira VÁRIAS características (ex.: Corpo Pequeno = Estômago Pequeno + Piscar + Andar das Fadas), cada uma com seus efeitos. */
+    partes?: TracoDados[];
     /** Na lista restrita da Miscigenação: exige 1 dificuldade adicional e só vale 1 da lista. */
     restrito?: boolean;
     escolhaPericias?: EscolhaPericias;

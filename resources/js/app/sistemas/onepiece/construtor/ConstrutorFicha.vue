@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import type { Criacao } from '@/site/types';
 import { Check, Dices, Minus, Plus } from 'lucide-vue-next';
 import { computed, reactive, ref, watch } from 'vue';
-import { ATRIBUTOS, comSinal, modificador, PERICIAS, type AtributoId, type Caracteristica } from '../regras';
+import { ATRIBUTOS, comSinal, modificador, PERICIAS, type AtributoId, type Caracteristica, type Tecnica } from '../regras';
 import { ESPECIES } from './dados/especies';
 import { AVISO_VARIACAO_RARA, VARIACOES_RARAS } from './dados/variacoes';
 import {
@@ -39,10 +39,12 @@ import {
 const props = defineProps<{
     open: boolean;
     personagem: { id: number; nome: string; cor: string };
-    ficha: { nivel?: number; caracteristicas?: Caracteristica[] };
+    ficha: { nivel?: number; caracteristicas?: Caracteristica[]; tecnicas?: { lista: Tecnica[] } };
     criacao: Criacao | null;
     salvar: (campos: Record<string, unknown>, criacao: Criacao) => Promise<void>;
     rolarAtributos: () => Promise<number[]>;
+    /** Entrega um companheiro com ficha pronta (a mesa cria o personagem). */
+    criarCompanheiro?: (modelo: string) => Promise<void>;
 }>();
 const emit = defineEmits<{ 'update:open': [boolean]; concluido: [] }>();
 
@@ -98,13 +100,21 @@ async function avancar() {
 const voltar = () => (etapa.value = proximaEtapa(-1));
 
 async function concluir() {
-    const { campos } = camposDaCriacao(e, { caracteristicas: props.ficha.caracteristicas, nivel: props.ficha.nivel });
+    const { campos } = camposDaCriacao(e, {
+        caracteristicas: props.ficha.caracteristicas,
+        tecnicas: props.ficha.tecnicas?.lista,
+        nivel: props.ficha.nivel,
+    });
     if (await guardar('resumo', true, campos)) {
+        // Traços com companheiro (Kuja): a mesa cria o personagem com a ficha pronta (pedir de novo não duplica)
+        for (const t of todosOsTracos(e)) if (t.traco.companheiro) await props.criarCompanheiro?.(t.traco.companheiro).catch(() => undefined);
         emit('concluido');
         emit('update:open', false);
     }
 }
-const resultado = computed(() => camposDaCriacao(e, { caracteristicas: props.ficha.caracteristicas, nivel: props.ficha.nivel }));
+const resultado = computed(() =>
+    camposDaCriacao(e, { caracteristicas: props.ficha.caracteristicas, tecnicas: props.ficha.tecnicas?.lista, nivel: props.ficha.nivel }),
+);
 
 // --- etapa 1: espécie --------------------------------------------------------------------------------------------
 function trocarModo(modo: Escolhas['modo']) {

@@ -5,7 +5,16 @@
  * Etapas: espécie (única ou mestiça) → escolhas → variação rara → estilo de luta → atributos → resumo.
  */
 import type { EfeitoBruto } from '../../../nucleo/efeitos/efeitos.ts';
-import { ATRIBUTOS, PERICIAS, modificador, type AtributoId, type Caracteristica, type Proficiencia } from '../regras.ts';
+import {
+    ATRIBUTOS,
+    PERICIAS,
+    modificador,
+    textoDeMovimento,
+    type AtributoId,
+    type Caracteristica,
+    type Proficiencia,
+    type Tecnica,
+} from '../regras.ts';
 import { ESPECIES, TRACO_CULTURAL } from './dados/especies.ts';
 import { NIVEIS_PRECONCEITO, type EspecieDados, type Movimento, type TracoDados, type VarianteDados } from './dados/tipos.ts';
 import { VARIACOES_RARAS } from './dados/variacoes.ts';
@@ -68,6 +77,8 @@ export interface Escolhas {
     rolados: number[] | null;
 }
 
+export { textoDeMovimento };
+
 export const escolhasIniciais = (): Escolhas => ({
     modo: 'unica',
     especies: [],
@@ -124,18 +135,6 @@ const SINGULAR: Record<string, string> = {
     'povo-do-mar': 'Povo do Mar',
 };
 const singular = (e: EspecieDados) => SINGULAR[e.id] ?? e.nome;
-
-const metros = (n: number) => `${String(n).replace('.', ',')} m`;
-export function textoDeMovimento(m: Movimento): string {
-    return [
-        metros(m.normal),
-        m.nado ? `nado ${metros(m.nado)}` : '',
-        m.escalada ? `escalada ${metros(m.escalada)}` : '',
-        m.voo ? `voo ${metros(m.voo)}` : '',
-    ]
-        .filter(Boolean)
-        .join(' · ');
-}
 
 const maiorPreconceito = (a: string, b: string) => (NIVEIS_PRECONCEITO.indexOf(a as never) >= NIVEIS_PRECONCEITO.indexOf(b as never) ? a : b);
 
@@ -418,6 +417,11 @@ export function caracteristicaDe(t: TracoEscolhido, nivel: number): Caracteristi
         c.descanso = traco.usos.descanso ?? 'longo';
     }
     if (traco.efeitos?.length) c.efeitos = traco.efeitos as EfeitoBruto[];
+    if (traco.acao) c.acao = traco.acao;
+    if (traco.etiquetas?.length) c.etiquetas = traco.etiquetas;
+    if (traco.grupoRodada) c.grupoRodada = traco.grupoRodada;
+    if (traco.alternativo && c.usos) c.alternativo = { atual: traco.alternativo, max: traco.alternativo };
+    if (traco.acoes?.length) c.acoes = traco.acoes;
     if (c.tipo === 'ativa' && c.efeitos) c.ativa = false;
 
     return c;
@@ -433,7 +437,7 @@ export interface Resultado {
  * Os campos da ficha a salvar ao concluir (ou ao refazer) a criação. As características que o assistente criou antes
  * (`builder`) são substituídas; as que o jogador criou à mão ficam.
  */
-export function camposDaCriacao(e: Escolhas, atual: { caracteristicas?: Caracteristica[]; nivel?: number } = {}): Resultado {
+export function camposDaCriacao(e: Escolhas, atual: { caracteristicas?: Caracteristica[]; tecnicas?: Tecnica[]; nivel?: number } = {}): Resultado {
     const nivel = atual.nivel ?? 1;
     const fisico = fisicoDe(e);
     const tracos = todosOsTracos(e);
@@ -453,7 +457,10 @@ export function camposDaCriacao(e: Escolhas, atual: { caracteristicas?: Caracter
     const imunidades = [...new Set(tracos.flatMap((t) => t.traco.imunidades ?? []))];
 
     const manuais = (atual.caracteristicas ?? []).filter((c) => !c.builder);
-    const geradas = tracos.map((t) => caracteristicaDe(t, nivel));
+    // Traço com `partes` (Corpo Pequeno) vira uma característica por parte
+    const geradas = tracos
+        .flatMap((t) => (t.traco.partes ? t.traco.partes.map((parte) => ({ ...t, traco: parte, origem: `${t.origem}: ${t.traco.nome}` })) : [t]))
+        .map((t) => caracteristicaDe(t, nivel));
     const pv = pvInicial(e);
     const campos: Record<string, unknown> = {
         especie: fisico.nome,
@@ -476,6 +483,14 @@ export function camposDaCriacao(e: Escolhas, atual: { caracteristicas?: Caracter
         'pp.atual': nivel * 4,
         ancestralidade: e.ancestralidade.trim(),
         caracteristicas: [...manuais, ...geradas],
+        // Técnicas que os traços dão (esfera de fogo): as do assistente são refeitas, as criadas à mão ficam.
+        'tecnicas.lista': [
+            ...(atual.tecnicas ?? []).filter((t) => !t.builder),
+            ...tracos
+                .flatMap((t) => t.traco.partes ?? [t.traco])
+                .flatMap((t) => t.tecnicas ?? [])
+                .map((t): Tecnica => ({ ...t, builder: 'especie' })),
+        ],
     };
     avisos.push(`Preconceito: ${fisico.preconceito}.`);
     if (e.variacaoRara) avisos.push('Variação Rara: exceção absoluta, depende da aprovação do Narrador.');

@@ -11,10 +11,11 @@ import IndicadorD20 from '../../../nucleo/ui/IndicadorD20.vue';
 import { condicaoPorId } from '../condicoes';
 import { estilos, useFicha } from '../contexto';
 import EfeitosDialog from '../EfeitosDialog.vue';
-import { camposDoDadoDeVida, comSinal, DADOS_DE_VIDA, type FichaOnePiece } from '../regras';
+import { camposDoDadoDeVida, comSinal, DADOS_DE_VIDA, textoDeMovimento, type FichaOnePiece } from '../regras';
 
 const props = defineProps<{ ficha: FichaOnePiece; personagem: PersonagemFicha }>();
-const { editar, calc, salvar, rolar, d20, modoDe, armas } = useFicha();
+const { editar, calc, salvar, rolar, d20, modoDe, armas, origens, acoes } = useFicha();
+const ataquePermitido = computed(() => acoes.pode('padrao'));
 
 const pvPct = computed(() => (calc.value['pv.max'] > 0 ? Math.max(0, Math.min(100, (props.ficha.pv.atual / calc.value['pv.max']) * 100)) : 0));
 const pvCor = computed(() => (pvPct.value > 50 ? '#22c55e' : pvPct.value > 25 ? '#eab308' : '#ef4444'));
@@ -28,6 +29,18 @@ const dadoDeVidaDisponivel = computed(() => props.ficha.dadosVida.restantes > 0 
 /** Clicar na bolinha N marca até N; clicar de novo na última marcada desmarca. */
 const marcar = (campo: string, atual: number, i: number) => salvar({ [campo]: atual === i ? i - 1 : i });
 const titulo = estilos.rotulo;
+/** Deslocamento: com efeitos ativos nele (Forma Sulong...) vale o calculado; senão, o texto da ficha. */
+const deslocamentoTexto = computed(() => {
+    if (!Object.keys(origens.value).some((k) => k.startsWith('movimento.'))) return props.ficha.deslocamento || '—';
+    const m = (t: string) => (calc.value[`movimento.${t}`] ?? 0) / 10;
+
+    return textoDeMovimento({ normal: m('normal'), nado: m('nado'), escalada: m('escalada'), voo: m('voo') });
+});
+const alcanceCorpo = computed(() => String((calc.value['alcance.corpo'] ?? 15) / 10).replace('.', ',') + ' m');
+/** Etiquetas de combate das características que valem agora (passivas e ativas ligadas). */
+const etiquetas = computed(() => [
+    ...new Set(props.ficha.caracteristicas.filter((c) => c.tipo === 'passiva' || c.ativa === true).flatMap((c) => c.etiquetas ?? [])),
+]);
 const efeitosAberto = ref(false);
 const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) => condicaoPorId(id)).filter((c) => c !== undefined));
 </script>
@@ -149,7 +162,13 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                     class="flex items-center gap-1 rounded-full border border-red-400/60 bg-red-500/15 py-0.5 pl-1 pr-2 text-[10px] font-semibold text-red-200"
                     :title="c.descricao"
                 >
-                    <span aria-hidden="true">{{ iconeDoStatus(c.id).icone }}</span> {{ c.nome }}
+                    <span aria-hidden="true">{{ iconeDoStatus(c.id).icone }}</span> {{ c.nome
+                    }}<span
+                        v-if="ficha.duracoes?.[c.id]"
+                        class="font-normal"
+                        :title="ficha.duracoes[c.id].aoDano ? 'Acaba ao receber dano' : 'Turnos que faltam'"
+                        >({{ ficha.duracoes[c.id].turnos }}{{ ficha.duracoes[c.id].aoDano ? '·dano' : '' }})</span
+                    >
                 </li>
             </ul>
             <EfeitosDialog v-model:open="efeitosAberto" :ficha="ficha" />
@@ -196,10 +215,10 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                     <p
                         v-else
                         class="line-clamp-2 break-words font-serif text-base font-semibold leading-tight text-ouro-100"
-                        :title="ficha.deslocamento"
+                        :title="deslocamentoTexto"
                         aria-label="Deslocamento"
                     >
-                        {{ ficha.deslocamento || '—' }}
+                        {{ deslocamentoTexto }}
                     </p>
                 </div>
             </div>
@@ -254,16 +273,31 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
         <!-- ataques (como no Foundry): a linha inteira da arma é o botão que rola o ataque; o dano vem depois, pelos botões do
              card do chat (Dano e, no crítico, Dano crítico). Shift = vantagem, Ctrl/Alt = desvantagem. -->
         <section aria-label="Ataques">
-            <p :class="titulo" class="mb-1 flex items-center gap-1"><Swords class="size-3" /> Ataques</p>
+            <p :class="titulo" class="mb-1 flex items-center gap-1">
+                <Swords class="size-3" /> Ataques
+                <span class="ml-auto normal-case tracking-normal text-preto-400" title="Alcance dos ataques corpo a corpo"
+                    >alcance {{ alcanceCorpo }}</span
+                >
+            </p>
+            <ul v-if="etiquetas.length" class="mb-1.5 flex flex-wrap gap-1" aria-label="Traços de combate">
+                <li v-for="t in etiquetas" :key="t" class="rounded border border-sky-400/40 bg-sky-500/10 px-1.5 py-0.5 text-[10px] text-sky-200">
+                    {{ t }}
+                </li>
+            </ul>
             <!-- coluna flexível (não grade): o nome comprido da arma é cortado com "…" em vez de esticar a barra -->
             <ul v-if="armas.length" class="flex flex-col gap-1.5">
                 <li v-for="a in armas" :key="a.itemId" class="min-w-0">
                     <button
                         type="button"
-                        class="group flex min-h-12 w-full items-center gap-2.5 rounded-lg border border-preto-700 bg-gradient-to-br from-preto-800/70 to-preto-950 px-2 py-1.5 text-left transition hover:border-ouro-400 hover:from-ouro-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 active:scale-[0.98]"
+                        class="group flex min-h-12 w-full items-center gap-2.5 rounded-lg border border-preto-700 bg-gradient-to-br from-preto-800/70 to-preto-950 px-2 py-1.5 text-left transition hover:border-ouro-400 hover:from-ouro-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                         :aria-label="`Atacar com ${a.nome}: ${comSinal(a.ataque)} para acertar, dano ${a.dano}${a.danoBonus ? comSinal(a.danoBonus) : ''}`"
-                        :title="`Clique para atacar com ${a.nome}. Shift = vantagem, Ctrl = desvantagem.`"
-                        @click="d20($event, `arma.${a.itemId}.ataque`, a.nome)"
+                        :disabled="!ataquePermitido.ok"
+                        :title="
+                            ataquePermitido.ok
+                                ? `Clique para atacar com ${a.nome} (gasta a ${acoes.rotulo('padrao').toLowerCase()}). Shift = vantagem, Ctrl = desvantagem.`
+                                : ataquePermitido.motivo
+                        "
+                        @click="d20($event, `arma.${a.itemId}.ataque`, a.nome, { categoria: 'padrao' })"
                     >
                         <span class="relative size-8 shrink-0 transition group-hover:scale-110">
                             <DadoIcone :faces="20" />

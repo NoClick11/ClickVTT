@@ -2,7 +2,7 @@ import { inject, type ComputedRef, type InjectionKey, type Ref } from 'vue';
 import type { Efeito, Origem, Rolagem } from '../../nucleo/efeitos/efeitos';
 import type { AbrirEditorItem } from '../../nucleo/sistemas/tipos';
 import type { ItemDto } from '../../tipos-mesa';
-import type { ArmaAtiva } from './regras';
+import type { AcaoCaracteristica, ArmaAtiva } from './regras';
 
 /**
  * Contexto da ficha de D&D 5e, compartilhado pelos blocos sem passar props: modo Jogar/Editar, valores
@@ -16,7 +16,21 @@ export interface ContextoFicha {
     /** Salva campos (1 = edição pontual; vários = lote). */
     salvar: (campos: Record<string, unknown>) => void;
     /** Rola uma expressão (pode usar `@variaveis`) com o nome da rolagem. */
-    rolar: (expressao: string, rotulo: string, aoRolar?: (total: number) => void) => void;
+    rolar: (
+        expressao: string,
+        rotulo: string,
+        aoRolar?: (total: number) => void,
+        dano?: { tipo: string | null; fator?: number },
+        acao?: { categoria: string; tecnica?: boolean },
+    ) => void;
+    /** Economia de ações do combate: se a categoria pode ser usada agora, gastá-la no servidor e o nome dela. */
+    acoes: {
+        pode: (categoria: string | undefined, tecnica?: boolean) => { ok: boolean; motivo?: string };
+        gastar: (categoria: string | undefined, tecnica?: boolean) => Promise<boolean>;
+        rotulo: (categoria: string | undefined) => string;
+        /** Todas as categorias do sistema (id e nome), para os seletores de edição. */
+        todas: () => { id: string; nome: string }[];
+    };
     /** De onde vem cada bônus, por alvo (`origens.value.ca` = [{fonte: 'Placas', modo: 'base', valor: 16}, ...]). */
     origens: ComputedRef<Record<string, Origem[]>>;
     /** Efeitos ativos agora (itens, condições e ajustes manuais), cada um com a fonte. */
@@ -31,8 +45,12 @@ export interface ContextoFicha {
     mestre: boolean;
     /** O mestre abre o editor de itens (`null` = novo); `aoSalvar` recebe o item salvo. */
     abrirEditorItem: AbrirEditorItem;
-    /** Teste de d20 + variável: Shift = vantagem, Ctrl/Alt = desvantagem. */
-    d20: (evento: MouseEvent, variavel: string, rotulo: string) => void;
+    /** Rodada do combate (null = sem combate ativo): limita Heat, Electro etc. a um uso por rodada. */
+    rodada: ComputedRef<number | null>;
+    /** Pede à mesa uma ação de característica (aplicar condição ao alvo mirado, hospedar-se). */
+    acao: (acao: AcaoCaracteristica) => void;
+    /** Teste de d20 + variável: Shift = vantagem, Ctrl/Alt = desvantagem. `acao`: a categoria que a rolagem gasta no combate. */
+    d20: (evento: MouseEvent, variavel: string, rotulo: string, acao?: { categoria: string; tecnica?: boolean }) => void;
 }
 
 export const CHAVE_FICHA: InjectionKey<ContextoFicha> = Symbol('ficha-onepiece');

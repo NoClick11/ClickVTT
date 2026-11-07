@@ -28,6 +28,9 @@ const arma = ref({
     bonusAtaque: inicial.arma?.bonusAtaque ?? inicial.arma?.bonusMagico ?? 0,
     bonusDano: inicial.arma?.bonusDano ?? inicial.arma?.bonusMagico ?? 0,
     margemCritica: inicial.arma?.margemCritica ?? 20,
+    /** Arma à distância (o anão com Armas Reduzidas causa metade do dano) e tamanho da arma (gigantes só usam armas de gigante). */
+    distancia: inicial.arma?.distancia ?? false,
+    tamanho: (inicial.arma?.tamanho ?? 'padrao') as 'padrao' | 'gigante',
     /** Dados extras só desta arma (ex.: +2d6 de fogo), até 3. */
     danoExtra: (inicial.arma?.danoExtra ?? []).map((x) => ({ dados: x.dados, tipo: x.tipo ?? '' })),
 });
@@ -66,6 +69,8 @@ function montar(): Record<string, unknown> | null {
                 bonusAtaque: Number(a.bonusAtaque) || 0,
                 bonusDano: Number(a.bonusDano) || 0,
                 margemCritica: Number(a.margemCritica),
+                ...(a.distancia ? { distancia: true } : {}),
+                ...(a.tamanho === 'gigante' ? { tamanho: 'gigante' as const } : {}),
                 ...(extras(a.danoExtra).length ? { danoExtra: extras(a.danoExtra) } : {}),
             },
         };
@@ -193,6 +198,17 @@ const campoLinha = campo.replace('w-full ', '');
             /></label>
             <label class="flex items-end gap-2 pb-1.5 text-sm"
                 ><input v-model="arma.proficiente" type="checkbox" class="size-4 accent-ouro-500" /> Proficiente</label
+            >
+            <label class="flex items-end gap-2 pb-1.5 text-sm" title="O anão (Armas Reduzidas) causa só metade do dano com armas à distância"
+                ><input v-model="arma.distancia" type="checkbox" class="size-4 accent-ouro-500" /> À distância</label
+            >
+            <label
+                ><span :class="rotulo" title="Gigantes só usam armas de gigante, e nenhum outro tamanho usa a arma de um gigante"
+                    >Tamanho da arma</span
+                ><select v-model="arma.tamanho" :class="campo" aria-label="Tamanho da arma">
+                    <option value="padrao">Padrão</option>
+                    <option value="gigante">De gigante</option>
+                </select></label
             >
         </div>
 

@@ -19,7 +19,13 @@ const { efeitos, salvar } = useFicha();
 const ativas = computed(() => props.ficha.condicoes ?? []);
 const ligada = (id: string) => ativas.value.includes(id);
 /** Liga/desliga um efeito (vale na hora, em jogo): salva a lista inteira, na ordem em que foram ligados. */
-const alternar = (id: string) => salvar({ condicoes: ligada(id) ? ativas.value.filter((c) => c !== id) : [...ativas.value, id] });
+function alternar(id: string) {
+    if (!ligada(id)) return salvar({ condicoes: [...ativas.value, id] });
+    // Ao desligar, some também a duração que a condição tinha.
+    const { [id]: _duracao, ...resto } = props.ficha.duracoes ?? {};
+    void _duracao;
+    salvar({ condicoes: ativas.value.filter((c) => c !== id), duracoes: resto });
+}
 
 /** Os efeitos que vêm de itens, características e ajustes, agrupados pela fonte (as condições já estão na lista acima). */
 const porFonte = computed(() => {

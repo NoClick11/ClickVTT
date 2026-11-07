@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Apple, Backpack, Flame, ListChecks, Settings, Skull } from 'lucide-vue-next';
-import { computed, provide, ref, type Component } from 'vue';
+import { computed, inject, provide, ref, type Component, type ComputedRef } from 'vue';
 import type { AbrirEditorItem, PersonagemFicha } from '../../../nucleo/sistemas/tipos';
 import type { ItemDto } from '../../../tipos-mesa';
 import { CHAVE_FICHA } from '../contexto';
-import { analisar, armasAtivas, modoDaRolagem, type FichaOnePiece } from '../regras';
+import { analisar, armasAtivas, modoDaRolagem, type AcaoCaracteristica, type FichaOnePiece } from '../regras';
 import AbaAkuma from './abas/AbaAkuma.vue';
 import AbaCaracteristicas from './abas/AbaCaracteristicas.vue';
 import AbaDetalhes from './abas/AbaDetalhes.vue';
@@ -23,10 +23,19 @@ import FichaLateral from './FichaLateral.vue';
 const props = defineProps<{ personagem: PersonagemFicha; ficha: FichaOnePiece; itens: ItemDto[]; mestre: boolean }>();
 const emit = defineEmits<{
     salvar: [campos: Record<string, unknown>];
-    rolar: [expressao: string, rotulo: string, aoRolar?: (total: number) => void];
+    rolar: [
+        expressao: string,
+        rotulo: string,
+        aoRolar?: (total: number) => void,
+        dano?: { tipo: string | null; fator?: number },
+        acao?: { categoria: string; tecnica?: boolean },
+        alvoPersonagemId?: number | null,
+    ];
     editorItem: Parameters<AbrirEditorItem>;
     /** O jogador quer abrir o assistente de criação. */
     construtor: [];
+    /** Botão de uma característica (condição no alvo mirado, hospedar-se): a mesa executa. */
+    acao: [acao: AcaoCaracteristica];
 }>();
 
 const editar = ref(false);
@@ -36,8 +45,29 @@ const calc = computed(() => analise.value.valores);
 const armas = computed(() => armasAtivas(props.ficha, itensPorId.value, calc.value));
 const modoDe = (variavel: string) => modoDaRolagem(analise.value.efeitos, variavel);
 
+// A rodada do combate vem da mesa (provida por quem hospeda a ficha); sem ela, nada é limitado por rodada.
+const rodada = inject<ComputedRef<number | null>>(
+    'rodadaDoCombate',
+    computed(() => null),
+);
+
+// O alvo mirado para ataques (só com combate em curso): a mesa o usa para abrir a janela de reação.
+const alvoDoAtaque = inject<ComputedRef<number | null>>(
+    'alvoDoAtaque',
+    computed(() => null),
+);
+
+// Economia de ações do combate (provida pela mesa); sem ela (ficha fora do jogo), nada é bloqueado.
+const acoesDoCombate = inject<{
+    categorias: ComputedRef<{ id: string; nome: string }[]>;
+    pode: (personagemId: number, categoria: string | undefined, tecnica?: boolean) => { ok: boolean; motivo?: string };
+    gastar: (personagemId: number, categoria: string | undefined, tecnica?: boolean) => Promise<boolean>;
+}>('acoesDoCombate', { categorias: computed(() => []), pode: () => ({ ok: true }), gastar: async () => true });
+
 provide(CHAVE_FICHA, {
     editar,
+    rodada,
+    acao: (a) => emit('acao', a),
     calc,
     origens: computed(() => analise.value.origens),
     efeitos: computed(() => analise.value.efeitos),
@@ -47,13 +77,29 @@ provide(CHAVE_FICHA, {
     mestre: props.mestre,
     abrirEditorItem: (itemId, aoSalvar) => emit('editorItem', itemId, aoSalvar),
     salvar: (campos) => emit('salvar', campos),
-    rolar: (expressao, rotulo, aoRolar) => emit('rolar', expressao, rotulo, aoRolar),
+    rolar: (expressao, rotulo, aoRolar, dano, acao) => emit('rolar', expressao, rotulo, aoRolar, dano, acao),
+    acoes: {
+        pode: (categoria, tecnica) => acoesDoCombate.pode(props.personagem.id, categoria, tecnica),
+        gastar: (categoria, tecnica) => acoesDoCombate.gastar(props.personagem.id, categoria, tecnica),
+        rotulo: (categoria) => acoesDoCombate.categorias.value.find((c) => c.id === categoria)?.nome ?? '',
+        todas: () => acoesDoCombate.categorias.value,
+    },
     // Shift = vantagem, Ctrl/Alt = desvantagem (manual vence); sem tecla, valem os efeitos dos itens.
-    d20: (evento, variavel, rotulo) => {
+    d20: (evento, variavel, rotulo, acao) => {
         const manual = evento.shiftKey ? 'vantagem' : evento.ctrlKey || evento.altKey ? 'desvantagem' : null;
         const modo = manual ?? modoDe(variavel);
         const dados = modo === 'vantagem' ? '2d20kh1' : modo === 'desvantagem' ? '2d20kl1' : '1d20';
-        emit('rolar', `${dados}+@${variavel}`, modo ? `${rotulo} (${modo})` : rotulo);
+        // Ataque (arma ou técnica) contra o alvo mirado: a mesa abre a janela de reação e resolve o acerto
+        const ehAtaque = variavel === 'ataque' || /^arma\.\d+\.ataque$/.test(variavel);
+        emit(
+            'rolar',
+            `${dados}+@${variavel}`,
+            modo ? `${rotulo} (${modo})` : rotulo,
+            undefined,
+            undefined,
+            acao,
+            ehAtaque ? alvoDoAtaque.value : null,
+        );
     },
 });
 

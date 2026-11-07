@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { clonar } from '../../../../nucleo/ficha/caminho';
 import CampoNumero from '../../../../nucleo/ui/CampoNumero.vue';
 import CampoTexto from '../../../../nucleo/ui/CampoTexto.vue';
@@ -19,7 +19,11 @@ const props = defineProps<{
     vazio: string;
     tom: 'sky' | 'violet';
 }>();
-const { editar, salvar, rolar } = useFicha();
+const { editar, salvar, rolar, acoes } = useFicha();
+/** A categoria que usar a técnica gasta no combate: a dela ou a poderosa (que só serve para técnicas). */
+const CATEGORIAS = computed(() => acoes.todas());
+const categoria = (t: Tecnica) => t.acao ?? 'poderosa';
+const permitida = (t: Tecnica) => acoes.pode(categoria(t), true);
 
 const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs focus-visible:border-ouro-400 focus-visible:outline-none';
 const cor =
@@ -37,14 +41,31 @@ function mudar(fn: (lista: Tecnica[]) => void) {
 const podeUsar = (t: Tecnica) => props.ficha.pp.atual >= t.custo;
 
 /** Usar: gasta os PP e, se há rolagem, rola no chat. Sem PP suficiente não faz nada. */
-function usar(t: Tecnica) {
+async function usar(t: Tecnica) {
     const campos = camposDoGastoDePP(props.ficha, t.custo);
     if (!campos) return;
+    // A ação vem antes dos PP: se o servidor recusar (fora do turno, ação já usada), nada é gasto.
+    if (!(await acoes.gastar(categoria(t), true))) return;
     salvar(campos);
-    if (t.rolagem.trim()) rolar(t.rolagem.trim(), t.nome);
+    // Com tipo de dano preenchido a rolagem é um dano: o card do chat oferece "Aplicar" ao alvo, respeitando resistências.
+    if (t.rolagem.trim()) rolar(t.rolagem.trim(), t.nome, undefined, t.tipoDano?.trim() ? { tipo: t.tipoDano.trim() } : undefined);
 }
 
-const vazia = () => ({ nome: '', origem: '', custo: 1, alcance: '', efeito: '', rolagem: '', descricao: '' });
+/** Liga ou desliga a reação da técnica: ligar já a põe na categoria Reação (se não tinha outra). */
+function alternarReacao(i: number, ligada: boolean) {
+    mudar((l) => {
+        if (ligada) {
+            l[i].reacao = { gatilho: 'ataque_declarado', alcance: 'si', defesa: 0 };
+            l[i].acao ??= 'reacao';
+        } else {
+            delete l[i].reacao;
+        }
+    });
+}
+
+/** Tipos de dano sugeridos (o campo aceita qualquer texto; "geral" = dano sem tipo, que nenhuma defesa reduz). */
+const TIPOS_DE_DANO = ['geral', 'cortante', 'perfurante', 'contundente', 'fogo', 'elétrico', 'gelo', 'veneno', 'ácido', 'psíquico', 'energia'];
+const vazia = () => ({ nome: '', origem: '', custo: 1, alcance: '', efeito: '', rolagem: '', tipoDano: '', descricao: '' });
 const novo = ref(vazia());
 function adicionar() {
     const nome = novo.value.nome.trim();
@@ -57,6 +78,7 @@ function adicionar() {
             alcance: novo.value.alcance.trim(),
             efeito: novo.value.efeito.trim(),
             rolagem: novo.value.rolagem.trim(),
+            ...(novo.value.tipoDano.trim() ? { tipoDano: novo.value.tipoDano.trim() } : {}),
             descricao: novo.value.descricao.trim(),
         }),
     );
@@ -83,15 +105,20 @@ function adicionar() {
                         </div>
                         <div class="shrink-0 text-right">
                             <p class="font-serif text-base font-bold tabular-nums" :class="cor.texto">{{ t.custo }} PP</p>
+                            <p class="text-[10px] uppercase tracking-wide text-preto-400" :title="'Categoria de ação que a técnica gasta no combate'">
+                                {{ acoes.rotulo(categoria(t)) }}
+                            </p>
                             <button
                                 type="button"
-                                :disabled="!podeUsar(t)"
+                                :disabled="!podeUsar(t) || !permitida(t).ok"
                                 class="mt-1 rounded-md border px-3 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 disabled:cursor-not-allowed disabled:opacity-40"
                                 :class="cor.botao"
                                 :title="
-                                    podeUsar(t)
-                                        ? `Gasta ${t.custo} PP${t.rolagem ? ' e rola ' + t.rolagem : ''}`
-                                        : `Pontos de poder insuficientes (${ficha.pp.atual} de ${t.custo})`
+                                    !permitida(t).ok
+                                        ? permitida(t).motivo
+                                        : podeUsar(t)
+                                          ? `Gasta ${t.custo} PP e a ${acoes.rotulo(categoria(t)).toLowerCase()}${t.rolagem ? ' e rola ' + t.rolagem : ''}`
+                                          : `Pontos de poder insuficientes (${ficha.pp.atual} de ${t.custo})`
                                 "
                                 :aria-label="`Usar ${t.nome}, custo ${t.custo} pontos de poder`"
                                 @click="usar(t)"
@@ -155,14 +182,87 @@ function adicionar() {
                                 @salvar="mudar((l) => (l[i].efeito = $event))"
                             />
                         </div>
-                        <CampoTexto
-                            :model-value="t.rolagem"
-                            :maximo="100"
-                            placeholder="Rolagem (opcional), ex.: 3d8+@mod.for"
-                            aria-label="Rolagem da técnica"
-                            :class="[estilos.campo, 'font-mono']"
-                            @salvar="mudar((l) => (l[i].rolagem = $event))"
-                        />
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-preto-400">
+                            <label class="flex items-center gap-1.5"
+                                ><input
+                                    type="checkbox"
+                                    class="size-3.5 accent-ouro-500"
+                                    :checked="!!t.reacao"
+                                    aria-label="É uma reação a um ataque"
+                                    @change="alternarReacao(i, ($event.target as HTMLInputElement).checked)"
+                                />
+                                Reação a um ataque</label
+                            >
+                            <template v-if="t.reacao">
+                                <select
+                                    :value="t.reacao.alcance"
+                                    aria-label="A quem serve a reação"
+                                    class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1"
+                                    @change="
+                                        mudar((l) => (l[i].reacao!.alcance = ($event.target as HTMLSelectElement).value as 'si' | 'aliado' | 'ambos'))
+                                    "
+                                >
+                                    <option value="si">Só a mim</option>
+                                    <option value="aliado">Aliados</option>
+                                    <option value="ambos">Mim e aliados</option>
+                                </select>
+                                <label class="flex items-center gap-1"
+                                    >Defesa
+                                    <input
+                                        type="number"
+                                        min="-20"
+                                        max="20"
+                                        :value="t.reacao.defesa ?? 0"
+                                        aria-label="Bônus na defesa de quem foi atacado"
+                                        class="w-14 rounded border border-preto-700 bg-preto-950 px-1.5 py-1"
+                                        @change="mudar((l) => (l[i].reacao!.defesa = Number(($event.target as HTMLInputElement).value) || 0))"
+                                    />
+                                </label>
+                                <label class="flex items-center gap-1"
+                                    >Cura
+                                    <input
+                                        type="text"
+                                        maxlength="8"
+                                        placeholder="1d8"
+                                        :value="t.reacao.cura ?? ''"
+                                        aria-label="Cura em quem foi atacado (valor ou dados)"
+                                        class="w-16 rounded border border-preto-700 bg-preto-950 px-1.5 py-1 font-mono"
+                                        @change="mudar((l) => (l[i].reacao!.cura = ($event.target as HTMLInputElement).value.trim() || undefined))"
+                                    />
+                                </label>
+                            </template>
+                        </div>
+                        <label class="flex items-center gap-1.5 text-xs text-preto-400"
+                            >Categoria de ação
+                            <select
+                                :value="t.acao ?? ''"
+                                aria-label="Categoria de ação da técnica"
+                                class="rounded border border-preto-700 bg-preto-950 px-1.5 py-1 text-xs"
+                                @change="mudar((l) => (l[i].acao = (($event.target as HTMLSelectElement).value || undefined) as Tecnica['acao']))"
+                            >
+                                <option value="">Padrão da técnica (poderosa)</option>
+                                <option v-for="c in CATEGORIAS" :key="c.id" :value="c.id">{{ c.nome }}</option>
+                            </select>
+                        </label>
+                        <div class="flex flex-wrap gap-1.5">
+                            <CampoTexto
+                                :model-value="t.rolagem"
+                                :maximo="100"
+                                placeholder="Rolagem (opcional), ex.: 3d8+@mod.for"
+                                aria-label="Rolagem da técnica"
+                                :class="[estilos.campo, 'min-w-48 flex-1 font-mono']"
+                                @salvar="mudar((l) => (l[i].rolagem = $event))"
+                            />
+                            <CampoTexto
+                                :model-value="t.tipoDano ?? ''"
+                                :maximo="30"
+                                list="tipos-de-dano"
+                                placeholder="Tipo do dano (se a rolagem for dano)"
+                                aria-label="Tipo do dano"
+                                :class="[estilos.campo, 'w-56']"
+                                @salvar="mudar((l) => (l[i].tipoDano = $event.trim() || undefined))"
+                            />
+                        </div>
                         <CampoTexto
                             :model-value="t.descricao"
                             :maximo="2000"
@@ -210,6 +310,19 @@ function adicionar() {
                 :class="campo"
                 class="w-44 font-mono"
             />
+            <input
+                v-model="novo.tipoDano"
+                type="text"
+                maxlength="30"
+                list="tipos-de-dano"
+                placeholder="Tipo do dano"
+                aria-label="Tipo do dano"
+                :class="campo"
+                class="w-32"
+            />
+            <datalist id="tipos-de-dano">
+                <option v-for="t in TIPOS_DE_DANO" :key="t" :value="t" />
+            </datalist>
             <button type="submit" class="rounded bg-ouro-500 px-3 text-xs font-semibold text-preto-950 hover:bg-ouro-400">Adicionar</button>
         </form>
     </div>

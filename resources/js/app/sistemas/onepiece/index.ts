@@ -1,7 +1,8 @@
 import { defineAsyncComponent } from 'vue';
 import type { ModuloSistema } from '../../nucleo/sistemas/tipos';
 import { ALVOS_DE_EFEITO, formatoDeResumo, variaveisParaAlvo } from './alvos';
-import { comItemEntregue, type FichaOnePiece } from './regras';
+import { CONDICOES } from './condicoes';
+import { ATRIBUTOS, comItemEntregue, type FichaOnePiece } from './regras';
 
 /** Módulo de D&D 5e: a ficha e o editor de dados do item são carregados só quando usados. */
 export const modulo: ModuloSistema = {
@@ -12,5 +13,7 @@ export const modulo: ModuloSistema = {
     formatoDeResumo,
     entregarItem: (ficha, itemId) => ({ inventario: comItemEntregue(ficha as unknown as FichaOnePiece, itemId) }),
     EditorDadosItem: defineAsyncComponent(() => import('./EditorDadosItem.vue')),
+    atributos: ATRIBUTOS.map((a) => ({ id: a.id, sigla: a.sigla })),
+    condicoes: CONDICOES.map((c) => ({ id: c.id, nome: c.nome, descricao: c.descricao })),
     Construtor: defineAsyncComponent(() => import('./construtor/ConstrutorFicha.vue')),
 };

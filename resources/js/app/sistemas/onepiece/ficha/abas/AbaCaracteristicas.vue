@@ -6,10 +6,12 @@ import { clonar } from '../../../../nucleo/ficha/caminho';
 import { formatoDeResumo } from '../../alvos';
 import { estilos, useFicha } from '../../contexto';
 import EditorCaracteristicaDialog from '../../EditorCaracteristicaDialog.vue';
-import { comBuffAlternado, usosMax, type Caracteristica, type FichaOnePiece } from '../../regras';
+import { comBuffAlternado, usosMax, type AcaoCaracteristica, type Caracteristica, type FichaOnePiece } from '../../regras';
 
 const props = defineProps<{ ficha: FichaOnePiece }>();
-const { editar, salvar, calc } = useFicha();
+const { editar, salvar, calc, rolar, rodada, acao: executarAcao, acoes } = useFicha();
+/** Ligar uma característica gasta a categoria de ação dela (se tiver): só liga se puder agir agora. */
+const podeLigar = (c: Caracteristica) => (c.ativa ? { ok: true } : acoes.pode(c.acao));
 
 // índices da lista completa (a lista é salva por inteiro), agrupados por tipo
 const grupos = computed(() => [
@@ -28,9 +30,57 @@ const usar = (i: number, atual: number, n: number) => mudar((l) => (l[i].usos!.a
  * Liga ou desliga o buff de uma característica ativa (vale na hora, em jogo: não depende do modo Editar). Ligar gasta um
  * uso, se ela tem usos; sem usos restantes não liga (ver `comBuffAlternado`).
  */
-function alternar(i: number) {
-    const nova = comBuffAlternado(props.ficha.caracteristicas[i], calc.value.prof, calc.value.nivel);
-    if (nova) mudar((l) => (l[i] = nova));
+async function alternar(i: number) {
+    const c = props.ficha.caracteristicas[i];
+    // Um uso por rodada para o grupo (Heat, Electro...): ligar fora do limite não faz nada.
+    if (!c.ativa && naRodadaBloqueada(c)) return;
+    // Ligar gasta a ação da característica (o servidor recusa fora do turno ou com a ação já usada).
+    if (!c.ativa && !(await acoes.gastar(c.acao))) return;
+    const nova = comBuffAlternado(c, calc.value.prof, calc.value.nivel);
+    if (nova) mudar((l) => (l[i] = marcarRodada(nova)));
+}
+/** Outra característica do mesmo grupo já foi usada nesta rodada (só vale com combate ativo). */
+function naRodadaBloqueada(c: Caracteristica): boolean {
+    if (!c.grupoRodada || rodada.value === null) return false;
+
+    return props.ficha.caracteristicas.some((o) => o !== c && o.grupoRodada === c.grupoRodada && o.usadoNaRodada === rodada.value);
+}
+const marcarRodada = (c: Caracteristica): Caracteristica => (c.grupoRodada && rodada.value !== null ? { ...c, usadoNaRodada: rodada.value } : c);
+/** Forma alternativa: junto da jogada de ataque, sem ação bônus. Gasta um uso do total e um do contador próprio. */
+async function usarAlternativo(i: number) {
+    const c = props.ficha.caracteristicas[i];
+    if (!c.alternativo || c.alternativo.atual <= 0 || c.ativa || naRodadaBloqueada(c) || !c.usos || c.usos.atual <= 0) return;
+    if (!(await acoes.gastar('livre'))) return; // junto da jogada de ataque, sem ação bônus
+    mudar((l) => {
+        l[i] = marcarRodada({
+            ...c,
+            ativa: true,
+            usos: { ...c.usos!, atual: c.usos!.atual - 1 },
+            alternativo: { ...c.alternativo!, atual: c.alternativo!.atual - 1 },
+        });
+    });
+}
+/** Botão de ação (condição, hospedar): gasta a categoria dele e só então age. */
+async function agirComAcao(a: AcaoCaracteristica) {
+    if (await acoes.gastar(a.acao)) executarAcao(a);
+}
+/** Dado extra de dano (Poder Maligno): rola 1 dado à escolha; até o 12º nível o mesmo dano volta em você, sem defesa. */
+const dadoEscolhido = ref('d6');
+const DADOS_EXTRA = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20'];
+async function rolarDadoExtra(i: number, categoria?: string) {
+    const c = props.ficha.caracteristicas[i];
+    if (!c.usos || c.usos.atual <= 0 || naRodadaBloqueada(c)) return;
+    if (!(await acoes.gastar(categoria))) return;
+    const nivel = props.ficha.nivel;
+    mudar((l) => (l[i] = marcarRodada({ ...c, usos: { ...c.usos!, atual: c.usos!.atual - 1 } })));
+    rolar(
+        `1${dadoEscolhido.value}`,
+        `${c.nome} (dano adicional)`,
+        (total) => {
+            if (nivel < 12) salvar({ 'pv.atual': Math.max(0, props.ficha.pv.atual - total) }); // sem defesa nem redução
+        },
+        { tipo: 'geral' },
+    );
 }
 /** Máximo de usos agora (fixo ou igual ao bônus de proficiência). */
 const maxUsos = (c: Caracteristica) => usosMax(c, calc.value.prof, calc.value.nivel);
@@ -73,7 +123,14 @@ function aoSalvar(c: Caracteristica) {
                 <li v-for="{ c, i } in g.itens" :key="i" class="px-3 py-2">
                     <div class="flex items-center gap-3">
                         <span class="min-w-0 flex-1"
-                            ><span class="block truncate">{{ c.nome }}</span
+                            ><span class="block truncate"
+                                >{{ c.nome
+                                }}<span
+                                    v-if="c.acao"
+                                    class="ml-1.5 rounded bg-preto-800 px-1 text-[9px] font-normal uppercase tracking-wide text-preto-300"
+                                    title="Categoria de ação que esta característica gasta"
+                                    >{{ acoes.rotulo(c.acao) }}</span
+                                ></span
                             ><span class="block truncate text-xs text-preto-400">{{ c.origem }}</span></span
                         >
                         <!-- interruptor do buff: só para ativas que têm efeitos -->
@@ -91,15 +148,17 @@ function aoSalvar(c: Caracteristica) {
                                       ? 'cursor-not-allowed border-preto-700 text-preto-500 opacity-60'
                                       : 'border-preto-600 text-preto-300 hover:border-ouro-500/50 hover:text-ouro-100'
                             "
-                            :disabled="semUsos(c)"
+                            :disabled="semUsos(c) || !podeLigar(c).ok"
                             :title="
-                                c.ativa
-                                    ? 'Ligada: os efeitos valem. Clique para desligar (o uso gasto não volta; só no descanso).'
-                                    : semUsos(c)
-                                      ? 'Sem usos restantes: descanse para recuperá-los.'
-                                      : gastaUso(c)
-                                        ? 'Desligada. Clique para ligar (gasta 1 uso) e os efeitos passarem a valer.'
-                                        : 'Desligada. Clique para ligar e os efeitos passarem a valer.'
+                                !podeLigar(c).ok
+                                    ? podeLigar(c).motivo
+                                    : c.ativa
+                                      ? 'Ligada: os efeitos valem. Clique para desligar (o uso gasto não volta; só no descanso).'
+                                      : semUsos(c)
+                                        ? 'Sem usos restantes: descanse para recuperá-los.'
+                                        : gastaUso(c)
+                                          ? 'Desligada. Clique para ligar (gasta 1 uso) e os efeitos passarem a valer.'
+                                          : 'Desligada. Clique para ligar e os efeitos passarem a valer.'
                             "
                             @click="alternar(i)"
                         >
@@ -139,6 +198,55 @@ function aoSalvar(c: Caracteristica) {
                                 @click="mudar((l) => l.splice(i, 1))"
                             >
                                 ✕
+                            </button>
+                        </template>
+                    </div>
+                    <!-- botões da característica: limite por rodada, forma alternativa, ações no alvo, dado extra -->
+                    <div v-if="c.alternativo || c.acoes?.length" class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <button
+                            v-if="c.alternativo"
+                            type="button"
+                            class="rounded-md border border-sky-400/50 px-2 py-0.5 text-xs font-semibold text-sky-100 transition hover:bg-sky-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 disabled:cursor-not-allowed disabled:opacity-40"
+                            :disabled="c.alternativo.atual <= 0 || !!c.ativa || naRodadaBloqueada(c) || !c.usos || c.usos.atual <= 0"
+                            title="Forma alternativa: junto da jogada de ataque, sem ação bônus. Gasta um uso e um do contador (máx. 5 por descanso longo)."
+                            @click="usarAlternativo(i)"
+                        >
+                            Alternativa ({{ c.alternativo.atual }}/{{ c.alternativo.max }})
+                        </button>
+                        <template v-for="(a, ai) in c.acoes ?? []" :key="ai">
+                            <span v-if="a.tipo === 'dadoExtra'" class="flex items-center gap-1">
+                                <select
+                                    v-model="dadoEscolhido"
+                                    class="rounded border border-preto-700 bg-preto-950 px-1 py-0.5 text-xs"
+                                    aria-label="Dado extra"
+                                >
+                                    <option v-for="d in DADOS_EXTRA" :key="d" :value="d">{{ d }}</option>
+                                </select>
+                                <button
+                                    type="button"
+                                    class="rounded-md border border-red-400/50 px-2 py-0.5 text-xs font-semibold text-red-100 transition hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 disabled:opacity-40"
+                                    :disabled="!c.usos || c.usos.atual <= 0 || naRodadaBloqueada(c) || !acoes.pode(a.acao).ok"
+                                    :title="acoes.pode(a.acao).ok ? undefined : acoes.pode(a.acao).motivo"
+                                    @click="rolarDadoExtra(i, a.acao)"
+                                >
+                                    {{ a.rotulo }}
+                                </button>
+                            </span>
+                            <button
+                                v-else
+                                type="button"
+                                class="rounded-md border border-ouro-500/50 px-2 py-0.5 text-xs font-semibold text-ouro-100 transition hover:bg-ouro-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                                :disabled="!acoes.pode(a.acao).ok"
+                                :title="
+                                    acoes.pode(a.acao).ok
+                                        ? a.alvo === 'mirado'
+                                            ? 'Age sobre o alvo mirado (botão Mirar ou tecla T + clique)'
+                                            : 'Age sobre você'
+                                        : acoes.pode(a.acao).motivo
+                                "
+                                @click="agirComAcao(a)"
+                            >
+                                {{ a.rotulo }}
                             </button>
                         </template>
                     </div>

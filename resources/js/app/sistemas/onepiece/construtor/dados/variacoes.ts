@@ -14,7 +14,8 @@ export const VARIACOES_RARAS: VariacaoRaraDados[] = [
             nome: 'Mente Solar',
             descricao:
                 'Você descende de um clã antigo envolto em mistérios e poderes desconhecidos. Sua mente é absolutamente resiliente. Nenhuma Técnica, característica ou evento consegue influenciá-la, garantindo sucesso automático em qualquer teste ou efeito que tente controlar ou manipular sua mente, de qualquer forma.',
-            imunidades: ['Controle e manipulação da mente'],
+            // As imunidades são comparadas com o nome da condição ao aplicar efeitos no alvo: efeitos mentais não pegam.
+            imunidades: ['Enfeitiçado', 'Amedrontado', 'Controle mental'],
         },
     },
     {
@@ -51,8 +52,10 @@ export const VARIACOES_RARAS: VariacaoRaraDados[] = [
         traco: {
             id: 'poder-maligno',
             nome: 'Poder Maligno',
-            tipo: 'ativa',
+            grupoRodada: 'ofensivo',
             usos: { porNivel: true, descanso: 'longo' },
+            acoes: [{ rotulo: 'Rolar dado extra de dano', acao: 'livre', tipo: 'dadoExtra' }],
+            etiquetas: ['Um uso por rodada; até o nível 12 você sofre o mesmo dano'],
             descricao:
                 'Uma força brutal emana de você, tão intensa que seu próprio corpo sofre para acompanhá-la. Sempre que desejar, você pode causar 1 dado de dano adicional qualquer em jogadas de ataque (comum ou Técnicas). Pode ser usada uma quantidade de vezes igual ao seu nível, limitada a uma vez por rodada; todos os usos voltam ao término de um descanso longo. Até o 12º nível de personagem, sempre que usar esta característica, você sofre dano igual ao valor do dano adicional causado, e esse dano não pode ser reduzido ou evitado de nenhuma forma.',
         },

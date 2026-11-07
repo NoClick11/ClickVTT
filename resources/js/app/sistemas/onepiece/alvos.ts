@@ -37,6 +37,11 @@ export const ALVOS_DE_EFEITO: AlvoEfeitoOnePiece[] = [
     // `dados`: dano extra em dados (Ataque Furtivo 3d6), somado ao dano de cada arma e dobrado no crítico
     { id: 'dano.arma', rotulo: 'Dano com armas (todas)', modos: [...NUMERICOS, 'dados'] },
     // `dados`: dano extra em dados somado à rolagem de cada técnica (Heat, Electro)
+    // alcance corpo a corpo e deslocamentos em decímetros (15 = 1,5 m) e a fração do dano das armas à distância (100 = inteiro)
+    { id: 'alcance.corpo', rotulo: 'Alcance corpo a corpo (dm)', modos: NUMERICOS },
+    { id: 'movimento.*', rotulo: 'Deslocamentos (dm)', modos: NUMERICOS },
+    ...(['normal', 'nado', 'escalada', 'voo'] as const).map((t) => ({ id: `movimento.${t}`, rotulo: `Deslocamento: ${t} (dm)`, modos: NUMERICOS })),
+    { id: 'dano.distancia.pct', rotulo: 'Dano de armas à distância (%)', modos: NUMERICOS },
     { id: 'dano.tecnica', rotulo: 'Dano das técnicas', modos: ['dados'] },
     { id: 'atributos.*', rotulo: 'Todos os atributos', modos: NUMERICOS },
     ...ATRIBUTOS.map((a) => ({ id: `atributos.${a.id}`, rotulo: `Atributo: ${a.nome}`, modos: NUMERICOS })),

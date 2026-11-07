@@ -110,6 +110,10 @@ export interface DadosItemOnePiece {
         /** Dados extras DA ARMA (ex.: +2d6 de fogo), até 3; entram no dano e dobram no crítico. */
         danoExtra?: { dados: string; tipo?: string | null }[];
         margemCritica?: number;
+        /** Arma à distância: o anão (Armas Reduzidas) causa só metade do dano com ela. */
+        distancia?: boolean;
+        /** Tamanho da arma: gigantes só usam armas de gigante, e nenhum outro tamanho usa a de um gigante. */
+        tamanho?: 'padrao' | 'gigante' | null;
     };
 }
 /** O que o cálculo precisa de um item da mesa (campos ausentes valem: equipável, sem sintonia, sem efeitos). */
@@ -123,6 +127,31 @@ export interface ItemParaCalculo {
     efeitos?: EfeitoBruto[];
 }
 export type ItensPorId = Record<number, ItemParaCalculo>;
+/** Botão de uma característica. `condicao`: aplica uma condição (com salvaguarda do alvo e duração); `hospedar`: o anão entra no espaço do alvo mirado; `dadoExtra`: rola 1 dado extra de dano. */
+/** Categorias de ação do combate do One Piece (o servidor é quem as declara: `OnePiece::categoriasDeAcao`). */
+/** Reação a um ataque: a quem serve, bônus na defesa de quem foi atacado (mesmo que a reação seja de outro jogador) e cura. */
+export interface ReacaoDeCombate {
+    gatilho: 'ataque_declarado';
+    alcance: 'si' | 'aliado' | 'ambos';
+    defesa?: number;
+    /** Valor ou dados (`1d8`) curados em quem foi atacado. */
+    cura?: string;
+}
+export type CategoriaDeAcao = 'padrao' | 'poderosa' | 'bonus' | 'livre' | 'reacao';
+export interface AcaoCaracteristica {
+    rotulo: string;
+    /** Categoria de ação que o botão gasta no combate (nenhuma = não gasta). */
+    acao?: CategoriaDeAcao;
+    tipo: 'condicao' | 'hospedar' | 'dadoExtra';
+    alvo?: 'proprio' | 'mirado';
+    condicao?: string;
+    /** Salvaguarda do alvo (atributo e CD) contra a condição. */
+    atributo?: AtributoId;
+    cd?: number;
+    /** Duração: número de turnos ou dados (`1d4`). */
+    turnos?: string;
+    aoDano?: boolean;
+}
 export interface Caracteristica {
     nome: string;
     origem: string;
@@ -133,6 +162,19 @@ export interface Caracteristica {
     descricao?: string;
     /** Quem criou: o assistente de criação marca `especie`/`variacao`, para refazer o passo sem duplicar. */
     builder?: 'especie' | 'variacao';
+    /** Categoria de ação que ligar/usar a característica gasta no combate (nenhuma = não gasta). */
+    acao?: CategoriaDeAcao;
+    /** Reação a um ataque (a característica com usos gasta um). */
+    reacao?: ReacaoDeCombate;
+    /** Etiquetas de combate mostradas na ficha (ex.: "Alcança alvos Enormes"). */
+    etiquetas?: string[];
+    /** Limite por rodada compartilhado no grupo (Heat, Electro, Potencializador) e a rodada do último uso. */
+    grupoRodada?: string;
+    usadoNaRodada?: number | null;
+    /** Forma alternativa (junto da jogada de ataque, sem ação bônus): contador próprio de usos. */
+    alternativo?: { atual: number; max: number };
+    /** Botões da característica: aplicar condição (a si ou ao alvo mirado), hospedar-se, rolar dado extra. */
+    acoes?: AcaoCaracteristica[];
     /** Buffs da característica (os mesmos efeitos dos itens). A passiva sempre vale; a ativa, só com `ativa` ligada. */
     efeitos?: EfeitoBruto[];
     /** Interruptor das características ativas (ex.: Fúria ligada). A passiva ignora. */
@@ -157,6 +199,14 @@ export interface Tecnica {
     descricao: string;
     /** Expressão de dados (pode usar `@variaveis`); vazia = a técnica só gasta PP. */
     rolagem: string;
+    /** Tipo do dano (fogo, elétrico...): o dano aplicado respeita resistências e imunidades do alvo. */
+    tipoDano?: string;
+    /** Categoria de ação que usar a técnica gasta no combate (padrão: poderosa, só para técnicas). */
+    acao?: CategoriaDeAcao;
+    /** Reação: usada quando alguém é atacado (fora do turno), a si ou a um aliado. */
+    reacao?: ReacaoDeCombate;
+    /** Quem criou: o assistente de criação marca `especie`, para refazer o passo sem duplicar. */
+    builder?: 'especie';
 }
 
 /** Tipo da Akuma no Mi ('' = sem fruta definida). */
@@ -198,6 +248,8 @@ export interface FichaOnePiece {
     movimento: { normal: number; nado: number; escalada: number; voo: number };
     /** Traços de Ancestralidade (Zoan) em texto livre, até o catálogo existir. */
     ancestralidade: string;
+    /** Anão com Hóspede Feérico: id do personagem em cujo espaço ele está. */
+    hospedado: number | null;
     /** Recompensa pela cabeça do personagem, em Belly. */
     recompensa: number;
     /** Dinheiro, em Belly. */
@@ -222,12 +274,28 @@ export interface FichaOnePiece {
     inventario: { secao: string; itens: ItemInventario[] }[];
     /** Ids das condições ativas (`CONDICOES`), ex.: `envenenado`. */
     condicoes?: string[];
+    /** Condições com duração: turnos que faltam e se acabam ao receber dano. O servidor conta os turnos (rastreador de turnos). */
+    duracoes?: Record<string, { turnos: number; aoDano: boolean }>;
     caracteristicas: Caracteristica[];
     /** A Akuma no Mi: tipo, despertar e os poderes da fruta (mesmo formato das técnicas, gastam os mesmos PP). O nome é `fruta`. */
     akuma: { tipo: TipoAkuma; despertada: boolean; lista: Tecnica[] };
     /** Técnicas do personagem; `atributo` é o que define a CD e o ataque delas. */
     tecnicas: { atributo: AtributoId; lista: Tecnica[] };
     ajustes: Ajustes;
+}
+
+/** Deslocamentos em texto (`9 m · nado 4,5 m`): só os que a criatura tem. */
+export function textoDeMovimento(m: { normal: number; nado: number; escalada: number; voo: number }): string {
+    const metros = (n: number) => `${String(n).replace('.', ',')} m`;
+
+    return [
+        metros(m.normal),
+        m.nado ? `nado ${metros(m.nado)}` : '',
+        m.escalada ? `escalada ${metros(m.escalada)}` : '',
+        m.voo ? `voo ${metros(m.voo)}` : '',
+    ]
+        .filter(Boolean)
+        .join(' · ');
 }
 
 export const modificador = (valor: number): number => Math.floor((valor - 10) / 2);
@@ -354,6 +422,10 @@ export function analisar(f: FichaOnePiece, itens: ItensPorId = {}): Analise {
     base['carga.max'] = 15 * r['atributos.for'];
     base['pv.max'] = f.pv?.max ?? 0;
     base['pp.max'] = nivel * (f.pp?.porNivel ?? 4);
+    // Alcance corpo a corpo e deslocamentos em decímetros (15 = 1,5 m): efeitos e fórmulas só trabalham com inteiros.
+    base['alcance.corpo'] = 15;
+    for (const tipo of ['normal', 'nado', 'escalada', 'voo'] as const) base[`movimento.${tipo}`] = Math.round((f.movimento?.[tipo] ?? 0) * 10);
+    base['dano.distancia.pct'] = 100;
 
     // Fase 3: efeitos sobre os valores-base
     const variaveis = { ...r, ...base };
@@ -366,7 +438,7 @@ export function analisar(f: FichaOnePiece, itens: ItensPorId = {}): Analise {
         for (const ref of secao.itens ?? []) {
             const item = itens[ref.item_id];
             const arma = (item?.dados as DadosItemOnePiece | null | undefined)?.arma;
-            if (!item || !arma || !ativo(ref, item)) continue;
+            if (!item || !arma || !ativo(ref, item) || !armaCabe(arma, f.tamanho)) continue;
             // Ataque e dano podem usar atributos diferentes; sem `atributoDano`, o dano usa o mesmo do ataque.
             const mAtaque = modificadorDaArma(arma.atributo, mod);
             const mDano = modificadorDaArma(arma.atributoDano ?? arma.atributo, mod);
@@ -387,6 +459,11 @@ export function analisar(f: FichaOnePiece, itens: ItensPorId = {}): Analise {
     r['treinamento.pontos'] = Math.max(0, mod.sab); // Traços Culturais: pontos de treinamento = mod. SAB positivo
 
     return { valores: r, origens, efeitos };
+}
+
+/** O gigante (tamanho Enorme) só usa armas de gigante, e nenhum outro tamanho usa a arma de um gigante. Espelha `Regras::armaCabe`. */
+export function armaCabe(arma: { tamanho?: string | null }, tamanho: string | undefined): boolean {
+    return (arma.tamanho ?? 'padrao') === 'gigante' ? (tamanho ?? 'Médio') === 'Enorme' : (tamanho ?? 'Médio') !== 'Enorme';
 }
 
 /**
@@ -465,7 +542,7 @@ export function armasAtivas(f: FichaOnePiece, itens: ItensPorId, valores: Record
         for (const ref of secao.itens ?? []) {
             const item = itens[ref.item_id];
             const arma = (item?.dados as DadosItemOnePiece | null | undefined)?.arma;
-            if (!item || !arma || !ativo(ref, item)) continue;
+            if (!item || !arma || !ativo(ref, item) || !armaCabe(arma, f.tamanho)) continue;
             armas.push({
                 itemId: ref.item_id,
                 nome: item.nome ?? 'Arma',
@@ -579,6 +656,9 @@ export function camposDoDescanso(
             ...c,
             ...(recarrega ? { usos: { ...c.usos!, max: usosMax(c, prof, f.nivel), atual: usosMax(c, prof, f.nivel) } } : {}),
             ...(c.tipo === 'ativa' && c.ativa ? { ativa: false } : {}),
+            // o limite por rodada e a forma alternativa voltam com os usos
+            ...(c.usadoNaRodada != null ? { usadoNaRodada: null } : {}),
+            ...(c.alternativo && recarrega && tipo === 'longo' ? { alternativo: { ...c.alternativo, atual: c.alternativo.max } } : {}),
         };
     });
     if (JSON.stringify(antes) !== JSON.stringify(depois)) campos.caracteristicas = depois;
