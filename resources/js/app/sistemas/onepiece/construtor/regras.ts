@@ -15,6 +15,7 @@ import {
     type ProfissoesFicha,
 } from '../profissoes/regras.ts';
 import {
+    ativaNoNivel,
     ATRIBUTOS,
     modificador,
     PERICIAS,
@@ -581,16 +582,19 @@ export function caracteristicasDasHB(hbs: HBDaFicha[], primario: AtributoId, niv
         const opcoes = hbs.filter((h) => h.id === id && h.opcao && h.opcao !== 'inata').map((h) => h.opcao!);
         let vitalidade = 0;
 
-        return hb.tracos({ primario, opcoes }).map((traco) => {
-            const c = caracteristicaDe({ traco, origem: `Habilidade Básica: ${hb.nome}`, builder: 'estilo' }, nivel);
-            // Vitalidade Exuberante com o d12 já no máximo: +1 PV por nível
-            if (traco.id === 'quebrador-vitalidade') {
-                if (dadoComPassos(dadoBase, vitalidade).dado === 'd12') c.efeitos = [{ alvo: 'pv.max', modo: 'soma', valor: '@nivel' }];
-                vitalidade += 1;
-            }
+        return hb
+            .tracos({ primario, opcoes })
+            .filter((traco) => ativaNoNivel(traco, nivel))
+            .map((traco) => {
+                const c = caracteristicaDe({ traco, origem: `Habilidade Básica: ${hb.nome}`, builder: 'estilo' }, nivel);
+                // Vitalidade Exuberante com o d12 já no máximo: +1 PV por nível
+                if (traco.id === 'quebrador-vitalidade') {
+                    if (dadoComPassos(dadoBase, vitalidade).dado === 'd12') c.efeitos = [{ alvo: 'pv.max', modo: 'soma', valor: '@nivel' }];
+                    vitalidade += 1;
+                }
 
-            return c;
-        });
+                return c;
+            });
     });
 }
 

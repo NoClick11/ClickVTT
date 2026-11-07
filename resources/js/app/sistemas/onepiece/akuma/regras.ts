@@ -3,7 +3,7 @@
 import type { TracoDados } from '../construtor/dados/tipos.ts';
 import { caracteristicaDe } from '../construtor/regras.ts';
 import { GRAUS } from '../criador/dados.ts';
-import type { Caracteristica, FichaOnePiece, Tecnica } from '../regras.ts';
+import { ativaNoNivel, type Caracteristica, type FichaOnePiece, type Tecnica } from '../regras.ts';
 import {
     ASPECTOS,
     BENEFICIOS_DE_USUARIO,
@@ -306,7 +306,8 @@ export function caracteristicasDaAkuma(f: FichaDaAkuma): Caracteristica[] {
         }
     }
 
-    return saida;
+    // o que é de um nível maior a ficha só recebe ao chegar nele (as características são refeitas ao subir de nível)
+    return saida.filter((c) => ativaNoNivel(c, nivel));
 }
 
 /** Traços repetíveis (Especialidade Animal, Corpo Resistente) mostram quantas vezes foram escolhidos. */
