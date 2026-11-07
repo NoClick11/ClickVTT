@@ -1100,17 +1100,6 @@ async function pedirSalvaguardaDoEfeito(mensagem: Mensagem) {
     }
 }
 
-/** Efeito de Técnica que a mesa comanda (Execução, Headshot, Covering...): o servidor confere e aplica; o card se atualiza. */
-async function efeitoEspecialDoChat(mensagem: Mensagem, efeito: string) {
-    const alvoId = mensagem.dados?.sistema?.resolucao?.alvo_id ?? alvoPersonagem.value?.id ?? null;
-    try {
-        aoNovaMensagem(await api.efeitoEspecial(mensagem.id, efeito, alvoId), true);
-        recarregar(['personagens']); // dano, condições e PV temporários mudam as fichas
-    } catch (e) {
-        avisar(mensagemDe(e));
-    }
-}
-
 /**
  * Efeito da munição de um ataque que acertou. Kairoseki: o servidor dá Enfraquecido ao alvo se ele usar Akuma no Mi. Bola Explosiva: a explosão
  * de 1,5 m é marcada no mapa em volta do alvo atingido (clique confirma, Esc cancela) e quem está dentro rola a Salvaguarda de Destreza CD 16.
@@ -1745,7 +1734,6 @@ function alternarPorta(id: number) {
                             @rolar-salvaguarda="rolarSalvaguarda"
                             @pedir-salvaguarda="pedirSalvaguardaDoEfeito"
                             @efeito-da-municao="efeitoDaMunicaoDoChat"
-                            @especial="efeitoEspecialDoChat"
                             @acao="rolarAcaoDoChat"
                             @aplicar-dano="aplicarDanoDoChat"
                         />

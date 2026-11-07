@@ -111,14 +111,6 @@ class ChatController extends Controller
         }
         if (is_array($dados['tecnica'] ?? null) && $this->ehAtaque($resultado['termos'])) {
             $marcas = [...$marcas, ...$this->marcasDoAtaqueDeTecnica($dados['tecnica'], $resultado['termos'])];
-            // Efeitos que a mesa comanda (Execução, Headshot, Covering...): só se a Técnica está na ficha de quem ataca
-            $nomeT = trim($dados['tecnica']['nome']);
-            if (isset(\App\Sistemas\OnePiece\TecnicasEspeciais::CATALOGO[$nomeT]) && \App\Sistemas\OnePiece\TecnicasEspeciais::naFicha($ficha, $nomeT)) {
-                $botoes = \App\Sistemas\OnePiece\TecnicasEspeciais::botoes($nomeT, ($marcas['destaque'] ?? null) === 'critico');
-                if ($botoes && ($marcas['destaque'] ?? null) !== 'falha') {
-                    $marcas['tecnica']['especiais'] = $botoes;
-                }
-            }
         }
         if (is_array($dados['dano'] ?? null)) {
             $marcas['dano'] = [

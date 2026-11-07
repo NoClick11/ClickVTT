@@ -76,7 +76,6 @@ export interface MarcasDoSistema {
     tecnica?: {
         nome: string;
         /** Efeitos que a mesa comanda neste ataque (Execução, Headshot, Covering...): o servidor decide quais botões existem. */
-        especiais?: { id: string; rotulo: string }[];
         secundaria?: { atributo: string; desvantagem?: boolean; efeito: string; aplica?: { condicao: string; turnos?: number; aoDano?: boolean } };
     };
     /** Expertise da arma no acerto crítico (efeitos para o jogador e o Narrador aplicarem). */

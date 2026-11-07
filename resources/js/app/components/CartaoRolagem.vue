@@ -15,7 +15,6 @@ const emit = defineEmits<{
     aplicarDano: [mensagem: Mensagem];
     pedirSalvaguarda: [mensagem: Mensagem];
     efeitoDaMunicao: [mensagem: Mensagem];
-    especial: [mensagem: Mensagem, efeito: string];
 }>();
 
 const dados = computed(() => props.mensagem.dados!);
@@ -49,14 +48,6 @@ const efeitoDaMunicao = computed(() => {
     const r = resolucao.value;
 
     return !r || (r.estado === 'resolvido' && r.acerto) ? m.efeito : null;
-});
-/** Os efeitos que a mesa comanda (só aparecem para quem pode agir e, no ataque, depois do acerto). */
-const especiais = computed(() => {
-    const lista = dados.value.sistema?.tecnica?.especiais ?? [];
-    if (!props.podeAgir || !lista.length || dados.value.sistema?.destaque === 'falha') return [];
-    const r = resolucao.value;
-
-    return !r || (r.estado === 'resolvido' && r.acerto) ? lista : [];
 });
 const marca = computed(() => (dados.value.sistema?.destaque === 'falha' ? 'Falha crítica' : 'Crítico!'));
 
@@ -170,18 +161,6 @@ const estiloBotao = (a: AcaoDaRolagem, indice: number) =>
                     <span class="flex-1">{{ aplicado ? 'Dano aplicado' : alvoNome ? `Aplicar a ${alvoNome}` : 'Mire um alvo para aplicar' }}</span>
                     <span v-if="dano.tipo" class="rounded bg-preto-950/60 px-1.5 text-[10px] uppercase">{{ dano.tipo }}</span>
                     <span class="font-mono text-[11px] opacity-80">{{ dados.total }}</span>
-                </button>
-            </div>
-
-            <div v-if="especiais.length" class="mt-3 grid gap-1.5 border-t border-preto-700/60 pt-2.5">
-                <button
-                    v-for="e in especiais"
-                    :key="e.id"
-                    type="button"
-                    class="flex w-full items-center gap-2 rounded-md border border-ouro-500/60 bg-ouro-500/10 px-2.5 py-1.5 text-left text-xs font-semibold text-ouro-100 transition hover:bg-ouro-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
-                    @click="emit('especial', mensagem, e.id)"
-                >
-                    {{ e.rotulo }}
                 </button>
             </div>
 
