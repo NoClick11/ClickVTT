@@ -74,4 +74,8 @@ export interface ModuloSistema {
      * abrir o assistente emitindo `construtor`.
      */
     Construtor?: Component;
+    /** Condições do sistema (id, nome, descrição), oferecidas no painel do alvo mirado. */
+    condicoes?: { id: string; nome: string; descricao: string }[];
+    /** Atributos do sistema (id e sigla), para a salvaguarda do alvo ao aplicar condições. */
+    atributos?: { id: string; sigla: string }[];
 }

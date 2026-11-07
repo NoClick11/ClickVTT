@@ -20,21 +20,8 @@ export interface Mensagem {
     criada_em: string | null;
 }
 
-export interface ItemTurno {
-    id: string;
-    nome: string;
-    iniciativa: number | null;
-    cor: string | null;
-    personagem_id: number | null;
-}
-
-/** Turnos/iniciativa: por enquanto só visual (o mestre controla, todos veem). */
-export interface Combate {
-    ativo: boolean;
-    rodada: number;
-    atual: string | null;
-    itens: ItemTurno[];
-}
+// O estado do combate (turnos) e as regras puras que a tela usa estão em `nucleo/combate/estado.ts`.
+export type { Combate, Disposicao, FaseCombate, ItemTurno } from './nucleo/combate/estado';
 
 /** Item da mesa (só o mestre cria/edita). `dados` = o que só o sistema entende; `efeitos` = buffs do núcleo. */
 export interface ItemDto {

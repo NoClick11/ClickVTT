@@ -39,6 +39,21 @@ export interface AcaoDaRolagem {
     /** Título da nova rolagem no chat (ex.: `Espada Longa`; o tipo da rolagem se vê pelos dados e pela fórmula). */
     rotuloRolagem: string;
     destaque?: 'critico';
+    /** Rolagem de dano: o tipo (fogo, cortante...) vai junto para o dano aplicado respeitar resistências e imunidades. */
+    dano?: { tipo: string | null };
+}
+
+/** Resultado de um ataque com alvo (ver `Pipeline` no servidor). */
+export interface Resolucao {
+    estado: 'aguardando' | 'resolvido';
+    evento_id: number;
+    alvo?: string;
+    defesa?: number;
+    base?: number;
+    acerto?: boolean;
+    critico?: boolean;
+    falha?: boolean;
+    mods?: { fonte: string; valor: number }[];
 }
 
 /** Marcas que o SISTEMA põe numa rolagem já feita (ex.: ataque crítico). O núcleo só as repassa e exibe. */
@@ -48,6 +63,10 @@ export interface MarcasDoSistema {
     /** d20 puro igual ou maior que isto é crítico (20 por padrão). */
     margem?: number;
     destaque?: 'critico' | 'falha';
+    /** Andamento do ataque contra um alvo: janela de reação aberta (`aguardando`) ou resolvido (acertou ou errou). */
+    resolucao?: Resolucao;
+    /** Esta rolagem é um dano que pode ser aplicado a um alvo (o tipo pode ser nulo). */
+    dano?: { tipo: string | null };
     /** Botões do card (ex.: Dano, Dano crítico). */
     acoes?: AcaoDaRolagem[];
 }

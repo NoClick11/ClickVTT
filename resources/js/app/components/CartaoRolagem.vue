@@ -9,8 +9,8 @@ import DadoIcone from './DadoIcone.vue';
  * grande à direita e, embaixo, os botões que o sistema oferece em seguida (ex.: rolar o dano depois do ataque).
  * Crítico e falha mudam a cor do card inteiro.
  */
-const props = defineProps<{ mensagem: Mensagem; podeAgir: boolean }>();
-const emit = defineEmits<{ acao: [mensagem: Mensagem, acao: AcaoDaRolagem] }>();
+const props = defineProps<{ mensagem: Mensagem; podeAgir: boolean; alvoNome?: string | null; aplicado?: boolean }>();
+const emit = defineEmits<{ acao: [mensagem: Mensagem, acao: AcaoDaRolagem]; aplicarDano: [mensagem: Mensagem] }>();
 
 const dados = computed(() => props.mensagem.dados!);
 const titulo = computed(() => dados.value.rotulo ?? 'Rolagem');
@@ -18,7 +18,12 @@ const destaque = computed(() => destaqueDaRolagem(dados.value));
 const dadosIndividuais = computed(() => dadosRolados(dados.value));
 /** Poucos dados ficam grandes (o número se lê bem); muitos (uma bola de fogo) ficam compactos. */
 const tamanhoDado = computed(() => (dadosIndividuais.value.length <= 2 ? 'size-12' : dadosIndividuais.value.length <= 4 ? 'size-10' : 'size-8'));
-const acoes = computed(() => (props.podeAgir ? (dados.value.sistema?.acoes ?? []) : []));
+/** O ataque contra um alvo: janela de reação aberta ou resolvido. O dano só abre no acerto (sem alvo, como sempre). */
+const resolucao = computed(() => dados.value.sistema?.resolucao ?? null);
+const acoes = computed(() => (props.podeAgir && (!resolucao.value || (resolucao.value.estado === 'resolvido' && resolucao.value.acerto)) ? (dados.value.sistema?.acoes ?? []) : []));
+const sinal = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+/** Rolagem de dano e quem pode agir: oferece "Aplicar" ao alvo mirado (o tipo, se houver, aparece no botão). */
+const dano = computed(() => (props.podeAgir ? (dados.value.sistema?.dano ?? null) : null));
 const marca = computed(() => (dados.value.sistema?.destaque === 'falha' ? 'Falha crítica' : 'Crítico!'));
 
 /** Faixa da lateral: a cor do resultado, ou a de quem rolou. */
@@ -89,6 +94,29 @@ const estiloBotao = (a: AcaoDaRolagem, indice: number) =>
                     </p>
                     <p v-if="dados.sistema?.destaque" class="mt-1 text-[10px] font-bold uppercase tracking-widest" :class="corTotal">{{ marca }}</p>
                 </div>
+            </div>
+
+            <div v-if="resolucao" class="mt-3 rounded-md border px-2.5 py-1.5 text-xs" :class="resolucao.estado === 'aguardando' ? 'border-sky-400/50 bg-sky-500/10 text-sky-100' : resolucao.acerto ? 'border-green-400/50 bg-green-500/10 text-green-100' : 'border-red-400/50 bg-red-500/10 text-red-100'" role="status">
+                <template v-if="resolucao.estado === 'aguardando'">Aguardando reações de {{ resolucao.alvo }}… (defesa {{ resolucao.defesa }})</template>
+                <template v-else>
+                    <strong>{{ resolucao.acerto ? (resolucao.critico ? 'Crítico!' : 'Acerta') : resolucao.falha ? 'Falha crítica' : 'Erra' }}</strong>
+                    {{ resolucao.alvo }}: {{ dados.total }} contra defesa {{ resolucao.defesa }}
+                    <span v-if="resolucao.mods?.length" class="opacity-80">({{ resolucao.base }} {{ resolucao.mods.map((m) => `${m.fonte} ${sinal(m.valor)}`).join(', ') }})</span>
+                </template>
+            </div>
+
+            <div v-if="dano" class="mt-3 border-t border-preto-700/60 pt-2.5">
+                <button
+                    type="button"
+                    :disabled="!alvoNome || aplicado"
+                    class="flex w-full items-center gap-2 rounded-md border border-red-400/60 bg-red-500/10 px-2.5 py-1.5 text-left text-xs font-semibold text-red-100 transition hover:bg-red-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    :title="alvoNome ? `Aplicar ${dados.total} de dano${dano.tipo ? ' de ' + dano.tipo : ''} a ${alvoNome}` : 'Mire num token (botão Mirar ou tecla T + clique) para aplicar o dano'"
+                    @click="emit('aplicarDano', mensagem)"
+                >
+                    <span class="flex-1">{{ aplicado ? 'Dano aplicado' : alvoNome ? `Aplicar a ${alvoNome}` : 'Mire um alvo para aplicar' }}</span>
+                    <span v-if="dano.tipo" class="rounded bg-preto-950/60 px-1.5 text-[10px] uppercase">{{ dano.tipo }}</span>
+                    <span class="font-mono text-[11px] opacity-80">{{ dados.total }}</span>
+                </button>
             </div>
 
             <div v-if="acoes.length" class="mt-3 grid gap-1.5 border-t border-preto-700/60 pt-2.5">
