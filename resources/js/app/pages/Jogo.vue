@@ -42,7 +42,7 @@ import { emCurso, itemAtual, normalizar as normalizarCombate, podeAgirAgora, rod
 import { totalDoTurno } from '../nucleo/combate/movimento';
 import { comResumo, semOfertasDe, type OfertaDeReacao, type ResumoEvento } from '../nucleo/combate/reacoes';
 import { definirCaminho } from '../nucleo/ficha/caminho';
-import { arrastandoItem, arrastandoPersonagem, itemSolto, personagemSolto } from '../nucleo/itens/arrastar';
+import { arrastandoDaLoja, arrastandoItem, arrastandoPersonagem, itemDaLojaSolto, itemSolto, personagemSolto } from '../nucleo/itens/arrastar';
 import EditorItemDialog from '../nucleo/itens/EditorItemDialog.vue';
 import PainelItens from '../nucleo/itens/PainelItens.vue';
 import type { AcaoDaRolagem } from '../nucleo/rolagem';
@@ -53,7 +53,17 @@ import type { AbrirEditorItem } from '../nucleo/sistemas/tipos';
 import JanelaFlutuante from '../nucleo/ui/JanelaFlutuante.vue';
 import { conectar, type Conexao } from '../realtime';
 import type { AcaoCaracteristica } from '../sistemas/onepiece/regras';
-import type { Combate, ItemDto, Mensagem, NovoItem, VisibilidadeRolagem } from '../tipos-mesa';
+import type {
+    Combate,
+    ItemDeCatalogoDto,
+    ItemDto,
+    LojaAbertaDto,
+    LojaDoJogadorDto,
+    Mensagem,
+    NovoItem,
+    NovoItemDeCatalogo,
+    VisibilidadeRolagem,
+} from '../tipos-mesa';
 
 interface Pasta {
     id: number;
@@ -76,6 +86,10 @@ const props = defineProps<{
     meusPersonagens: number[];
     /** Itens da mesa: o mestre recebe todos; o jogador, só os das fichas que controla. */
     itens: ItemDto[];
+    /** Loja: o mestre recebe as lojas abertas e os itens que criou; o jogador, a loja aberta para ele (ou null). */
+    lojasAbertas?: LojaAbertaDto[];
+    catalogoDoMestre?: ItemDeCatalogoDto[];
+    lojaDoJogador?: LojaDoJogadorDto | null;
     combate: Combate;
     /** Categorias de ação do sistema da mesa (padrão, poderosa, bônus, livre, reação...). */
     categoriasDeAcao?: CategoriaAcao[];
@@ -693,6 +707,7 @@ const itensDaMesa = computed(() => [
 // Editor do mestre (diálogo único; abre pela aba Itens ou pelo inventário de uma ficha).
 const editorAberto = ref(false);
 const catalogoAberto = ref(false);
+const dadosDaLoja = moduloSistema?.dadosDaLoja;
 const itemEditando = ref<ItemDto | null>(null);
 let aoSalvarItem: ((item: ItemDto) => void) | undefined;
 const abrirEditorItem: AbrirEditorItem = (itemId, aoSalvar) => {
@@ -745,13 +760,64 @@ async function rolarDaFicha(personagemId: number, ...[expressao, rotulo, aoRolar
     }
 }
 
+// --- loja ---------------------------------------------------------------------------------------------------------------
+// O mestre abre a loja (jogadores e categorias) e cria itens do catálogo; o jogador compra enquanto ela estiver aberta.
+const lojas = ref<LojaAbertaDto[]>(copia(props.lojasAbertas ?? []));
+watch(
+    () => props.lojasAbertas,
+    (l) => (lojas.value = copia(l ?? [])),
+    { deep: true },
+);
+const jogadoresDaLoja = computed(() => props.jogadores.filter((j) => j.papel !== 'mestre').map((j) => ({ id: j.id, nome: j.nome })));
+async function abrirLoja(dados: { jogadores: 'todos' | number[]; categorias: string[]; fator: number }) {
+    lojas.value = (await api.abrirLoja(dados)).lojas;
+}
+async function fecharLoja(jogadores: 'todos' | number[]) {
+    lojas.value = (await api.fecharLoja(jogadores)).lojas;
+}
+// itens que o mestre cria para o catálogo/loja (usa o mesmo editor dos itens, com categoria, raridade e preço)
+const editorCatalogoAberto = ref(false);
+const itemDeCatalogoEditando = ref<ItemDeCatalogoDto | null>(null);
+const itemDoEditorDeCatalogo = computed(() => itemDeCatalogoEditando.value as unknown as ItemDto | null);
+const abrirEditorDeCatalogo = (id: number | null) => {
+    itemDeCatalogoEditando.value = id === null ? null : (props.catalogoDoMestre?.find((i) => i.id === id) ?? null);
+    editorCatalogoAberto.value = true;
+};
+async function salvarItemDeCatalogo(campos: NovoItem, id: number | null): Promise<ItemDto> {
+    const corpo = campos as NovoItemDeCatalogo;
+    const item = id === null ? await api.criarItemDeCatalogo(corpo) : await api.atualizarItemDeCatalogo(id, corpo);
+    recarregar(['catalogoDoMestre']);
+
+    return item as unknown as ItemDto;
+}
+async function excluirItemDeCatalogo(id: number) {
+    await api.excluirItemDeCatalogo(id);
+    recarregar(['catalogoDoMestre']);
+}
+const lojaVisivel = ref(true);
+/** Compra: o servidor confere tudo; a ficha daqui recebe o novo Belly e o inventário na hora. */
+async function comprarNaLoja(dados: { personagem_id: number; item: string; qtd: number }) {
+    const r = await api.comprarNaLoja(dados);
+    const ficha = fichas.value[dados.personagem_id];
+    if (ficha) for (const [caminho, valor] of Object.entries(r.campos)) definirCaminho(ficha, caminho, copia(valor));
+    recarregar(['itens']);
+
+    return { total: r.total, saldo: r.saldo };
+}
+const meusPersonagensDaLoja = computed(() =>
+    props.personagens.filter((p) => props.meusPersonagens.includes(p.id)).map((p) => ({ id: p.id, nome: p.nome })),
+);
+
 // Arrastar um item da aba Itens para a janela de uma ficha entrega o item ao personagem (só o mestre; o formato do
 // inventário é do módulo do sistema).
 const fichaSobre = ref<number | null>(null);
 const aceitaItem = (e: DragEvent, personagemId: number) =>
     props.mestre && !!moduloSistema?.entregarItem && !!fichas.value[personagemId] && arrastandoItem(e);
+/** Item da loja arrastado para a ficha de um personagem MEU: compra e entrega (o servidor confere loja e Belly). */
+const aceitaLoja = (e: DragEvent, personagemId: number) =>
+    !!props.lojaDoJogador && props.meusPersonagens.includes(personagemId) && arrastandoDaLoja(e);
 function itemSobreFicha(e: DragEvent, personagemId: number) {
-    if (!aceitaItem(e, personagemId)) return;
+    if (!aceitaItem(e, personagemId) && !aceitaLoja(e, personagemId)) return;
     e.preventDefault(); // sem isto o navegador não deixa soltar
     if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
     fichaSobre.value = personagemId;
@@ -760,8 +826,20 @@ function itemSaiuDaFicha(e: DragEvent, personagemId: number) {
     // `dragleave` também dispara ao passar por elementos filhos: só limpa quando saiu da janela de verdade.
     if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node | null) && fichaSobre.value === personagemId) fichaSobre.value = null;
 }
-function soltarItemNaFicha(e: DragEvent, personagemId: number) {
+async function soltarItemNaFicha(e: DragEvent, personagemId: number) {
     fichaSobre.value = null;
+    if (aceitaLoja(e, personagemId)) {
+        e.preventDefault();
+        const ref = itemDaLojaSolto(e);
+        if (!ref) return;
+        try {
+            const r = await comprarNaLoja({ personagem_id: personagemId, item: ref, qtd: 1 });
+            avisar(`Compra feita: ฿ ${r.total.toLocaleString('pt-BR')}. Saldo: ฿ ${r.saldo.toLocaleString('pt-BR')}.`);
+        } catch (err) {
+            avisar(mensagemDe(err));
+        }
+        return;
+    }
     if (!aceitaItem(e, personagemId)) return;
     e.preventDefault();
     const itemId = itemSolto(e);
@@ -972,6 +1050,14 @@ onMounted(() => {
                 .listen('.mensagem', (e: { mensagem: Mensagem; substitui?: boolean }) => aoNovaMensagem(e.mensagem, !!e.substitui))
                 .listen('.cena', (e: { ator: number | null }) => aoMudarCena(e))
                 .listen('.ficha', aoMudarFicha)
+                .listen('.loja', (e: { aberta: boolean; catalogo?: boolean }) => {
+                    if (props.mestre) return recarregar(['catalogoDoMestre', 'lojasAbertas']);
+                    if (e.aberta) lojaVisivel.value = true;
+                    recarregar(['lojaDoJogador']);
+                })
+                .listen('.loja-compra', (e: { jogador: string; item: string; qtd: number; total: number }) =>
+                    avisar(`${e.jogador} comprou ${e.qtd}× ${e.item} por ฿ ${e.total.toLocaleString('pt-BR')}.`),
+                )
                 .listen(
                     '.reacao',
                     (e: OfertaDeReacao) => (ofertasDeReacao.value = [...semOfertasDe(ofertasDeReacao.value, e.evento_id, e.personagem_id), e]),
@@ -1210,7 +1296,7 @@ function alternarPorta(id: number) {
                     </template>
                     <template v-if="mestre" #itens>
                         <PainelItens
-                            :itens="itensDaMesa"
+                            :itens="itensDaMesa.filter((i) => !i.catalogo_id)"
                             :formato="moduloSistema?.formatoDeResumo"
                             :tem-catalogo="!!moduloSistema?.CatalogoDeItens"
                             @editar="abrirEditorItem"
@@ -1341,9 +1427,39 @@ function alternarPorta(id: number) {
                 :is="moduloSistema.CatalogoDeItens"
                 v-if="moduloSistema?.CatalogoDeItens"
                 v-model:open="catalogoAberto"
-                :itens="itensDaMesa"
-                :adicionar="(item: NovoItem) => salvarItem(item, null)"
+                :jogadores="jogadoresDaLoja"
+                :lojas="lojas"
+                :proprios="catalogoDoMestre ?? []"
+                :abrir-loja="abrirLoja"
+                :fechar-loja="fecharLoja"
+                @editar="abrirEditorDeCatalogo"
             />
+            <EditorItemDialog
+                v-if="mestre && moduloSistema?.CatalogoDeItens"
+                v-model:open="editorCatalogoAberto"
+                :item="itemDoEditorDeCatalogo"
+                :modulo="moduloSistema"
+                :loja="dadosDaLoja"
+                :salvar="salvarItemDeCatalogo"
+                :excluir="excluirItemDeCatalogo"
+            />
+            <component
+                :is="moduloSistema.Loja"
+                v-if="lojaDoJogador && lojaVisivel && moduloSistema?.Loja"
+                :loja="lojaDoJogador"
+                :personagens="meusPersonagensDaLoja"
+                :fichas="fichas"
+                :comprar="comprarNaLoja"
+                @fechar="lojaVisivel = false"
+            />
+            <button
+                v-if="lojaDoJogador && !lojaVisivel && moduloSistema?.Loja"
+                type="button"
+                class="fixed bottom-4 right-4 z-40 rounded-full border border-ouro-400 bg-ouro-500 px-4 py-2 text-sm font-semibold text-preto-950 shadow-lg hover:bg-ouro-400"
+                @click="lojaVisivel = true"
+            >
+                Loja aberta
+            </button>
             <EditorItemDialog
                 v-model:open="editorAberto"
                 :item="itemEditando"
