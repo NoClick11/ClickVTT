@@ -1,0 +1,812 @@
+[
+  {
+    "nome": "Zoan comum: 3 comuns e 5 específicos",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "comum",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [
+            "faro-agucado",
+            "escalador",
+            "voo"
+          ],
+          "especificos": [
+            "bote",
+            "sanguinario",
+            "planar",
+            "cabeca-dura",
+            "casco-protetor"
+          ],
+          "ancestrais": []
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "Zoan comum: 4 comuns",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "comum",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [
+            "faro-agucado",
+            "escalador",
+            "voo",
+            "camuflagem"
+          ],
+          "especificos": [],
+          "ancestrais": []
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": "No máximo 3 Traços Comuns"
+  },
+  {
+    "nome": "Zoan predador: 4 específicos",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "comum",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": true,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [],
+          "especificos": [
+            "bote",
+            "sanguinario",
+            "planar",
+            "cabeca-dura"
+          ],
+          "ancestrais": []
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": "No máximo 3 Traços Específicos"
+  },
+  {
+    "nome": "Zoan comum com ancestral",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "comum",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": [
+            "animal-grande"
+          ]
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": "Zoan Comum não recebe"
+  },
+  {
+    "nome": "Zoan ancestral: 1 ancestral + 3 trocas",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "ancestral",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [],
+          "especificos": [
+            "bote",
+            "planar"
+          ],
+          "ancestrais": [
+            "animal-grande",
+            "criatura-robusta",
+            "monstro-de-cerco",
+            "pele-resistente"
+          ]
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "Zoan ancestral: 5 ancestrais",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "ancestral",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": [
+            "animal-grande",
+            "criatura-robusta",
+            "monstro-de-cerco",
+            "pele-resistente",
+            "recuperacao-acelerada"
+          ]
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": "Só dá para trocar"
+  },
+  {
+    "nome": "Corpo Resistente 3 vezes",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "comum",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [],
+          "especificos": [
+            "corpo-resistente",
+            "corpo-resistente",
+            "corpo-resistente"
+          ],
+          "ancestrais": []
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": "escolhido vezes demais"
+  },
+  {
+    "nome": "Mítica: 2 comuns, 2 específicos, 1 ancestral",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "mitica",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [
+            "voo",
+            "visao-agucada"
+          ],
+          "especificos": [
+            "ataque-de-mergulho",
+            "sobrevoo"
+          ],
+          "ancestrais": [
+            "recuperacao-acelerada"
+          ]
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "Mítica sem despertar: 3 específicos",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "mitica",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [],
+          "especificos": [
+            "ataque-de-mergulho",
+            "sobrevoo",
+            "planar"
+          ],
+          "ancestrais": []
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": "Traços Específicos"
+  },
+  {
+    "nome": "Mítica desperta: 1 específico extra",
+    "ficha": {
+      "nivel": 16,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "mitica",
+        "despertada": true,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [],
+          "especificos": [
+            "ataque-de-mergulho",
+            "sobrevoo",
+            "planar"
+          ],
+          "ancestrais": []
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "Point 2 no nível 1",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "comum",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": []
+        },
+        "points": [
+          {
+            "ponto": 2,
+            "modelo": "arm-point"
+          }
+        ],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": "só vem no nível 3"
+  },
+  {
+    "nome": "Points 1 a 5 no nível 12",
+    "ficha": {
+      "nivel": 12,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "comum",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": []
+        },
+        "points": [
+          {
+            "ponto": 1,
+            "modelo": "heavy-point"
+          },
+          {
+            "ponto": 2,
+            "modelo": "arm-point"
+          },
+          {
+            "ponto": 3,
+            "modelo": "tail-point"
+          },
+          {
+            "ponto": 4,
+            "modelo": "guard-point"
+          },
+          {
+            "ponto": 5,
+            "modelo": "claw-point"
+          }
+        ],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "Modelo repetido",
+    "ficha": {
+      "nivel": 12,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "comum",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": []
+        },
+        "points": [
+          {
+            "ponto": 1,
+            "modelo": "arm-point"
+          },
+          {
+            "ponto": 2,
+            "modelo": "arm-point"
+          }
+        ],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": "só pode ser escolhido uma vez"
+  },
+  {
+    "nome": "Posição de Point repetida",
+    "ficha": {
+      "nivel": 12,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "comum",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": []
+        },
+        "points": [
+          {
+            "ponto": 1,
+            "modelo": "custom"
+          },
+          {
+            "ponto": 1,
+            "modelo": "arm-point"
+          }
+        ],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": "só pode ser usada uma vez"
+  },
+  {
+    "nome": "Point da Genialidade nº 2",
+    "ficha": {
+      "nivel": 3,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "comum",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": []
+        },
+        "points": [
+          {
+            "ponto": 2,
+            "modelo": "custom",
+            "genialidade": 2
+          }
+        ],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": [
+          {
+            "id": "genialidade-inusitada"
+          },
+          {
+            "id": "genialidade-inusitada"
+          }
+        ]
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "Point da Genialidade não aprendida",
+    "ficha": {
+      "nivel": 3,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "comum",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": []
+        },
+        "points": [
+          {
+            "ponto": 2,
+            "modelo": "custom",
+            "genialidade": 2
+          }
+        ],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": [
+          {
+            "id": "genialidade-inusitada"
+          }
+        ]
+      }
+    },
+    "contem": "Genialidade Inusitada inválido"
+  },
+  {
+    "nome": "MP Especial Logia numa Paramecia",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "paramecia",
+        "zoan": "",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [
+          "arauto-do-desastre"
+        ],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": []
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": "não liberada"
+  },
+  {
+    "nome": "MP Especial de categoria A",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "paramecia",
+        "zoan": "",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [
+          "destruidor"
+        ],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": []
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "a",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "MP Especial de categoria C",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "paramecia",
+        "zoan": "",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [
+          "destruidor"
+        ],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": []
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "c",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": "não liberada"
+  },
+  {
+    "nome": "2 MPs Especiais com usuário simples",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "logia",
+        "zoan": "",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [
+          "orbes",
+          "habilidade-refinada"
+        ],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": []
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": "Mais MPs Especiais"
+  },
+  {
+    "nome": "Zoan Comum não recebe MP Especial",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "zoan",
+        "zoan": "comum",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [
+          "orbes"
+        ],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": []
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": "Mais MPs Especiais"
+  },
+  {
+    "nome": "Uso Alternativo só na Mítica",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "paramecia",
+        "zoan": "",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "uso-alternativo",
+        "mpEspeciais": [],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": []
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": "só das Zoan Míticas"
+  },
+  {
+    "nome": "Potencialização Elemental: Paramecia desperta",
+    "ficha": {
+      "nivel": 16,
+      "akuma": {
+        "tipo": "paramecia",
+        "zoan": "",
+        "despertada": true,
+        "usuario": "avancado",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [
+          "potencializacao-elemental"
+        ],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": []
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": null
+  },
+  {
+    "nome": "Potencialização Elemental: Paramecia comum",
+    "ficha": {
+      "nivel": 1,
+      "akuma": {
+        "tipo": "paramecia",
+        "zoan": "",
+        "despertada": false,
+        "usuario": "simples",
+        "predador": false,
+        "aspecto": "padrao",
+        "mpEspeciais": [
+          "potencializacao-elemental"
+        ],
+        "tracos": {
+          "comuns": [],
+          "especificos": [],
+          "ancestrais": []
+        },
+        "points": [],
+        "propriedades": [],
+        "categoria": "",
+        "despertar": ""
+      },
+      "treinamento": {
+        "aprendidos": []
+      }
+    },
+    "contem": "não liberada"
+  }
+]
