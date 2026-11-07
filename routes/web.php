@@ -52,6 +52,7 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::patch('paginas/{pagina}', [PaginaController::class, 'update'])->name('paginas.update');
     Route::delete('paginas/{pagina}', [PaginaController::class, 'destroy'])->name('paginas.destroy');
     Route::post('paginas/{pagina}/jogadores/{jogador}', [PaginaController::class, 'moverJogador'])->name('paginas.jogador');
+    Route::delete('personagens/{personagem}', [PersonagemDoJogoController::class, 'excluir'])->middleware('throttle:30,1')->name('personagens.excluir');
     Route::patch('personagens/{personagem}/ficha', [FichaController::class, 'atualizar'])
         ->middleware('throttle:120,1')->name('personagens.ficha');
     Route::post('personagens/{personagem}/companheiros', [CompanheiroController::class, 'criar'])->middleware('throttle:10,1')->name('personagens.companheiros');

@@ -16,9 +16,11 @@ import PainelDoTurno from '../components/combate/PainelDoTurno.vue';
 import ConfigPaginaDialog from '../components/ConfigPaginaDialog.vue';
 import ControlesZoom from '../components/ControlesZoom.vue';
 import DadosAnimacao from '../components/DadosAnimacao.vue';
+import ExcluirPersonagemDialog from '../components/ExcluirPersonagemDialog.vue';
 import Inspetor from '../components/Inspetor.vue';
 import MenuObjeto from '../components/MenuObjeto.vue';
 import MenuPaginas from '../components/MenuPaginas.vue';
+import MenuPersonagem from '../components/MenuPersonagem.vue';
 import NovoPersonagemDialog from '../components/NovoPersonagemDialog.vue';
 import OpcoesFerramenta from '../components/OpcoesFerramenta.vue';
 import PainelAlvo from '../components/PainelAlvo.vue';
@@ -1045,6 +1047,30 @@ function pedirAtribuicao(id: number) {
     atribuindo.value = props.personagens.find((p) => p.id === id) ?? null;
     atribuicaoAberta.value = atribuindo.value !== null;
 }
+// Botão direito num personagem da lista (só o mestre): excluir, com confirmação.
+const menuPersonagem = ref<{ id: number; x: number; y: number } | null>(null);
+const excluindoId = ref<number | null>(null);
+const excluindo = ref(false);
+const nomeDoMenu = computed(() => props.personagens.find((p) => p.id === menuPersonagem.value?.id)?.nome ?? '');
+const nomeDoExcluido = computed(() => props.personagens.find((p) => p.id === excluindoId.value)?.nome ?? '');
+async function excluirPersonagem() {
+    const id = excluindoId.value;
+    if (id === null) return;
+    excluindo.value = true;
+    try {
+        await api.excluirPersonagem(id);
+        fecharFicha(id);
+        if (ativoId.value === id) ativoId.value = null;
+        if (alvoPersonagem.value?.id === id) alvoObjetoId.value = null;
+        excluindoId.value = null;
+        recarregar(['personagens', 'meusPersonagens', 'objetos', 'jogadores', 'combate']);
+    } catch (e) {
+        avisar(mensagemDe(e));
+    } finally {
+        excluindo.value = false;
+    }
+}
+
 async function salvarAtribuicao(personagemId: number, jogadores: number[]) {
     try {
         await api.atribuirJogadores(personagemId, jogadores);
@@ -1438,6 +1464,7 @@ function alternarPorta(id: number) {
                             :pagina-de="paginaDe"
                             :com-token="comToken"
                             @abrir="abrirPersonagem"
+                            @menu="(id, tela) => (menuPersonagem = { id, ...tela })"
                             @focar="focarPersonagem"
                             @atribuir="pedirAtribuicao"
                             @criar="novoPersonagemAberto = true"
@@ -1540,6 +1567,24 @@ function alternarPorta(id: number) {
             @update:open="construtorId = null"
         />
 
+        <MenuPersonagem
+            v-if="mestre && menuPersonagem"
+            :nome="nomeDoMenu"
+            :x="menuPersonagem.x"
+            :y="menuPersonagem.y"
+            @fechar="menuPersonagem = null"
+            @excluir="
+                excluindoId = menuPersonagem.id;
+                menuPersonagem = null;
+            "
+        />
+        <ExcluirPersonagemDialog
+            :open="excluindoId !== null"
+            :nome="nomeDoExcluido"
+            :ocupado="excluindo"
+            @update:open="(v: boolean) => !v && (excluindoId = null)"
+            @confirmar="excluirPersonagem"
+        />
         <MenuObjeto
             v-if="menuObjeto && objetoDoMenu"
             :objeto="objetoDoMenu"

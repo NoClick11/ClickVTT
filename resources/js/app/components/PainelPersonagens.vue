@@ -26,7 +26,14 @@ defineProps<{
     /** ids de personagens que têm token na página aberta */
     comToken: number[];
 }>();
-defineEmits<{ abrir: [personagemId: number]; focar: [personagemId: number]; atribuir: [personagemId: number]; criar: [] }>();
+defineEmits<{
+    abrir: [personagemId: number];
+    focar: [personagemId: number];
+    atribuir: [personagemId: number];
+    criar: [];
+    /** Botão direito (só o mestre): o menu de opções do personagem. */
+    menu: [personagemId: number, tela: { x: number; y: number }];
+}>();
 </script>
 
 <template>
@@ -49,8 +56,9 @@ defineEmits<{ abrir: [personagemId: number]; focar: [personagemId: number]; atri
                     :key="p.id"
                     class="flex items-center gap-1 rounded-md border bg-preto-900/70 pr-1.5 transition"
                     :draggable="mestre"
-                    :title="mestre ? 'Arraste para o mapa para criar o token' : undefined"
+                    :title="mestre ? 'Arraste para o mapa para criar o token; botão direito para mais opções' : undefined"
                     @dragstart="mestre && arrastar($event, p.id)"
+                    @contextmenu="mestre && ($event.preventDefault(), $emit('menu', p.id, { x: $event.clientX, y: $event.clientY }))"
                     :class="ativoId === p.id ? 'border-ouro-400' : 'border-transparent hover:border-preto-700'"
                 >
                     <!-- Clicar no personagem abre a ficha e, se for seu, o torna o personagem ativo -->

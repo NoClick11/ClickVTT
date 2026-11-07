@@ -5,11 +5,14 @@ namespace App\Http\Controllers\App;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Site\PersonagemRequest;
 use App\Models\Mesa;
+use App\Models\Objeto;
 use App\Models\Personagem;
+use App\Nucleo\Combate\CombateService;
 use App\Support\AcessoMesa;
 use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -45,5 +48,41 @@ class PersonagemController extends Controller
         Transmitir::cena($mesa, null, $acesso->jogador->id);
 
         return response()->json($personagem->load('jogadores')->paraFront());
+    }
+
+    /**
+     * O mestre exclui um personagem: some a ficha, os tokens dele em todas as páginas e o lugar dele no combate (se era o turno
+     * dele, passa para o primeiro da fila). Os itens da mesa não são tocados. Não dá para desfazer.
+     */
+    public function excluir(Request $request, Mesa $mesa, Personagem $personagem): JsonResponse
+    {
+        $acesso = AcessoMesa::exigirMestre($request, $mesa);
+        abort_unless($personagem->mesa_id === $mesa->id, 404);
+
+        $combate = DB::transaction(function () use ($mesa, $personagem) {
+            $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
+            $c = CombateService::normalizar($m->combate);
+            $antes = count($c['itens']);
+            $removidos = array_column(array_filter($c['itens'], fn ($i) => $i['personagem_id'] === $personagem->id), 'id');
+            $c['itens'] = array_values(array_filter($c['itens'], fn ($i) => $i['personagem_id'] !== $personagem->id));
+            if (in_array($c['atual'], $removidos, true)) {
+                $c['atual'] = $c['fase'] === 'em_curso' ? ($c['itens'][0]['id'] ?? null) : null;
+            }
+            $mudou = count($c['itens']) !== $antes;
+            if ($mudou) {
+                $m->forceFill(['combate' => $c])->save();
+            }
+            Objeto::query()->where('personagem_id', $personagem->id)->delete(); // os tokens dele em todas as páginas
+            $personagem->delete();
+
+            return $mudou ? $c : null;
+        });
+
+        if ($combate) {
+            Transmitir::enviar($mesa, 'combate', ['combate' => $combate, 'ator' => $acesso->jogador->id], ['mesa']);
+        }
+        Transmitir::cena($mesa, null, $acesso->jogador->id);
+
+        return response()->json(['ok' => true]);
     }
 }

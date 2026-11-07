@@ -77,6 +77,8 @@ export function apiMesa(mesaId: number, atorId: number) {
         /** Só o mestre: cria o personagem (sem jogadores = NPC). */
         criarPersonagem: (dados: { nome: string; cor: string; jogadores: number[] }) =>
             requisitar<Personagem>(atorId, 'POST', r('jogo.personagens.store'), dados),
+        /** Só o mestre: exclui o personagem (ficha, tokens e lugar no combate). */
+        excluirPersonagem: (personagemId: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.personagens.excluir', personagemId)),
         atribuirJogadores: (personagemId: number, jogadores: number[]) =>
             requisitar<object>(atorId, 'PUT', r('jogo.personagens.atribuir', personagemId), { jogadores }),
         enviarTexto: (texto: string, personagemId: number | null) =>
