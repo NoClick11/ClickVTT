@@ -1,0 +1,930 @@
+{
+  "custoGenialidade": [
+    1,
+    1,
+    2,
+    2,
+    2,
+    3,
+    3
+  ],
+  "treinamentos": [
+    {
+      "id": "apostador",
+      "nome": "Apostador",
+      "categoria": "geral",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "sab",
+        "von"
+      ],
+      "minimo": 16,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "bom-nadador",
+      "nome": "Bom Nadador",
+      "categoria": "geral",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "for",
+        "con"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "corredor",
+      "nome": "Corredor",
+      "categoria": "geral",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "for",
+        "con"
+      ],
+      "minimo": 15,
+      "requer": null,
+      "repetivel": false,
+      "escolha": [
+        "obstaculos",
+        "longa"
+      ]
+    },
+    {
+      "id": "desarmador",
+      "nome": "Desarmador",
+      "categoria": "geral",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": true,
+      "atributos": [
+        "for",
+        "des"
+      ],
+      "minimo": 16,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "improvisador",
+      "nome": "Improvisador",
+      "categoria": "geral",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "sab"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "jogador-experiente",
+      "nome": "Jogador Experiente",
+      "categoria": "geral",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": true,
+      "atributos": [
+        "sab",
+        "von"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "ladrao",
+      "nome": "Ladrão",
+      "categoria": "geral",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "des",
+        "sab"
+      ],
+      "minimo": 16,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "genialidade-inusitada",
+      "nome": "Genialidade Inusitada",
+      "categoria": "geral",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "con",
+        "sab"
+      ],
+      "minimo": 12,
+      "requer": null,
+      "repetivel": true,
+      "escolha": null
+    },
+    {
+      "id": "soru",
+      "nome": "Soru",
+      "categoria": "geral",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": true,
+      "atributos": [
+        "for",
+        "des"
+      ],
+      "minimo": 18,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "entusiasta-de-plantas",
+      "nome": "Entusiasta de Plantas",
+      "categoria": "geral",
+      "dificuldade": "intermediario",
+      "especie": null,
+      "dias": 10,
+      "pt": 3,
+      "tutor": true,
+      "atributos": [
+        "des",
+        "sab"
+      ],
+      "minimo": 18,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "combatente-montado",
+      "nome": "Combatente Montado",
+      "categoria": "geral",
+      "dificuldade": "intermediario",
+      "especie": null,
+      "dias": 10,
+      "pt": 3,
+      "tutor": false,
+      "atributos": [
+        "for",
+        "des"
+      ],
+      "minimo": 13,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "copiador",
+      "nome": "Copiador",
+      "categoria": "geral",
+      "dificuldade": "intermediario",
+      "especie": null,
+      "dias": 10,
+      "pt": 3,
+      "tutor": false,
+      "atributos": [
+        "des",
+        "sab"
+      ],
+      "minimo": 17,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "controle-corporal",
+      "nome": "Controle Corporal",
+      "categoria": "geral",
+      "dificuldade": "intermediario",
+      "especie": null,
+      "dias": 10,
+      "pt": 3,
+      "tutor": false,
+      "atributos": [
+        "des",
+        "con"
+      ],
+      "minimo": 16,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "especialista-em-combate-aereo",
+      "nome": "Especialista em Combate Aéreo",
+      "categoria": "geral",
+      "dificuldade": "intermediario",
+      "especie": null,
+      "dias": 10,
+      "pt": 3,
+      "tutor": false,
+      "atributos": [
+        "for",
+        "des"
+      ],
+      "minimo": 15,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "estrategista",
+      "nome": "Estrategista",
+      "categoria": "geral",
+      "dificuldade": "intermediario",
+      "especie": null,
+      "dias": 10,
+      "pt": 3,
+      "tutor": false,
+      "atributos": [
+        "sab",
+        "pre"
+      ],
+      "minimo": 16,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "geppo",
+      "nome": "Geppo",
+      "categoria": "geral",
+      "dificuldade": "intermediario",
+      "especie": null,
+      "dias": 10,
+      "pt": 3,
+      "tutor": true,
+      "atributos": [
+        "for",
+        "des"
+      ],
+      "minimo": 18,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "kamie",
+      "nome": "Kamie",
+      "categoria": "geral",
+      "dificuldade": "intermediario",
+      "especie": null,
+      "dias": 10,
+      "pt": 3,
+      "tutor": true,
+      "atributos": [
+        "des"
+      ],
+      "minimo": 18,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "resistencia-a-kairoseki",
+      "nome": "Resistência à Kairoseki",
+      "categoria": "geral",
+      "dificuldade": "intermediario",
+      "especie": null,
+      "dias": 10,
+      "pt": 3,
+      "tutor": false,
+      "atributos": [
+        "con",
+        "von"
+      ],
+      "minimo": 16,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "tekkai",
+      "nome": "Tekkai",
+      "categoria": "geral",
+      "dificuldade": "intermediario",
+      "especie": null,
+      "dias": 10,
+      "pt": 3,
+      "tutor": true,
+      "atributos": [
+        "for",
+        "con"
+      ],
+      "minimo": 18,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "tecnica-as",
+      "nome": "Técnica Ás",
+      "categoria": "geral",
+      "dificuldade": "intermediario",
+      "especie": null,
+      "dias": 10,
+      "pt": 3,
+      "tutor": false,
+      "atributos": [
+        "for",
+        "des"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "algoz-de-usuarios-de-akuma-no-mi",
+      "nome": "Algoz de Usuários de Akuma no Mi",
+      "categoria": "geral",
+      "dificuldade": "complexo",
+      "especie": null,
+      "dias": 15,
+      "pt": 5,
+      "tutor": false,
+      "atributos": [
+        "von"
+      ],
+      "minimo": 15,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "arte-do-tempo",
+      "nome": "Arte do Tempo",
+      "categoria": "geral",
+      "dificuldade": "complexo",
+      "especie": null,
+      "dias": 15,
+      "pt": 5,
+      "tutor": false,
+      "atributos": [
+        "sab"
+      ],
+      "minimo": 19,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "autoaperfeicoamento",
+      "nome": "Autoaperfeiçoamento",
+      "categoria": "geral",
+      "dificuldade": "complexo",
+      "especie": null,
+      "dias": 15,
+      "pt": 5,
+      "tutor": false,
+      "atributos": [
+        "for",
+        "des",
+        "con",
+        "sab",
+        "pre",
+        "von"
+      ],
+      "minimo": 16,
+      "requer": null,
+      "repetivel": true,
+      "escolha": [
+        "for",
+        "des",
+        "con",
+        "sab",
+        "pre",
+        "von"
+      ]
+    },
+    {
+      "id": "conhecimento-celestial",
+      "nome": "Conhecimento Celestial",
+      "categoria": "geral",
+      "dificuldade": "complexo",
+      "especie": null,
+      "dias": 15,
+      "pt": 5,
+      "tutor": false,
+      "atributos": [
+        "sab"
+      ],
+      "minimo": 15,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "guerreiro-treinado",
+      "nome": "Guerreiro Treinado",
+      "categoria": "geral",
+      "dificuldade": "complexo",
+      "especie": null,
+      "dias": 15,
+      "pt": 5,
+      "tutor": false,
+      "atributos": [
+        "for",
+        "con"
+      ],
+      "minimo": 16,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "hipnotizador",
+      "nome": "Hipnotizador",
+      "categoria": "geral",
+      "dificuldade": "complexo",
+      "especie": null,
+      "dias": 15,
+      "pt": 5,
+      "tutor": false,
+      "atributos": [
+        "sab",
+        "pre"
+      ],
+      "minimo": 16,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "punho-bebado",
+      "nome": "Punho Bêbado",
+      "categoria": "geral",
+      "dificuldade": "complexo",
+      "especie": null,
+      "dias": 15,
+      "pt": 5,
+      "tutor": true,
+      "atributos": [
+        "con"
+      ],
+      "minimo": 17,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "resistencia-a-kairoseki-superior",
+      "nome": "Resistência à Kairoseki Superior",
+      "categoria": "geral",
+      "dificuldade": "complexo",
+      "especie": null,
+      "dias": 15,
+      "pt": 5,
+      "tutor": false,
+      "atributos": [
+        "con",
+        "von"
+      ],
+      "minimo": 20,
+      "requer": "resistencia-a-kairoseki",
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "bombardeador",
+      "nome": "Bombardeador",
+      "categoria": "arma",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "des",
+        "sab"
+      ],
+      "minimo": 16,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "combatente-exotico",
+      "nome": "Combatente Exótico",
+      "categoria": "arma",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "des",
+        "sab"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "combatente-versatil",
+      "nome": "Combatente Versátil",
+      "categoria": "arma",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "des",
+        "sab"
+      ],
+      "minimo": 15,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "arqueiro-treinado",
+      "nome": "Arqueiro Treinado",
+      "categoria": "arma",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "des"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "espadachim-treinado",
+      "nome": "Espadachim Treinado",
+      "categoria": "arma",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "for",
+        "des"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "estilingueiro-treinado",
+      "nome": "Estilingueiro Treinado",
+      "categoria": "arma",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "des"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "gangster",
+      "nome": "Gangster",
+      "categoria": "arma",
+      "dificuldade": "simples",
+      "especie": null,
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "des"
+      ],
+      "minimo": 15,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "lanceiro-treinado",
+      "nome": "Lanceiro Treinado",
+      "categoria": "arma",
+      "dificuldade": "intermediario",
+      "especie": null,
+      "dias": 10,
+      "pt": 3,
+      "tutor": false,
+      "atributos": [
+        "for",
+        "des"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "combatente-ardiloso",
+      "nome": "Combatente Ardiloso",
+      "categoria": "arma",
+      "dificuldade": "complexo",
+      "especie": null,
+      "dias": 15,
+      "pt": 5,
+      "tutor": false,
+      "atributos": [
+        "des",
+        "sab"
+      ],
+      "minimo": 15,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "espadachim-negro",
+      "nome": "Espadachim Negro",
+      "categoria": "arma",
+      "dificuldade": "complexo",
+      "especie": null,
+      "dias": 15,
+      "pt": 5,
+      "tutor": false,
+      "atributos": [
+        "for",
+        "des"
+      ],
+      "minimo": 17,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "pequeno-gigante",
+      "nome": "Pequeno Gigante",
+      "categoria": "especie",
+      "dificuldade": "simples",
+      "especie": "Anão",
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "con"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "conexao-com-a-natureza",
+      "nome": "Conexão com a Natureza",
+      "categoria": "especie",
+      "dificuldade": "simples",
+      "especie": "Anão",
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "sab"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "afinidade-cultural",
+      "nome": "Afinidade Cultural",
+      "categoria": "especie",
+      "dificuldade": "simples",
+      "especie": "Celestial",
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "des"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "guerreiro-nato",
+      "nome": "Guerreiro Nato",
+      "categoria": "especie",
+      "dificuldade": "simples",
+      "especie": "Gigante",
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "con"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "resistencia-dos-gigantes",
+      "nome": "Resistência dos Gigantes",
+      "categoria": "especie",
+      "dificuldade": "simples",
+      "especie": "Gigante",
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "con"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "expertise-cultural",
+      "nome": "Expertise Cultural",
+      "categoria": "especie",
+      "dificuldade": "simples",
+      "especie": "Povo do Mar",
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "for"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "iniciada-em-haki",
+      "nome": "Iniciada em Haki",
+      "categoria": "especie",
+      "dificuldade": "simples",
+      "especie": "Humano",
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "von"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "resiliencia",
+      "nome": "Resiliência",
+      "categoria": "especie",
+      "dificuldade": "simples",
+      "especie": "Humano",
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "sab"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": [
+        "for",
+        "des",
+        "con",
+        "sab",
+        "pre",
+        "von"
+      ]
+    },
+    {
+      "id": "versatilidade-humana",
+      "nome": "Versatilidade Humana",
+      "categoria": "especie",
+      "dificuldade": "simples",
+      "especie": "Humano",
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "sab"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "hakka",
+      "nome": "Hakka",
+      "categoria": "especie",
+      "dificuldade": "simples",
+      "especie": "Lunariano",
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "con"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "asas-funcionais",
+      "nome": "Asas Funcionais",
+      "categoria": "especie",
+      "dificuldade": "simples",
+      "especie": "Lunariano",
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "con"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "leao-da-lua",
+      "nome": "Leão da Lua",
+      "categoria": "especie",
+      "dificuldade": "complexo",
+      "especie": "Mink",
+      "dias": 15,
+      "pt": 5,
+      "tutor": true,
+      "atributos": [
+        "con"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    },
+    {
+      "id": "furtividade-animal",
+      "nome": "Furtividade Animal",
+      "categoria": "especie",
+      "dificuldade": "simples",
+      "especie": "Mink",
+      "dias": 5,
+      "pt": 1,
+      "tutor": false,
+      "atributos": [
+        "des"
+      ],
+      "minimo": 14,
+      "requer": null,
+      "repetivel": false,
+      "escolha": null
+    }
+  ]
+}
