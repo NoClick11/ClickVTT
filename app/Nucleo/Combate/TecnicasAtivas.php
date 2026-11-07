@@ -125,10 +125,7 @@ final class TecnicasAtivas
         ];
     }
 
-    // --- Vigília (Overwatch): esfera no mapa; dispara quando uma criatura age ou se move dentro dela ------------------------------
-
-    /** Ações que contam como "realizar uma ação" (a livre e a reação não): encerram a Vigília do próprio atirador. */
-    private const ACOES_QUE_CONTAM = ['padrao', 'bonus', 'poderosa'];
+    // --- Vigília (Overwatch): esfera no mapa; fica no mapa; só a esfera é automática ------------------------------
 
     /**
      * Uma Vigília nova. `zona`: `{pagina_id, x, y, raio}` com o centro em pixels do mapa e o raio em metros.
@@ -143,20 +140,6 @@ final class TecnicasAtivas
         ];
     }
 
-    /**
-     * Uma criatura agiu (gastou Ação, Ação bônus ou Ação poderosa): se foi o atirador da Vigília, ela acaba ("qualquer outra atividade encerra a
-     * Técnica"). Os ataques da Vigília são comandados pelo mestre: o sistema só cuida da esfera no mapa.
-     */
-    public static function aoAgir(Mesa $mesa, AcessoMesa $acesso, int $personagemId, string $categoria, bool $manterVigia = false): void
-    {
-        if (! in_array($categoria, self::ACOES_QUE_CONTAM, true)) {
-            return;
-        }
-        if (! $manterVigia) {
-            self::encerrarVigias($mesa, $acesso, $personagemId, 'agiu');
-        }
-    }
-
     /** Um token se moveu: o atirador que anda perde a Vigília dele ("qualquer outra atividade encerra a Técnica"). */
     public static function aoMover(Mesa $mesa, AcessoMesa $acesso, Objeto $token): void
     {
@@ -166,7 +149,7 @@ final class TecnicasAtivas
         self::encerrarVigias($mesa, $acesso, (int) $token->personagem_id, 'se moveu');
     }
 
-    /** O atirador que age ou anda perde as Vigílias dele (avisa no chat). */
+    /** O atirador que anda perde as Vigílias dele (avisa no chat). */
     public static function encerrarVigias(Mesa $mesa, AcessoMesa $acesso, int $personagemId, string $motivo): void
     {
         $encerradas = [];

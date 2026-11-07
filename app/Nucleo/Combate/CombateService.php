@@ -110,20 +110,19 @@ final class CombateService
 
     /**
      * Gasta uma ação de `$categoria` de um personagem (se ele está no combate em curso). Atômico, com a mesa travada.
-     * Recusa (422) com o motivo se: não é o turno dele (categorias `soNoTurno`), a categoria só serve para técnicas, ou o limite
-     * do turno/rodada já foi usado. O mestre nunca é recusado (o gasto só é anotado). Fora do combate em curso, ou com o
+     * Recusa (422) com o motivo se a categoria do sistema tem trava (`soNoTurno`, `soTecnicas`, `porTurno`, `porRodada`); o One Piece
+     * não declara nenhuma (age-se livremente), só o movimento fora do turno é travado (ObjetoController). O mestre nunca é recusado (o gasto só é anotado). Fora do combate em curso, ou com o
      * personagem fora do encontro, ou sistema sem categorias: não bloqueia nada.
      *
      * @return array<string, mixed> o estado (já transmitido se mudou)
      */
-    public function gastar(Mesa $mesa, AcessoMesa $acesso, int $personagemId, string $categoria, bool $tecnica = false, ?int $ataquesPorAcao = null, bool $manterVigia = false): array
+    public function gastar(Mesa $mesa, AcessoMesa $acesso, int $personagemId, string $categoria, bool $tecnica = false, ?int $ataquesPorAcao = null): array
     {
         abort_unless($acesso->podeControlar($personagemId), 403, 'Este personagem não é seu.');
         $sistema = $this->sistemas->resolver($mesa->sistema->slug);
         $cats = $sistema instanceof SistemaDeCombate ? collect($sistema->categoriasDeAcao())->keyBy('id') : collect();
         $mudou = false;
-        $novaAcao = false; // gastou uma Ação nova (não foi só mais um ataque da mesma Ação)
-        $depois = DB::transaction(function () use ($mesa, $acesso, $personagemId, $categoria, $tecnica, $ataquesPorAcao, $cats, &$mudou, &$novaAcao) {
+        $depois = DB::transaction(function () use ($mesa, $acesso, $personagemId, $categoria, $tecnica, $ataquesPorAcao, $cats, &$mudou) {
             $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
             $c = self::normalizar($m->combate);
             $k = collect($c['itens'])->search(fn ($i) => $i['personagem_id'] === $personagemId);
@@ -135,16 +134,11 @@ final class CombateService
             $usos = (int) ($item['acoes'][$categoria] ?? 0);
             // Ataque com arma (Ação "Atacar"): o 1º gasta a Ação; os seguintes valem até o limite de ataques por Ação (Ataque Extra) mais os
             // extras do turno, sem gastar outra Ação. O contador `ataques` zera sozinho a cada turno (junto das demais ações).
-            // Vigília (Overwatch) ativa: o atirador ataca com a arma nos turnos dos outros, sem gastar a Ação (o mestre comanda cada ataque)
-            if ($ataquesPorAcao !== null && $categoria === 'padrao' && $c['atual'] !== $item['id']
-                && collect($c['ativas'])->contains(fn ($a) => ($a['tipo'] ?? '') === 'vigia' && $a['personagem_id'] === $personagemId)) {
-                return $c;
-            }
             if ($ataquesPorAcao !== null && $categoria === 'padrao') {
                 $feitos = (int) ($item['acoes']['ataques'] ?? 0);
                 if ($feitos > 0) {
                     $max = $ataquesPorAcao + (int) ($item['acoes']['extras'] ?? 0);
-                    if (! $acesso->ehMestre()) {
+                    if (! $acesso->ehMestre() && ($cfg['porTurno'] ?? null) !== null) {
                         if (($cfg['soNoTurno'] ?? false) && $c['atual'] !== $item['id']) {
                             throw ValidationException::withMessages(['acao' => 'Não é o seu turno: fora dele só dá para usar reações.']);
                         }
@@ -180,18 +174,12 @@ final class CombateService
             }
             $m->forceFill(['combate' => $c])->save();
             $mudou = true;
-            $novaAcao = true;
 
             return $c;
         });
         if ($mudou) {
             Transmitir::enviar($mesa, 'combate', ['combate' => $depois, 'ator' => $acesso->jogador->id], ['mesa']);
         }
-        // Vigília (Overwatch): quem age dentro da esfera dispara o ataque do atirador; o atirador que age encerra a dele
-        if ($novaAcao) {
-            TecnicasAtivas::aoAgir($mesa, $acesso, $personagemId, $categoria, $manterVigia);
-        }
-
         return $depois;
     }
 
@@ -208,9 +196,6 @@ final class CombateService
             $k = collect($c['itens'])->search(fn ($i) => $i['personagem_id'] === $personagemId);
             if ($c['fase'] !== 'em_curso' || $k === false) {
                 throw ValidationException::withMessages(['acao' => 'Só dá para ganhar ataques extras com o combate em curso.']);
-            }
-            if (! $acesso->ehMestre() && $c['atual'] !== $c['itens'][$k]['id']) {
-                throw ValidationException::withMessages(['acao' => 'Não é o seu turno.']);
             }
             $extras = max(0, (int) ($c['itens'][$k]['acoes']['extras'] ?? 0) + $n);
             if ($extras > 0) {
@@ -296,7 +281,7 @@ final class CombateService
     }
 
     /**
-     * Disparada: gasta a ação que o sistema define para ela (com as mesmas regras de turno e limite) e soma ao turno
+     * Disparada: anota a ação que o sistema define para ela e soma ao turno
      * outro deslocamento inteiro. Só vale no combate em curso, para o personagem do turno.
      */
     public function disparar(Mesa $mesa, AcessoMesa $acesso, int $personagemId): array
@@ -307,10 +292,12 @@ final class CombateService
         abort_unless(self::emCurso($mesa), 422, 'A Disparada só vale em combate.');
         $this->gastar($mesa, $acesso, $personagemId, $categoria);
 
-        $depois = DB::transaction(function () use ($mesa, $personagemId) {
+        $depois = DB::transaction(function () use ($mesa, $acesso, $personagemId) {
             $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
             $c = self::normalizar($m->combate);
             $k = collect($c['itens'])->search(fn ($i) => $i['personagem_id'] === $personagemId);
+            // o deslocamento é movimento: só no turno do personagem (a única trava real do combate); o mestre sempre
+            abort_if($k !== false && ! $acesso->ehMestre() && $c['atual'] !== $c['itens'][$k]['id'], 422, 'Não é o seu turno.');
             if ($k !== false) {
                 $base = $this->baseDoTurno($m, $c['itens'][$k]) ?? $c['itens'][$k]['movimento']['base'] ?? 0.0;
                 $c['itens'][$k]['movimento']['bonus'] += $base;

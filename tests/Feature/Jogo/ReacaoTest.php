@@ -155,7 +155,7 @@ class ReacaoTest extends TestCase
         $this->assertSame('resolvido', $this->resolucao($c, $m['id'])['estado']);
     }
 
-    public function test_a_reacao_e_uma_por_rodada_e_sem_pp_nao_e_oferecida(): void
+    public function test_a_reacao_nao_tem_limite_por_rodada_e_sem_pp_nao_e_oferecida(): void
     {
         $c = $this->cenario();
         $this->combate($c);
@@ -163,11 +163,8 @@ class ReacaoTest extends TestCase
         $this->ataque($c);
         $this->como($c->bia)->postJson(route('jogo.combate.eventos.reagir', [$c->mesa->id, EventoDeCombate::first()->id]), ['personagem_id' => $c->bruno->id, 'opcao' => 't:0'])->assertOk();
 
-        $this->ataque($c); // mesma rodada: a reação do Bruno já foi
-        $this->assertSame('resolvido', EventoDeCombate::latest('id')->first()->estado);
-        $this->assertSame([], EventoDeCombate::latest('id')->first()->ofertas);
-
-        $this->cmd($c, 'turno'); $this->cmd($c, 'turno'); $this->cmd($c, 'turno'); // rodada 2: a reação volta
+        $this->ataque($c); // mesma rodada: sem limite por rodada, a reação do Bruno continua oferecida
+        $this->assertNotSame([], EventoDeCombate::latest('id')->first()->ofertas);
         $this->ficha($c, $c->bia, $c->bruno, ['pp.atual' => 1]); // mas sem PP (custa 2)
         $this->ataque($c);
         $this->assertSame([], EventoDeCombate::latest('id')->first()->ofertas);

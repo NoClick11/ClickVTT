@@ -100,12 +100,12 @@ test('ataques com arma: o 1º gasta a Ação, os seguintes valem até o limite (
     assert.equal(atacar(dois, 1, 2, true).ok, true);
 });
 
-test('Vigília (Overwatch) ativa: o atirador ataca com a arma nos turnos dos outros, sem limite e sem gastar a Ação', () => {
-    const base = combate('a', [item('a', 1), item('b', 2)]);
-    const atacar2 = (c) => avaliarAtaque(c, CATEGORIAS, 2, false, 1); // o personagem 2 ataca, mas é a vez do 1
-    assert.equal(atacar2(base).ok, false); // sem Vigília: só no turno dele
-    const vigia = { ...base, ativas: [{ id: 'x', personagem_id: 2, nome: 'Overwatch', rodadas: 10, concentracao: true, alcance: 0, tipo: 'vigia' }] };
-    assert.equal(atacar2(vigia).ok, true);
-    const dosOutros = { ...base, ativas: [{ id: 'x', personagem_id: 1, nome: 'Overwatch', rodadas: 10, concentracao: true, alcance: 0, tipo: 'vigia' }] };
-    assert.equal(atacar2(dosOutros).ok, false); // a Vigília é de outro personagem
+test('sistema sem travas (One Piece): age e ataca livremente, em qualquer turno e sem limite de ataques', () => {
+    const LIVRES = CATEGORIAS.map((c) => ({ ...c, porTurno: null, porRodada: null, soNoTurno: false, soTecnicas: undefined }));
+    const c = combate('a', [item('a', 1, { padrao: 3, ataques: 9 }), item('b', 2, { padrao: 1, ataques: 1 })]);
+    for (const cat of ['padrao', 'poderosa', 'bonus', 'livre', 'reacao']) {
+        assert.equal(avaliarAcao(c, LIVRES, 2, cat, false, false).ok, true); // fora do turno, repetida, até a poderosa sem técnica
+    }
+    assert.equal(avaliarAtaque(c, LIVRES, 2, false, 1).ok, true); // não é o turno do 2 e já atacou além do limite
+    assert.equal(avaliarAtaque(c, LIVRES, 1, false, 1).ok, true);
 });

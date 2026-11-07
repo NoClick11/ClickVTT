@@ -112,15 +112,18 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         return $ficha;
     }
 
-    /** Ação padrão (ataques), poderosa (só técnicas), bônus, livre e reação (1 por rodada, pode ser usada fora do turno). */
+    /**
+     * Ação padrão, poderosa, bônus, livre e reação: só rótulos/contadores informativos. Sem travas (nem por turno, nem por rodada, nem
+     * "só no turno"): a mesa gere as ações. A única trava real do combate é mover o token fora do turno (ObjetoController).
+     */
     public function categoriasDeAcao(): array
     {
         return [
-            ['id' => 'padrao', 'nome' => 'Ação', 'porTurno' => 1, 'porRodada' => null, 'soNoTurno' => true],
-            ['id' => 'poderosa', 'nome' => 'Ação poderosa', 'porTurno' => 1, 'porRodada' => null, 'soNoTurno' => true, 'soTecnicas' => true],
-            ['id' => 'bonus', 'nome' => 'Ação bônus', 'porTurno' => 1, 'porRodada' => null, 'soNoTurno' => true],
-            ['id' => 'livre', 'nome' => 'Ação livre', 'porTurno' => null, 'porRodada' => null, 'soNoTurno' => true],
-            ['id' => 'reacao', 'nome' => 'Reação', 'porTurno' => null, 'porRodada' => 1, 'soNoTurno' => false],
+            ['id' => 'padrao', 'nome' => 'Ação', 'porTurno' => null, 'porRodada' => null, 'soNoTurno' => false],
+            ['id' => 'poderosa', 'nome' => 'Ação poderosa', 'porTurno' => null, 'porRodada' => null, 'soNoTurno' => false],
+            ['id' => 'bonus', 'nome' => 'Ação bônus', 'porTurno' => null, 'porRodada' => null, 'soNoTurno' => false],
+            ['id' => 'livre', 'nome' => 'Ação livre', 'porTurno' => null, 'porRodada' => null, 'soNoTurno' => false],
+            ['id' => 'reacao', 'nome' => 'Reação', 'porTurno' => null, 'porRodada' => null, 'soNoTurno' => false],
         ];
     }
 

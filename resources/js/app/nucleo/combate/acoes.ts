@@ -81,8 +81,9 @@ export function avaliarAtaque(
     const max = Math.max(1, ataquesPorAcao) + extras;
     const base = { feitos, max, extras };
     if (!emCurso(c) || !item || mestre) return { ok: true, ...base };
-    // Vigília (Overwatch) ativa: o atirador ataca com a arma nos turnos dos outros sem gastar a Ação (o mestre comanda cada ataque)
-    if (itemAtual(c)?.id !== item.id && c.ativas?.some((a) => a.tipo === 'vigia' && a.personagem_id === personagemId)) return { ok: true, ...base };
+    // Sistema sem trava na Ação (One Piece): ataca-se livremente, em qualquer turno e quantas vezes quiser
+    const cfg = categorias.find((x) => x.id === 'padrao');
+    if (!cfg || (cfg.porTurno === null && !cfg.soNoTurno)) return { ok: true, ...base };
     if (itemAtual(c)?.id !== item.id) return { ok: false, motivo: 'Não é o seu turno: fora dele só dá para usar reações.', ...base };
     if (feitos > 0) {
         return feitos < max

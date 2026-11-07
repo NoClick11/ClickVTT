@@ -253,7 +253,7 @@ class TecnicaAtivaTest extends TestCase
         $this->como($c->mestre); // o mestre pode, mas outro jogador não
     }
 
-    public function test_mover_a_esfera_custa_a_acao_bonus_ate_6_m_e_nao_encerra_a_vigilia(): void
+    public function test_mover_a_esfera_anota_a_acao_bonus_ate_6_m_e_nao_encerra_a_vigilia(): void
     {
         $c = $this->cenario();
         $this->armar($c);
@@ -265,13 +265,13 @@ class TecnicaAtivaTest extends TestCase
         $z = $c->mesa->fresh()->combate['ativas'][0];
         $this->assertEquals(980.0, $z['zona']['x']);
         $this->assertSame(1, $c->mesa->fresh()->combate['itens'][0]['acoes']['bonus']);              // gastou a Ação bônus
-        $this->como($c->ana)->postJson($rota, ['x' => 700, 'y' => 0])->assertStatus(422);           // a Ação bônus já foi usada neste turno
-        // qualquer outra atividade (uma Ação) encerra
+        $this->como($c->ana)->postJson($rota, ['x' => 700, 'y' => 0])->assertOk();                  // sem trava de ação: a esfera volta
+        // gastar uma Ação não encerra a Vigília (só andar encerra); o mestre comanda o resto
         $this->como($c->ana)->postJson(route('jogo.combate.acao', $c->mesa->id), ['personagem_id' => $c->atirador->id, 'categoria' => 'padrao'])->assertOk();
-        $this->assertSame([], $c->mesa->fresh()->combate['ativas']);
+        $this->assertCount(1, $c->mesa->fresh()->combate['ativas']);
     }
 
-    public function test_o_atirador_que_anda_ou_age_encerra_a_vigilia_mas_atacar_nos_turnos_dos_outros_e_livre(): void
+    public function test_o_atirador_que_anda_encerra_a_vigilia_e_atacar_e_sempre_livre(): void
     {
         $c = $this->cenario();
         $this->armar($c);
@@ -280,21 +280,19 @@ class TecnicaAtivaTest extends TestCase
             'expressao' => "1d20+@arma.{$mosquete->id}.ataque", 'visibilidade' => 'todos', 'personagem_id' => $c->atirador->id,
             'acao' => ['categoria' => 'padrao'], 'municao_item_id' => $c->esf->id,
         ]);
-        $this->turno($c); // vez do Perto: não é o turno do Atirador
-        $ataque()->assertStatus(422)->assertJsonValidationErrors('acao'); // sem Vigília, só no turno dele
+        $this->turno($c); // vez do Perto: não é o turno do Atirador, mas ataca livre
+        $ataque()->assertCreated();
         $this->turno($c);
         $this->turno($c); // de volta ao Atirador
         $this->vigia($c, 700, 0)->assertOk();
         $this->turno($c); // vez do Perto, com a Vigília ativa
         $ataque()->assertCreated();
         $ataque()->assertCreated(); // quantos o mestre mandar: nada limita nem gasta a Ação
-        $item = collect($c->mesa->fresh()->combate['itens'])->firstWhere('id', 'a');
-        $this->assertArrayNotHasKey('padrao', $item['acoes']);
         $this->assertCount(1, $c->mesa->fresh()->combate['ativas']); // atacar não encerra a Vigília
         // o atirador anda: acaba
         $token = $c->mesa->paginas()->first()->objetos()->where('personagem_id', $c->atirador->id)->first();
         $this->como($c->mestre)->patchJson(route('jogo.objetos.update', [$c->mesa->id, $token->id]), ['x' => 70, 'y' => 0])->assertOk();
         $this->assertSame([], $c->mesa->fresh()->combate['ativas']);
-        $ataque()->assertStatus(422); // sem Vigília, volta a valer o turno
+        $ataque()->assertCreated(); // sem trava de turno, atacar continua livre
     }
 }

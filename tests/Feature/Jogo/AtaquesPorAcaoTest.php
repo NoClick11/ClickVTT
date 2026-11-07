@@ -55,14 +55,15 @@ class AtaquesPorAcaoTest extends TestCase
         ]);
     }
 
-    public function test_sem_ataque_extra_so_um_ataque_por_turno(): void
+    public function test_sem_travas_ataca_quantas_vezes_quiser_e_so_anota_o_contador(): void
     {
         $c = $this->cenario([]);
-        $this->atacar($c)->assertCreated();
-        $this->atacar($c)->assertStatus(422)->assertJsonValidationErrors('acao');
+        foreach (range(1, 3) as $_) {
+            $this->atacar($c)->assertCreated();
+        }
         $item = $c->mesa->fresh()->combate['itens'][0];
-        $this->assertSame(1, $item['acoes']['padrao']);
-        $this->assertSame(1, $item['acoes']['ataques']);
+        $this->assertSame(1, $item['acoes']['padrao']); // uma só Ação anotada
+        $this->assertSame(3, $item['acoes']['ataques']);
     }
 
     public function test_ataque_extra_da_dois_e_os_a_distancia_somam_so_em_arma_a_distancia(): void
@@ -72,7 +73,7 @@ class AtaquesPorAcaoTest extends TestCase
         $this->atacar($c)->assertCreated();
         $this->assertSame(1, $c->mesa->fresh()->combate['itens'][0]['acoes']['padrao']); // uma só Ação gasta
         $this->assertSame(2, $c->mesa->fresh()->combate['itens'][0]['acoes']['ataques']);
-        $this->atacar($c)->assertStatus(422);
+        $this->atacar($c)->assertCreated(); // sem limite
 
         // Engatilhado: +2 à distância (o mosquete é à distância): 2 + 2 = 4
         $d = $this->cenario([
@@ -82,31 +83,28 @@ class AtaquesPorAcaoTest extends TestCase
         foreach (range(1, 4) as $i) {
             $this->atacar($d)->assertCreated();
         }
-        $this->atacar($d)->assertStatus(422);
+        $this->atacar($d)->assertCreated(); // sem limite
     }
 
-    public function test_ataques_extras_do_turno_somam_ao_limite_e_so_no_turno_de_quem_ataca(): void
+    public function test_ataques_extras_do_turno_sao_anotados_sem_trava_de_turno(): void
     {
         $c = $this->cenario([]);
         $extras = fn ($j, int $n) => $this->como($j)->postJson(route('jogo.combate.ataques-extras', $c->mesa->id), ['personagem_id' => $c->p->id, 'n' => $n]);
         $this->atacar($c)->assertCreated();
-        $this->atacar($c)->assertStatus(422);
+        $this->atacar($c)->assertCreated(); // sem limite
         $extras($c->ana, 2)->assertOk();
-        $this->atacar($c)->assertCreated();
-        $this->atacar($c)->assertCreated();
-        $this->atacar($c)->assertStatus(422);
         $extras($c->ana, -1)->assertOk(); // desfaz um
         $this->assertSame(1, $c->mesa->fresh()->combate['itens'][0]['acoes']['extras']);
         $extras($c->ana, -5)->assertOk(); // nunca abaixo de 0
         $this->assertArrayNotHasKey('extras', $c->mesa->fresh()->combate['itens'][0]['acoes']);
 
-        // fora do turno dele, o jogador não ganha extras; o mestre pode
+        // sem trava de turno: o jogador também ganha extras fora do turno dele
         $m = $c->mesa->fresh();
         $combate = $m->combate;
         $combate['atual'] = 'b';
         $m->combate = $combate;
         $m->save();
-        $extras($c->ana, 1)->assertStatus(422);
+        $extras($c->ana, 1)->assertOk();
         $extras($c->mestre, 1)->assertOk();
     }
 

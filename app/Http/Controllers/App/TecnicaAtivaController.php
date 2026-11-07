@@ -173,8 +173,8 @@ class TecnicaAtivaController extends Controller
         if ($metros > 6 + \App\Nucleo\Combate\Movimento::FOLGA) {
             throw ValidationException::withMessages(['x' => 'A esfera só anda até 6 m por ação bônus.']);
         }
-        // gasta a Ação bônus (recusa se não puder agir agora); mover a esfera é a única atividade que não encerra a Vigília
-        $combate->gastar($mesa, $acesso, $atual['personagem_id'], 'bonus', true, null, manterVigia: true);
+        // anota a Ação bônus gasta (sem travas)
+        $combate->gastar($mesa, $acesso, $atual['personagem_id'], 'bonus', true);
 
         $depois = DB::transaction(function () use ($mesa, $ativa, $d) {
             $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();

@@ -206,37 +206,29 @@ class CombateTest extends TestCase
         $this->assertSame([], $c->mesa->fresh()->combate['itens'] ?? []);
     }
 
-    public function test_so_quem_esta_no_turno_gasta_acao_e_cada_categoria_tem_o_seu_limite(): void
+    public function test_sem_travas_de_acao_em_qualquer_turno_so_o_contador_anda(): void
     {
         $c = $this->cenario();
         $this->emCurso($c);
 
-        $this->agir($c, $c->ana, $c->aria, 'padrao')->assertStatus(422)->assertJsonValidationErrors('acao'); // não é o turno da Aria
+        $this->agir($c, $c->ana, $c->aria, 'padrao')->assertOk(); // não é o turno da Aria: age mesmo assim
         $r = $this->agir($c, $c->bia, $c->bruno, 'padrao')->assertOk()->json('combate');
         $this->assertSame(1, $this->item($r, 'Bruno')['acoes']['padrao']);
-        $this->agir($c, $c->bia, $c->bruno, 'padrao')->assertStatus(422); // só 1 ação por turno
-        $this->agir($c, $c->bia, $c->bruno, 'bonus')->assertOk();
-        $this->agir($c, $c->bia, $c->bruno, 'bonus')->assertStatus(422);
-        foreach (range(1, 4) as $_) {
-            $this->agir($c, $c->bia, $c->bruno, 'livre')->assertOk(); // livre não tem limite
+        $r = $this->agir($c, $c->bia, $c->bruno, 'padrao')->assertOk()->json('combate'); // sem limite por turno
+        $this->assertSame(2, $this->item($r, 'Bruno')['acoes']['padrao']);
+        foreach (['bonus', 'bonus', 'livre', 'poderosa'] as $cat) {
+            $this->agir($c, $c->bia, $c->bruno, $cat, false)->assertOk(); // até a poderosa sem técnica
         }
-        $this->agir($c, $c->bia, $c->bruno, 'poderosa', false)->assertStatus(422); // poderosa só para técnicas
-        $this->agir($c, $c->bia, $c->bruno, 'poderosa', true)->assertOk();
-        $this->agir($c, $c->bia, $c->bruno, 'poderosa', true)->assertStatus(422);
         $this->agir($c, $c->ana, $c->bruno, 'livre')->assertForbidden(); // personagem de outro jogador
     }
 
-    public function test_reacao_serve_fora_do_turno_uma_vez_por_rodada_e_volta_na_rodada_nova(): void
+    public function test_reacao_sem_limite_por_rodada(): void
     {
         $c = $this->cenario();
         $this->emCurso($c);
 
         $this->agir($c, $c->ana, $c->aria, 'reacao')->assertOk(); // Aria reage no turno do Bruno
-        $this->agir($c, $c->ana, $c->aria, 'reacao')->assertStatus(422); // 1 por rodada
-        foreach (range(1, 3) as $_) {
-            $this->cmd($c, $c->mestre, 'turno')->assertOk();
-        }
-        $this->agir($c, $c->ana, $c->aria, 'reacao')->assertOk(); // rodada 2: a reação voltou
+        $this->agir($c, $c->ana, $c->aria, 'reacao')->assertOk(); // sem limite por rodada
     }
 
     public function test_acoes_voltam_ao_entrar_no_proprio_turno_e_o_mestre_devolve(): void
@@ -248,8 +240,6 @@ class CombateTest extends TestCase
         $this->cmd($c, $c->mestre, 'turno'); // Orc
         $this->cmd($c, $c->mestre, 'turno'); // volta ao Bruno: ações novas
         $this->agir($c, $c->bia, $c->bruno, 'padrao')->assertOk();
-
-        $this->agir($c, $c->bia, $c->bruno, 'padrao')->assertStatus(422);
         $bruno = $this->item($e, 'Bruno');
         $r = $this->cmd($c, $c->mestre, 'devolver', ['item_id' => $bruno['id'], 'categoria' => 'padrao'])->assertOk()->json('combate');
         $this->assertArrayNotHasKey('padrao', $this->item($r, 'Bruno')['acoes']);
@@ -270,23 +260,23 @@ class CombateTest extends TestCase
         $this->agir($c, $c->ana, $visitante, 'padrao')->assertOk(); // fora do encontro: não bloqueia
     }
 
-    public function test_rolagem_com_acao_gasta_a_categoria_e_recusa_fora_do_turno(): void
+    public function test_rolagem_com_acao_gasta_a_categoria_sem_recusar_fora_do_turno(): void
     {
         $c = $this->cenario();
         $this->emCurso($c);
         $rolar = fn (Jogador $j, $personagem) => $this->como($j)->postJson(route('jogo.rolagens.store', $c->mesa->id), ['expressao' => '1d20', 'visibilidade' => 'todos', 'personagem_id' => $personagem->id, 'acao' => ['categoria' => 'padrao']]);
 
-        $rolar($c->ana, $c->aria)->assertStatus(422); // não é o turno dela
+        $rolar($c->ana, $c->aria)->assertCreated(); // não é o turno dela: rola mesmo assim
         $rolar($c->bia, $c->bruno)->assertCreated();
-        $rolar($c->bia, $c->bruno)->assertStatus(422); // a ação padrão já foi
-        $this->assertSame(1, $c->mesa->mensagens()->where('tipo', 'rolagem')->count()); // a recusada não gerou rolagem
+        $rolar($c->bia, $c->bruno)->assertCreated(); // sem limite
+        $this->assertSame(3, $c->mesa->mensagens()->where('tipo', 'rolagem')->count());
     }
 
     public function test_pagina_envia_as_categorias_de_acao_do_sistema(): void
     {
         $c = $this->cenario();
         $r = $this->como($c->ana)->get(route('jogo', [$c->mesa->slug, $c->ana->id]));
-        $r->assertInertia(fn ($p) => $p->where('categoriasDeAcao.0.id', 'padrao')->where('categoriasDeAcao.1.id', 'poderosa')->where('categoriasDeAcao.4.porRodada', 1));
+        $r->assertInertia(fn ($p) => $p->where('categoriasDeAcao.0.id', 'padrao')->where('categoriasDeAcao.1.id', 'poderosa')->where('categoriasDeAcao.4.porRodada', null));
     }
 
     /** A página do cenário: quadrado de 100 px = 1,5 m. Bruno (turno): ficha padrão do One Piece = 9 m de deslocamento. */
@@ -346,7 +336,7 @@ class CombateTest extends TestCase
         $this->assertEquals(0.0, $this->item($c->mesa->fresh()->combate, 'Orc')['movimento']['usado']);
     }
 
-    public function test_disparada_gasta_a_acao_padrao_e_soma_outro_deslocamento_uma_vez_por_turno(): void
+    public function test_disparada_anota_a_acao_padrao_e_soma_deslocamento_so_no_turno_de_quem_anda(): void
     {
         $c = $this->cenario();
         $this->escala($c);
@@ -357,7 +347,8 @@ class CombateTest extends TestCase
         $r = $disparar($c->bia, $c->bruno)->assertOk()->json('combate');
         $this->assertEquals(9.0, $this->item($r, 'Bruno')['movimento']['bonus']);
         $this->assertSame(1, $this->item($r, 'Bruno')['acoes']['padrao']);
-        $disparar($c->bia, $c->bruno)->assertStatus(422); // a ação padrão já foi
+        $disparar($c->bia, $c->bruno)->assertOk(); // sem limite por turno (a mesa gere): soma outro deslocamento
+        $c->tBruno->update(['x' => 0, 'y' => 0]);
 
         // com 18 m no turno, anda 15 m sem travar (1000 px = 15 m)
         $c->tBruno->update(['x' => 0, 'y' => 0]);
