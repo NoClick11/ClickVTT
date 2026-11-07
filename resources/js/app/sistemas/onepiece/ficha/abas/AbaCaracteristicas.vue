@@ -17,14 +17,22 @@ import {
 } from '../../regras';
 
 const props = defineProps<{ ficha: FichaOnePiece }>();
-const { editar, salvar, calc, rolar, rodada, acao: executarAcao, acoes, modoDe } = useFicha();
+const { editar, salvar, calc, rolar, rodada, acao: executarAcao, acoes, modoDe, mestre } = useFicha();
 /** Ligar uma característica gasta a categoria de ação dela (se tiver): só liga se puder agir agora. */
 const podeLigar = (c: Caracteristica) => (c.ativa ? { ok: true } : acoes.pode(c.acao));
 
 // índices da lista completa (a lista é salva por inteiro), agrupados por tipo
+/** Em cada grupo, na frente: as ligadas, depois as que se usam ou ligam (usos, interruptor, ações, alternativa); o resto segue a ordem da ficha. */
+const prioridade = (c: Caracteristica) =>
+    c.ativa === true ? 0 : c.usos || c.alternativo || c.acoes?.length || (c.tipo === 'ativa' && c.efeitos?.length) ? 1 : 2;
+const doTipo = (tipo: 'ativa' | 'passiva') =>
+    props.ficha.caracteristicas
+        .map((c, i) => ({ c, i }))
+        .filter((x) => x.c.tipo === tipo)
+        .sort((a, b) => prioridade(a.c) - prioridade(b.c) || a.i - b.i);
 const grupos = computed(() => [
-    { titulo: 'Ativas', itens: props.ficha.caracteristicas.map((c, i) => ({ c, i })).filter((x) => x.c.tipo === 'ativa') },
-    { titulo: 'Passivas', itens: props.ficha.caracteristicas.map((c, i) => ({ c, i })).filter((x) => x.c.tipo === 'passiva') },
+    { titulo: 'Ativas', itens: doTipo('ativa') },
+    { titulo: 'Passivas', itens: doTipo('passiva') },
 ]);
 
 function mudar(fn: (lista: Caracteristica[]) => void) {
@@ -205,10 +213,12 @@ function aoSalvar(c: Caracteristica) {
                                 v-for="n in maxUsos(c)"
                                 :key="n"
                                 type="button"
-                                class="size-3.5 rounded-full border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                                class="size-3.5 rounded-full border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 disabled:cursor-default"
                                 :class="n <= c.usos.atual ? 'border-ouro-400 bg-ouro-500' : 'border-preto-600'"
                                 :aria-label="`Uso ${n}`"
                                 :aria-pressed="n <= c.usos.atual"
+                                :disabled="!mestre"
+                                :title="mestre ? undefined : 'Os usos são gastos ao usar a característica e voltam no descanso'"
                                 @click="usar(i, c.usos.atual, n)"
                         /></span>
                         <template v-if="editar">
