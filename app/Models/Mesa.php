@@ -66,6 +66,16 @@ class Mesa extends Model
         return $this->hasMany(Pasta::class)->orderBy('ordem')->orderBy('id');
     }
 
+    public function itensDeCatalogo(): HasMany
+    {
+        return $this->hasMany(ItemDeCatalogo::class);
+    }
+
+    public function lojasAbertas(): HasMany
+    {
+        return $this->hasMany(LojaAberta::class);
+    }
+
     public function itens(): HasMany
     {
         return $this->hasMany(Item::class);

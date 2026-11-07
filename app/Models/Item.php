@@ -14,7 +14,7 @@ class Item extends Model
 {
     protected $table = 'itens';
 
-    protected $fillable = ['nome', 'descricao', 'peso', 'equipavel', 'requer_sintonia', 'dados', 'efeitos'];
+    protected $fillable = ['catalogo_id', 'nome', 'descricao', 'peso', 'equipavel', 'requer_sintonia', 'dados', 'efeitos'];
 
     protected function casts(): array
     {
@@ -36,6 +36,7 @@ class Item extends Model
     {
         return [
             'id' => $this->id,
+            'catalogo_id' => $this->catalogo_id,
             'nome' => $this->nome,
             'descricao' => $this->descricao,
             'peso' => $this->peso,
