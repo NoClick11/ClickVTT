@@ -169,4 +169,35 @@ class ForjaTest extends TestCase
         // sobe mais: Ô → Saijo Ô custa 4 PF (restam 3): falta
         $this->como($c->ana)->postJson($url, $corpo(['meito' => 'saijo-o-wazamono'], $novoId))->assertStatus(422);
     }
+
+    public function test_saijo_o_rola_o_dano_duas_vezes_ate_3_vezes_e_so_equipada(): void
+    {
+        $c = $this->cenario();
+        $saijo = $c->mesa->itens()->create(['nome' => 'Lâmina Suprema', 'peso' => 1, 'equipavel' => true, 'dados' => ['arma' => ['dano' => '1d12', 'atributo' => 'for', 'tipoDano' => 'Cortante', 'proficiente' => true, 'forja' => ['meito' => 'saijo-o-wazamono']]]]);
+        $comum = $c->mesa->itens()->create(['nome' => 'Katana', 'peso' => 1, 'equipavel' => true, 'dados' => ['arma' => ['dano' => '1d6', 'atributo' => 'for', 'tipoDano' => 'Cortante']]]);
+        $f = FichaOnePiece::padrao();
+        $f['inventario'] = [['secao' => 'E', 'itens' => [['item_id' => $comum->id, 'qtd' => 1, 'equipado' => true, 'sintonizado' => false]]]];
+        $c->ferr->ficha = $f;
+        $c->ferr->save();
+        $rolar = fn (string $e = '4d10|40^2') => $this->como($c->ana)->postJson(route('jogo.rolagens.store', $c->mesa->id), ['expressao' => $e, 'visibilidade' => 'todos', 'personagem_id' => $c->ferr->id]);
+        $rolar()->assertStatus(422); // sem Saijo equipada
+        $f['inventario'][0]['itens'][0] = ['item_id' => $saijo->id, 'qtd' => 1, 'equipado' => false, 'sintonizado' => false];
+        $c->ferr->ficha = $f;
+        $c->ferr->save();
+        $rolar()->assertStatus(422); // Saijo no inventário, mas desequipada
+        $f['inventario'][0]['itens'][0]['equipado'] = true;
+        $c->ferr->ficha = $f;
+        $c->ferr->save();
+        for ($n = 1; $n <= 3; $n++) {
+            $r = $rolar()->assertCreated();
+            $this->assertCount(2, $r->json('dados.repeticoes'));
+            $this->assertSame($n, $c->ferr->fresh()->ficha['meito']['usados']);
+        }
+        $this->assertStringContainsString('3 usos', $rolar()->assertStatus(422)->json('errors.expressao.0')); // acabaram
+        $this->assertSame(3, $c->ferr->fresh()->ficha['meito']['usados']);
+        $rolar('1d20')->assertCreated(); // rolagem normal não gasta nada
+        // o descanso longo (cliente) devolve: o jogador pode zerar o contador
+        $this->como($c->ana)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->ferr->id]), ['campos' => ['meito.usados' => 0]])->assertOk();
+        $rolar()->assertCreated();
+    }
 }

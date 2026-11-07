@@ -316,6 +316,8 @@ export interface FichaOnePiece {
     individualidades: IndividualidadesFicha;
     /** Pontos de Forja do Ferreiro (idade, lâminas, PF dados e gastos); o mestre e a forja do servidor alteram. */
     forja?: FichaForja;
+    /** Usos gastos da Saijo Ô Wazamono (até 3 por descanso longo); o servidor consome ao rolar o dano duas vezes. */
+    meito?: { usados: number };
     maestria: string;
     tracosDeMaestria: { id: string; nivel: number }[];
     estiloId: string;
@@ -664,6 +666,21 @@ export interface ArmaAtiva {
     expertise: string[];
 }
 
+/** Uma arma equipada com a forja pedida (Saijo Ô Wazamono, Espada Kokuto). Espelha `Regras::saijoEquipada`. */
+function armaEquipadaCom(f: FichaOnePiece, itens: ItensPorId, teste: (forja: ForjaDaArma) => boolean): boolean {
+    for (const secao of f.inventario ?? []) {
+        for (const ref of secao.itens ?? []) {
+            const item = itens[ref.item_id];
+            const arma = (item?.dados as DadosItemOnePiece | null | undefined)?.arma;
+            if (item && arma?.forja && ativo(ref, item) && armaCabe(arma, f.tamanho) && teste(arma.forja)) return true;
+        }
+    }
+
+    return false;
+}
+export const saijoEquipada = (f: FichaOnePiece, itens: ItensPorId): boolean => armaEquipadaCom(f, itens, (x) => x.meito === 'saijo-o-wazamono');
+export const kokutoEquipada = (f: FichaOnePiece, itens: ItensPorId): boolean => armaEquipadaCom(f, itens, (x) => !!x.kokuto);
+
 /**
  * A rolagem da Técnica com os dados adicionais da Meito: soma `extra` dados do mesmo tipo do primeiro dado da Técnica e limita a soma
  * dos DADOS ao máximo possível da Técnica (`|N`): "o valor extra não pode ultrapassar o máximo de dano da Técnica, sendo usado apenas
@@ -836,6 +853,7 @@ export function camposDoDescanso(
     if (JSON.stringify(antes) !== JSON.stringify(depois)) campos.caracteristicas = depois;
 
     if (tipo === 'longo') {
+        if ((f.meito?.usados ?? 0) > 0) campos['meito.usados'] = 0;
         Object.assign(campos, {
             'pv.atual': pvMax,
             'dadosVida.restantes': Math.min(f.nivel, f.dadosVida.restantes + Math.max(1, Math.floor(f.nivel / 2))),

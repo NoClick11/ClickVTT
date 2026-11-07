@@ -13,6 +13,8 @@ use App\Nucleo\Sistemas\RegistroSistemas;
 use App\Nucleo\Sistemas\Sistema;
 use App\Support\AcessoMesa;
 use App\Support\EntregarMensagem;
+use App\Support\Transmitir;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -74,6 +76,10 @@ class ChatController extends Controller
         } catch (RolagemInvalida $e) {
             throw ValidationException::withMessages(['expressao' => $e->getMessage()]);
         }
+        // `^2` (rolar o dano duas vezes e ficar com o maior) é da Saijo Ô Wazamono equipada: até 3 usos por descanso longo, consumidos aqui (depois de a expressão rolar).
+        if (str_contains($dados['expressao'], '^')) {
+            $this->consumirSaijo($mesa, $acesso, $dados['personagem_id'] ?? null, $sistema, $itens, $ficha);
+        }
         // O sistema pode marcar a rolagem (ex.: ataque crítico); o núcleo só guarda e repassa.
         $marcas = $sistema?->metadadosDaRolagem($resultado['termos'], $variaveis, $itens, $ficha) ?? [];
         if (is_array($dados['dano'] ?? null)) {
@@ -102,6 +108,7 @@ class ChatController extends Controller
                 'termos' => $resultado['termos'],
                 'total' => $resultado['total'],
                 ...(isset($resultado['limite']) ? ['limite' => $resultado['limite']] : []),
+                ...(isset($resultado['repeticoes']) ? ['repeticoes' => $resultado['repeticoes'], 'escolhida' => $resultado['escolhida']] : []),
                 ...($marcas ? ['sistema' => $marcas] : []),
             ],
         ]);
@@ -136,6 +143,35 @@ class ChatController extends Controller
      *
      * @return array{0: ?Sistema, 1: array<string, int|float>, 2: array<int, array>, 3: array<string, mixed>}
      */
+    /**
+     * Gasta 1 uso da Saijo Ô Wazamono para rolar duas vezes. Recusa sem a arma equipada ou com os 3 usos já gastos; avisa a ficha.
+     *
+     * @param  array<int, array>  $itens
+     */
+    private function consumirSaijo(Mesa $mesa, AcessoMesa $acesso, ?int $personagemId, mixed $sistema, array $itens, array $ficha): void
+    {
+        if (! $personagemId || ! $sistema instanceof \App\Sistemas\OnePiece\OnePiece || ! \App\Sistemas\OnePiece\Regras::saijoEquipada($ficha, $itens)) {
+            throw ValidationException::withMessages(['expressao' => 'Rolar o dano duas vezes exige uma arma Saijo Ô Wazamono equipada.']);
+        }
+        $usados = DB::transaction(function () use ($personagemId, $mesa) {
+            $p = \App\Models\Personagem::query()->whereKey($personagemId)->where('mesa_id', $mesa->id)->lockForUpdate()->firstOrFail();
+            $f = $p->ficha ?? [];
+            $n = (int) ($f['meito']['usados'] ?? 0);
+            if ($n >= 3) {
+                throw ValidationException::withMessages(['expressao' => 'Os 3 usos da Saijo Ô Wazamono já foram gastos até o descanso longo.']);
+            }
+            $f['meito']['usados'] = $n + 1;
+            $p->ficha = $f;
+            $p->save();
+
+            return [$n + 1, $p];
+        });
+        [$n, $p] = $usados;
+        $canais = ['mestre', ...$p->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
+        // ator 0: quem rolou também aplica (o contador mudou no servidor)
+        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => ['meito.usados' => $n], 'criacao' => $p->criacao, 'ator' => 0], $canais);
+    }
+
     private function variaveis(Mesa $mesa, ?int $personagemId, RegistroSistemas $sistemas): array
     {
         $personagem = $personagemId ? $mesa->personagens()->find($personagemId) : null;

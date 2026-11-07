@@ -94,6 +94,8 @@ final class FichaOnePiece
             'profissoes' => Profissoes::padrao(),
             'individualidades' => Individualidades::padrao(),
             'forja' => Ferreiro::padrao(),
+            // Usos gastos da Saijo Ô Wazamono (rolar o dano duas vezes): até 3 por descanso longo; o servidor consome ao rolar.
+            'meito' => ['usados' => 0],
             'maestria' => '',
             'tracosDeMaestria' => [],
             'estiloCaminho' => '',
@@ -181,6 +183,8 @@ final class FichaOnePiece
         $r['treinamento.pedidos.*.opcao'] = ['nullable', 'string', 'max:30'];
         $r['treinamento.pedidos.*.dias'] = ['required', 'integer:strict', 'between:0,60'];
         // Profissões: o dono escolhe a do 1º nível e usa os avanços (5/10/15/20); o resto é do mestre (OnePiece::conferirFicha)
+        $r['meito'] = ['array'];
+        $r['meito.usados'] = ['integer:strict', 'between:0,3'];
         // Pontos de Forja do Ferreiro: idade, lâminas comuns e PF dados são do mestre; os PF gastos e as lâminas, da forja (servidor).
         $r['forja'] = ['array'];
         foreach (['idade', 'laminas', 'extras', 'gastos'] as $campo) {

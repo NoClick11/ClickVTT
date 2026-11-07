@@ -266,6 +266,22 @@ final class Regras
         ];
     }
 
+    /** Há uma arma Saijo Ô Wazamono equipada (a que rola o dano das Técnicas com arma cortante duas vezes)? */
+    public static function saijoEquipada(array $f, array $itens): bool
+    {
+        foreach ($f['inventario'] ?? [] as $secao) {
+            foreach ($secao['itens'] ?? [] as $ref) {
+                $item = $itens[$ref['item_id']] ?? null;
+                $arma = $item['dados']['arma'] ?? null;
+                if ($item !== null && is_array($arma) && self::ativo($ref, $item) && self::armaCabe($arma, $f['tamanho'] ?? 'Médio') && ($arma['forja']['meito'] ?? null) === 'saijo-o-wazamono') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     /** Dados adicionais da Meito equipada nas Técnicas com arma cortante como requisito (o maior entre as armas equipadas). */
     public static function dadosExtrasDeMeito(array $f, array $itens): int
     {
