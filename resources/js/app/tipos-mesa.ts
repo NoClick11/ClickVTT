@@ -72,3 +72,13 @@ export interface LojaDoJogadorDto extends LojaAbertaDto {
     /** Itens que o mestre criou nas categorias desta loja. */
     itens: ItemDeCatalogoDto[];
 }
+
+/** Uma arma do inventário de um personagem, para o Ferreiro aprimorar. */
+export interface ArmaParaForja {
+    item_id: number;
+    nome: string;
+    dano: string | null;
+    tipoDano: string | null;
+    cortante: boolean;
+    forja: Record<string, unknown>;
+}

@@ -1,7 +1,7 @@
 import { inject, type ComputedRef, type InjectionKey, type Ref } from 'vue';
 import type { Efeito, Origem, Rolagem } from '../../nucleo/efeitos/efeitos';
 import type { AbrirEditorItem } from '../../nucleo/sistemas/tipos';
-import type { ItemDto } from '../../tipos-mesa';
+import type { ArmaParaForja, ItemDto } from '../../tipos-mesa';
 import type { AcaoCaracteristica, ArmaAtiva } from './regras';
 
 /**
@@ -43,6 +43,10 @@ export interface ContextoFicha {
     itens: ComputedRef<Record<number, ItemDto>>;
     /** Quem vê os controles de criar e entregar itens. */
     mestre: boolean;
+    /** Serviços da mesa (forja do Ferreiro); null quando a mesa não os oferece. */
+    servicos: ServicosDaFicha | null;
+    /** O personagem desta ficha. */
+    personagemId: number;
     /** O mestre abre o editor de itens (`null` = novo); `aoSalvar` recebe o item salvo. */
     abrirEditorItem: AbrirEditorItem;
     /** Rodada do combate (null = sem combate ativo): limita Heat, Electro etc. a um uso por rodada. */
@@ -51,6 +55,15 @@ export interface ContextoFicha {
     acao: (acao: AcaoCaracteristica) => void;
     /** Teste de d20 + variável: Shift = vantagem, Ctrl/Alt = desvantagem. `acao`: a categoria que a rolagem gasta no combate. */
     d20: (evento: MouseEvent, variavel: string, rotulo: string, acao?: { categoria: string; tecnica?: boolean }) => void;
+}
+
+/** O que a mesa oferece à ficha além de salvar e rolar (a ficha nunca fala com a API): a forja do Ferreiro. */
+export interface ServicosDaFicha {
+    /** Todos os personagens da mesa (o ferreiro aprimora a arma de qualquer um). */
+    personagens: { id: number; nome: string }[];
+    armasParaForja: (personagemId: number) => Promise<ArmaParaForja[]>;
+    forjar: (dados: { ferreiro_id: number; item: string; atributo: 'for' | 'des' | 'sab' }) => Promise<{ sucesso: boolean; texto: string }>;
+    aprimorar: (dados: { ferreiro_id: number; alvo_id: number; item_id: number; melhorias: Record<string, unknown> }) => Promise<{ texto: string }>;
 }
 
 export const CHAVE_FICHA: InjectionKey<ContextoFicha> = Symbol('ficha-onepiece');

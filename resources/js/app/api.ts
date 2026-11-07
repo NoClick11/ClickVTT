@@ -1,7 +1,17 @@
 import type { Criacao, Personagem } from '@/site/types';
 import type { ObjetoDto, PaginaDto } from './engine/tipos';
 import type { ResumoEvento } from './nucleo/combate/reacoes';
-import type { Combate, ItemDeCatalogoDto, ItemDto, LojaAbertaDto, Mensagem, NovoItem, NovoItemDeCatalogo, VisibilidadeRolagem } from './tipos-mesa';
+import type {
+    ArmaParaForja,
+    Combate,
+    ItemDeCatalogoDto,
+    ItemDto,
+    LojaAbertaDto,
+    Mensagem,
+    NovoItem,
+    NovoItemDeCatalogo,
+    VisibilidadeRolagem,
+} from './tipos-mesa';
 
 export class ErroApi extends Error {
     constructor(
@@ -160,6 +170,22 @@ export function apiMesa(mesaId: number, atorId: number) {
         atualizarItemDeCatalogo: (id: number, item: NovoItemDeCatalogo) =>
             requisitar<ItemDeCatalogoDto>(atorId, 'PATCH', r('jogo.catalogo.update', id), item),
         excluirItemDeCatalogo: (id: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.catalogo.destroy', id)),
+        /** Forja do Ferreiro: as armas de um personagem, criar do catálogo (lingote + Belly + Teste) e aprimorar com Pontos de Forja. */
+        armasParaForja: (personagem_id: number) => requisitar<{ armas: ArmaParaForja[] }>(atorId, 'POST', r('jogo.forja.armas'), { personagem_id }),
+        forjar: (dados: { ferreiro_id: number; item: string; atributo: 'for' | 'des' | 'sab' }) =>
+            requisitar<{ sucesso: boolean; total: number; cd: number; custo: number; texto: string; campos: Record<string, unknown> }>(
+                atorId,
+                'POST',
+                r('jogo.forja.criar'),
+                dados,
+            ),
+        aprimorarArma: (dados: { ferreiro_id: number; alvo_id: number; item_id: number; melhorias: Record<string, unknown> }) =>
+            requisitar<{ texto: string; alvo_id: number; camposFerreiro: Record<string, unknown>; camposAlvo: Record<string, unknown> }>(
+                atorId,
+                'POST',
+                r('jogo.forja.aprimorar'),
+                dados,
+            ),
         /** Comando de combate (o servidor decide e devolve o estado novo): iniciar, iniciativa, turno, ordem... Ver `CombateService`. */
         comandoCombate: (comando: string, dados: Record<string, unknown> = {}) =>
             requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.comando'), { comando, ...dados }),

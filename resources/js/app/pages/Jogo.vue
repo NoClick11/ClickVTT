@@ -808,6 +808,31 @@ const meusPersonagensDaLoja = computed(() =>
     props.personagens.filter((p) => props.meusPersonagens.includes(p.id)).map((p) => ({ id: p.id, nome: p.nome })),
 );
 
+// Serviços da mesa para a ficha (forja do Ferreiro): a ficha nunca fala com a API, a mesa executa e aplica o resultado.
+function aplicarNaFicha(personagemId: number, campos: Record<string, unknown>) {
+    const ficha = fichas.value[personagemId];
+    if (ficha) for (const [caminho, valor] of Object.entries(campos)) definirCaminho(ficha, caminho, copia(valor));
+}
+const servicosDaFicha = computed(() => ({
+    personagens: props.personagens.map((p) => ({ id: p.id, nome: p.nome })),
+    armasParaForja: async (id: number) => (await api.armasParaForja(id)).armas,
+    forjar: async (d: { ferreiro_id: number; item: string; atributo: 'for' | 'des' | 'sab' }) => {
+        const r = await api.forjar(d);
+        aplicarNaFicha(d.ferreiro_id, r.campos);
+        recarregar(['itens']);
+
+        return { sucesso: r.sucesso, texto: r.texto };
+    },
+    aprimorar: async (d: { ferreiro_id: number; alvo_id: number; item_id: number; melhorias: Record<string, unknown> }) => {
+        const r = await api.aprimorarArma(d);
+        aplicarNaFicha(d.ferreiro_id, r.camposFerreiro);
+        aplicarNaFicha(r.alvo_id, r.camposAlvo);
+        recarregar(['itens']);
+
+        return { texto: r.texto };
+    },
+}));
+
 // Arrastar um item da aba Itens para a janela de uma ficha entrega o item ao personagem (só o mestre; o formato do
 // inventário é do módulo do sistema).
 const fichaSobre = ref<number | null>(null);
@@ -1367,6 +1392,7 @@ function alternarPorta(id: number) {
                 :ficha="fichas[f.id]"
                 :itens="itensDaMesa"
                 :mestre="mestre"
+                v-bind="moduloSistema.slug === 'one-piece' ? { servicos: servicosDaFicha } : {}"
                 @editor-item="abrirEditorItem"
                 @construtor="construtorId = f.id"
                 @acao="(a: AcaoCaracteristica) => executarAcao(f.id, a)"

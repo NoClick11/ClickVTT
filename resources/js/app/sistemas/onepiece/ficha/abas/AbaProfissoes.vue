@@ -20,6 +20,7 @@ import {
     type ProfissoesFicha,
 } from '../../profissoes/regras';
 import { ATRIBUTOS, PERICIAS, type AtributoId, type FichaOnePiece } from '../../regras';
+import ForjaDoFerreiro from '../forja/ForjaDoFerreiro.vue';
 
 /**
  * Aba Profissões: a profissão do 1º nível, graduações (Profissional → Especialista → Mestre → Grão-Mestre), as características
@@ -113,6 +114,8 @@ const botaoMestre = `${botao} border-ouro-500/50 text-ouro-100 hover:bg-ouro-500
                 <li v-for="x in problemasSegunda" :key="x">{{ x }}</li>
             </ul>
         </section>
+
+        <ForjaDoFerreiro :ficha="ficha" />
 
         <!-- controles do mestre -->
         <section v-if="mestre" class="rounded-lg border border-ouro-500/40 bg-ouro-500/5 p-3" aria-label="Controles do mestre">

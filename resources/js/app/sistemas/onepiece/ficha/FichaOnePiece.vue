@@ -3,7 +3,7 @@ import { Apple, Backpack, Flame, GraduationCap, Hammer, ListChecks, Settings, Sk
 import { computed, inject, provide, ref, type Component, type ComputedRef } from 'vue';
 import type { AbrirEditorItem, PersonagemFicha } from '../../../nucleo/sistemas/tipos';
 import type { ItemDto } from '../../../tipos-mesa';
-import { CHAVE_FICHA } from '../contexto';
+import { CHAVE_FICHA, type ServicosDaFicha } from '../contexto';
 import { abaDoHakiVisivel } from '../haki/regras';
 import { analisar, armasAtivas, modoDaRolagem, type AcaoCaracteristica, type FichaOnePiece } from '../regras';
 import AbaAkuma from './abas/AbaAkuma.vue';
@@ -25,7 +25,7 @@ import FichaLateral from './FichaLateral.vue';
  * `rolar(expressao, rotulo)`. Os valores derivados (CA, bônus, CD...) são calculados aqui (`calcular`) e
  * os ajustes manuais ficam em `ficha.ajustes`.
  */
-const props = defineProps<{ personagem: PersonagemFicha; ficha: FichaOnePiece; itens: ItemDto[]; mestre: boolean }>();
+const props = defineProps<{ personagem: PersonagemFicha; ficha: FichaOnePiece; itens: ItemDto[]; mestre: boolean; servicos?: ServicosDaFicha }>();
 const emit = defineEmits<{
     salvar: [campos: Record<string, unknown>];
     rolar: [
@@ -80,6 +80,8 @@ provide(CHAVE_FICHA, {
     armas,
     itens: itensPorId,
     mestre: props.mestre,
+    servicos: props.servicos ?? null,
+    personagemId: props.personagem.id,
     abrirEditorItem: (itemId, aoSalvar) => emit('editorItem', itemId, aoSalvar),
     salvar: (campos) => emit('salvar', campos),
     rolar: (expressao, rotulo, aoRolar, dano, acao) => emit('rolar', expressao, rotulo, aoRolar, dano, acao),
