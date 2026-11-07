@@ -177,4 +177,24 @@ class CriadorTecnicasTest extends TestCase
         ])->assertOk();
         $this->assertSame('pv.max', $c->aria->fresh()->ficha['caracteristicas'][0]['efeitos'][0]['alvo']);
     }
+
+    public function test_o_servidor_aceita_todos_os_itens_do_catalogo_criados_pelo_mestre(): void
+    {
+        $c = $this->cenario();
+        $itens = json_decode(file_get_contents(base_path('tests/Fixtures/itens-da-mesa.json')), true);
+        $this->assertGreaterThan(130, count($itens));
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+        $sessao = ['acesso_mesas' => [$c->mestre->mesa_id => [$c->mestre->id => true]]];
+        foreach ($itens as $corpo) {
+            $r = $this->withSession($sessao)->withHeader('X-Jogador', (string) $c->mestre->id)->postJson(route('jogo.itens.store', [$c->mesa->id]), $corpo);
+            $r->assertCreated();
+            $this->assertSame($corpo['dados']['catalogo']['id'], $r->json('dados.catalogo.id'), $corpo['nome']);
+            if (isset($corpo['dados']['arma'])) {
+                $this->assertSame($corpo['dados']['arma']['dano'], $r->json('dados.arma.dano'), $corpo['nome']);
+            }
+        }
+        // o jogador não cria itens (nem do catálogo)
+        $this->withSession(['acesso_mesas' => [$c->ana->mesa_id => [$c->ana->id => true]]])->withHeader('X-Jogador', (string) $c->ana->id)
+            ->postJson(route('jogo.itens.store', [$c->mesa->id]), $itens[0])->assertForbidden();
+    }
 }

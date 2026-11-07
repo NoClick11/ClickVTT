@@ -1,0 +1,2004 @@
+[
+  {
+    "nome": "Ferramenta de Profissão",
+    "descricao": "Todos os instrumentos necessários para desempenhar as funções da profissão.\nRaridade: Comum. Preço: ฿ 80.000.",
+    "peso": 4,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "ferramenta-de-profissao"
+      }
+    }
+  },
+  {
+    "nome": "Livro de Profissão",
+    "descricao": "Obra abrangente que oferece o conhecimento necessário para aprender uma profissão.\nRaridade: Raro. Preço: ฿ 500.000.",
+    "peso": 3,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "livro-de-profissao"
+      }
+    }
+  },
+  {
+    "nome": "Kit de Chaves",
+    "descricao": "Um conjunto variado de chaves mecânicas, utilizado para montagem e desmontagem de objetos.\nRaridade: Comum. Preço: ฿ 10.000.",
+    "peso": 3,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "kit-de-chaves"
+      }
+    }
+  },
+  {
+    "nome": "Kit de Construção",
+    "descricao": "Contém pregos, parafusos, porcas, arruelas, lixas e outros itens básicos de construção.\nRaridade: Comum. Preço: ฿ 3.000.",
+    "peso": 2.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "kit-de-construcao"
+      }
+    }
+  },
+  {
+    "nome": "Kit de Cozinha",
+    "descricao": "Inclui facas, panelas e utensílios culinários para preparo de todos os tipos de refeições.\nRaridade: Comum. Preço: ฿ 60.000.",
+    "peso": 6,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "kit-de-cozinha"
+      }
+    }
+  },
+  {
+    "nome": "Kit de Disfarce",
+    "descricao": "Contém roupas, sapatos, perucas e um adereço peculiar à escolha do jogador.\nRaridade: Raro. Preço: ฿ 45.000.",
+    "peso": 3,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "kit-de-disfarce"
+      }
+    }
+  },
+  {
+    "nome": "Kit de Escalada",
+    "descricao": "Inclui pítons, botas com solas pontiagudas, luvas e cinto de escalada. Usando uma ação, você pode se ancorar em uma superfície, impedindo quedas superiores a 7,5 metros e limitando seu deslocamento vertical a essa distância em relação ao ponto de ancoragem.\nRaridade: Incomum. Preço: ฿ 30.000.",
+    "peso": 4.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "kit-de-escalada"
+      }
+    }
+  },
+  {
+    "nome": "Kit de Falsificação",
+    "descricao": "Contém moldes, tintas, materiais diversos. Permite falsificar documentos e itens.\nRaridade: Mercado Negro. Preço: 20% do valor do item original.",
+    "peso": 1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "kit-de-falsificacao"
+      }
+    }
+  },
+  {
+    "nome": "Kit Médico",
+    "descricao": "Contém materiais básicos para procedimentos médicos: seringas, agulhas de sutura, linhas, instrumentos cirúrgicos e medicamentos simples.\nRaridade: Incomum. Preço: ฿ 15.000.",
+    "peso": 2,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "kit-medico"
+      }
+    }
+  },
+  {
+    "nome": "Kit de Pesquisa",
+    "descricao": "Conjunto para pesquisas químicas e biológicas. Inclui tubos de ensaio, frascos, reagentes, pipetas, placas de Petri, entre outros.\nRaridade: Raro. Preço: ฿ 60.000.",
+    "peso": 3.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "kit-de-pesquisa"
+      }
+    }
+  },
+  {
+    "nome": "Kit de Primeiros Socorros",
+    "descricao": "Kit de uso único com itens básicos para estabilização, como gaze, bandagens, álcool, luvas, tesoura e máscara. Caso não seja utilizado em conjunto com nenhuma característica, sua aplicação leva 5 minutos e faz com que uma criatura com 0 PV recupere 1 PV, ao final da aplicação.\nRaridade: Comum. Preço: ฿ 10.000.",
+    "peso": 1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "kit-de-primeiros-socorros"
+      }
+    }
+  },
+  {
+    "nome": "Kit de Temperos",
+    "descricao": "Coleção de especiarias e condimentos diversos para culinária refinada.\nRaridade: Comum. Preço: ฿ 15.000.",
+    "peso": 1.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "kit-de-temperos"
+      }
+    }
+  },
+  {
+    "nome": "Kit para Abrir Cadeado",
+    "descricao": "Ferramentas específicas com 10 usos para destrancar fechaduras comuns.\nRaridade: Raro. Preço: ฿ 15.000.",
+    "peso": 0.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "kit-para-abrir-cadeado"
+      }
+    }
+  },
+  {
+    "nome": "Kit de Herbalismo",
+    "descricao": "Bolsas para armazenamento de ervas, tesouras e luvas de couro para coleta, almofariz e pilão, além de vários frascos de vidro.\nRaridade: Raro. Preço: ฿ 50.000.",
+    "peso": 1.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "kit-de-herbalismo"
+      }
+    }
+  },
+  {
+    "nome": "Kit de Venenos",
+    "descricao": "Frascos de vidro, almofariz, vareta de vidro, compostos químicos e outros instrumentos essenciais para a preparação de venenos.\nRaridade: Mercado Negro. Preço: ฿ 80.000.",
+    "peso": 1.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "kit-de-venenos"
+      }
+    }
+  },
+  {
+    "nome": "Algemas",
+    "descricao": "Par de algemas que restringe a movimentação dos membros. Presas nos braços, aplicam a condição \"Incapacitado\"; presas nas pernas, reduzem o deslocamento para 1,5 metro.\nRaridade: Incomum. Preço: ฿ 5.000.",
+    "peso": 1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "algemas"
+      }
+    }
+  },
+  {
+    "nome": "Algemas de Kairoseki",
+    "descricao": "Algemas especiais feitas com Kairoseki, ideais para conter usuários de Akuma no Mi. Aplicam as mesmas restrições das algemas e também a condição \"Enfraquecido\".\nRaridade: Mercado Negro. Preço: ฿ 2.000.000.",
+    "peso": 3,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "algemas-de-kairoseki"
+      }
+    }
+  },
+  {
+    "nome": "Grilhões de Transporte",
+    "descricao": "Conjunto de algemas com correntes presas aos braços, cintura e pernas. Projetado para impedir fugas durante o transporte de prisioneiros. Aplicam as mesmas restrições de algemas nas mãos e pernas.\nRaridade: Incomum. Preço: ฿ 15.000.",
+    "peso": 7,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "grilhoes-de-transporte"
+      }
+    }
+  },
+  {
+    "nome": "Rede de Pesca/Captura",
+    "descricao": "Rede trançada utilizada para pesca ou captura de criaturas, podendo ser arremessada a até 6 metros. Em caso de acerto, a criatura atingida recebe a condição \"Impedido\". A rede pode ser removida por outra criatura usando uma ação.\nRaridade: Comum. Preço: ฿ 1.500.",
+    "peso": 2,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "rede-de-pesca"
+      }
+    }
+  },
+  {
+    "nome": "Rede de Kairoseki",
+    "descricao": "Rede especial utilizada para capturar usuários de Akuma no Mi, podendo ser lançada a até 6 metros contra uma criatura Grande ou menor. Em caso de acerto, a criatura recebe a condição \"Impedido\" e, caso seja usuária de Akuma no Mi, também recebe a condição \"Enfraquecido\". Outra criatura pode remover a rede usando uma ação.\nRaridade: Mercado Negro. Preço: ฿ 3.000.000.",
+    "peso": 6,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "rede-de-kairoseki"
+      }
+    }
+  },
+  {
+    "nome": "Cantil",
+    "descricao": "Recipiente com tampa e corda, com capacidade para 2 litros de líquido. Ideal para viagens.\nRaridade: Comum. Preço: ฿ 2.000.",
+    "peso": 0.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "cantil"
+      }
+    }
+  },
+  {
+    "nome": "Mochila Pequena",
+    "descricao": "Capacidade de até 30 kg de carga.\nRaridade: Comum. Preço: ฿ 10.000.",
+    "peso": 1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "mochila-pequena"
+      }
+    }
+  },
+  {
+    "nome": "Mochila Média",
+    "descricao": "Suporta até 60 kg de carga.\nRaridade: Comum. Preço: ฿ 15.000.",
+    "peso": 1.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "mochila-media"
+      }
+    }
+  },
+  {
+    "nome": "Mochila Grande",
+    "descricao": "Capacidade de carga de até 100 kg. Ideal para transporte pesado.\nRaridade: Incomum. Preço: ฿ 20.000.",
+    "peso": 2.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "mochila-grande"
+      }
+    }
+  },
+  {
+    "nome": "Chapa Metálica de Aço",
+    "descricao": "Chapa de aço padrão utilizada em construções diversas.\nRaridade: Incomum. Preço: ฿ 8.000/unidade.",
+    "peso": 12,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "chapa-de-aco"
+      }
+    }
+  },
+  {
+    "nome": "Corda",
+    "descricao": "Corda resistente de 15 metros, com múltiplas aplicações náuticas ou domésticas.\nRaridade: Comum. Preço: ฿ 1.500.",
+    "peso": 3,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "corda"
+      }
+    }
+  },
+  {
+    "nome": "Corrente de Elos",
+    "descricao": "Corrente metálica robusta, adaptável a diversas finalidades.\nRaridade: Comum. Preço: ฿ 1.200/metro.",
+    "peso": 2.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "corrente-de-elos"
+      }
+    }
+  },
+  {
+    "nome": "Lingote de Metal",
+    "descricao": "Lingote de metal variado.\nRaridade: Comum. Preço: ฿ 6.000/unidade.",
+    "peso": 1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "lingote-de-metal"
+      }
+    }
+  },
+  {
+    "nome": "Tábua de Madeira",
+    "descricao": "Tábua de madeira de tamanho padrão usada em construções.\nRaridade: Comum. Preço: ฿ 2.200/unidade.",
+    "peso": 5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "tabua-de-madeira"
+      }
+    }
+  },
+  {
+    "nome": "Asa Delta",
+    "descricao": "Usada para planar captando correntes de vento. Dependendo das condições climáticas, concede 9 metros de deslocamento de voo.\nRaridade: Raro. Preço: ฿ 260.000.",
+    "peso": 10,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "asa-delta"
+      }
+    }
+  },
+  {
+    "nome": "Equipamento de Mergulho (roupa)",
+    "descricao": "Traje completo para mergulho com máscara, roupa térmica e pés de pato. Permite a qualquer personagem explorar o mar aberto, desde que o tanque seja periodicamente reabastecido. O peso de 36 kg é do equipamento completo.\nRaridade: Raro. Preço: ฿ 15.000.",
+    "peso": 36,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "equipamento-de-mergulho"
+      }
+    }
+  },
+  {
+    "nome": "Tanque de Mergulho",
+    "descricao": "Tanque do equipamento de mergulho, com 1 hora de duração. Precisa ser periodicamente reabastecido com a bomba de oxigênio.\nRaridade: Raro. Preço: ฿ 35.000.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "tanque-de-mergulho"
+      }
+    }
+  },
+  {
+    "nome": "Bomba de Oxigênio (1 carga)",
+    "descricao": "Bomba de oxigênio com uma carga, usada para reabastecer o tanque do equipamento de mergulho.\nRaridade: Raro. Preço: ฿ 50.000.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "bomba-de-oxigenio"
+      }
+    }
+  },
+  {
+    "nome": "Ganchos de Escalada",
+    "descricao": "Par de ganchos afiados para mãos e pés. Permitem escalar superfícies verticais sem necessidade de Teste de Atributo e sem penalidades.\nRaridade: Raro. Preço: ฿ 10.000.",
+    "peso": 1.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "ganchos-de-escalada"
+      }
+    }
+  },
+  {
+    "nome": "Lanterna",
+    "descricao": "Aparelho cilíndrico com foco de luz. Alimentado por pilhas ou baterias, ilumina um cone de até 4,5 metros com luz plena e mais 4,5 metros com penumbra.\nRaridade: Comum. Preço: ฿ 800.",
+    "peso": 0.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "lanterna"
+      }
+    }
+  },
+  {
+    "nome": "Óculos de Visão Noturna",
+    "descricao": "Dispositivo usado pela Marinha para missões noturnas, subaquáticas ou subterrâneas. Permite enxergar na escuridão total como se fosse penumbra.\nRaridade: Mercado Negro. Preço: ฿ 85.000.",
+    "peso": 0.5,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "oculos-de-visao-noturna"
+      }
+    }
+  },
+  {
+    "nome": "Baú",
+    "descricao": "Contêiner resistente para armazenar itens de valor e dinheiro. Possui cadeado reforçado, mas pode ser arrombado por ladrões com tempo e ferramentas adequadas. Capacidade de 150 kg de equipamentos.\nRaridade: Comum. Preço: ฿ 12.000.",
+    "peso": 15,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "bau"
+      }
+    }
+  },
+  {
+    "nome": "Caixa de Maquiagem",
+    "descricao": "Conjunto completo de maquiagens e produtos corporais. Pode ser usado para disfarces ou estética.\nRaridade: Comum. Preço: ฿ 5.000.",
+    "peso": 1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "caixa-de-maquiagem"
+      }
+    }
+  },
+  {
+    "nome": "Cofre",
+    "descricao": "Semelhante ao baú, porém com sistema avançado de trancas e maior resistência. Ainda assim, pode ser arrombado por ladrões habilidosos com tempo suficiente.\nRaridade: Incomum. Preço: ฿ 60.000.",
+    "peso": 35,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "cofre"
+      }
+    }
+  },
+  {
+    "nome": "Instrumento Musical",
+    "descricao": "Instrumento musical à escolha do jogador.\nRaridade: Comum. Preço: Entre ฿ 10.000 e ฿ 15.000.",
+    "peso": 1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "instrumento-musical"
+      }
+    }
+  },
+  {
+    "nome": "Pacote de Isca de Peixe",
+    "descricao": "Contém 20 iscas. Usado com vara de pescar para aumentar as chances de pesca.\nRaridade: Comum. Preço: ฿ 200.",
+    "peso": 0.2,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "pacote-de-isca"
+      }
+    }
+  },
+  {
+    "nome": "Pacote de Pólvora",
+    "descricao": "Quantidade suficiente para carregar e disparar um único tiro de canhão de embarcações.\nRaridade: Incomum. Preço: ฿ 20.000.",
+    "peso": 1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "pacote-de-polvora"
+      }
+    }
+  },
+  {
+    "nome": "Tabaco",
+    "descricao": "Produto fumável (cigarro, charuto, cachimbo, etc.). Pode ser usado recreativamente ou como pesticida.\nRaridade: Comum. Preço: ฿ 1.000.",
+    "peso": 0.1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "tabaco"
+      }
+    }
+  },
+  {
+    "nome": "Vara de Pescar",
+    "descricao": "Vara simples feita de madeira, equipada com linha, boia e anzol.\nRaridade: Comum. Preço: ฿ 8.000.",
+    "peso": 1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "vara-de-pescar"
+      }
+    }
+  },
+  {
+    "nome": "Roupa de Gala",
+    "descricao": "Traje elegante para eventos formais e reuniões sociais de alto nível.\nRaridade: Incomum. Preço: ฿ 400.000.",
+    "peso": 1,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "roupa-de-gala"
+      }
+    }
+  },
+  {
+    "nome": "Roupa Especial",
+    "descricao": "Roupas específicas para ambientes hostis (desertos, neves intensas, mergulho profundo, etc.). Quando usadas corretamente, impedem penalidades por condições climáticas extremas.\nRaridade: Incomum. Preço: ฿ 40.000.",
+    "peso": 1,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "roupa-especial"
+      }
+    }
+  },
+  {
+    "nome": "Den-Den Mushi Alto-Falante",
+    "descricao": "Dispositivo fixo usado em locais públicos para transmitir mensagens em voz alta a longas distâncias.\nRaridade: Comum. Preço: ฿ 32.000.",
+    "peso": 5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "den-den-mushi-alto-falante"
+      }
+    }
+  },
+  {
+    "nome": "Den-Den Mushi Bebê",
+    "descricao": "Versão portátil, cabe na palma da mão. Permite comunicação dentro da mesma ilha ou área. Pode amplificar a voz do usuário para toda a região próxima.\nRaridade: Raro. Preço: ฿ 50.000.",
+    "peso": 0.2,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "den-den-mushi-bebe"
+      }
+    }
+  },
+  {
+    "nome": "Den-Den Mushi Branco",
+    "descricao": "Possui duas funções únicas: interceptar conversas de outros den-den mushi na área (grampo) e proteger ligações ao ser conectado a outro den-den mushi, criando uma linha segura. Uso não autorizado pode resultar em prisão e confisco pelo Governo Mundial ou Marinha.\nRaridade: Mercado Negro. Preço: ฿ 600.000.",
+    "peso": 0.8,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "den-den-mushi-branco"
+      }
+    }
+  },
+  {
+    "nome": "Den-Den Mushi Câmera",
+    "descricao": "Tira fotos emitindo flashes pelos olhos e imprime a imagem logo em seguida.\nRaridade: Incomum. Preço: ฿ 40.000.",
+    "peso": 2,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "den-den-mushi-camera"
+      }
+    }
+  },
+  {
+    "nome": "Den-Den Mushi Fone",
+    "descricao": "Conectado diretamente ao den-den mushi principal. Ajuda a evitar interceptações durante ligações.\nRaridade: Raro. Preço: ฿ 20.000.",
+    "peso": 0.3,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "den-den-mushi-fone"
+      }
+    }
+  },
+  {
+    "nome": "Den-Den Mushi Padrão",
+    "descricao": "Dispositivo padrão de comunicação com grande alcance. Permite chamadas para qualquer outro den-den mushi conhecido.\nRaridade: Comum. Preço: ฿ 50.000.",
+    "peso": 0.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "den-den-mushi-padrao"
+      }
+    }
+  },
+  {
+    "nome": "Den-Den Mushi Preto",
+    "descricao": "Portátil e discreto, pode ser usado como relógio. Muito utilizado por agentes secretos. Tem alcance limitado à mesma ilha.\nRaridade: Mercado Negro. Preço: ฿ 120.000.",
+    "peso": 0.1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "den-den-mushi-preto"
+      }
+    }
+  },
+  {
+    "nome": "Eternal Pose",
+    "descricao": "Similar ao Log Pose, mas aponta sempre para uma ilha específica.\nRaridade: Raro. Preço: ฿ 300.000.",
+    "peso": 1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "eternal-pose"
+      }
+    }
+  },
+  {
+    "nome": "Log Pose",
+    "descricao": "Bússola especial usada na Grand Line. Memoriza o campo magnético da ilha atual (tempo de sincronização médio: 1 dia a 1 semana) e aponta para a próxima ilha da rota.\nRaridade: Comum. Preço: ฿ 50.000.",
+    "peso": 0.2,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "log-pose"
+      }
+    }
+  },
+  {
+    "nome": "Log Pose de 3 Agulhas",
+    "descricao": "Versão aprimorada com 3 agulhas que apontam para diferentes ilhas. Usado no Novo Mundo, onde os campos magnéticos mudam com frequência. A agulha mais estável indica a ilha mais segura.\nRaridade: Incomum. Preço: ฿ 500.000.",
+    "peso": 0.2,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "log-pose-3-agulhas"
+      }
+    }
+  },
+  {
+    "nome": "Vivre Card",
+    "descricao": "Feito com material biológico de uma pessoa (como cabelo ou unha), sempre aponta em sua direção. Pode queimar caso a pessoa esteja em risco de morte.\nRaridade: Raro. Preço: ฿ 2.000.000.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "vivre-card"
+      }
+    }
+  },
+  {
+    "nome": "Combustível de Motor",
+    "descricao": "Necessário para o funcionamento de motores.\nRaridade: Incomum. Preço: ฿ 90.000/unidade.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "combustivel-de-motor"
+      }
+    }
+  },
+  {
+    "nome": "Bateria Grande",
+    "descricao": "Fonte de energia para máquinas de grande porte. Cada unidade dura 1 dia. Recarrega com luz solar após 1 semana.\nRaridade: Raro. Preço: ฿ 500.000/unidade.",
+    "peso": 15,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "bateria-grande"
+      }
+    }
+  },
+  {
+    "nome": "Carvão",
+    "descricao": "Fonte de energia para máquinas a vapor.\nRaridade: Comum. Preço: ฿ 200.000/unidade.",
+    "peso": 10,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "carvao"
+      }
+    }
+  },
+  {
+    "nome": "Núcleo de Energia",
+    "descricao": "Fonte de energia utilizada em Raid Suits. Cada unidade restaura 100 Pontos de Tecnologia.\nRaridade: Raro. Preço: ฿ 500.000/unidade.",
+    "peso": 3,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "nucleo-de-energia"
+      }
+    }
+  },
+  {
+    "nome": "Pilha/Bateria",
+    "descricao": "Conjunto de pilhas e baterias para dispositivos elétricos simples. Serve como fonte de energia portátil.\nRaridade: Comum. Preço: ฿ 200.",
+    "peso": 0.1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "pilha-bateria"
+      }
+    }
+  },
+  {
+    "nome": "Ampola de Anestesia",
+    "descricao": "Frasco de 100 ml com tampa perfurável, contendo líquido anestésico. Deve ser utilizado com uma seringa apropriada. Ao ser injetado, impõe a condição \"Letárgico\" por até 1 minuto. Quando utilizado em um procedimento cirúrgico, evita que os testes realizados durante o procedimento recebam desvantagem.\nRaridade: Incomum. Preço: ฿ 180.000.",
+    "peso": 0.1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "ampola-de-anestesia"
+      }
+    }
+  },
+  {
+    "nome": "Antídoto",
+    "descricao": "Frasco de vidro contendo substâncias capazes de neutralizar venenos comuns ou servir como base para antídotos mais complexos. Ao ser consumido, remove a condição \"Envenenado\" da criatura.\nRaridade: Comum. Preço: ฿ 40.000.",
+    "peso": 0.2,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "antidoto"
+      }
+    }
+  },
+  {
+    "nome": "Frasco de Ácido",
+    "descricao": "Frasco pequeno contendo ácido altamente corrosivo. Pode ser arremessado até 6 metros como ataque à distância. Ao atingir um alvo, causa 14 (3d8) de dano Ácido.\nRaridade: Raro. Preço: ฿ 20.000/unidade.",
+    "peso": 0.3,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "frasco-de-acido"
+      }
+    }
+  },
+  {
+    "nome": "Tubo de Ensaio",
+    "descricao": "Tubo de vidro resistente usado para armazenar ou misturar substâncias.\nRaridade: Incomum. Preço: ฿ 500.",
+    "peso": 0.1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "tubo-de-ensaio"
+      }
+    }
+  },
+  {
+    "nome": "Veneno Básico (dose)",
+    "descricao": "Pode ser aplicado em armas Cortantes ou Perfurantes, ou em até 3 munições, usando uma ação. O efeito permanece por até 1 minuto antes de secar. Ao atingir uma criatura, ela deve ser bem-sucedida em uma Salvaguarda de Constituição CD 10 ou receberá a condição \"Envenenado\" por até 1 minuto.\nRaridade: Mercado Negro. Preço: ฿ 80.000/dose.",
+    "peso": 0.1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "veneno-basico"
+      }
+    }
+  },
+  {
+    "nome": "Bastão de Fumaça",
+    "descricao": "Ao ser quebrado, libera uma nuvem de fumaça branca (ou colorida) em um raio de 6 metros. A fumaça bloqueia a visão, impedindo que quem esteja fora da área enxergue quem estiver dentro dela, e todas as criaturas em seu interior recebem a condição \"Cego\". O efeito dura por até 1 minuto. A fumaça não é tóxica.\nRaridade: Comum. Preço: ฿ 10.000.",
+    "peso": 0.4,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "bastao-de-fumaca"
+      }
+    }
+  },
+  {
+    "nome": "Gás do Sono",
+    "descricao": "Ao abrir a válvula, o recipiente libera gás em uma esfera de 1,5 metro de raio, que se expande em mais 1,5 metro por rodada até atingir 9 metros de raio (dura até 1 minuto). Criaturas dentro da área devem ser bem-sucedidas em uma Salvaguarda de Constituição CD 18 no início de cada um de seus turnos ou recebem a condição \"Sonolento\" por até 1 minuto. Caso o resultado natural da Salvaguarda seja 1 no d20, a criatura cai inconsciente.\nRaridade: Mercado Negro. Preço: ฿ 80.000/unidade.",
+    "peso": 1.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "gas-do-sono"
+      }
+    }
+  },
+  {
+    "nome": "Gás Inflamável",
+    "descricao": "Esse gás possui a mesma expansão e duração do gás do sono. Caso entre em contato com fogo, faísca ou qualquer outra fonte de ignição, ele explode e é completamente consumido. Todas as criaturas dentro da área devem realizar uma Salvaguarda de Destreza CD 15. Em caso de falha, sofrem 21 (6d6) de dano de Fogo.\nRaridade: Raro. Preço: ฿ 150.000/unidade.",
+    "peso": 1.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "gas-inflamavel"
+      }
+    }
+  },
+  {
+    "nome": "Ração de Viagem",
+    "descricao": "Alimento conservado e nutritivo, suficiente para um dia. Pouco saboroso, mas eficaz.\nRaridade: Comum. Preço: ฿ 2.000/ração.",
+    "peso": 0.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "racao-de-viagem"
+      }
+    }
+  },
+  {
+    "nome": "Ração Militar",
+    "descricao": "Desenvolvida pela Marinha, rica em proteínas e cafeína. Concede 20 Pontos de Vida temporários e mantém a saciedade por 1 dia.\nRaridade: Incomum. Preço: ฿ 8.000/ração.",
+    "peso": 0.7,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "racao-militar"
+      }
+    }
+  },
+  {
+    "nome": "Ração para Animais",
+    "descricao": "Alimento balanceado para diversas espécies animais. Sacia por 1 dia.\nRaridade: Comum. Preço: ฿ 800/ração.",
+    "peso": 0.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "racao-para-animais"
+      }
+    }
+  },
+  {
+    "nome": "Refeição",
+    "descricao": "Comida servida em tavernas ou restaurantes. Varia em sabor e qualidade, mas alimenta normalmente.\nRaridade: Comum. Preço: ฿ 1.000.",
+    "peso": 0.8,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "refeicao"
+      }
+    }
+  },
+  {
+    "nome": "Saquê Comum (jarra)",
+    "descricao": "Jarra de saquê comum.\nRaridade: Comum. Preço: ฿ 1.800.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "sake-comum"
+      }
+    }
+  },
+  {
+    "nome": "Saquê Fino (garrafa)",
+    "descricao": "Garrafa de saquê fino.\nRaridade: Comum. Preço: ฿ 5.000.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "sake-fino"
+      }
+    }
+  },
+  {
+    "nome": "Refeição Pobre (diária)",
+    "descricao": "Refeição diária de padrão pobre.\nRaridade: Comum. Preço: ฿ 1.200.",
+    "peso": 0.3,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "refeicao-pobre"
+      }
+    }
+  },
+  {
+    "nome": "Refeição Modesta (diária)",
+    "descricao": "Refeição diária de padrão modesto.\nRaridade: Comum. Preço: ฿ 2.000.",
+    "peso": 0.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "refeicao-modesta"
+      }
+    }
+  },
+  {
+    "nome": "Refeição Confortável (diária)",
+    "descricao": "Refeição diária de padrão confortável.\nRaridade: Comum. Preço: ฿ 3.000.",
+    "peso": 0.8,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "refeicao-confortavel"
+      }
+    }
+  },
+  {
+    "nome": "Refeição Rica (diária)",
+    "descricao": "Refeição diária de padrão rico.\nRaridade: Comum. Preço: ฿ 6.000.",
+    "peso": 1.2,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "refeicao-rica"
+      }
+    }
+  },
+  {
+    "nome": "Refeição Aristocrática (diária)",
+    "descricao": "Refeição diária de padrão aristocrático.\nRaridade: Comum. Preço: ฿ 10.000.",
+    "peso": 1.6,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "refeicao-aristocratica"
+      }
+    }
+  },
+  {
+    "nome": "Pão (pedaço)",
+    "descricao": "Pedaço de pão.\nRaridade: Comum. Preço: ฿ 80.",
+    "peso": 0.1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "pao"
+      }
+    }
+  },
+  {
+    "nome": "Queijo (pedaço)",
+    "descricao": "Pedaço de queijo.\nRaridade: Comum. Preço: ฿ 60.",
+    "peso": 0.05,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "queijo"
+      }
+    }
+  },
+  {
+    "nome": "Banquete (por pessoa)",
+    "descricao": "Banquete, preço por pessoa.\nRaridade: Comum. Preço: ฿ 10.000.",
+    "peso": 3,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "banquete"
+      }
+    }
+  },
+  {
+    "nome": "Carne (pedaço)",
+    "descricao": "Pedaço de carne.\nRaridade: Comum. Preço: ฿ 800.",
+    "peso": 0.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "carne"
+      }
+    }
+  },
+  {
+    "nome": "Vinho (jarra)",
+    "descricao": "Jarra de vinho.\nRaridade: Comum. Preço: ฿ 3.000.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "vinho-jarra"
+      }
+    }
+  },
+  {
+    "nome": "Vinho (caneca)",
+    "descricao": "Caneca de vinho.\nRaridade: Comum. Preço: ฿ 1.000.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "vinho-caneca"
+      }
+    }
+  },
+  {
+    "nome": "Vinho (garrafa)",
+    "descricao": "Garrafa de vinho.\nRaridade: Comum. Preço: ฿ 2.000.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "vinho-garrafa"
+      }
+    }
+  },
+  {
+    "nome": "Adaga",
+    "descricao": "Pequena lâmina afiada, eficaz em combate corpo a corpo ou arremessada. Versátil e fácil de ocultar.\nDano: 1d4 Cortante ou Perfurante.\nPropriedades: Acuidade, Arremesso.\nExpertise (acerto crítico natural, só com proficiência): A criatura atingida recebe a condição \"Sangramento\".\nRaridade: Comum. Preço: ฿ 20.000.",
+    "peso": 0.5,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "adaga"
+      },
+      "arma": {
+        "dano": "1d4",
+        "atributo": "acuidade",
+        "tipoDano": "Cortante"
+      }
+    }
+  },
+  {
+    "nome": "Daito",
+    "descricao": "Versão mais longa de uma katana.\nDano: 1d6 Cortante.\nPropriedades: Acuidade, Versátil (1d8).\nExpertise (acerto crítico natural, só com proficiência): A próxima jogada de ataque (comum) feita contra você, até o final do seu próximo turno, falha.\nRaridade: Comum. Preço: ฿ 80.000.",
+    "peso": 1.6,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "daito"
+      },
+      "arma": {
+        "dano": "1d6",
+        "atributo": "acuidade",
+        "tipoDano": "Cortante"
+      }
+    }
+  },
+  {
+    "nome": "Espada Montante",
+    "descricao": "Espada colossal de até 3 m, usada para cortar fileiras inimigas ou como ferramenta de cerco.\nDano: 2d6 Cortante.\nPropriedades: Alcance, Arma de Cerco, Duas Mãos, Pesada.\nExpertise (acerto crítico natural, só com proficiência): Você recebe +2 na Classe de Resistência, até o início do seu próximo turno.\nRaridade: Comum. Preço: ฿ 150.000.",
+    "peso": 6,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "espada-montante"
+      },
+      "arma": {
+        "dano": "2d6",
+        "atributo": "for",
+        "tipoDano": "Cortante"
+      }
+    }
+  },
+  {
+    "nome": "Katana",
+    "descricao": "Espada de lâmina curva e gume único, equilibrada para cortes precisos e rápidos.\nDano: 1d6 Cortante.\nPropriedades: Acuidade.\nExpertise (acerto crítico natural, só com proficiência): Os dados de dano da arma são maximizados.\nRaridade: Comum. Preço: ฿ 70.000.",
+    "peso": 1.2,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "katana"
+      },
+      "arma": {
+        "dano": "1d6",
+        "atributo": "acuidade",
+        "tipoDano": "Cortante"
+      }
+    }
+  },
+  {
+    "nome": "Kogatana",
+    "descricao": "Pequena katana portátil, semelhante a uma adaga, ideal para golpes ágeis ou como arma reserva.\nDano: 1d4 Cortante.\nPropriedades: Acuidade.\nExpertise (acerto crítico natural, só com proficiência): A criatura atingida recebe a condição \"Sangramento\".\nRaridade: Comum. Preço: ฿ 30.000.",
+    "peso": 0.5,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "kogatana"
+      },
+      "arma": {
+        "dano": "1d4",
+        "atributo": "acuidade",
+        "tipoDano": "Cortante"
+      }
+    }
+  },
+  {
+    "nome": "Machado",
+    "descricao": "Ferramenta de batalha com lâmina larga e afiada, capaz de ser arremessada ou usada em combate próximo.\nDano: 1d6 Cortante.\nPropriedades: Arremesso.\nExpertise (acerto crítico natural, só com proficiência): Você recebe a condição \"Empoderado\", até o final do seu próximo turno.\nRaridade: Comum. Preço: ฿ 55.000.",
+    "peso": 1.5,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "machado"
+      },
+      "arma": {
+        "dano": "1d6",
+        "atributo": "for",
+        "tipoDano": "Cortante"
+      }
+    }
+  },
+  {
+    "nome": "Machado Grande",
+    "descricao": "Machado de lâmina dupla, exigindo força para golpes devastadores que atingem amplos alcances.\nDano: 1d12 Cortante.\nPropriedades: Alcance, Duas Mãos, Pesada.\nExpertise (acerto crítico natural, só com proficiência): Você causa 1d6 de dano Cortante em todas as criaturas a até 3 metros de você.\nRaridade: Comum. Preço: ฿ 90.000.",
+    "peso": 3,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "machado-grande"
+      },
+      "arma": {
+        "dano": "1d12",
+        "atributo": "for",
+        "tipoDano": "Cortante"
+      }
+    }
+  },
+  {
+    "nome": "Nodachi",
+    "descricao": "Katana alongada com lâmina pesada, projetada para cortes amplos e potentes, dominando o campo de batalha.\nDano: 1d8 Cortante.\nPropriedades: Alcance, Duas Mãos, Pesada.\nExpertise (acerto crítico natural, só com proficiência): Sua próxima jogada de ataque (comum), até o final do seu próximo turno, tem margem de acerto crítico 16-20.\nRaridade: Comum. Preço: ฿ 100.000.",
+    "peso": 2.8,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "nodachi"
+      },
+      "arma": {
+        "dano": "1d8",
+        "atributo": "for",
+        "tipoDano": "Cortante"
+      }
+    }
+  },
+  {
+    "nome": "Rapieira",
+    "descricao": "Espada elegante e afiada, focada em estocadas precisas, com guarda elaborada para proteção da mão.\nDano: 1d6 Cortante ou Perfurante.\nPropriedades: Acuidade.\nExpertise (acerto crítico natural, só com proficiência): A próxima Salvaguarda de Destreza recebe sucesso automático, até o fim do encontro de combate.\nRaridade: Comum. Preço: ฿ 70.000.",
+    "peso": 1,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "rapieira"
+      },
+      "arma": {
+        "dano": "1d6",
+        "atributo": "acuidade",
+        "tipoDano": "Cortante"
+      }
+    }
+  },
+  {
+    "nome": "Sabre",
+    "descricao": "Espada curva de gume único, balanceada para cortes fluidos, com guarda robusta para defesa.\nDano: 1d6 Cortante.\nExpertise (acerto crítico natural, só com proficiência): Você recebe 20 Pontos de Vida temporários, que duram até o início do seu próximo turno.\nRaridade: Comum. Preço: ฿ 70.000.",
+    "peso": 1.1,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "sabre"
+      },
+      "arma": {
+        "dano": "1d6",
+        "atributo": "for",
+        "tipoDano": "Cortante"
+      }
+    }
+  },
+  {
+    "nome": "Shikomizue",
+    "descricao": "Lâmina fina oculta dentro de uma bengala, perfeita para ataques sorrateiros ou defesa discreta.\nDano: 1d6 Cortante.\nPropriedades: Acuidade.\nExpertise (acerto crítico natural, só com proficiência): A sua próxima jogada de ataque (comum ou Técnicas), até o final do seu próximo turno, recebe +3 de acerto.\nRaridade: Comum. Preço: ฿ 75.000.",
+    "peso": 1,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "shikomizue"
+      },
+      "arma": {
+        "dano": "1d6",
+        "atributo": "acuidade",
+        "tipoDano": "Cortante"
+      }
+    }
+  },
+  {
+    "nome": "Bastão",
+    "descricao": "Um pedaço simples de madeira ou metal, de forma cilíndrica, utilizado como arma de combate.\nDano: dano desarmado +1 passo (Contundente).\nPropriedades: Alcance, Duas Mãos.\nExpertise (acerto crítico natural, só com proficiência): A criatura atingida recebe a condição \"Caído\".\nRaridade: Comum. Preço: ฿ 40.000.",
+    "peso": 1.5,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "bastao"
+      }
+    }
+  },
+  {
+    "nome": "Kanabo",
+    "descricao": "Um bastão robusto com a extremidade grossa, podendo conter espinhos ou saliências metálicas.\nDano: dano desarmado +1 passo (Contundente).\nPropriedades: Arma de Cerco, Duas Mãos, Pesada.\nExpertise (acerto crítico natural, só com proficiência): Ao final do cálculo de dano, empurre a criatura por 6 metros ou adicione 1d8 de dano Contundente adicional.\nRaridade: Comum. Preço: ฿ 60.000.",
+    "peso": 4.5,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "kanabo"
+      }
+    }
+  },
+  {
+    "nome": "Luva de Ferro",
+    "descricao": "Uma luva reforçada com placas metálicas sobre os dedos, podendo ter espinhos.\nDano: dano desarmado +1 passo (Contundente).\nExpertise (acerto crítico natural, só com proficiência): A sua próxima jogada de ataque (comum ou Técnicas), até o final do seu próximo turno, recebe +3 de acerto.\nRaridade: Comum. Preço: ฿ 20.000.",
+    "peso": 0.8,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "luva-de-ferro"
+      }
+    }
+  },
+  {
+    "nome": "Nunchaku",
+    "descricao": "Dois bastões curtos, geralmente de madeira ou metal, conectados por uma corrente ou corda.\nDano: dano desarmado +1 passo (Contundente).\nPropriedades: Acuidade.\nExpertise (acerto crítico natural, só com proficiência): Ao final do cálculo de dano, adicione 1d12 de dano Contundente.\nRaridade: Comum. Preço: ฿ 25.000.",
+    "peso": 1,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "nunchaku"
+      }
+    }
+  },
+  {
+    "nome": "Par de Tonfas",
+    "descricao": "Dois bastões alongados com empunhadura perpendicular, ideais para bloquear e contra-atacar golpes corpo a corpo.\nDano: dano desarmado +1 passo (Contundente).\nPropriedades: Duas Mãos.\nExpertise (acerto crítico natural, só com proficiência): Você recebe +2 na Classe de Resistência, até o início do seu próximo turno.\nRaridade: Comum. Preço: ฿ 42.000.",
+    "peso": 2,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "par-de-tonfas"
+      }
+    }
+  },
+  {
+    "nome": "Canhão",
+    "descricao": "Uma poderosa arma que dispara bolas de chumbo ou explosivas. Eficaz contra estruturas e grupos. Cada disparo consome 1 munição.\nDano: Conforme a munição.\nPropriedades: Distância (21/30 metros), Duas Mãos, Munição, Pesada, Recarga.\nExpertise (acerto crítico natural, só com proficiência): Você recebe +6 metros de deslocamento, até o fim do seu próximo turno.\nRaridade: Comum. Preço: ฿ 350.000.",
+    "peso": 12,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "canhao"
+      }
+    }
+  },
+  {
+    "nome": "Escopeta",
+    "descricao": "Arma de fogo de cano duplo que, com a ação atacar, dispara múltiplos projéteis de uma vez, devastando alvos em curto alcance. Requer 10 munições esféricas por disparo. Dano: todos dentro da área devem fazer uma Salvaguarda de Destreza CD 16, sofrendo 3d8 de dano Contundente se falharem.\nDano: Contundente.\nPropriedades: Distância (cone de 3 metros), Duas Mãos, Munição, Recarga.\nRaridade: Comum. Preço: ฿ 150.000.",
+    "peso": 3.5,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "escopeta"
+      }
+    }
+  },
+  {
+    "nome": "Mosquete",
+    "descricao": "Arma de pólvora de longo alcance, com dano variável conforme a munição. Cada disparo consome 1 munição.\nDano: Conforme a munição.\nPropriedades: Distância (18/24 metros), Munição, Duas Mãos.\nExpertise (acerto crítico natural, só com proficiência): Sua próxima jogada de ataque (comum), até o final do seu próximo turno, tem margem de acerto crítico 16-20.\nRaridade: Comum. Preço: ฿ 100.000.",
+    "peso": 4,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "mosquete"
+      }
+    }
+  },
+  {
+    "nome": "Metralhadora",
+    "descricao": "Arma automática com carregador de alta capacidade, capaz de liberar rajadas letais em área. Gasta 20 munições perfurantes por disparo. Dano: todos dentro da área devem fazer uma Salvaguarda de Destreza CD 16, sofrendo 4d6 de dano Perfurante se falharem ou metade desse dano se obtiverem sucesso.\nDano: Perfurante.\nPropriedades: Distância (cone de 6 metros), Duas Mãos, Munição, Recarga.\nRaridade: Comum. Preço: ฿ 380.000.",
+    "peso": 5,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "metralhadora"
+      }
+    }
+  },
+  {
+    "nome": "Pistola",
+    "descricao": "Arma de fogo curta e versátil, com dano determinado pela munição. Cada disparo consome 1 munição.\nDano: Conforme a munição.\nPropriedades: Distância (9/15 metros), Munição.\nExpertise (acerto crítico natural, só com proficiência): Caso tenha errado uma ou mais jogadas de ataque (comum ou Técnicas) no turno atual, você recebe 2 jogadas de ataque (comum) adicionais que causam apenas o dano da munição.\nRaridade: Comum. Preço: ฿ 70.000.",
+    "peso": 1.5,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "pistola"
+      }
+    }
+  },
+  {
+    "nome": "Bola de Chumbo",
+    "descricao": "Munição pesada usada em canhões ou bazucas, com altíssimo poder de impacto.\nDano: 3d10 Contundente.\nPropriedades: Arma de Cerco, Pesada.\nRaridade: Comum. Preço: ฿ 15.000.",
+    "peso": 3.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "bola-de-chumbo"
+      }
+    }
+  },
+  {
+    "nome": "Bola Explosiva",
+    "descricao": "Munição explosiva para canhões ou bazucas. Dano: causa 3d10 de dano Contundente e explode em uma área de 1,5 metro de raio. Todos dentro da área devem fazer uma Salvaguarda de Destreza CD 16, sofrendo 3d6 de dano de Fogo se falharem ou metade desse dano se obtiverem sucesso.\nDano: 3d10 Contundente.\nPropriedades: Arma de Cerco, Pesada.\nRaridade: Comum. Preço: ฿ 32.000.",
+    "peso": 3.8,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "bola-explosiva"
+      }
+    }
+  },
+  {
+    "nome": "Dardo",
+    "descricao": "Pequena agulha lançada por zarabatanas, leve e silenciosa.\nDano: 1 Perfurante.\nRaridade: Comum. Preço: ฿ 200.",
+    "peso": 0.1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "dardo"
+      }
+    }
+  },
+  {
+    "nome": "Flecha",
+    "descricao": "Projétil de madeira com ponta de ferro, usado com arcos.\nDano: 1d6 Perfurante.\nRaridade: Comum. Preço: ฿ 500.",
+    "peso": 0.2,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "flecha"
+      }
+    }
+  },
+  {
+    "nome": "Munição de Kairoseki",
+    "descricao": "Munição feita de kairoseki para armas de disparo, como pistolas e mosquetes. Ao acertar um usuário de Akuma no Mi, anula imediatamente todos os seus poderes e impõe a condição \"Enfraquecido\", até o final do próximo turno da criatura. Regra alternativa: caso o acerto seja crítico, o Narrador pode determinar que o projétil ficou alojado dentro da criatura; o alvo ou outra criatura a até 1,5 metro dele pode usar uma ação para tentar remover a munição (Teste de Destreza (Prestidigitação) CD 18). Em sucesso, a munição é removida; em falha, ela permanece alojada, mas a criatura pode escolher causar 3d10 de dano Verdadeiro ao alvo e usar uma ação bônus para removê-la de forma bruta.\nDano: 1d8 Perfurante.\nRaridade: Mercado Negro. Preço: ฿ 1.000.000.",
+    "peso": 0.1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "municao-de-kairoseki"
+      }
+    }
+  },
+  {
+    "nome": "Munição Esférica",
+    "descricao": "Munição comum usada por pistolas, mosquetes e similares.\nDano: 1d8 Contundente.\nRaridade: Comum. Preço: ฿ 500.",
+    "peso": 0.1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "municao-esferica"
+      }
+    }
+  },
+  {
+    "nome": "Munição para Estilingue",
+    "descricao": "Qualquer objeto que caiba no suporte preso ao elástico, como pedras, munições pequenas e etc. Dano: para cada munição não definida pelas regras, o Narrador determina se ela causa 1d4, 1d6 ou 1d8 de dano e se o tipo é Contundente, Cortante ou Perfurante. Objetos que não sejam munições esféricas reduzem pela metade o alcance normal e o máximo da arma.\nDano: Definido pelo Narrador.\nRaridade: Comum. Preço: Sob consulta.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "municao-para-estilingue"
+      }
+    }
+  },
+  {
+    "nome": "Munição Perfurante",
+    "descricao": "Munição comum usada por pistolas, mosquetes e similares.\nDano: 1d8 Perfurante.\nRaridade: Comum. Preço: ฿ 1.000.",
+    "peso": 0.1,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "municao-perfurante"
+      }
+    }
+  },
+  {
+    "nome": "Arco",
+    "descricao": "Arma de longo alcance feita de madeira flexível e corda resistente, capaz de lançar flechas ou projéteis com precisão. Cada disparo consome 1 munição.\nDano: Conforme a munição.\nPropriedades: Distância (18/24 metros), Duas Mãos, Munição.\nExpertise (acerto crítico natural, só com proficiência): A criatura atingida recebe a condição \"Enfurecido\", até o final do próximo turno da criatura.\nRaridade: Comum. Preço: ฿ 22.500.",
+    "peso": 0.5,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "arco"
+      }
+    }
+  },
+  {
+    "nome": "Dinamite",
+    "descricao": "Uma banana de dinamite com pavio inflamável. Dano: com uma ação, uma criatura pode acender e arremessá-la em um ponto que veja a até 7,5 metros. Cada criatura a até 1,5 metro do ponto de origem deve fazer uma Salvaguarda de Destreza CD 16; em falha sofre 3d6 de dano de Fogo ou, em sucesso, metade. Várias bananas presas juntas explodem ao mesmo tempo: cada banana adicional aumenta o dano em 1d6 (até 10d6) e o raio em 1,5 metro (até 6 metros). Também é possível aumentar o pavio: role 1d6 para determinar as rodadas até a explosão e jogue a iniciativa para a dinamite; ao final do turno dela, na última rodada, explode.\nDano: Fogo.\nPropriedades: Arremesso (distância 6 metros).\nRaridade: Comum. Preço: ฿ 25.000.",
+    "peso": 0.6,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "dinamite"
+      }
+    }
+  },
+  {
+    "nome": "Escudo de Ferro",
+    "descricao": "Escudo redondo de metal que concede +1 à Classe de Resistência de quem o empunha e de criaturas aliadas a até 1,5 metro (o bônus não se acumula com outros escudos de criaturas próximas). Utilizar um escudo reduz em 1 a quantidade de jogadas de ataque (comum) que você possa fazer no seu turno com sua ação (não pode reduzir para menos de 1 ataque).\nDano: 1d4 Contundente.\nExpertise (acerto crítico natural, só com proficiência): Você recebe 20 Pontos de Vida temporários, que duram até o início do seu próximo turno.\nRaridade: Comum. Preço: ฿ 50.000.",
+    "peso": 4,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "armadura": {
+        "tipo": "escudo",
+        "base": 1
+      },
+      "catalogo": {
+        "id": "escudo-de-ferro"
+      },
+      "arma": {
+        "dano": "1d4",
+        "atributo": "for",
+        "tipoDano": "Contundente"
+      }
+    }
+  },
+  {
+    "nome": "Chicote",
+    "descricao": "Corda ou tira de couro com ponta afiada, ideal para ataques à média distância e desarmar oponentes.\nDano: 1d6 Cortante.\nPropriedades: Acuidade, Alcance.\nExpertise (acerto crítico natural, só com proficiência): A criatura atingida recebe a condição \"Incapacitado\", até o final do próximo turno da criatura.\nRaridade: Comum. Preço: ฿ 7.500.",
+    "peso": 1.5,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "chicote"
+      },
+      "arma": {
+        "dano": "1d6",
+        "atributo": "acuidade",
+        "tipoDano": "Cortante"
+      }
+    }
+  },
+  {
+    "nome": "Foice",
+    "descricao": "Lâmina curva montada em haste longa, usada tanto para combate quanto para colheita. Pode ser usada como requisito \"Arma Cortante\" em características e Técnicas.\nDano: 1d8 Cortante.\nPropriedades: Alcance, Duas Mãos.\nExpertise (acerto crítico natural, só com proficiência): Ao final do cálculo de dano, puxe a criatura para 1,5 metro de você ou adicione 1d8 de dano adicional.\nRaridade: Comum. Preço: ฿ 50.000.",
+    "peso": 3,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "foice"
+      },
+      "arma": {
+        "dano": "1d8",
+        "atributo": "for",
+        "tipoDano": "Cortante"
+      }
+    }
+  },
+  {
+    "nome": "Lança",
+    "descricao": "Haste com ponta afiada, versátil para estocadas ou arremessos. Pode ser usada como requisito \"Arma Cortante\" em características e Técnicas.\nDano: 1d10 Perfurante.\nPropriedades: Alcance, Duas Mãos, Arremesso (distância 6/12 metros).\nExpertise (acerto crítico natural, só com proficiência): Caso tenha errado uma ou mais jogadas de ataque (comum ou Técnicas) no turno atual, você recebe 2 jogadas de ataque (comum) adicionais que causam apenas o dano da lança.\nRaridade: Comum. Preço: ฿ 70.000.",
+    "peso": 2.5,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "lanca"
+      },
+      "arma": {
+        "dano": "1d10",
+        "atributo": "for",
+        "tipoDano": "Perfurante"
+      }
+    }
+  },
+  {
+    "nome": "Mangual",
+    "descricao": "Um cabo de madeira ou metal com uma bola de ferro com espinhos conectada por uma corrente.\nDano: 1d10 Perfurante.\nPropriedades: Arma de Cerco, Pesada.\nExpertise (acerto crítico natural, só com proficiência): Ao final do cálculo de dano, adicione pontos de dano extra em um valor igual à metade da CR do alvo.\nRaridade: Comum. Preço: ฿ 30.000.",
+    "peso": 4.5,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "mangual"
+      },
+      "arma": {
+        "dano": "1d10",
+        "atributo": "for",
+        "tipoDano": "Perfurante"
+      }
+    }
+  },
+  {
+    "nome": "Martelo de Guerra",
+    "descricao": "Um cabo de madeira ou metal com um grande e pesado pedaço de metal em sua extremidade.\nDano: 1d12 Contundente.\nPropriedades: Arma de Cerco, Duas Mãos, Pesada.\nExpertise (acerto crítico natural, só com proficiência): Ao final do cálculo de dano, empurre a criatura por 6 metros ou adicione 1d8 de dano adicional.\nRaridade: Comum. Preço: ฿ 80.000.",
+    "peso": 7,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "martelo-de-guerra"
+      },
+      "arma": {
+        "dano": "1d12",
+        "atributo": "for",
+        "tipoDano": "Contundente"
+      }
+    }
+  },
+  {
+    "nome": "Naginata",
+    "descricao": "Haste com uma grande lâmina em sua ponta. Pode ser usada como requisito \"Arma Cortante\" em características e Técnicas.\nDano: 1d10 Cortante.\nPropriedades: Alcance, Pesada, Versátil (1d12).\nExpertise (acerto crítico natural, só com proficiência): Você causa 1d6 de dano em todas as criaturas a até 3 metros de você.\nRaridade: Comum. Preço: ฿ 100.000.",
+    "peso": 7.5,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "naginata"
+      },
+      "arma": {
+        "dano": "1d10",
+        "atributo": "for",
+        "tipoDano": "Cortante"
+      }
+    }
+  },
+  {
+    "nome": "Tridente",
+    "descricao": "Um bastão de madeira ou metal circular com 3 pontas em sua extremidade. Pode ser considerado como arma marcial para criaturas aquáticas ou caratecas homem-peixe.\nDano: 1d10 Perfurante.\nPropriedades: Alcance, Duas Mãos.\nExpertise (acerto crítico natural, só com proficiência): A criatura atingida tem seu deslocamento reduzido pela metade, até o final do próximo turno dela.\nRaridade: Comum. Preço: ฿ 70.000.",
+    "peso": 3.5,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "tridente"
+      },
+      "arma": {
+        "dano": "1d10",
+        "atributo": "for",
+        "tipoDano": "Perfurante"
+      }
+    }
+  },
+  {
+    "nome": "Zarabatana",
+    "descricao": "Um pequeno cano feito com o propósito de atirar dardos silenciosamente. Cada sopro consome 1 munição.\nDano: Conforme a munição.\nPropriedades: Distância (6/9 metros), Munição.\nExpertise (acerto crítico natural, só com proficiência): A criatura atingida recebe a condição \"Impedido\", até o final do próximo turno da criatura.\nRaridade: Comum. Preço: ฿ 8.000.",
+    "peso": 0.3,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "zarabatana"
+      }
+    }
+  },
+  {
+    "nome": "Shuriken",
+    "descricao": "Uma pequena estrela de metal afiada.\nDano: 1d4 Perfurante.\nPropriedades: Acuidade, Arremesso (distância 6/12 metros).\nExpertise (acerto crítico natural, só com proficiência): A criatura atingida recebe a condição \"Sangramento\".\nRaridade: Comum. Preço: ฿ 500.",
+    "peso": 0.1,
+    "equipavel": true,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "shuriken"
+      },
+      "arma": {
+        "dano": "1d4",
+        "atributo": "acuidade",
+        "tipoDano": "Perfurante"
+      }
+    }
+  },
+  {
+    "nome": "Bote",
+    "descricao": "Deslocamento: correnteza. Capacidade de carga: 210 kg.\nRaridade: Comum. Preço: ฿ 160.000.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "bote"
+      }
+    }
+  },
+  {
+    "nome": "Barco",
+    "descricao": "Deslocamento: correnteza. Capacidade de carga: 240 kg.\nRaridade: Comum. Preço: ฿ 200.000.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "barco"
+      }
+    }
+  },
+  {
+    "nome": "Barco a Remo",
+    "descricao": "Deslocamento: correnteza + 2 nós (4 km/h). Capacidade de carga: 220 kg. Pesa cerca de 45 kg, caso seja transportado por terra.\nRaridade: Comum. Preço: ฿ 240.000.",
+    "peso": 45,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "barco-a-remo"
+      }
+    }
+  },
+  {
+    "nome": "Burro ou Mula",
+    "descricao": "Deslocamento: 12 m. Capacidade de carga: 210 kg.\nRaridade: Comum. Preço: ฿ 300.000.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "burro-ou-mula"
+      }
+    }
+  },
+  {
+    "nome": "Camelo",
+    "descricao": "Deslocamento: 15 m. Capacidade de carga: 240 kg.\nRaridade: Comum. Preço: ฿ 1.000.000.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "camelo"
+      }
+    }
+  },
+  {
+    "nome": "Cavalo de Montaria",
+    "descricao": "Deslocamento: 18 m. Capacidade de carga: 220 kg.\nRaridade: Comum. Preço: ฿ 2.000.000.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "cavalo-de-montaria"
+      }
+    }
+  },
+  {
+    "nome": "Cavalo Pesado",
+    "descricao": "Deslocamento: 12 m. Capacidade de carga: 270 kg.\nRaridade: Comum. Preço: ฿ 1.000.000.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "cavalo-pesado"
+      }
+    }
+  },
+  {
+    "nome": "Elefante",
+    "descricao": "Deslocamento: 12 m. Capacidade de carga: 660 kg.\nRaridade: Comum. Preço: ฿ 6.000.000.",
+    "peso": 0,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "elefante"
+      }
+    }
+  },
+  {
+    "nome": "Alforje",
+    "descricao": "Bolsa de carga para montarias.\nRaridade: Comum. Preço: ฿ 15.000.",
+    "peso": 4,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "alforje"
+      }
+    }
+  },
+  {
+    "nome": "Carroça",
+    "descricao": "Veículo de tração.\nRaridade: Comum. Preço: ฿ 30.000.",
+    "peso": 100,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "carroca"
+      }
+    }
+  },
+  {
+    "nome": "Carruagem",
+    "descricao": "Veículo de tração.\nRaridade: Comum. Preço: ฿ 80.000.",
+    "peso": 300,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "carruagem"
+      }
+    }
+  },
+  {
+    "nome": "Freio e Rédea",
+    "descricao": "Arreio para controlar a montaria.\nRaridade: Comum. Preço: ฿ 10.000.",
+    "peso": 0.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "freio-e-redea"
+      }
+    }
+  },
+  {
+    "nome": "Trenó",
+    "descricao": "Veículo de tração para neve.\nRaridade: Comum. Preço: ฿ 2.000.",
+    "peso": 150,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "treno"
+      }
+    }
+  },
+  {
+    "nome": "Sela Compacta",
+    "descricao": "Sela compacta. Uma sela militar fixa o cavaleiro com mais firmeza à montaria, concedendo vantagem em quaisquer Testes realizados para manter-se montado. Selas específicas são necessárias para montar criaturas voadoras ou aquáticas.\nRaridade: Comum. Preço: ฿ 100.",
+    "peso": 7.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "sela-compacta"
+      }
+    }
+  },
+  {
+    "nome": "Sela Exótica",
+    "descricao": "Sela exótica. Uma sela militar fixa o cavaleiro com mais firmeza à montaria, concedendo vantagem em quaisquer Testes realizados para manter-se montado. Selas específicas são necessárias para montar criaturas voadoras ou aquáticas.\nRaridade: Comum. Preço: ฿ 6.000.",
+    "peso": 20,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "sela-exotica"
+      }
+    }
+  },
+  {
+    "nome": "Sela Militar",
+    "descricao": "Sela militar. Uma sela militar fixa o cavaleiro com mais firmeza à montaria, concedendo vantagem em quaisquer Testes realizados para manter-se montado. Selas específicas são necessárias para montar criaturas voadoras ou aquáticas.\nRaridade: Comum. Preço: ฿ 2.000.",
+    "peso": 15,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "sela-militar"
+      }
+    }
+  },
+  {
+    "nome": "Sela de Viagem",
+    "descricao": "Sela de viagem. Uma sela militar fixa o cavaleiro com mais firmeza à montaria, concedendo vantagem em quaisquer Testes realizados para manter-se montado. Selas específicas são necessárias para montar criaturas voadoras ou aquáticas.\nRaridade: Comum. Preço: ฿ 1.000.",
+    "peso": 12.5,
+    "equipavel": false,
+    "requer_sintonia": false,
+    "efeitos": [],
+    "dados": {
+      "catalogo": {
+        "id": "sela-de-viagem"
+      }
+    }
+  }
+]

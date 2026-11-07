@@ -468,6 +468,8 @@ final class FichaOnePiece
             'dados.arma.distancia' => ['boolean:strict'],
             'dados.arma.tamanho' => ['nullable', 'string', Rule::in(['padrao', 'gigante'])],
             'dados.arma.margemCritica' => ['integer:strict', 'between:10,20'], // d20 puro igual ou maior é crítico (padrão 20)
+            // De onde o item veio no catálogo (`itens/` do sistema): a loja e a conferência de preço usam este id.
+            'dados.catalogo.id' => ['nullable', 'string', 'max:60'],
         ];
     }
 }

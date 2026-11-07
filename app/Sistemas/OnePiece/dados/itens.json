@@ -1,0 +1,2609 @@
+{
+  "raridades": [
+    {
+      "id": "comum",
+      "nome": "Comum",
+      "descricao": "Facilmente encontrado para compra ou venda em praticamente qualquer vila, cidade ou reino."
+    },
+    {
+      "id": "incomum",
+      "nome": "Incomum",
+      "descricao": "Mais difícil de encontrar (alto custo, função específica, manuseio complexo ou baixa demanda): em geral só em grandes cidades ou reinos."
+    },
+    {
+      "id": "raro",
+      "nome": "Raro",
+      "descricao": "Exclusivo, extremamente caro, com distribuição limitada ou controlada; mesmo em grandes cidades pode exigir permissões especiais."
+    },
+    {
+      "id": "mercado-negro",
+      "nome": "Mercado Negro",
+      "descricao": "Ilegal ou restrito, adquirido só por meios ilícitos e com contatos apropriados; o preço varia drasticamente (um mesmo item pode custar 100 vezes mais, conforme o vendedor ou o momento)."
+    }
+  ],
+  "categorias": [
+    {
+      "id": "ferramentas",
+      "nome": "Ferramentas e Livros de Profissão",
+      "grupo": "Equipamento de aventura"
+    },
+    {
+      "id": "kits",
+      "nome": "Kits de Ferramentas",
+      "grupo": "Equipamento de aventura"
+    },
+    {
+      "id": "restricao",
+      "nome": "Restrição e Contenção",
+      "grupo": "Equipamento de aventura"
+    },
+    {
+      "id": "armazenamento",
+      "nome": "Armazenamento e Transporte",
+      "grupo": "Equipamento de aventura"
+    },
+    {
+      "id": "construcao",
+      "nome": "Construção e Materiais",
+      "grupo": "Equipamento de aventura"
+    },
+    {
+      "id": "exploracao",
+      "nome": "Exploração",
+      "grupo": "Equipamento de aventura"
+    },
+    {
+      "id": "variados",
+      "nome": "Variados",
+      "grupo": "Equipamento de aventura"
+    },
+    {
+      "id": "roupas",
+      "nome": "Roupas Especiais",
+      "grupo": "Equipamento de aventura"
+    },
+    {
+      "id": "den-den-mushi",
+      "nome": "Den-Den Mushi",
+      "grupo": "Equipamento de aventura"
+    },
+    {
+      "id": "navegacao",
+      "nome": "Navegação",
+      "grupo": "Equipamento de aventura"
+    },
+    {
+      "id": "energia",
+      "nome": "Fontes de Energia",
+      "grupo": "Equipamento de aventura"
+    },
+    {
+      "id": "quimicos",
+      "nome": "Substâncias Químicas",
+      "grupo": "Equipamento de aventura"
+    },
+    {
+      "id": "gases",
+      "nome": "Gases",
+      "grupo": "Equipamento de aventura"
+    },
+    {
+      "id": "alimentos",
+      "nome": "Alimentos",
+      "grupo": "Equipamento de aventura"
+    },
+    {
+      "id": "comida-e-bebida",
+      "nome": "Comida, Bebida e Hospedagem",
+      "grupo": "Equipamento de aventura"
+    },
+    {
+      "id": "armas-cortantes",
+      "nome": "Armas Cortantes",
+      "grupo": "Armas"
+    },
+    {
+      "id": "armas-marciais",
+      "nome": "Armas Marciais",
+      "grupo": "Armas"
+    },
+    {
+      "id": "armas-de-fogo",
+      "nome": "Armas de Fogo",
+      "grupo": "Armas"
+    },
+    {
+      "id": "municao",
+      "nome": "Munição",
+      "grupo": "Armas"
+    },
+    {
+      "id": "armas-especiais",
+      "nome": "Armas Especiais",
+      "grupo": "Armas"
+    },
+    {
+      "id": "barcos",
+      "nome": "Barcos",
+      "grupo": "Montarias e veículos"
+    },
+    {
+      "id": "montarias",
+      "nome": "Montarias e Outros Animais",
+      "grupo": "Montarias e veículos"
+    },
+    {
+      "id": "arreios",
+      "nome": "Arreios e Veículos de Tração",
+      "grupo": "Montarias e veículos"
+    },
+    {
+      "id": "selas",
+      "nome": "Selas",
+      "grupo": "Montarias e veículos"
+    },
+    {
+      "id": "hospedagem",
+      "nome": "Hospedagem (diária)",
+      "grupo": "Serviços"
+    },
+    {
+      "id": "estilo-de-vida",
+      "nome": "Despesas de Estilo de Vida",
+      "grupo": "Serviços"
+    }
+  ],
+  "comercio": {
+    "vendaDeEquipamentos": 0.5,
+    "vendaDeArte": 1,
+    "akumaNoMi": "Vender ou comprar uma Akuma no Mi é extremamente difícil: só em mercados negros.",
+    "multiplicadorMaximoDoMercadoNegro": 100
+  },
+  "recipientes": [
+    {
+      "recipiente": "Algibeira",
+      "capacidade": "3 kg de equipamentos"
+    },
+    {
+      "recipiente": "Balde",
+      "capacidade": "12 litros"
+    },
+    {
+      "recipiente": "Barril",
+      "capacidade": "160 litros"
+    },
+    {
+      "recipiente": "Baú",
+      "capacidade": "150 kg de equipamentos"
+    },
+    {
+      "recipiente": "Caneca",
+      "capacidade": "500 ml"
+    },
+    {
+      "recipiente": "Cantil",
+      "capacidade": "2 litros"
+    },
+    {
+      "recipiente": "Cesto",
+      "capacidade": "20 kg de equipamentos"
+    },
+    {
+      "recipiente": "Frasco",
+      "capacidade": "120 ml"
+    },
+    {
+      "recipiente": "Garrafa",
+      "capacidade": "750 ml"
+    },
+    {
+      "recipiente": "Jarra",
+      "capacidade": "5 litros"
+    },
+    {
+      "recipiente": "Mochila Pequena",
+      "capacidade": "30 kg de equipamentos"
+    },
+    {
+      "recipiente": "Mochila Média",
+      "capacidade": "60 kg de equipamentos"
+    },
+    {
+      "recipiente": "Mochila Grande",
+      "capacidade": "100 kg de equipamentos"
+    },
+    {
+      "recipiente": "Saco",
+      "capacidade": "10 kg de equipamentos"
+    }
+  ],
+  "itens": [
+    {
+      "id": "ferramenta-de-profissao",
+      "nome": "Ferramenta de Profissão",
+      "categoria": "ferramentas",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 80000,
+      "peso": 4,
+      "descricao": "Todos os instrumentos necessários para desempenhar as funções da profissão.",
+      "equipavel": false,
+      "loja": true,
+      "pesoTexto": "4 kg em média"
+    },
+    {
+      "id": "livro-de-profissao",
+      "nome": "Livro de Profissão",
+      "categoria": "ferramentas",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 500000,
+      "peso": 3,
+      "descricao": "Obra abrangente que oferece o conhecimento necessário para aprender uma profissão.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "kit-de-chaves",
+      "nome": "Kit de Chaves",
+      "categoria": "kits",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 10000,
+      "peso": 3,
+      "descricao": "Um conjunto variado de chaves mecânicas, utilizado para montagem e desmontagem de objetos.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "kit-de-construcao",
+      "nome": "Kit de Construção",
+      "categoria": "kits",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 3000,
+      "peso": 2.5,
+      "descricao": "Contém pregos, parafusos, porcas, arruelas, lixas e outros itens básicos de construção.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "kit-de-cozinha",
+      "nome": "Kit de Cozinha",
+      "categoria": "kits",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 60000,
+      "peso": 6,
+      "descricao": "Inclui facas, panelas e utensílios culinários para preparo de todos os tipos de refeições.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "kit-de-disfarce",
+      "nome": "Kit de Disfarce",
+      "categoria": "kits",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 45000,
+      "peso": 3,
+      "descricao": "Contém roupas, sapatos, perucas e um adereço peculiar à escolha do jogador.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "kit-de-escalada",
+      "nome": "Kit de Escalada",
+      "categoria": "kits",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 30000,
+      "peso": 4.5,
+      "descricao": "Inclui pítons, botas com solas pontiagudas, luvas e cinto de escalada. Usando uma ação, você pode se ancorar em uma superfície, impedindo quedas superiores a 7,5 metros e limitando seu deslocamento vertical a essa distância em relação ao ponto de ancoragem.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "kit-de-falsificacao",
+      "nome": "Kit de Falsificação",
+      "categoria": "kits",
+      "tipo": "item",
+      "raridade": "mercado-negro",
+      "preco": null,
+      "peso": 1,
+      "descricao": "Contém moldes, tintas, materiais diversos. Permite falsificar documentos e itens.",
+      "equipavel": false,
+      "loja": true,
+      "precoTexto": "20% do valor do item original"
+    },
+    {
+      "id": "kit-medico",
+      "nome": "Kit Médico",
+      "categoria": "kits",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 15000,
+      "peso": 2,
+      "descricao": "Contém materiais básicos para procedimentos médicos: seringas, agulhas de sutura, linhas, instrumentos cirúrgicos e medicamentos simples.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "kit-de-pesquisa",
+      "nome": "Kit de Pesquisa",
+      "categoria": "kits",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 60000,
+      "peso": 3.5,
+      "descricao": "Conjunto para pesquisas químicas e biológicas. Inclui tubos de ensaio, frascos, reagentes, pipetas, placas de Petri, entre outros.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "kit-de-primeiros-socorros",
+      "nome": "Kit de Primeiros Socorros",
+      "categoria": "kits",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 10000,
+      "peso": 1,
+      "descricao": "Kit de uso único com itens básicos para estabilização, como gaze, bandagens, álcool, luvas, tesoura e máscara. Caso não seja utilizado em conjunto com nenhuma característica, sua aplicação leva 5 minutos e faz com que uma criatura com 0 PV recupere 1 PV, ao final da aplicação.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "kit-de-temperos",
+      "nome": "Kit de Temperos",
+      "categoria": "kits",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 15000,
+      "peso": 1.5,
+      "descricao": "Coleção de especiarias e condimentos diversos para culinária refinada.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "kit-para-abrir-cadeado",
+      "nome": "Kit para Abrir Cadeado",
+      "categoria": "kits",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 15000,
+      "peso": 0.5,
+      "descricao": "Ferramentas específicas com 10 usos para destrancar fechaduras comuns.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "kit-de-herbalismo",
+      "nome": "Kit de Herbalismo",
+      "categoria": "kits",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 50000,
+      "peso": 1.5,
+      "descricao": "Bolsas para armazenamento de ervas, tesouras e luvas de couro para coleta, almofariz e pilão, além de vários frascos de vidro.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "kit-de-venenos",
+      "nome": "Kit de Venenos",
+      "categoria": "kits",
+      "tipo": "item",
+      "raridade": "mercado-negro",
+      "preco": 80000,
+      "peso": 1.5,
+      "descricao": "Frascos de vidro, almofariz, vareta de vidro, compostos químicos e outros instrumentos essenciais para a preparação de venenos.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "algemas",
+      "nome": "Algemas",
+      "categoria": "restricao",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 5000,
+      "peso": 1,
+      "descricao": "Par de algemas que restringe a movimentação dos membros. Presas nos braços, aplicam a condição \"Incapacitado\"; presas nas pernas, reduzem o deslocamento para 1,5 metro.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "algemas-de-kairoseki",
+      "nome": "Algemas de Kairoseki",
+      "categoria": "restricao",
+      "tipo": "item",
+      "raridade": "mercado-negro",
+      "preco": 2000000,
+      "peso": 3,
+      "descricao": "Algemas especiais feitas com Kairoseki, ideais para conter usuários de Akuma no Mi. Aplicam as mesmas restrições das algemas e também a condição \"Enfraquecido\".",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "grilhoes-de-transporte",
+      "nome": "Grilhões de Transporte",
+      "categoria": "restricao",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 15000,
+      "peso": 7,
+      "descricao": "Conjunto de algemas com correntes presas aos braços, cintura e pernas. Projetado para impedir fugas durante o transporte de prisioneiros. Aplicam as mesmas restrições de algemas nas mãos e pernas.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "rede-de-pesca",
+      "nome": "Rede de Pesca/Captura",
+      "categoria": "restricao",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 1500,
+      "peso": 2,
+      "descricao": "Rede trançada utilizada para pesca ou captura de criaturas, podendo ser arremessada a até 6 metros. Em caso de acerto, a criatura atingida recebe a condição \"Impedido\". A rede pode ser removida por outra criatura usando uma ação.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "rede-de-kairoseki",
+      "nome": "Rede de Kairoseki",
+      "categoria": "restricao",
+      "tipo": "item",
+      "raridade": "mercado-negro",
+      "preco": 3000000,
+      "peso": 6,
+      "descricao": "Rede especial utilizada para capturar usuários de Akuma no Mi, podendo ser lançada a até 6 metros contra uma criatura Grande ou menor. Em caso de acerto, a criatura recebe a condição \"Impedido\" e, caso seja usuária de Akuma no Mi, também recebe a condição \"Enfraquecido\". Outra criatura pode remover a rede usando uma ação.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "cantil",
+      "nome": "Cantil",
+      "categoria": "armazenamento",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 2000,
+      "peso": 0.5,
+      "descricao": "Recipiente com tampa e corda, com capacidade para 2 litros de líquido. Ideal para viagens.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "mochila-pequena",
+      "nome": "Mochila Pequena",
+      "categoria": "armazenamento",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 10000,
+      "peso": 1,
+      "descricao": "Capacidade de até 30 kg de carga.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "mochila-media",
+      "nome": "Mochila Média",
+      "categoria": "armazenamento",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 15000,
+      "peso": 1.5,
+      "descricao": "Suporta até 60 kg de carga.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "mochila-grande",
+      "nome": "Mochila Grande",
+      "categoria": "armazenamento",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 20000,
+      "peso": 2.5,
+      "descricao": "Capacidade de carga de até 100 kg. Ideal para transporte pesado.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "chapa-de-aco",
+      "nome": "Chapa Metálica de Aço",
+      "categoria": "construcao",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 8000,
+      "peso": 12,
+      "descricao": "Chapa de aço padrão utilizada em construções diversas.",
+      "equipavel": false,
+      "loja": true,
+      "unidade": "unidade"
+    },
+    {
+      "id": "corda",
+      "nome": "Corda",
+      "categoria": "construcao",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 1500,
+      "peso": 3,
+      "descricao": "Corda resistente de 15 metros, com múltiplas aplicações náuticas ou domésticas.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "corrente-de-elos",
+      "nome": "Corrente de Elos",
+      "categoria": "construcao",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 1200,
+      "peso": 2.5,
+      "descricao": "Corrente metálica robusta, adaptável a diversas finalidades.",
+      "equipavel": false,
+      "loja": true,
+      "unidade": "metro",
+      "pesoTexto": "2,5 kg/metro"
+    },
+    {
+      "id": "lingote-de-metal",
+      "nome": "Lingote de Metal",
+      "categoria": "construcao",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 6000,
+      "peso": 1,
+      "descricao": "Lingote de metal variado.",
+      "equipavel": false,
+      "loja": true,
+      "unidade": "unidade"
+    },
+    {
+      "id": "tabua-de-madeira",
+      "nome": "Tábua de Madeira",
+      "categoria": "construcao",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 2200,
+      "peso": 5,
+      "descricao": "Tábua de madeira de tamanho padrão usada em construções.",
+      "equipavel": false,
+      "loja": true,
+      "unidade": "unidade"
+    },
+    {
+      "id": "asa-delta",
+      "nome": "Asa Delta",
+      "categoria": "exploracao",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 260000,
+      "peso": 10,
+      "descricao": "Usada para planar captando correntes de vento. Dependendo das condições climáticas, concede 9 metros de deslocamento de voo.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "equipamento-de-mergulho",
+      "nome": "Equipamento de Mergulho (roupa)",
+      "categoria": "exploracao",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 15000,
+      "peso": 36,
+      "descricao": "Traje completo para mergulho com máscara, roupa térmica e pés de pato. Permite a qualquer personagem explorar o mar aberto, desde que o tanque seja periodicamente reabastecido. O peso de 36 kg é do equipamento completo.",
+      "equipavel": false,
+      "loja": true,
+      "pesoTexto": "36 kg (equipamento completo)"
+    },
+    {
+      "id": "tanque-de-mergulho",
+      "nome": "Tanque de Mergulho",
+      "categoria": "exploracao",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 35000,
+      "peso": 0,
+      "descricao": "Tanque do equipamento de mergulho, com 1 hora de duração. Precisa ser periodicamente reabastecido com a bomba de oxigênio.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "bomba-de-oxigenio",
+      "nome": "Bomba de Oxigênio (1 carga)",
+      "categoria": "exploracao",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 50000,
+      "peso": 0,
+      "descricao": "Bomba de oxigênio com uma carga, usada para reabastecer o tanque do equipamento de mergulho.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "ganchos-de-escalada",
+      "nome": "Ganchos de Escalada",
+      "categoria": "exploracao",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 10000,
+      "peso": 1.5,
+      "descricao": "Par de ganchos afiados para mãos e pés. Permitem escalar superfícies verticais sem necessidade de Teste de Atributo e sem penalidades.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "lanterna",
+      "nome": "Lanterna",
+      "categoria": "exploracao",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 800,
+      "peso": 0.5,
+      "descricao": "Aparelho cilíndrico com foco de luz. Alimentado por pilhas ou baterias, ilumina um cone de até 4,5 metros com luz plena e mais 4,5 metros com penumbra.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "oculos-de-visao-noturna",
+      "nome": "Óculos de Visão Noturna",
+      "categoria": "exploracao",
+      "tipo": "item",
+      "raridade": "mercado-negro",
+      "preco": 85000,
+      "peso": 0.5,
+      "descricao": "Dispositivo usado pela Marinha para missões noturnas, subaquáticas ou subterrâneas. Permite enxergar na escuridão total como se fosse penumbra.",
+      "equipavel": true,
+      "loja": true
+    },
+    {
+      "id": "bau",
+      "nome": "Baú",
+      "categoria": "variados",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 12000,
+      "peso": 15,
+      "descricao": "Contêiner resistente para armazenar itens de valor e dinheiro. Possui cadeado reforçado, mas pode ser arrombado por ladrões com tempo e ferramentas adequadas. Capacidade de 150 kg de equipamentos.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "caixa-de-maquiagem",
+      "nome": "Caixa de Maquiagem",
+      "categoria": "variados",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 5000,
+      "peso": 1,
+      "descricao": "Conjunto completo de maquiagens e produtos corporais. Pode ser usado para disfarces ou estética.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "cofre",
+      "nome": "Cofre",
+      "categoria": "variados",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 60000,
+      "peso": 35,
+      "descricao": "Semelhante ao baú, porém com sistema avançado de trancas e maior resistência. Ainda assim, pode ser arrombado por ladrões habilidosos com tempo suficiente.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "instrumento-musical",
+      "nome": "Instrumento Musical",
+      "categoria": "variados",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 10000,
+      "peso": 1,
+      "descricao": "Instrumento musical à escolha do jogador.",
+      "equipavel": false,
+      "loja": true,
+      "precoTexto": "Entre ฿ 10.000 e ฿ 15.000",
+      "pesoTexto": "1 a 8 kg"
+    },
+    {
+      "id": "pacote-de-isca",
+      "nome": "Pacote de Isca de Peixe",
+      "categoria": "variados",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 200,
+      "peso": 0.2,
+      "descricao": "Contém 20 iscas. Usado com vara de pescar para aumentar as chances de pesca.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "pacote-de-polvora",
+      "nome": "Pacote de Pólvora",
+      "categoria": "variados",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 20000,
+      "peso": 1,
+      "descricao": "Quantidade suficiente para carregar e disparar um único tiro de canhão de embarcações.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "tabaco",
+      "nome": "Tabaco",
+      "categoria": "variados",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 1000,
+      "peso": 0.1,
+      "descricao": "Produto fumável (cigarro, charuto, cachimbo, etc.). Pode ser usado recreativamente ou como pesticida.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "vara-de-pescar",
+      "nome": "Vara de Pescar",
+      "categoria": "variados",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 8000,
+      "peso": 1,
+      "descricao": "Vara simples feita de madeira, equipada com linha, boia e anzol.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "roupa-de-gala",
+      "nome": "Roupa de Gala",
+      "categoria": "roupas",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 400000,
+      "peso": 1,
+      "descricao": "Traje elegante para eventos formais e reuniões sociais de alto nível.",
+      "equipavel": true,
+      "loja": true
+    },
+    {
+      "id": "roupa-especial",
+      "nome": "Roupa Especial",
+      "categoria": "roupas",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 40000,
+      "peso": 1,
+      "descricao": "Roupas específicas para ambientes hostis (desertos, neves intensas, mergulho profundo, etc.). Quando usadas corretamente, impedem penalidades por condições climáticas extremas.",
+      "equipavel": true,
+      "loja": true,
+      "pesoTexto": "1 kg a 5 kg"
+    },
+    {
+      "id": "den-den-mushi-alto-falante",
+      "nome": "Den-Den Mushi Alto-Falante",
+      "categoria": "den-den-mushi",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 32000,
+      "peso": 5,
+      "descricao": "Dispositivo fixo usado em locais públicos para transmitir mensagens em voz alta a longas distâncias.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "den-den-mushi-bebe",
+      "nome": "Den-Den Mushi Bebê",
+      "categoria": "den-den-mushi",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 50000,
+      "peso": 0.2,
+      "descricao": "Versão portátil, cabe na palma da mão. Permite comunicação dentro da mesma ilha ou área. Pode amplificar a voz do usuário para toda a região próxima.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "den-den-mushi-branco",
+      "nome": "Den-Den Mushi Branco",
+      "categoria": "den-den-mushi",
+      "tipo": "item",
+      "raridade": "mercado-negro",
+      "preco": 600000,
+      "peso": 0.8,
+      "descricao": "Possui duas funções únicas: interceptar conversas de outros den-den mushi na área (grampo) e proteger ligações ao ser conectado a outro den-den mushi, criando uma linha segura. Uso não autorizado pode resultar em prisão e confisco pelo Governo Mundial ou Marinha.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "den-den-mushi-camera",
+      "nome": "Den-Den Mushi Câmera",
+      "categoria": "den-den-mushi",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 40000,
+      "peso": 2,
+      "descricao": "Tira fotos emitindo flashes pelos olhos e imprime a imagem logo em seguida.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "den-den-mushi-fone",
+      "nome": "Den-Den Mushi Fone",
+      "categoria": "den-den-mushi",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 20000,
+      "peso": 0.3,
+      "descricao": "Conectado diretamente ao den-den mushi principal. Ajuda a evitar interceptações durante ligações.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "den-den-mushi-padrao",
+      "nome": "Den-Den Mushi Padrão",
+      "categoria": "den-den-mushi",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 50000,
+      "peso": 0.5,
+      "descricao": "Dispositivo padrão de comunicação com grande alcance. Permite chamadas para qualquer outro den-den mushi conhecido.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "den-den-mushi-preto",
+      "nome": "Den-Den Mushi Preto",
+      "categoria": "den-den-mushi",
+      "tipo": "item",
+      "raridade": "mercado-negro",
+      "preco": 120000,
+      "peso": 0.1,
+      "descricao": "Portátil e discreto, pode ser usado como relógio. Muito utilizado por agentes secretos. Tem alcance limitado à mesma ilha.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "eternal-pose",
+      "nome": "Eternal Pose",
+      "categoria": "navegacao",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 300000,
+      "peso": 1,
+      "descricao": "Similar ao Log Pose, mas aponta sempre para uma ilha específica.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "log-pose",
+      "nome": "Log Pose",
+      "categoria": "navegacao",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 50000,
+      "peso": 0.2,
+      "descricao": "Bússola especial usada na Grand Line. Memoriza o campo magnético da ilha atual (tempo de sincronização médio: 1 dia a 1 semana) e aponta para a próxima ilha da rota.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "log-pose-3-agulhas",
+      "nome": "Log Pose de 3 Agulhas",
+      "categoria": "navegacao",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 500000,
+      "peso": 0.2,
+      "descricao": "Versão aprimorada com 3 agulhas que apontam para diferentes ilhas. Usado no Novo Mundo, onde os campos magnéticos mudam com frequência. A agulha mais estável indica a ilha mais segura.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "vivre-card",
+      "nome": "Vivre Card",
+      "categoria": "navegacao",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 2000000,
+      "peso": 0,
+      "descricao": "Feito com material biológico de uma pessoa (como cabelo ou unha), sempre aponta em sua direção. Pode queimar caso a pessoa esteja em risco de morte.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "combustivel-de-motor",
+      "nome": "Combustível de Motor",
+      "categoria": "energia",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 90000,
+      "peso": 0,
+      "descricao": "Necessário para o funcionamento de motores.",
+      "equipavel": false,
+      "loja": true,
+      "unidade": "unidade",
+      "volume": "10 L"
+    },
+    {
+      "id": "bateria-grande",
+      "nome": "Bateria Grande",
+      "categoria": "energia",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 500000,
+      "peso": 15,
+      "descricao": "Fonte de energia para máquinas de grande porte. Cada unidade dura 1 dia. Recarrega com luz solar após 1 semana.",
+      "equipavel": false,
+      "loja": true,
+      "unidade": "unidade"
+    },
+    {
+      "id": "carvao",
+      "nome": "Carvão",
+      "categoria": "energia",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 200000,
+      "peso": 10,
+      "descricao": "Fonte de energia para máquinas a vapor.",
+      "equipavel": false,
+      "loja": true,
+      "unidade": "unidade"
+    },
+    {
+      "id": "nucleo-de-energia",
+      "nome": "Núcleo de Energia",
+      "categoria": "energia",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 500000,
+      "peso": 3,
+      "descricao": "Fonte de energia utilizada em Raid Suits. Cada unidade restaura 100 Pontos de Tecnologia.",
+      "equipavel": false,
+      "loja": true,
+      "unidade": "unidade"
+    },
+    {
+      "id": "pilha-bateria",
+      "nome": "Pilha/Bateria",
+      "categoria": "energia",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 200,
+      "peso": 0.1,
+      "descricao": "Conjunto de pilhas e baterias para dispositivos elétricos simples. Serve como fonte de energia portátil.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "ampola-de-anestesia",
+      "nome": "Ampola de Anestesia",
+      "categoria": "quimicos",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 180000,
+      "peso": 0.1,
+      "descricao": "Frasco de 100 ml com tampa perfurável, contendo líquido anestésico. Deve ser utilizado com uma seringa apropriada. Ao ser injetado, impõe a condição \"Letárgico\" por até 1 minuto. Quando utilizado em um procedimento cirúrgico, evita que os testes realizados durante o procedimento recebam desvantagem.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "antidoto",
+      "nome": "Antídoto",
+      "categoria": "quimicos",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 40000,
+      "peso": 0.2,
+      "descricao": "Frasco de vidro contendo substâncias capazes de neutralizar venenos comuns ou servir como base para antídotos mais complexos. Ao ser consumido, remove a condição \"Envenenado\" da criatura.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "frasco-de-acido",
+      "nome": "Frasco de Ácido",
+      "categoria": "quimicos",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 20000,
+      "peso": 0.3,
+      "descricao": "Frasco pequeno contendo ácido altamente corrosivo. Pode ser arremessado até 6 metros como ataque à distância. Ao atingir um alvo, causa 14 (3d8) de dano Ácido.",
+      "equipavel": false,
+      "loja": true,
+      "unidade": "unidade"
+    },
+    {
+      "id": "tubo-de-ensaio",
+      "nome": "Tubo de Ensaio",
+      "categoria": "quimicos",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 500,
+      "peso": 0.1,
+      "descricao": "Tubo de vidro resistente usado para armazenar ou misturar substâncias.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "veneno-basico",
+      "nome": "Veneno Básico (dose)",
+      "categoria": "quimicos",
+      "tipo": "item",
+      "raridade": "mercado-negro",
+      "preco": 80000,
+      "peso": 0.1,
+      "descricao": "Pode ser aplicado em armas Cortantes ou Perfurantes, ou em até 3 munições, usando uma ação. O efeito permanece por até 1 minuto antes de secar. Ao atingir uma criatura, ela deve ser bem-sucedida em uma Salvaguarda de Constituição CD 10 ou receberá a condição \"Envenenado\" por até 1 minuto.",
+      "equipavel": false,
+      "loja": true,
+      "unidade": "dose"
+    },
+    {
+      "id": "bastao-de-fumaca",
+      "nome": "Bastão de Fumaça",
+      "categoria": "gases",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 10000,
+      "peso": 0.4,
+      "descricao": "Ao ser quebrado, libera uma nuvem de fumaça branca (ou colorida) em um raio de 6 metros. A fumaça bloqueia a visão, impedindo que quem esteja fora da área enxergue quem estiver dentro dela, e todas as criaturas em seu interior recebem a condição \"Cego\". O efeito dura por até 1 minuto. A fumaça não é tóxica.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "gas-do-sono",
+      "nome": "Gás do Sono",
+      "categoria": "gases",
+      "tipo": "item",
+      "raridade": "mercado-negro",
+      "preco": 80000,
+      "peso": 1.5,
+      "descricao": "Ao abrir a válvula, o recipiente libera gás em uma esfera de 1,5 metro de raio, que se expande em mais 1,5 metro por rodada até atingir 9 metros de raio (dura até 1 minuto). Criaturas dentro da área devem ser bem-sucedidas em uma Salvaguarda de Constituição CD 18 no início de cada um de seus turnos ou recebem a condição \"Sonolento\" por até 1 minuto. Caso o resultado natural da Salvaguarda seja 1 no d20, a criatura cai inconsciente.",
+      "equipavel": false,
+      "loja": true,
+      "unidade": "unidade"
+    },
+    {
+      "id": "gas-inflamavel",
+      "nome": "Gás Inflamável",
+      "categoria": "gases",
+      "tipo": "item",
+      "raridade": "raro",
+      "preco": 150000,
+      "peso": 1.5,
+      "descricao": "Esse gás possui a mesma expansão e duração do gás do sono. Caso entre em contato com fogo, faísca ou qualquer outra fonte de ignição, ele explode e é completamente consumido. Todas as criaturas dentro da área devem realizar uma Salvaguarda de Destreza CD 15. Em caso de falha, sofrem 21 (6d6) de dano de Fogo.",
+      "equipavel": false,
+      "loja": true,
+      "unidade": "unidade"
+    },
+    {
+      "id": "racao-de-viagem",
+      "nome": "Ração de Viagem",
+      "categoria": "alimentos",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 2000,
+      "peso": 0.5,
+      "descricao": "Alimento conservado e nutritivo, suficiente para um dia. Pouco saboroso, mas eficaz.",
+      "equipavel": false,
+      "loja": true,
+      "unidade": "ração"
+    },
+    {
+      "id": "racao-militar",
+      "nome": "Ração Militar",
+      "categoria": "alimentos",
+      "tipo": "item",
+      "raridade": "incomum",
+      "preco": 8000,
+      "peso": 0.7,
+      "descricao": "Desenvolvida pela Marinha, rica em proteínas e cafeína. Concede 20 Pontos de Vida temporários e mantém a saciedade por 1 dia.",
+      "equipavel": false,
+      "loja": true,
+      "unidade": "ração"
+    },
+    {
+      "id": "racao-para-animais",
+      "nome": "Ração para Animais",
+      "categoria": "alimentos",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 800,
+      "peso": 0.5,
+      "descricao": "Alimento balanceado para diversas espécies animais. Sacia por 1 dia.",
+      "equipavel": false,
+      "loja": true,
+      "unidade": "ração"
+    },
+    {
+      "id": "refeicao",
+      "nome": "Refeição",
+      "categoria": "alimentos",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 1000,
+      "peso": 0.8,
+      "descricao": "Comida servida em tavernas ou restaurantes. Varia em sabor e qualidade, mas alimenta normalmente.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "sake-comum",
+      "nome": "Saquê Comum (jarra)",
+      "categoria": "comida-e-bebida",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 1800,
+      "peso": 0,
+      "descricao": "Jarra de saquê comum.",
+      "equipavel": false,
+      "loja": true,
+      "volume": "1,5 l"
+    },
+    {
+      "id": "sake-fino",
+      "nome": "Saquê Fino (garrafa)",
+      "categoria": "comida-e-bebida",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 5000,
+      "peso": 0,
+      "descricao": "Garrafa de saquê fino.",
+      "equipavel": false,
+      "loja": true,
+      "volume": "0,8 l"
+    },
+    {
+      "id": "refeicao-pobre",
+      "nome": "Refeição Pobre (diária)",
+      "categoria": "comida-e-bebida",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 1200,
+      "peso": 0.3,
+      "descricao": "Refeição diária de padrão pobre.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "refeicao-modesta",
+      "nome": "Refeição Modesta (diária)",
+      "categoria": "comida-e-bebida",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 2000,
+      "peso": 0.5,
+      "descricao": "Refeição diária de padrão modesto.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "refeicao-confortavel",
+      "nome": "Refeição Confortável (diária)",
+      "categoria": "comida-e-bebida",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 3000,
+      "peso": 0.8,
+      "descricao": "Refeição diária de padrão confortável.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "refeicao-rica",
+      "nome": "Refeição Rica (diária)",
+      "categoria": "comida-e-bebida",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 6000,
+      "peso": 1.2,
+      "descricao": "Refeição diária de padrão rico.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "refeicao-aristocratica",
+      "nome": "Refeição Aristocrática (diária)",
+      "categoria": "comida-e-bebida",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 10000,
+      "peso": 1.6,
+      "descricao": "Refeição diária de padrão aristocrático.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "pao",
+      "nome": "Pão (pedaço)",
+      "categoria": "comida-e-bebida",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 80,
+      "peso": 0.1,
+      "descricao": "Pedaço de pão.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "queijo",
+      "nome": "Queijo (pedaço)",
+      "categoria": "comida-e-bebida",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 60,
+      "peso": 0.05,
+      "descricao": "Pedaço de queijo.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "banquete",
+      "nome": "Banquete (por pessoa)",
+      "categoria": "comida-e-bebida",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 10000,
+      "peso": 3,
+      "descricao": "Banquete, preço por pessoa.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "carne",
+      "nome": "Carne (pedaço)",
+      "categoria": "comida-e-bebida",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 800,
+      "peso": 0.5,
+      "descricao": "Pedaço de carne.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "vinho-jarra",
+      "nome": "Vinho (jarra)",
+      "categoria": "comida-e-bebida",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 3000,
+      "peso": 0,
+      "descricao": "Jarra de vinho.",
+      "equipavel": false,
+      "loja": true,
+      "volume": "1,5 l"
+    },
+    {
+      "id": "vinho-caneca",
+      "nome": "Vinho (caneca)",
+      "categoria": "comida-e-bebida",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 1000,
+      "peso": 0,
+      "descricao": "Caneca de vinho.",
+      "equipavel": false,
+      "loja": true,
+      "volume": "0,5 l"
+    },
+    {
+      "id": "vinho-garrafa",
+      "nome": "Vinho (garrafa)",
+      "categoria": "comida-e-bebida",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 2000,
+      "peso": 0,
+      "descricao": "Garrafa de vinho.",
+      "equipavel": false,
+      "loja": true,
+      "volume": "1 l"
+    },
+    {
+      "id": "adaga",
+      "nome": "Adaga",
+      "apelidos": [
+        "Kunai"
+      ],
+      "categoria": "armas-cortantes",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 20000,
+      "peso": 0.5,
+      "descricao": "Pequena lâmina afiada, eficaz em combate corpo a corpo ou arremessada. Versátil e fácil de ocultar.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d4",
+        "tipoDano": "Cortante",
+        "tiposAlternativos": [
+          "Perfurante"
+        ],
+        "propriedades": [
+          "Acuidade",
+          "Arremesso"
+        ],
+        "distancia": [
+          6,
+          15
+        ],
+        "expertise": "A criatura atingida recebe a condição \"Sangramento\"."
+      },
+      "loja": true
+    },
+    {
+      "id": "daito",
+      "nome": "Daito",
+      "apelidos": [
+        "Katana longa"
+      ],
+      "categoria": "armas-cortantes",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 80000,
+      "peso": 1.6,
+      "descricao": "Versão mais longa de uma katana.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d6",
+        "tipoDano": "Cortante",
+        "propriedades": [
+          "Acuidade",
+          "Versátil (1d8)"
+        ],
+        "expertise": "A próxima jogada de ataque (comum) feita contra você, até o final do seu próximo turno, falha."
+      },
+      "loja": true
+    },
+    {
+      "id": "espada-montante",
+      "nome": "Espada Montante",
+      "categoria": "armas-cortantes",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 150000,
+      "peso": 6,
+      "descricao": "Espada colossal de até 3 m, usada para cortar fileiras inimigas ou como ferramenta de cerco.",
+      "equipavel": true,
+      "arma": {
+        "dano": "2d6",
+        "tipoDano": "Cortante",
+        "propriedades": [
+          "Alcance",
+          "Arma de Cerco",
+          "Duas Mãos",
+          "Pesada"
+        ],
+        "expertise": "Você recebe +2 na Classe de Resistência, até o início do seu próximo turno."
+      },
+      "loja": true
+    },
+    {
+      "id": "katana",
+      "nome": "Katana",
+      "categoria": "armas-cortantes",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 70000,
+      "peso": 1.2,
+      "descricao": "Espada de lâmina curva e gume único, equilibrada para cortes precisos e rápidos.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d6",
+        "tipoDano": "Cortante",
+        "propriedades": [
+          "Acuidade"
+        ],
+        "expertise": "Os dados de dano da arma são maximizados."
+      },
+      "loja": true
+    },
+    {
+      "id": "kogatana",
+      "nome": "Kogatana",
+      "categoria": "armas-cortantes",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 30000,
+      "peso": 0.5,
+      "descricao": "Pequena katana portátil, semelhante a uma adaga, ideal para golpes ágeis ou como arma reserva.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d4",
+        "tipoDano": "Cortante",
+        "propriedades": [
+          "Acuidade"
+        ],
+        "expertise": "A criatura atingida recebe a condição \"Sangramento\"."
+      },
+      "loja": true
+    },
+    {
+      "id": "machado",
+      "nome": "Machado",
+      "categoria": "armas-cortantes",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 55000,
+      "peso": 1.5,
+      "descricao": "Ferramenta de batalha com lâmina larga e afiada, capaz de ser arremessada ou usada em combate próximo.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d6",
+        "tipoDano": "Cortante",
+        "propriedades": [
+          "Arremesso"
+        ],
+        "distancia": [
+          6,
+          15
+        ],
+        "expertise": "Você recebe a condição \"Empoderado\", até o final do seu próximo turno."
+      },
+      "loja": true
+    },
+    {
+      "id": "machado-grande",
+      "nome": "Machado Grande",
+      "categoria": "armas-cortantes",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 90000,
+      "peso": 3,
+      "descricao": "Machado de lâmina dupla, exigindo força para golpes devastadores que atingem amplos alcances.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d12",
+        "tipoDano": "Cortante",
+        "propriedades": [
+          "Alcance",
+          "Duas Mãos",
+          "Pesada"
+        ],
+        "expertise": "Você causa 1d6 de dano Cortante em todas as criaturas a até 3 metros de você."
+      },
+      "loja": true
+    },
+    {
+      "id": "nodachi",
+      "nome": "Nodachi",
+      "categoria": "armas-cortantes",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 100000,
+      "peso": 2.8,
+      "descricao": "Katana alongada com lâmina pesada, projetada para cortes amplos e potentes, dominando o campo de batalha.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d8",
+        "tipoDano": "Cortante",
+        "propriedades": [
+          "Alcance",
+          "Duas Mãos",
+          "Pesada"
+        ],
+        "expertise": "Sua próxima jogada de ataque (comum), até o final do seu próximo turno, tem margem de acerto crítico 16-20."
+      },
+      "loja": true
+    },
+    {
+      "id": "rapieira",
+      "nome": "Rapieira",
+      "categoria": "armas-cortantes",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 70000,
+      "peso": 1,
+      "descricao": "Espada elegante e afiada, focada em estocadas precisas, com guarda elaborada para proteção da mão.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d6",
+        "tipoDano": "Cortante",
+        "tiposAlternativos": [
+          "Perfurante"
+        ],
+        "propriedades": [
+          "Acuidade"
+        ],
+        "expertise": "A próxima Salvaguarda de Destreza recebe sucesso automático, até o fim do encontro de combate."
+      },
+      "loja": true
+    },
+    {
+      "id": "sabre",
+      "nome": "Sabre",
+      "categoria": "armas-cortantes",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 70000,
+      "peso": 1.1,
+      "descricao": "Espada curva de gume único, balanceada para cortes fluidos, com guarda robusta para defesa.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d6",
+        "tipoDano": "Cortante",
+        "propriedades": [],
+        "expertise": "Você recebe 20 Pontos de Vida temporários, que duram até o início do seu próximo turno."
+      },
+      "loja": true
+    },
+    {
+      "id": "shikomizue",
+      "nome": "Shikomizue",
+      "categoria": "armas-cortantes",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 75000,
+      "peso": 1,
+      "descricao": "Lâmina fina oculta dentro de uma bengala, perfeita para ataques sorrateiros ou defesa discreta.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d6",
+        "tipoDano": "Cortante",
+        "propriedades": [
+          "Acuidade"
+        ],
+        "expertise": "A sua próxima jogada de ataque (comum ou Técnicas), até o final do seu próximo turno, recebe +3 de acerto."
+      },
+      "loja": true
+    },
+    {
+      "id": "bastao",
+      "nome": "Bastão",
+      "categoria": "armas-marciais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 40000,
+      "peso": 1.5,
+      "descricao": "Um pedaço simples de madeira ou metal, de forma cilíndrica, utilizado como arma de combate.",
+      "equipavel": true,
+      "arma": {
+        "dano": null,
+        "marcial": true,
+        "tipoDano": "Contundente",
+        "propriedades": [
+          "Alcance",
+          "Duas Mãos"
+        ],
+        "expertise": "A criatura atingida recebe a condição \"Caído\"."
+      },
+      "loja": true
+    },
+    {
+      "id": "kanabo",
+      "nome": "Kanabo",
+      "apelidos": [
+        "Tacape"
+      ],
+      "categoria": "armas-marciais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 60000,
+      "peso": 4.5,
+      "descricao": "Um bastão robusto com a extremidade grossa, podendo conter espinhos ou saliências metálicas.",
+      "equipavel": true,
+      "arma": {
+        "dano": null,
+        "marcial": true,
+        "tipoDano": "Contundente",
+        "tiposAlternativos": [
+          "Perfurante"
+        ],
+        "propriedades": [
+          "Arma de Cerco",
+          "Duas Mãos",
+          "Pesada"
+        ],
+        "expertise": "Ao final do cálculo de dano, empurre a criatura por 6 metros ou adicione 1d8 de dano Contundente adicional."
+      },
+      "loja": true
+    },
+    {
+      "id": "luva-de-ferro",
+      "nome": "Luva de Ferro",
+      "categoria": "armas-marciais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 20000,
+      "peso": 0.8,
+      "descricao": "Uma luva reforçada com placas metálicas sobre os dedos, podendo ter espinhos.",
+      "equipavel": true,
+      "arma": {
+        "dano": null,
+        "marcial": true,
+        "tipoDano": "Contundente",
+        "tiposAlternativos": [
+          "Perfurante"
+        ],
+        "propriedades": [],
+        "expertise": "A sua próxima jogada de ataque (comum ou Técnicas), até o final do seu próximo turno, recebe +3 de acerto."
+      },
+      "loja": true
+    },
+    {
+      "id": "nunchaku",
+      "nome": "Nunchaku",
+      "categoria": "armas-marciais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 25000,
+      "peso": 1,
+      "descricao": "Dois bastões curtos, geralmente de madeira ou metal, conectados por uma corrente ou corda.",
+      "equipavel": true,
+      "arma": {
+        "dano": null,
+        "marcial": true,
+        "tipoDano": "Contundente",
+        "propriedades": [
+          "Acuidade"
+        ],
+        "expertise": "Ao final do cálculo de dano, adicione 1d12 de dano Contundente."
+      },
+      "loja": true
+    },
+    {
+      "id": "par-de-tonfas",
+      "nome": "Par de Tonfas",
+      "categoria": "armas-marciais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 42000,
+      "peso": 2,
+      "descricao": "Dois bastões alongados com empunhadura perpendicular, ideais para bloquear e contra-atacar golpes corpo a corpo.",
+      "equipavel": true,
+      "arma": {
+        "dano": null,
+        "marcial": true,
+        "tipoDano": "Contundente",
+        "propriedades": [
+          "Duas Mãos"
+        ],
+        "expertise": "Você recebe +2 na Classe de Resistência, até o início do seu próximo turno."
+      },
+      "loja": true
+    },
+    {
+      "id": "canhao",
+      "nome": "Canhão",
+      "apelidos": [
+        "Bazuca"
+      ],
+      "categoria": "armas-de-fogo",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 350000,
+      "peso": 12,
+      "descricao": "Uma poderosa arma que dispara bolas de chumbo ou explosivas. Eficaz contra estruturas e grupos. Cada disparo consome 1 munição.",
+      "equipavel": true,
+      "arma": {
+        "dano": null,
+        "porMunicao": true,
+        "tipoDano": "Conforme a munição",
+        "propriedades": [
+          "Distância (21/30 metros)",
+          "Duas Mãos",
+          "Munição",
+          "Pesada",
+          "Recarga"
+        ],
+        "distancia": [
+          21,
+          30
+        ],
+        "expertise": "Você recebe +6 metros de deslocamento, até o fim do seu próximo turno."
+      },
+      "loja": true
+    },
+    {
+      "id": "escopeta",
+      "nome": "Escopeta",
+      "categoria": "armas-de-fogo",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 150000,
+      "peso": 3.5,
+      "descricao": "Arma de fogo de cano duplo que, com a ação atacar, dispara múltiplos projéteis de uma vez, devastando alvos em curto alcance. Requer 10 munições esféricas por disparo. Dano: todos dentro da área devem fazer uma Salvaguarda de Destreza CD 16, sofrendo 3d8 de dano Contundente se falharem.",
+      "equipavel": true,
+      "arma": {
+        "dano": null,
+        "tipoDano": "Contundente",
+        "propriedades": [
+          "Distância (cone de 3 metros)",
+          "Duas Mãos",
+          "Munição",
+          "Recarga"
+        ],
+        "cone": 3
+      },
+      "loja": true
+    },
+    {
+      "id": "mosquete",
+      "nome": "Mosquete",
+      "categoria": "armas-de-fogo",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 100000,
+      "peso": 4,
+      "descricao": "Arma de pólvora de longo alcance, com dano variável conforme a munição. Cada disparo consome 1 munição.",
+      "equipavel": true,
+      "arma": {
+        "dano": null,
+        "porMunicao": true,
+        "tipoDano": "Conforme a munição",
+        "propriedades": [
+          "Distância (18/24 metros)",
+          "Munição",
+          "Duas Mãos"
+        ],
+        "distancia": [
+          18,
+          24
+        ],
+        "expertise": "Sua próxima jogada de ataque (comum), até o final do seu próximo turno, tem margem de acerto crítico 16-20."
+      },
+      "loja": true
+    },
+    {
+      "id": "metralhadora",
+      "nome": "Metralhadora",
+      "categoria": "armas-de-fogo",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 380000,
+      "peso": 5,
+      "descricao": "Arma automática com carregador de alta capacidade, capaz de liberar rajadas letais em área. Gasta 20 munições perfurantes por disparo. Dano: todos dentro da área devem fazer uma Salvaguarda de Destreza CD 16, sofrendo 4d6 de dano Perfurante se falharem ou metade desse dano se obtiverem sucesso.",
+      "equipavel": true,
+      "arma": {
+        "dano": null,
+        "tipoDano": "Perfurante",
+        "propriedades": [
+          "Distância (cone de 6 metros)",
+          "Duas Mãos",
+          "Munição",
+          "Recarga"
+        ],
+        "cone": 6
+      },
+      "loja": true
+    },
+    {
+      "id": "pistola",
+      "nome": "Pistola",
+      "categoria": "armas-de-fogo",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 70000,
+      "peso": 1.5,
+      "descricao": "Arma de fogo curta e versátil, com dano determinado pela munição. Cada disparo consome 1 munição.",
+      "equipavel": true,
+      "arma": {
+        "dano": null,
+        "porMunicao": true,
+        "tipoDano": "Conforme a munição",
+        "propriedades": [
+          "Distância (9/15 metros)",
+          "Munição"
+        ],
+        "distancia": [
+          9,
+          15
+        ],
+        "expertise": "Caso tenha errado uma ou mais jogadas de ataque (comum ou Técnicas) no turno atual, você recebe 2 jogadas de ataque (comum) adicionais que causam apenas o dano da munição."
+      },
+      "loja": true
+    },
+    {
+      "id": "bola-de-chumbo",
+      "nome": "Bola de Chumbo",
+      "categoria": "municao",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 15000,
+      "peso": 3.5,
+      "descricao": "Munição pesada usada em canhões ou bazucas, com altíssimo poder de impacto.",
+      "equipavel": false,
+      "arma": {
+        "dano": "3d10",
+        "tipoDano": "Contundente",
+        "propriedades": [
+          "Arma de Cerco",
+          "Pesada"
+        ]
+      },
+      "loja": true
+    },
+    {
+      "id": "bola-explosiva",
+      "nome": "Bola Explosiva",
+      "categoria": "municao",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 32000,
+      "peso": 3.8,
+      "descricao": "Munição explosiva para canhões ou bazucas. Dano: causa 3d10 de dano Contundente e explode em uma área de 1,5 metro de raio. Todos dentro da área devem fazer uma Salvaguarda de Destreza CD 16, sofrendo 3d6 de dano de Fogo se falharem ou metade desse dano se obtiverem sucesso.",
+      "equipavel": false,
+      "arma": {
+        "dano": "3d10",
+        "tipoDano": "Contundente",
+        "propriedades": [
+          "Arma de Cerco",
+          "Pesada"
+        ]
+      },
+      "loja": true
+    },
+    {
+      "id": "dardo",
+      "nome": "Dardo",
+      "categoria": "municao",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 200,
+      "peso": 0.1,
+      "descricao": "Pequena agulha lançada por zarabatanas, leve e silenciosa.",
+      "equipavel": false,
+      "arma": {
+        "dano": "1",
+        "tipoDano": "Perfurante",
+        "propriedades": []
+      },
+      "loja": true
+    },
+    {
+      "id": "flecha",
+      "nome": "Flecha",
+      "categoria": "municao",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 500,
+      "peso": 0.2,
+      "descricao": "Projétil de madeira com ponta de ferro, usado com arcos.",
+      "equipavel": false,
+      "arma": {
+        "dano": "1d6",
+        "tipoDano": "Perfurante",
+        "propriedades": []
+      },
+      "loja": true
+    },
+    {
+      "id": "municao-de-kairoseki",
+      "nome": "Munição de Kairoseki",
+      "categoria": "municao",
+      "tipo": "item",
+      "raridade": "mercado-negro",
+      "preco": 1000000,
+      "peso": 0.1,
+      "descricao": "Munição feita de kairoseki para armas de disparo, como pistolas e mosquetes. Ao acertar um usuário de Akuma no Mi, anula imediatamente todos os seus poderes e impõe a condição \"Enfraquecido\", até o final do próximo turno da criatura. Regra alternativa: caso o acerto seja crítico, o Narrador pode determinar que o projétil ficou alojado dentro da criatura; o alvo ou outra criatura a até 1,5 metro dele pode usar uma ação para tentar remover a munição (Teste de Destreza (Prestidigitação) CD 18). Em sucesso, a munição é removida; em falha, ela permanece alojada, mas a criatura pode escolher causar 3d10 de dano Verdadeiro ao alvo e usar uma ação bônus para removê-la de forma bruta.",
+      "equipavel": false,
+      "arma": {
+        "dano": "1d8",
+        "tipoDano": "Perfurante",
+        "propriedades": []
+      },
+      "loja": true
+    },
+    {
+      "id": "municao-esferica",
+      "nome": "Munição Esférica",
+      "categoria": "municao",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 500,
+      "peso": 0.1,
+      "descricao": "Munição comum usada por pistolas, mosquetes e similares.",
+      "equipavel": false,
+      "arma": {
+        "dano": "1d8",
+        "tipoDano": "Contundente",
+        "propriedades": []
+      },
+      "loja": true
+    },
+    {
+      "id": "municao-para-estilingue",
+      "nome": "Munição para Estilingue",
+      "categoria": "municao",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": null,
+      "peso": 0,
+      "descricao": "Qualquer objeto que caiba no suporte preso ao elástico, como pedras, munições pequenas e etc. Dano: para cada munição não definida pelas regras, o Narrador determina se ela causa 1d4, 1d6 ou 1d8 de dano e se o tipo é Contundente, Cortante ou Perfurante. Objetos que não sejam munições esféricas reduzem pela metade o alcance normal e o máximo da arma.",
+      "equipavel": false,
+      "arma": {
+        "dano": null,
+        "tipoDano": "Definido pelo Narrador",
+        "propriedades": []
+      },
+      "loja": true
+    },
+    {
+      "id": "municao-perfurante",
+      "nome": "Munição Perfurante",
+      "categoria": "municao",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 1000,
+      "peso": 0.1,
+      "descricao": "Munição comum usada por pistolas, mosquetes e similares.",
+      "equipavel": false,
+      "arma": {
+        "dano": "1d8",
+        "tipoDano": "Perfurante",
+        "propriedades": []
+      },
+      "loja": true
+    },
+    {
+      "id": "arco",
+      "nome": "Arco",
+      "apelidos": [
+        "Estilingue"
+      ],
+      "categoria": "armas-especiais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 22500,
+      "peso": 0.5,
+      "descricao": "Arma de longo alcance feita de madeira flexível e corda resistente, capaz de lançar flechas ou projéteis com precisão. Cada disparo consome 1 munição.",
+      "equipavel": true,
+      "arma": {
+        "dano": null,
+        "porMunicao": true,
+        "tipoDano": "Conforme a munição",
+        "propriedades": [
+          "Distância (18/24 metros)",
+          "Duas Mãos",
+          "Munição"
+        ],
+        "distancia": [
+          18,
+          24
+        ],
+        "expertise": "A criatura atingida recebe a condição \"Enfurecido\", até o final do próximo turno da criatura."
+      },
+      "loja": true
+    },
+    {
+      "id": "dinamite",
+      "nome": "Dinamite",
+      "categoria": "armas-especiais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 25000,
+      "peso": 0.6,
+      "descricao": "Uma banana de dinamite com pavio inflamável. Dano: com uma ação, uma criatura pode acender e arremessá-la em um ponto que veja a até 7,5 metros. Cada criatura a até 1,5 metro do ponto de origem deve fazer uma Salvaguarda de Destreza CD 16; em falha sofre 3d6 de dano de Fogo ou, em sucesso, metade. Várias bananas presas juntas explodem ao mesmo tempo: cada banana adicional aumenta o dano em 1d6 (até 10d6) e o raio em 1,5 metro (até 6 metros). Também é possível aumentar o pavio: role 1d6 para determinar as rodadas até a explosão e jogue a iniciativa para a dinamite; ao final do turno dela, na última rodada, explode.",
+      "equipavel": true,
+      "arma": {
+        "dano": null,
+        "tipoDano": "Fogo",
+        "propriedades": [
+          "Arremesso (distância 6 metros)"
+        ],
+        "distancia": [
+          6,
+          6
+        ]
+      },
+      "loja": true
+    },
+    {
+      "id": "escudo-de-ferro",
+      "nome": "Escudo de Ferro",
+      "categoria": "armas-especiais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 50000,
+      "peso": 4,
+      "descricao": "Escudo redondo de metal que concede +1 à Classe de Resistência de quem o empunha e de criaturas aliadas a até 1,5 metro (o bônus não se acumula com outros escudos de criaturas próximas). Utilizar um escudo reduz em 1 a quantidade de jogadas de ataque (comum) que você possa fazer no seu turno com sua ação (não pode reduzir para menos de 1 ataque).",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d4",
+        "tipoDano": "Contundente",
+        "propriedades": [],
+        "expertise": "Você recebe 20 Pontos de Vida temporários, que duram até o início do seu próximo turno."
+      },
+      "dados": {
+        "armadura": {
+          "tipo": "escudo",
+          "base": 1
+        }
+      },
+      "loja": true
+    },
+    {
+      "id": "chicote",
+      "nome": "Chicote",
+      "categoria": "armas-especiais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 7500,
+      "peso": 1.5,
+      "descricao": "Corda ou tira de couro com ponta afiada, ideal para ataques à média distância e desarmar oponentes.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d6",
+        "tipoDano": "Cortante",
+        "propriedades": [
+          "Acuidade",
+          "Alcance"
+        ],
+        "expertise": "A criatura atingida recebe a condição \"Incapacitado\", até o final do próximo turno da criatura."
+      },
+      "loja": true
+    },
+    {
+      "id": "foice",
+      "nome": "Foice",
+      "categoria": "armas-especiais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 50000,
+      "peso": 3,
+      "descricao": "Lâmina curva montada em haste longa, usada tanto para combate quanto para colheita. Pode ser usada como requisito \"Arma Cortante\" em características e Técnicas.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d8",
+        "tipoDano": "Cortante",
+        "propriedades": [
+          "Alcance",
+          "Duas Mãos"
+        ],
+        "expertise": "Ao final do cálculo de dano, puxe a criatura para 1,5 metro de você ou adicione 1d8 de dano adicional."
+      },
+      "loja": true
+    },
+    {
+      "id": "lanca",
+      "nome": "Lança",
+      "categoria": "armas-especiais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 70000,
+      "peso": 2.5,
+      "descricao": "Haste com ponta afiada, versátil para estocadas ou arremessos. Pode ser usada como requisito \"Arma Cortante\" em características e Técnicas.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d10",
+        "tipoDano": "Perfurante",
+        "propriedades": [
+          "Alcance",
+          "Duas Mãos",
+          "Arremesso (distância 6/12 metros)"
+        ],
+        "distancia": [
+          6,
+          12
+        ],
+        "expertise": "Caso tenha errado uma ou mais jogadas de ataque (comum ou Técnicas) no turno atual, você recebe 2 jogadas de ataque (comum) adicionais que causam apenas o dano da lança."
+      },
+      "loja": true
+    },
+    {
+      "id": "mangual",
+      "nome": "Mangual",
+      "categoria": "armas-especiais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 30000,
+      "peso": 4.5,
+      "descricao": "Um cabo de madeira ou metal com uma bola de ferro com espinhos conectada por uma corrente.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d10",
+        "tipoDano": "Perfurante",
+        "propriedades": [
+          "Arma de Cerco",
+          "Pesada"
+        ],
+        "expertise": "Ao final do cálculo de dano, adicione pontos de dano extra em um valor igual à metade da CR do alvo."
+      },
+      "loja": true
+    },
+    {
+      "id": "martelo-de-guerra",
+      "nome": "Martelo de Guerra",
+      "categoria": "armas-especiais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 80000,
+      "peso": 7,
+      "descricao": "Um cabo de madeira ou metal com um grande e pesado pedaço de metal em sua extremidade.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d12",
+        "tipoDano": "Contundente",
+        "propriedades": [
+          "Arma de Cerco",
+          "Duas Mãos",
+          "Pesada"
+        ],
+        "expertise": "Ao final do cálculo de dano, empurre a criatura por 6 metros ou adicione 1d8 de dano adicional."
+      },
+      "loja": true
+    },
+    {
+      "id": "naginata",
+      "nome": "Naginata",
+      "apelidos": [
+        "Alabarda"
+      ],
+      "categoria": "armas-especiais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 100000,
+      "peso": 7.5,
+      "descricao": "Haste com uma grande lâmina em sua ponta. Pode ser usada como requisito \"Arma Cortante\" em características e Técnicas.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d10",
+        "tipoDano": "Cortante",
+        "propriedades": [
+          "Alcance",
+          "Pesada",
+          "Versátil (1d12)"
+        ],
+        "expertise": "Você causa 1d6 de dano em todas as criaturas a até 3 metros de você."
+      },
+      "loja": true
+    },
+    {
+      "id": "tridente",
+      "nome": "Tridente",
+      "categoria": "armas-especiais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 70000,
+      "peso": 3.5,
+      "descricao": "Um bastão de madeira ou metal circular com 3 pontas em sua extremidade. Pode ser considerado como arma marcial para criaturas aquáticas ou caratecas homem-peixe.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d10",
+        "tipoDano": "Perfurante",
+        "propriedades": [
+          "Alcance",
+          "Duas Mãos"
+        ],
+        "expertise": "A criatura atingida tem seu deslocamento reduzido pela metade, até o final do próximo turno dela."
+      },
+      "loja": true
+    },
+    {
+      "id": "zarabatana",
+      "nome": "Zarabatana",
+      "categoria": "armas-especiais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 8000,
+      "peso": 0.3,
+      "descricao": "Um pequeno cano feito com o propósito de atirar dardos silenciosamente. Cada sopro consome 1 munição.",
+      "equipavel": true,
+      "arma": {
+        "dano": null,
+        "porMunicao": true,
+        "tipoDano": "Conforme a munição",
+        "propriedades": [
+          "Distância (6/9 metros)",
+          "Munição"
+        ],
+        "distancia": [
+          6,
+          9
+        ],
+        "expertise": "A criatura atingida recebe a condição \"Impedido\", até o final do próximo turno da criatura."
+      },
+      "loja": true
+    },
+    {
+      "id": "shuriken",
+      "nome": "Shuriken",
+      "categoria": "armas-especiais",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 500,
+      "peso": 0.1,
+      "descricao": "Uma pequena estrela de metal afiada.",
+      "equipavel": true,
+      "arma": {
+        "dano": "1d4",
+        "tipoDano": "Perfurante",
+        "propriedades": [
+          "Acuidade",
+          "Arremesso (distância 6/12 metros)"
+        ],
+        "distancia": [
+          6,
+          12
+        ],
+        "expertise": "A criatura atingida recebe a condição \"Sangramento\"."
+      },
+      "loja": true
+    },
+    {
+      "id": "bote",
+      "nome": "Bote",
+      "categoria": "barcos",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 160000,
+      "peso": 0,
+      "descricao": "Deslocamento: correnteza. Capacidade de carga: 210 kg.",
+      "equipavel": false,
+      "loja": true,
+      "pesoTexto": "Carga: 210 kg"
+    },
+    {
+      "id": "barco",
+      "nome": "Barco",
+      "categoria": "barcos",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 200000,
+      "peso": 0,
+      "descricao": "Deslocamento: correnteza. Capacidade de carga: 240 kg.",
+      "equipavel": false,
+      "loja": true,
+      "pesoTexto": "Carga: 240 kg"
+    },
+    {
+      "id": "barco-a-remo",
+      "nome": "Barco a Remo",
+      "categoria": "barcos",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 240000,
+      "peso": 45,
+      "descricao": "Deslocamento: correnteza + 2 nós (4 km/h). Capacidade de carga: 220 kg. Pesa cerca de 45 kg, caso seja transportado por terra.",
+      "equipavel": false,
+      "loja": true,
+      "pesoTexto": "Carga: 220 kg"
+    },
+    {
+      "id": "burro-ou-mula",
+      "nome": "Burro ou Mula",
+      "categoria": "montarias",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 300000,
+      "peso": 0,
+      "descricao": "Deslocamento: 12 m. Capacidade de carga: 210 kg.",
+      "equipavel": false,
+      "loja": true,
+      "pesoTexto": "Carga: 210 kg"
+    },
+    {
+      "id": "camelo",
+      "nome": "Camelo",
+      "categoria": "montarias",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 1000000,
+      "peso": 0,
+      "descricao": "Deslocamento: 15 m. Capacidade de carga: 240 kg.",
+      "equipavel": false,
+      "loja": true,
+      "pesoTexto": "Carga: 240 kg"
+    },
+    {
+      "id": "cavalo-de-montaria",
+      "nome": "Cavalo de Montaria",
+      "categoria": "montarias",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 2000000,
+      "peso": 0,
+      "descricao": "Deslocamento: 18 m. Capacidade de carga: 220 kg.",
+      "equipavel": false,
+      "loja": true,
+      "pesoTexto": "Carga: 220 kg"
+    },
+    {
+      "id": "cavalo-pesado",
+      "nome": "Cavalo Pesado",
+      "categoria": "montarias",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 1000000,
+      "peso": 0,
+      "descricao": "Deslocamento: 12 m. Capacidade de carga: 270 kg.",
+      "equipavel": false,
+      "loja": true,
+      "pesoTexto": "Carga: 270 kg"
+    },
+    {
+      "id": "elefante",
+      "nome": "Elefante",
+      "categoria": "montarias",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 6000000,
+      "peso": 0,
+      "descricao": "Deslocamento: 12 m. Capacidade de carga: 660 kg.",
+      "equipavel": false,
+      "loja": true,
+      "pesoTexto": "Carga: 660 kg"
+    },
+    {
+      "id": "alforje",
+      "nome": "Alforje",
+      "categoria": "arreios",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 15000,
+      "peso": 4,
+      "descricao": "Bolsa de carga para montarias.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "carroca",
+      "nome": "Carroça",
+      "categoria": "arreios",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 30000,
+      "peso": 100,
+      "descricao": "Veículo de tração.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "carruagem",
+      "nome": "Carruagem",
+      "categoria": "arreios",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 80000,
+      "peso": 300,
+      "descricao": "Veículo de tração.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "freio-e-redea",
+      "nome": "Freio e Rédea",
+      "categoria": "arreios",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 10000,
+      "peso": 0.5,
+      "descricao": "Arreio para controlar a montaria.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "treno",
+      "nome": "Trenó",
+      "categoria": "arreios",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 2000,
+      "peso": 150,
+      "descricao": "Veículo de tração para neve.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "sela-compacta",
+      "nome": "Sela Compacta",
+      "categoria": "selas",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 100,
+      "peso": 7.5,
+      "descricao": "Sela compacta. Uma sela militar fixa o cavaleiro com mais firmeza à montaria, concedendo vantagem em quaisquer Testes realizados para manter-se montado. Selas específicas são necessárias para montar criaturas voadoras ou aquáticas.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "sela-exotica",
+      "nome": "Sela Exótica",
+      "categoria": "selas",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 6000,
+      "peso": 20,
+      "descricao": "Sela exótica. Uma sela militar fixa o cavaleiro com mais firmeza à montaria, concedendo vantagem em quaisquer Testes realizados para manter-se montado. Selas específicas são necessárias para montar criaturas voadoras ou aquáticas.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "sela-militar",
+      "nome": "Sela Militar",
+      "categoria": "selas",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 2000,
+      "peso": 15,
+      "descricao": "Sela militar. Uma sela militar fixa o cavaleiro com mais firmeza à montaria, concedendo vantagem em quaisquer Testes realizados para manter-se montado. Selas específicas são necessárias para montar criaturas voadoras ou aquáticas.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "sela-de-viagem",
+      "nome": "Sela de Viagem",
+      "categoria": "selas",
+      "tipo": "item",
+      "raridade": "comum",
+      "preco": 1000,
+      "peso": 12.5,
+      "descricao": "Sela de viagem. Uma sela militar fixa o cavaleiro com mais firmeza à montaria, concedendo vantagem em quaisquer Testes realizados para manter-se montado. Selas específicas são necessárias para montar criaturas voadoras ou aquáticas.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "hospedagem-esqualida",
+      "nome": "Estalagem Esquálida (diária)",
+      "categoria": "hospedagem",
+      "tipo": "servico",
+      "raridade": "comum",
+      "preco": 1000,
+      "unidade": "diária",
+      "peso": 0,
+      "descricao": "Acomodação em estalagem de padrão esquálida, por uma noite. Refeições mínimas e bebidas básicas já estão incluídas no custo.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "hospedagem-pobre",
+      "nome": "Estalagem Pobre (diária)",
+      "categoria": "hospedagem",
+      "tipo": "servico",
+      "raridade": "comum",
+      "preco": 3000,
+      "unidade": "diária",
+      "peso": 0,
+      "descricao": "Acomodação em estalagem de padrão pobre, por uma noite. Refeições mínimas e bebidas básicas já estão incluídas no custo.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "hospedagem-modesta",
+      "nome": "Estalagem Modesta (diária)",
+      "categoria": "hospedagem",
+      "tipo": "servico",
+      "raridade": "comum",
+      "preco": 5000,
+      "unidade": "diária",
+      "peso": 0,
+      "descricao": "Acomodação em estalagem de padrão modesta, por uma noite. Refeições mínimas e bebidas básicas já estão incluídas no custo.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "hospedagem-confortavel",
+      "nome": "Estalagem Confortável (diária)",
+      "categoria": "hospedagem",
+      "tipo": "servico",
+      "raridade": "comum",
+      "preco": 10000,
+      "unidade": "diária",
+      "peso": 0,
+      "descricao": "Acomodação em estalagem de padrão confortável, por uma noite. Refeições mínimas e bebidas básicas já estão incluídas no custo.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "hospedagem-rica",
+      "nome": "Estalagem Rica (diária)",
+      "categoria": "hospedagem",
+      "tipo": "servico",
+      "raridade": "comum",
+      "preco": 25000,
+      "unidade": "diária",
+      "peso": 0,
+      "descricao": "Acomodação em estalagem de padrão rica, por uma noite. Refeições mínimas e bebidas básicas já estão incluídas no custo.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "hospedagem-aristocratica",
+      "nome": "Estalagem Aristocrática (diária)",
+      "categoria": "hospedagem",
+      "tipo": "servico",
+      "raridade": "comum",
+      "preco": 40000,
+      "unidade": "diária",
+      "peso": 0,
+      "descricao": "Acomodação em estalagem de padrão aristocrática, por uma noite. Refeições mínimas e bebidas básicas já estão incluídas no custo.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "vida-miseravel",
+      "nome": "Estilo de vida Miserável",
+      "categoria": "estilo-de-vida",
+      "tipo": "servico",
+      "raridade": "comum",
+      "preco": null,
+      "precoTexto": "Sem custo (–)",
+      "unidade": "dia",
+      "peso": 0,
+      "descricao": "Você vive em condições desumanas. Sem sequer um teto, abriga-se onde for possível: esgueirando-se em celeiros, aconchegando-se em barris vazios ou dependendo da generosidade de pessoas em melhores condições. Violência, doenças e fome o seguem onde quer que vá, e outros miseráveis cobiçam suas armas e equipamentos. Você está abaixo da maioria das pessoas.",
+      "equipavel": false,
+      "loja": false
+    },
+    {
+      "id": "vida-esqualido",
+      "nome": "Estilo de vida Esquálido",
+      "categoria": "estilo-de-vida",
+      "tipo": "servico",
+      "raridade": "comum",
+      "preco": 2000,
+      "unidade": "dia",
+      "peso": 0,
+      "descricao": "Você vive em um estábulo com goteiras, uma cabana com piso enlameado fora da cidade ou em uma pensão infestada de vermes na pior região urbana. Tem algum abrigo contra climas mais incômodos, mas vive cercado por desespero e violência, doenças, fome e degradação. As proteções legais são escassas e a maioria das pessoas nesse estilo de vida sofreu grandes perdas.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "vida-pobre",
+      "nome": "Estilo de vida Pobre",
+      "categoria": "estilo-de-vida",
+      "tipo": "servico",
+      "raridade": "comum",
+      "preco": 5000,
+      "unidade": "dia",
+      "peso": 0,
+      "descricao": "Sobreviver sem os confortos típicos de uma comunidade estável: alimentação simples, roupas surradas, alojamentos humildes e condições instáveis (um quarto em um cortiço ou a sala comum acima de uma loja ou bar). Conta com algumas proteções legais, mas ainda enfrenta violência, crime e doença. Comum entre trabalhadores não qualificados, vendedores ambulantes, traficantes, ladrões e mercenários.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "vida-modesto",
+      "nome": "Estilo de vida Modesto",
+      "categoria": "estilo-de-vida",
+      "tipo": "servico",
+      "raridade": "comum",
+      "preco": 10000,
+      "unidade": "dia",
+      "peso": 0,
+      "descricao": "Mantém você afastado das favelas e garante a manutenção do seu equipamento. Você reside em uma área mais antiga da cidade, alugando um quarto em uma pensão, estalagem ou templo. Não passa fome nem sede, e as condições são limpas, ainda que simples. Inclui marinheiros de baixa patente com suas famílias, trabalhadores, estudantes e pequenos comerciantes.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "vida-confortavel",
+      "nome": "Estilo de vida Confortável",
+      "categoria": "estilo-de-vida",
+      "tipo": "servico",
+      "raridade": "comum",
+      "preco": 20000,
+      "unidade": "dia",
+      "peso": 0,
+      "descricao": "Poder comprar roupas de boa qualidade e manter seu equipamento com facilidade. Você vive em uma pequena casa de campo em um bairro de classe média ou em um quarto privativo em um belo hotel. Associado a mercadores, artesãos qualificados e oficiais da Marinha.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "vida-rico",
+      "nome": "Estilo de vida Rico",
+      "categoria": "estilo-de-vida",
+      "tipo": "servico",
+      "raridade": "comum",
+      "preco": 70000,
+      "unidade": "dia",
+      "peso": 0,
+      "descricao": "Uma vida luxuosa, sem implicar status nobre: como um comerciante próspero, um servidor favorecido da realeza ou o proprietário de pequenas empresas. Mora em uma casa espaçosa em uma boa região da cidade ou em uma suíte confortável de um hotel de renome, com provavelmente uma pequena equipe de funcionários.",
+      "equipavel": false,
+      "loja": true
+    },
+    {
+      "id": "vida-aristocratico",
+      "nome": "Estilo de vida Aristocrático",
+      "categoria": "estilo-de-vida",
+      "tipo": "servico",
+      "raridade": "comum",
+      "preco": 100000,
+      "precoTexto": "฿ 100.000 ou mais",
+      "unidade": "dia",
+      "peso": 0,
+      "descricao": "Uma vida de fartura e sofisticação: circula entre os grupos mais poderosos, com excelente moradia, janta nos restaurantes mais requintados, veste roupas dos melhores alfaiates e é servido por empregados. Recebe convites para a alta sociedade e passa as noites com políticos, líderes militares e nobres. Quanto maior a riqueza, maior o risco de ser envolvido em intrigas políticas.",
+      "equipavel": false,
+      "loja": true
+    }
+  ]
+}
