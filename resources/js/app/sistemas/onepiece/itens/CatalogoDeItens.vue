@@ -200,7 +200,11 @@ const aba_ = (ativa: boolean) =>
                 <div class="flex flex-wrap items-center gap-2 text-xs text-preto-300" role="group" aria-label="Entregar ao personagem">
                     <label class="flex items-center gap-1.5"
                         >Entregar a
-                        <select v-model="destino" class="rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs" aria-label="Personagem que recebe">
+                        <select
+                            v-model="destino"
+                            class="rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs"
+                            aria-label="Personagem que recebe"
+                        >
                             <option value="">escolha…</option>
                             <option v-for="p in personagens" :key="p.id" :value="p.id">{{ p.nome }}</option>
                         </select></label

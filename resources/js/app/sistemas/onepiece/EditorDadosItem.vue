@@ -116,7 +116,13 @@ function montar(): Record<string, unknown> | null {
     if (tipo.value === 'municao') {
         const m = municao.value;
 
-        return { municao: { dano: m.dano.trim().toLowerCase(), ...(m.tipoDano.trim() ? { tipoDano: m.tipoDano.trim() } : {}), ...(m.nota.trim() ? { nota: m.nota.trim() } : {}) } };
+        return {
+            municao: {
+                dano: m.dano.trim().toLowerCase(),
+                ...(m.tipoDano.trim() ? { tipoDano: m.tipoDano.trim() } : {}),
+                ...(m.nota.trim() ? { nota: m.nota.trim() } : {}),
+            },
+        };
     }
     if (tipo.value === 'arma') {
         const a = arma.value;
@@ -210,7 +216,13 @@ const campoLinha = campo.replace('w-full ', '');
             /></label>
             <label
                 ><span :class="rotulo">Tipo de dano</span
-                ><input v-model="municao.tipoDano" type="text" maxlength="30" placeholder="perfurante" :class="campo" aria-label="Tipo de dano da munição"
+                ><input
+                    v-model="municao.tipoDano"
+                    type="text"
+                    maxlength="30"
+                    placeholder="perfurante"
+                    :class="campo"
+                    aria-label="Tipo de dano da munição"
             /></label>
             <label class="sm:col-span-3"
                 ><span :class="rotulo">Efeito especial (lembrete no card)</span
@@ -220,7 +232,8 @@ const campoLinha = campo.replace('w-full ', '');
 
         <div v-if="tipo === 'arma'" class="grid gap-2 sm:grid-cols-3">
             <label class="flex items-center gap-2 text-xs text-preto-200 sm:col-span-3"
-                ><input v-model="arma.municao" type="checkbox" class="size-4 accent-ouro-400" />Dano pela munição (pistola, arco...): escolhe a munição ao atacar</label
+                ><input v-model="arma.municao" type="checkbox" class="size-4 accent-ouro-400" />Dano pela munição (pistola, arco...): escolhe a
+                munição ao atacar</label
             >
             <label v-if="!arma.municao"
                 ><span :class="rotulo">Dano (dados)</span

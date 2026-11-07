@@ -125,7 +125,10 @@ export function apiMesa(mesaId: number, atorId: number) {
             }),
         /** Técnica de arma de fogo: gasta a munição do Requisito (o servidor lê o custo da Técnica salva). */
         gastarMunicaoDaTecnica: (personagemId: number, tecnica: string) =>
-            requisitar<{ gasto: { quantidade: number } | null }>(atorId, 'POST', r('jogo.tecnicas.municao.gastar'), { personagem_id: personagemId, tecnica }),
+            requisitar<{ gasto: { quantidade: number } | null }>(atorId, 'POST', r('jogo.tecnicas.municao.gastar'), {
+                personagem_id: personagemId,
+                tecnica,
+            }),
         /** Efeito da munição de um ataque que acertou: Kairoseki (Enfraquecido) ou Bola Explosiva (Salvaguarda em área). */
         efeitoDaMunicao: (mensagemId: number, dados: { alvo_id?: number | null; alvos?: number[] }) =>
             requisitar<Mensagem>(atorId, 'POST', r('jogo.tecnicas.municao.efeito', mensagemId), dados),

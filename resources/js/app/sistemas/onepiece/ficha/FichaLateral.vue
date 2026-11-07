@@ -45,13 +45,25 @@ const municoesDa = (a: { catalogoId: string | null }): PilhaDeMunicao[] => {
             const dados = item.dados as { catalogo?: { id?: string }; municao?: { dano: string; tipoDano?: string | null } } | null | undefined;
             if (dados?.municao) {
                 // munição criada à mão: serve a qualquer arma por munição
-                pilhas.push({ itemId: ref.item_id, nome: item.nome, qtd: ref.qtd, dano: dados.municao.dano, tipoDano: dados.municao.tipoDano ?? null });
+                pilhas.push({
+                    itemId: ref.item_id,
+                    nome: item.nome,
+                    qtd: ref.qtd,
+                    dano: dados.municao.dano,
+                    tipoDano: dados.municao.tipoDano ?? null,
+                });
                 continue;
             }
             const idDoCatalogo = dados?.catalogo?.id;
             if (!idDoCatalogo || !aceitas.includes(idDoCatalogo)) continue;
             const entrada = itemDoCatalogo(idDoCatalogo);
-            pilhas.push({ itemId: ref.item_id, nome: entrada?.nome ?? 'Munição', qtd: ref.qtd, dano: entrada?.arma?.dano ?? null, tipoDano: entrada?.arma?.tipoDano ?? null });
+            pilhas.push({
+                itemId: ref.item_id,
+                nome: entrada?.nome ?? 'Munição',
+                qtd: ref.qtd,
+                dano: entrada?.arma?.dano ?? null,
+                tipoDano: entrada?.arma?.tipoDano ?? null,
+            });
         }
     }
 
@@ -409,8 +421,8 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                                 : a.municao
                                   ? `Escolha a munição para atacar com ${a.nome}`
                                   : ataquePermitido(a).ok
-                                ? `Clique para atacar com ${a.nome} (${ataquePermitido(a).feitos > 0 ? 'ataque ' + (ataquePermitido(a).feitos + 1) + ' de ' + ataquePermitido(a).max : 'gasta a ' + acoes.rotulo('padrao').toLowerCase()}). Shift = vantagem, Ctrl = desvantagem.`
-                                : ataquePermitido(a).motivo
+                                    ? `Clique para atacar com ${a.nome} (${ataquePermitido(a).feitos > 0 ? 'ataque ' + (ataquePermitido(a).feitos + 1) + ' de ' + ataquePermitido(a).max : 'gasta a ' + acoes.rotulo('padrao').toLowerCase()}). Shift = vantagem, Ctrl = desvantagem.`
+                                    : ataquePermitido(a).motivo
                         "
                         @click="atacarComArma($event, a)"
                     >
@@ -434,7 +446,8 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                             <span class="mt-0.5 block truncate font-mono text-[11px] text-preto-400"
                                 ><template v-if="a.municao">dano pela munição{{ a.danoBonus ? comSinal(a.danoBonus) : '' }}</template
                                 ><template v-else
-                                    >{{ a.dano }}{{ a.danoBonus ? comSinal(a.danoBonus) : '' }}<template v-if="a.tipoDano"> · {{ a.tipoDano }}</template></template
+                                    >{{ a.dano }}{{ a.danoBonus ? comSinal(a.danoBonus) : ''
+                                    }}<template v-if="a.tipoDano"> · {{ a.tipoDano }}</template></template
                                 ></span
                             >
                             <span
