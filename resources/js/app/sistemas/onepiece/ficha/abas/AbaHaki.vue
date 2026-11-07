@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Check, X } from 'lucide-vue-next';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Check, Network, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { estilos, useFicha } from '../../contexto';
 import { NOMES_ESTAGIO, TIPOS_HAKI, formasDoTalento, talentoPorId, type TipoHaki } from '../../haki/dados';
@@ -42,6 +43,12 @@ watch(tiposVisiveis, (l) => {
 const selecionado = ref<string | null>(null);
 const talento = computed(() => talentoPorId(selecionado.value));
 const mensagem = ref('');
+const aberta = ref(false);
+const comprados = computed(() => h.value.talentos.length);
+function abrir(t: TipoHaki) {
+    tipo.value = t;
+    aberta.value = true;
+}
 
 /** Salva o novo estado do Haki junto das características dos talentos (refeitas) e, se preciso, outros campos. */
 function gravar(novo: HakiFicha, extras: Record<string, unknown> = {}) {
@@ -266,18 +273,13 @@ const botaoMestre = `${botao} border-ouro-500/50 text-ouro-100 hover:bg-ouro-500
             </p>
 
             <div class="flex flex-wrap items-center gap-3">
-                <div class="flex gap-1" role="tablist" aria-label="Tipos de Haki">
+                <div class="flex gap-1" aria-label="Abrir a árvore de talentos">
                     <button
                         v-for="t in tiposVisiveis"
                         :key="t.id"
                         type="button"
-                        role="tab"
-                        :aria-selected="tipo === t.id"
-                        :class="[
-                            botao,
-                            tipo === t.id ? 'border-ouro-400 bg-ouro-500/20 text-ouro-100' : 'border-preto-600 text-preto-200 hover:bg-preto-800',
-                        ]"
-                        @click="tipo = t.id"
+                        :class="[botao, 'border-preto-600 text-preto-200 hover:bg-preto-800']"
+                        @click="abrir(t.id)"
                     >
                         {{ t.nome }}
                         <span class="ml-1 text-preto-400">({{ pa.gastoPorTipo[t.id] }} PA)</span>
@@ -298,75 +300,133 @@ const botaoMestre = `${botao} border-ouro-500/50 text-ouro-100 hover:bg-ouro-500
                 </label>
             </div>
 
-            <ArvoreHaki :tipo="tipo" :haki="h" :nivel="nivel" :selecionado="selecionado" :bonus="bonusDeHaki" @selecionar="selecionado = $event" />
-
-            <!-- talento selecionado -->
-            <section v-if="talento" class="rounded-lg border border-preto-700 bg-preto-900/60 p-3" aria-label="Talento selecionado">
-                <div class="flex flex-wrap items-baseline gap-2">
-                    <h3 class="font-serif text-lg font-semibold text-ouro-200">{{ talento.nome }}</h3>
-                    <span class="text-xs text-preto-400">
-                        {{ TIPOS_HAKI.find((t) => t.id === talento!.tipo)?.nome }} · Estágio {{ NOMES_ESTAGIO[talento.estagio] }} ·
-                        {{ talento.custo === 0 ? 'grátis' : `${talento.custo} PA por forma` }}
-                    </span>
-                </div>
-                <ul v-if="talento.requisitos.length" class="mt-1 flex flex-wrap gap-1.5 text-xs" aria-label="Requisitos">
-                    <li
-                        v-for="r in talento.requisitos"
-                        :key="r"
-                        class="flex items-center gap-1 rounded-full border px-2 py-0.5"
-                        :class="formaAtual(r) >= 1 ? 'border-green-400/60 text-green-200' : 'border-preto-600 text-preto-300'"
-                    >
-                        <Check v-if="formaAtual(r) >= 1" class="size-3" /><X v-else class="size-3" /> {{ talentoPorId(r)?.nome }}
-                    </li>
-                </ul>
-                <div
-                    v-for="f in textoForma"
-                    :key="f.n"
-                    class="mt-2 rounded border p-2"
-                    :class="formaAtual(talento.id) >= f.n ? 'border-ouro-400/60 bg-ouro-500/10' : 'border-preto-700'"
+            <div class="flex flex-wrap items-center gap-3">
+                <button type="button" :class="[botao, 'border-ouro-400 bg-ouro-500/20 text-ouro-100 hover:bg-ouro-500/30']" @click="abrir(tipo)">
+                    <Network class="mr-1 inline size-3.5" aria-hidden="true" /> Abrir árvore de talentos
+                </button>
+                <span class="text-xs text-preto-400"
+                    >{{ comprados }} talento(s) comprado(s) · {{ pa.disponiveis }} PA disponíveis. A árvore abre em tela cheia para você interagir com
+                    mais espaço.</span
                 >
-                    <p
-                        class="flex items-center gap-1 text-xs font-semibold"
-                        :class="formaAtual(talento.id) >= f.n ? 'text-ouro-200' : 'text-preto-300'"
-                    >
-                        <Check v-if="formaAtual(talento.id) >= f.n" class="size-3" /> {{ f.rotulo }}
-                    </p>
-                    <p class="whitespace-pre-wrap text-sm leading-relaxed text-preto-100">{{ f.texto }}</p>
-                </div>
-                <div class="mt-3 flex flex-wrap items-center gap-2">
-                    <button
-                        v-if="talento.id !== 'rei'"
-                        type="button"
-                        :disabled="!compra?.ok"
-                        :class="[
-                            botao,
-                            'border-ouro-400 bg-ouro-500/20 text-ouro-100 hover:bg-ouro-500/30 disabled:cursor-not-allowed disabled:opacity-40',
-                        ]"
-                        @click="comprarForma(talento.id)"
-                    >
-                        <template v-if="formaAtual(talento.id) >= formasDoTalento(talento)">Todas as formas compradas</template>
-                        <template v-else
-                            >Comprar {{ ['', 'a forma base', 'a Forma Dominada ☆', 'a Forma Avançada ★'][formaAtual(talento.id) + 1] }} ({{
-                                talento.custo
-                            }}
-                            PA)</template
-                        >
-                    </button>
-                    <button
-                        v-if="mestre && formaAtual(talento.id) >= 1 && talento.id !== 'rei'"
-                        type="button"
-                        :class="botaoMestre"
-                        @click="devolverForma(talento.id)"
-                    >
-                        Devolver a última forma (mestre)
-                    </button>
-                    <span v-if="compra && !compra.ok && formaAtual(talento.id) < formasDoTalento(talento)" class="text-xs text-preto-400">{{
-                        compra.motivo
-                    }}</span>
-                    <span v-if="mensagem" class="text-xs text-red-300" role="alert">{{ mensagem }}</span>
-                </div>
-            </section>
-            <p v-else class="text-xs text-preto-400">Clique em um talento para ver as formas, os requisitos e comprar.</p>
+            </div>
+            <Dialog v-model:open="aberta">
+                <DialogContent
+                    class="flex h-[94vh] w-[97vw] max-w-[97vw] flex-col gap-2 overflow-hidden border-ouro-500/30 bg-preto-900 p-3 text-preto-100 sm:max-w-[97vw]"
+                >
+                    <DialogHeader class="space-y-0">
+                        <DialogTitle class="font-serif text-ouro-200">Árvore de talentos do Haki</DialogTitle>
+                        <DialogDescription class="text-xs text-preto-400">
+                            Estágio {{ estagioNome }} · {{ pa.disponiveis }} PA disponíveis ({{ pa.gastoGeral }} gastos). Clique em um talento para
+                            ver as formas e comprar.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex gap-1" role="tablist" aria-label="Tipos de Haki">
+                            <button
+                                v-for="t in tiposVisiveis"
+                                :key="t.id"
+                                type="button"
+                                role="tab"
+                                :aria-selected="tipo === t.id"
+                                :class="[
+                                    botao,
+                                    tipo === t.id
+                                        ? 'border-ouro-400 bg-ouro-500/20 text-ouro-100'
+                                        : 'border-preto-600 text-preto-200 hover:bg-preto-800',
+                                ]"
+                                @click="tipo = t.id"
+                            >
+                                {{ t.nome }} <span class="ml-1 text-preto-400">({{ pa.gastoPorTipo[t.id] }} PA)</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row">
+                        <div class="flex min-h-[50vh] min-w-0 flex-1 flex-col">
+                            <ArvoreHaki
+                                ajustar
+                                :tipo="tipo"
+                                :haki="h"
+                                :nivel="nivel"
+                                :selecionado="selecionado"
+                                :bonus="bonusDeHaki"
+                                @selecionar="selecionado = $event"
+                            />
+                        </div>
+                        <aside class="min-h-0 shrink-0 overflow-y-auto lg:w-[24rem]" aria-label="Talento selecionado">
+                            <!-- talento selecionado -->
+                            <section v-if="talento" class="rounded-lg border border-preto-700 bg-preto-900/60 p-3" aria-label="Talento selecionado">
+                                <div class="flex flex-wrap items-baseline gap-2">
+                                    <h3 class="font-serif text-lg font-semibold text-ouro-200">{{ talento.nome }}</h3>
+                                    <span class="text-xs text-preto-400">
+                                        {{ TIPOS_HAKI.find((t) => t.id === talento!.tipo)?.nome }} · Estágio {{ NOMES_ESTAGIO[talento.estagio] }} ·
+                                        {{ talento.custo === 0 ? 'grátis' : `${talento.custo} PA por forma` }}
+                                    </span>
+                                </div>
+                                <ul v-if="talento.requisitos.length" class="mt-1 flex flex-wrap gap-1.5 text-xs" aria-label="Requisitos">
+                                    <li
+                                        v-for="r in talento.requisitos"
+                                        :key="r"
+                                        class="flex items-center gap-1 rounded-full border px-2 py-0.5"
+                                        :class="formaAtual(r) >= 1 ? 'border-green-400/60 text-green-200' : 'border-preto-600 text-preto-300'"
+                                    >
+                                        <Check v-if="formaAtual(r) >= 1" class="size-3" /><X v-else class="size-3" /> {{ talentoPorId(r)?.nome }}
+                                    </li>
+                                </ul>
+                                <div
+                                    v-for="f in textoForma"
+                                    :key="f.n"
+                                    class="mt-2 rounded border p-2"
+                                    :class="formaAtual(talento.id) >= f.n ? 'border-ouro-400/60 bg-ouro-500/10' : 'border-preto-700'"
+                                >
+                                    <p
+                                        class="flex items-center gap-1 text-xs font-semibold"
+                                        :class="formaAtual(talento.id) >= f.n ? 'text-ouro-200' : 'text-preto-300'"
+                                    >
+                                        <Check v-if="formaAtual(talento.id) >= f.n" class="size-3" /> {{ f.rotulo }}
+                                    </p>
+                                    <p class="whitespace-pre-wrap text-sm leading-relaxed text-preto-100">{{ f.texto }}</p>
+                                </div>
+                                <div class="mt-3 flex flex-wrap items-center gap-2">
+                                    <button
+                                        v-if="talento.id !== 'rei'"
+                                        type="button"
+                                        :disabled="!compra?.ok"
+                                        :class="[
+                                            botao,
+                                            'border-ouro-400 bg-ouro-500/20 text-ouro-100 hover:bg-ouro-500/30 disabled:cursor-not-allowed disabled:opacity-40',
+                                        ]"
+                                        @click="comprarForma(talento.id)"
+                                    >
+                                        <template v-if="formaAtual(talento.id) >= formasDoTalento(talento)">Todas as formas compradas</template>
+                                        <template v-else
+                                            >Comprar
+                                            {{ ['', 'a forma base', 'a Forma Dominada ☆', 'a Forma Avançada ★'][formaAtual(talento.id) + 1] }} ({{
+                                                talento.custo
+                                            }}
+                                            PA)</template
+                                        >
+                                    </button>
+                                    <button
+                                        v-if="mestre && formaAtual(talento.id) >= 1 && talento.id !== 'rei'"
+                                        type="button"
+                                        :class="botaoMestre"
+                                        @click="devolverForma(talento.id)"
+                                    >
+                                        Devolver a última forma (mestre)
+                                    </button>
+                                    <span
+                                        v-if="compra && !compra.ok && formaAtual(talento.id) < formasDoTalento(talento)"
+                                        class="text-xs text-preto-400"
+                                        >{{ compra.motivo }}</span
+                                    >
+                                    <span v-if="mensagem" class="text-xs text-red-300" role="alert">{{ mensagem }}</span>
+                                </div>
+                            </section>
+                            <p v-else class="text-xs text-preto-400">Clique em um talento para ver as formas, os requisitos e comprar.</p>
+                        </aside>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </template>
     </div>
 </template>

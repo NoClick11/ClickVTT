@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { DESENHOS, arestasDoTipo, formasDoTalento, talentoPorId, talentosDoTipo, type TalentoHaki, type TipoHaki } from '../../haki/dados';
 import { podeComprar, type HakiFicha } from '../../haki/regras';
 
@@ -8,7 +8,7 @@ import { podeComprar, type HakiFicha } from '../../haki/regras';
  * corrente à esquerda, nós com a estrela ☆ (Forma Dominada) e ★ (Forma Avançada) e o custo em PA. Mostra e emite: quem
  * compra e salva é `AbaHaki`. O nó comprado fica aceso e a corda entre dois talentos comprados também.
  */
-const props = defineProps<{ tipo: TipoHaki; haki: HakiFicha; nivel: number; selecionado: string | null; bonus?: number }>();
+const props = defineProps<{ tipo: TipoHaki; haki: HakiFicha; nivel: number; selecionado: string | null; bonus?: number; ajustar?: boolean }>();
 const emit = defineEmits<{ selecionar: [id: string] }>();
 
 const PALETA: Record<TipoHaki, { faixas: [string, string, string]; corda: string; cordaClara: string; destaque: string; texto: string }> = {
@@ -21,6 +21,22 @@ const d = computed(() => DESENHOS[props.tipo]);
 const talentos = computed(() => talentosDoTipo(props.tipo));
 const arestas = computed(() => arestasDoTipo(props.tipo));
 const zoom = ref(1);
+/** Modo "ajustar" (modal): a árvore inteira cabe na área disponível (zoom 100% = cabe tudo); os botões ampliam e a área rola. */
+const area = ref<HTMLElement | null>(null);
+const caixa = ref({ w: 0, h: 0 });
+let observador: ResizeObserver | null = null;
+onMounted(() => {
+    if (!props.ajustar || !area.value) return;
+    observador = new ResizeObserver(([e]) => (caixa.value = { w: e.contentRect.width, h: e.contentRect.height }));
+    observador.observe(area.value);
+});
+onBeforeUnmount(() => observador?.disconnect());
+const larguraSvg = computed(() => {
+    if (!props.ajustar || caixa.value.w <= 0) return Math.max(720, 1000) * zoom.value;
+    const escala = Math.min((caixa.value.w - 4) / d.value.largura, (caixa.value.h - 4) / d.value.altura);
+
+    return Math.max(280, Math.floor(d.value.largura * escala * zoom.value));
+});
 
 const formas = (id: string) => props.haki.talentos.find((t) => t.id === id)?.formas ?? (id === 'rei' && props.haki.rei ? 1 : 0);
 const comprado = (id: string) => formas(id) >= 1;
@@ -80,14 +96,14 @@ const estagios = computed(() => {
 </script>
 
 <template>
-    <div class="rounded-lg border border-preto-700 bg-preto-950">
+    <div class="rounded-lg border border-preto-700 bg-preto-950" :class="ajustar ? 'flex h-full min-h-0 flex-col' : ''">
         <div class="flex items-center justify-end gap-1 border-b border-preto-800 px-2 py-1 text-xs text-preto-400">
             <span>Zoom</span>
             <button
                 type="button"
                 class="rounded border border-preto-700 px-2 hover:text-ouro-200"
                 aria-label="Diminuir o zoom"
-                @click="zoom = Math.max(0.6, zoom - 0.2)"
+                @click="zoom = Math.max(ajustar ? 0.4 : 0.6, zoom - 0.2)"
             >
                 −
             </button>
@@ -98,16 +114,16 @@ const estagios = computed(() => {
                 type="button"
                 class="rounded border border-preto-700 px-2 hover:text-ouro-200"
                 aria-label="Aumentar o zoom"
-                @click="zoom = Math.min(2, zoom + 0.2)"
+                @click="zoom = Math.min(ajustar ? 3 : 2, zoom + 0.2)"
             >
                 +
             </button>
         </div>
-        <div class="overflow-auto">
+        <div ref="area" class="overflow-auto" :class="ajustar ? 'min-h-0 flex-1' : ''">
             <svg
                 :viewBox="`0 0 ${d.largura} ${d.altura}`"
-                :style="{ width: `${Math.max(720, 1000) * zoom}px`, minWidth: '100%' }"
-                class="block"
+                :style="{ width: `${larguraSvg}px`, minWidth: ajustar ? undefined : '100%' }"
+                class="mx-auto block"
                 role="group"
                 :aria-label="`Árvore de talentos do ${tipo}`"
             >
