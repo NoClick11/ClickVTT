@@ -3,7 +3,7 @@ import type { AreaDeEfeito } from '../../nucleo/combate/area';
 import type { Efeito, Origem, Rolagem } from '../../nucleo/efeitos/efeitos';
 import type { AbrirEditorItem } from '../../nucleo/sistemas/tipos';
 import type { ArmaParaForja, ItemDto } from '../../tipos-mesa';
-import type { AcaoCaracteristica, ArmaAtiva, AtributoId, EfeitoDeCondicao } from './regras';
+import type { AcaoCaracteristica, ArmaAtiva, AtributoId, DuracaoDaTecnica, EfeitoDeCondicao } from './regras';
 
 /**
  * Contexto da ficha de D&D 5e, compartilhado pelos blocos sem passar props: modo Jogar/Editar, valores
@@ -33,6 +33,9 @@ export interface ContextoFicha {
         ataque: (ataquesPorAcao: number) => { ok: boolean; motivo?: string; feitos: number; max: number; extras: number };
         /** Ataques extras do turno (Tempestade de Balas, Alvo Travado...): soma `n` ao limite; null = fora do combate. */
         darExtras: ((n: number) => Promise<void>) | null;
+        /** As Técnicas ativas deste personagem (com as rodadas que faltam) e como encerrar uma. */
+        ativas: () => { id: string; nome: string; rodadas: number; concentracao: boolean }[];
+        encerrarAtiva: ((id: string) => Promise<void>) | null;
         /** Todas as categorias do sistema (id e nome), para os seletores de edição. */
         todas: () => { id: string; nome: string }[];
     };
@@ -89,6 +92,8 @@ export interface UsoDeTecnica {
     desvantagem: boolean;
     /** A forma e o tamanho da área no mapa (null = sem forma: vale o alvo mirado). */
     area: AreaDeEfeito | null;
+    /** Técnica que dura vários turnos: com o combate em curso, fica ativa e pede um ataque a cada turno de quem está ao alcance. */
+    duracao?: DuracaoDaTecnica;
     dano: DanoDaTecnica | null;
     secundaria?: EfeitoSecundario;
     /** Vantagem/desvantagem dos efeitos na jogada de ataque. */

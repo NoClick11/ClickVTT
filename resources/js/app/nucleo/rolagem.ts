@@ -178,3 +178,19 @@ export interface DadosDaTecnica {
 }
 
 export const dadosDaTecnica = (m: { dados: unknown }): DadosDaTecnica => m.dados as DadosDaTecnica;
+
+/** O card de uma Técnica ativa que pede o ataque (mensagem `tipo: 'gatilho'`): o jogador clica para rolar e, no acerto, escolhe o efeito. */
+export interface DadosDoGatilho {
+    rotulo: string;
+    estado: 'pendente' | 'errou' | 'acertou' | 'resolvido' | 'ignorado';
+    ativa_id: string;
+    atacante: { personagem_id: number; nome: string };
+    alvo: { personagem_id: number; nome: string };
+    opcoes: { id: string; rotulo: string }[];
+    rodadas: number;
+    ataque?: { total: number; termos: TermoRolagem[]; defesa: number; acerto: boolean; critico: boolean; falha: boolean };
+    dano?: { expressao: string; total: number; final: number; modo: string; tipo: string | null; termos: TermoRolagem[] };
+    escolha?: { id: string; texto: string };
+}
+
+export const dadosDoGatilho = (m: { dados: unknown }): DadosDoGatilho => m.dados as DadosDoGatilho;

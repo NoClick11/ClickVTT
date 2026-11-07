@@ -102,6 +102,7 @@ function usar(t: Tecnica) {
         ...(teste ? { teste: { tipo: teste.tipo, atributo: teste.atributo, aoPassar: teste.aoPassar, aplica: teste.aplica } } : {}),
         desvantagem: !!teste?.desvantagem || (kokuto.value && !!t.armaCortante),
         area: areaDoAlcance(ampliado?.mudou ? ampliado.texto : t.alcance),
+        ...(t.duracao ? { duracao: t.duracao } : {}),
         dano: expressao ? { expressao, tipo: t.tipoDano?.trim() || null } : null,
         ...(teste?.secundaria ? { secundaria: teste.secundaria } : {}),
         modoAtaque: modoDe('ataque') === 'vantagem' ? 'vantagem' : modoDe('ataque') === 'desvantagem' ? 'desvantagem' : null,
@@ -148,6 +149,9 @@ const alternarGrupo = (chave: string) => {
     if (!novo.delete(chave)) novo.add(chave);
     recolhidos.value = novo;
 };
+
+/** A Técnica está ativa no combate (Quick Draw...)? Mostra as rodadas que faltam e deixa encerrar. */
+const ativaDe = (t: Tecnica) => acoes.ativas().find((a) => a.nome === rotuloDoUso(t) || a.nome === t.nome) ?? null;
 
 /** Muda o tipo de teste da técnica ('' = nenhum); a Salvaguarda começa em Destreza, passando = metade do dano. */
 function mudarTeste(i: number, tipo: string) {
@@ -239,7 +243,24 @@ function adicionar() {
                             <!-- Jogar: cartão da técnica com o botão Usar. Editar: campos para mudar tudo. -->
                             <div v-if="!editar" class="flex items-start gap-3">
                                 <div class="min-w-0 flex-1">
-                                    <p class="font-semibold text-preto-100">{{ t.nome }}</p>
+                                    <p class="font-semibold text-preto-100">
+                                        {{ t.nome }}
+                                        <span
+                                            v-if="ativaDe(t)"
+                                            class="ml-1.5 rounded-full border border-amber-400/50 bg-amber-500/15 px-1.5 py-0.5 align-middle text-[10px] font-normal text-amber-200"
+                                            :title="`Ativa no combate: faltam ${ativaDe(t)!.rodadas} rodada${ativaDe(t)!.rodadas === 1 ? '' : 's'}`"
+                                            >ativa · {{ ativaDe(t)!.rodadas }} rod.</span
+                                        >
+                                        <button
+                                            v-if="ativaDe(t) && acoes.encerrarAtiva"
+                                            type="button"
+                                            class="ml-1 rounded border border-preto-700 px-1.5 py-0.5 align-middle text-[10px] font-normal text-preto-300 hover:border-red-400/60 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                                            title="Encerrar a Técnica agora"
+                                            @click="acoes.encerrarAtiva(ativaDe(t)!.id)"
+                                        >
+                                            encerrar
+                                        </button>
+                                    </p>
                                     <p class="text-xs text-preto-400">
                                         <span v-if="t.origem">{{ t.origem }}</span>
                                         <span v-if="t.alcance">

@@ -152,6 +152,22 @@ export function apiMesa(mesaId: number, atorId: number) {
         /** Gasta uma ação do personagem no combate (o servidor recusa com o motivo se não pode agir agora). */
         gastarAcao: (personagemId: number, categoria: string, tecnica = false) =>
             requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.acao'), { personagem_id: personagemId, categoria, tecnica }),
+        /** Ativa uma Técnica com duração no combate em curso (Quick Draw): o servidor pede o ataque no início do turno de quem está ao alcance. */
+        ativarTecnica: (dados: {
+            personagem_id: number;
+            nome: string;
+            rodadas: number;
+            concentracao?: boolean;
+            alcance: number;
+            dano: { expressao: string; tipo: string | null };
+            opcoes?: object[];
+        }) => requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.tecnicas-ativas.ativar'), dados),
+        encerrarTecnicaAtiva: (id: string) => requisitar<{ combate: Combate }>(atorId, 'DELETE', r('jogo.combate.tecnicas-ativas.encerrar', id)),
+        /** Card do gatilho: rola o ataque, escolhe o efeito do acerto ou ignora. */
+        gatilhoAtacar: (mensagemId: number) => requisitar<Mensagem>(atorId, 'POST', r('jogo.gatilhos.atacar', mensagemId), {}),
+        gatilhoEscolher: (mensagemId: number, opcao: string) =>
+            requisitar<Mensagem>(atorId, 'POST', r('jogo.gatilhos.escolher', mensagemId), { opcao }),
+        gatilhoIgnorar: (mensagemId: number) => requisitar<Mensagem>(atorId, 'POST', r('jogo.gatilhos.ignorar', mensagemId), {}),
         /** Ataques extras do turno (Tempestade de Balas, Alvo Travado...): soma `n` (pode ser negativo) ao limite de ataques do personagem. */
         ataquesExtras: (personagemId: number, n: number) =>
             requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.ataques-extras'), { personagem_id: personagemId, n }),

@@ -10,7 +10,7 @@ export type VisibilidadeRolagem = 'todos' | 'mestre' | 'secreto';
 
 export interface Mensagem {
     id: number;
-    tipo: 'texto' | 'rolagem' | 'tecnica';
+    tipo: 'texto' | 'rolagem' | 'tecnica' | 'gatilho';
     /** `secreto_oculto` = aviso mostrado aos jogadores quando o mestre rola em segredo. */
     visibilidade: VisibilidadeRolagem | 'secreto_oculto';
     /** `id` = JOGADOR que enviou; nome/cor = do personagem quando falou como ele. */

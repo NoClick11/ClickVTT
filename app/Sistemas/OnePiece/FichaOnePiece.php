@@ -369,6 +369,20 @@ final class FichaOnePiece
             }
         }
 
+        // Técnica que dura vários turnos (Quick Draw): rodadas, concentração e os efeitos que o jogador escolhe no acerto.
+        foreach (['tecnicas.lista.*', 'akuma.lista.*'] as $base) {
+            $r["{$base}.duracao"] = ['nullable', 'array'];
+            $r["{$base}.duracao.rodadas"] = ['required_with:'.$base.'.duracao', 'integer:strict', 'between:1,99'];
+            $r["{$base}.duracao.concentracao"] = ['nullable', 'boolean:strict'];
+            $r["{$base}.duracao.opcoes"] = ['nullable', 'array', 'max:6'];
+            $r["{$base}.duracao.opcoes.*.id"] = ['required', 'string', 'max:30'];
+            $r["{$base}.duracao.opcoes.*.rotulo"] = ['required', 'string', 'max:120'];
+            $r["{$base}.duracao.opcoes.*.efeito"] = ['required', 'array'];
+            $r["{$base}.duracao.opcoes.*.efeito.tipo"] = ['required', 'string', Rule::in(['movimento_zero', 'dano', 'sem_acao'])];
+            $r["{$base}.duracao.opcoes.*.efeito.expressao"] = ['nullable', 'string', 'max:100'];
+            $r["{$base}.duracao.opcoes.*.efeito.tipoDano"] = ['nullable', 'string', 'max:30'];
+        }
+
         // Reação (usada fora do turno, ex.: ao ser atacado): gatilho, a quem serve, bônus na defesa e cura.
         foreach (['tecnicas.lista.*', 'akuma.lista.*', 'caracteristicas.*'] as $base) {
             $r["{$base}.reacao.gatilho"] = ['nullable', 'string', Rule::in(['ataque_declarado'])];

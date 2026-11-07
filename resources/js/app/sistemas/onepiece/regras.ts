@@ -252,6 +252,20 @@ export interface EfeitoDeCondicao {
     aoDano?: boolean;
 }
 
+/** O que o jogador escolhe quando o ataque da Técnica ativa acerta (o servidor aplica): movimento a 0, dano extra ou sem ação. */
+export interface OpcaoDeAcerto {
+    id: string;
+    rotulo: string;
+    efeito: { tipo: 'movimento_zero' | 'dano' | 'sem_acao'; expressao?: string; tipoDano?: string };
+}
+
+/** Técnica com duração (Quick Draw): fica ativa no combate e pede um ataque no início do turno de quem está ao alcance. */
+export interface DuracaoDaTecnica {
+    rodadas: number;
+    concentracao?: boolean;
+    opcoes?: OpcaoDeAcerto[];
+}
+
 export interface TesteDaTecnica {
     tipo: 'ataque' | 'salvaguarda' | 'automatico';
     /** Salvaguarda: o atributo que o alvo rola. */
@@ -282,6 +296,8 @@ export interface Tecnica {
     reacao?: ReacaoDeCombate;
     /** Como a Técnica acerta (ataque, salvaguarda da área ou automática); sem isto, "Usar" só rola a `rolagem`. */
     teste?: TesteDaTecnica;
+    /** Técnica que dura vários turnos (ativa no combate); sem isto, o uso é de uma vez só. */
+    duracao?: DuracaoDaTecnica;
     /** A Técnica tem uma arma cortante como requisito: as armas Meito equipadas somam dados ao dano dela. */
     armaCortante?: boolean;
     /** Quem criou: o assistente de criação marca `especie`, para refazer o passo sem duplicar. */

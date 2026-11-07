@@ -230,6 +230,15 @@ provide('acoesDoCombate', {
     /** Ataque com arma: o 1º gasta a Ação, os seguintes valem até o limite de ataques (por Ação + extras do turno). */
     ataque: (personagemId: number, ataquesPorAcao: number) =>
         avaliarAtaque(combate.value, categoriasAcao.value, personagemId, props.mestre, ataquesPorAcao),
+    /** As Técnicas ativas do personagem (Quick Draw...) e como encerrar uma. */
+    ativas: (personagemId: number) => combate.value.ativas.filter((a) => a.personagem_id === personagemId),
+    encerrarAtiva: async (id: string) => {
+        try {
+            combate.value = normalizarCombate((await api.encerrarTecnicaAtiva(id)).combate);
+        } catch (e) {
+            avisar(mensagemDe(e));
+        }
+    },
     /** Ataques extras do turno: só com o combate em curso. */
     darExtras: async (personagemId: number, n: number) => {
         try {
@@ -843,6 +852,24 @@ async function escolherAreaDaFicha(personagemId: number, area: AreaDeEfeito): Pr
 async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
     fecharFicha(personagemId); // a ficha sai da frente: o jogador mira e acompanha o resultado no mapa e no chat
     try {
+        // Técnica com duração (Quick Draw): com o combate em curso ela fica ativa e o ataque vem no início do turno de cada criatura ao alcance
+        // (sem marcar área agora). Fora do combate, vale como uma Técnica de uso único.
+        if (uso.duracao && emCurso(combate.value) && uso.dano) {
+            if (!(await gastarAcaoDoCombate(personagemId, uso.categoria, true))) return;
+            const r = await api.ativarTecnica({
+                personagem_id: personagemId,
+                nome: uso.nome,
+                rodadas: uso.duracao.rodadas,
+                concentracao: !!uso.duracao.concentracao,
+                alcance: uso.area?.metros ?? 0,
+                dano: uso.dano,
+                opcoes: uso.duracao.opcoes ?? [],
+            });
+            salvarFicha(personagemId, uso.camposDosPP);
+            combate.value = normalizarCombate(r.combate);
+
+            return;
+        }
         let alvos: number[] | null = null;
         if (uso.area) {
             alvos = await escolherAreaDaFicha(personagemId, uso.area);
@@ -886,6 +913,21 @@ async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
         }
     } catch (e) {
         avisar(mensagemDe(e));
+    }
+}
+
+/** Card de uma Técnica ativa (Quick Draw): atacar, escolher o efeito do acerto ou ignorar. O servidor decide e devolve o card novo. */
+async function agirNoGatilho(mensagem: Mensagem, chamada: () => Promise<Mensagem>) {
+    const chave = `g${mensagem.id}`;
+    if (salvaguardasRolando.value.includes(chave)) return;
+    salvaguardasRolando.value = [...salvaguardasRolando.value, chave];
+    try {
+        aoNovaMensagem(await chamada(), true);
+        recarregar(['personagens']); // o dano mexe nos PV do alvo
+    } catch (e) {
+        avisar(mensagemDe(e));
+    } finally {
+        salvaguardasRolando.value = salvaguardasRolando.value.filter((c) => c !== chave);
     }
 }
 
@@ -1495,6 +1537,9 @@ function alternarPorta(id: number) {
                             :aplicados="aplicadosAoAlvo"
                             :meus-personagens="meusPersonagens"
                             :ocupados="salvaguardasRolando"
+                            @gatilho-atacar="(m: Mensagem) => agirNoGatilho(m, () => api.gatilhoAtacar(m.id))"
+                            @gatilho-escolher="(m: Mensagem, o: string) => agirNoGatilho(m, () => api.gatilhoEscolher(m.id, o))"
+                            @gatilho-ignorar="(m: Mensagem) => agirNoGatilho(m, () => api.gatilhoIgnorar(m.id))"
                             @rolar-salvaguarda="rolarSalvaguarda"
                             @pedir-salvaguarda="pedirSalvaguardaDoEfeito"
                             @acao="rolarAcaoDoChat"

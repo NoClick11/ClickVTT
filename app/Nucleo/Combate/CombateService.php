@@ -52,6 +52,8 @@ final class CombateService
             'rodada' => (int) ($c['rodada'] ?? 1),
             'atual' => $c['atual'] ?? null,
             'itens' => $itens,
+            // Técnicas com duração em andamento (Quick Draw...): ver `TecnicasAtivas`
+            'ativas' => array_values($c['ativas'] ?? []),
         ];
     }
 
@@ -90,6 +92,8 @@ final class CombateService
             $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
             $antes = self::normalizar($m->combate);
             $c = $this->aplicar($m, $acesso, $comando, $d, $antes);
+            // Técnicas com duração: uma rodada a menos a cada rodada nova; saem as que acabaram e as de quem saiu do encontro
+            $c['ativas'] = TecnicasAtivas::aposMudanca($antes, $c);
             $m->forceFill(['combate' => $c])->save();
 
             return $c;
@@ -97,6 +101,8 @@ final class CombateService
 
         // Passou o turno: um turno a menos nas condições com duração de quem terminou
         Duracoes::aoMudarOCombate($mesa, $antes, $depois);
+        // ...e as Técnicas ativas pedem o ataque contra quem começa o turno ao alcance
+        TecnicasAtivas::aoMudarOTurno($mesa, $acesso, $antes, $depois);
         Transmitir::enviar($mesa, 'combate', ['combate' => $depois, 'ator' => $acesso->jogador->id], ['mesa']);
 
         return $depois;

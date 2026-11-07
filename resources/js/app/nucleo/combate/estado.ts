@@ -21,6 +21,18 @@ export interface ItemTurno {
     movimento: { usado: number; bonus: number; base: number | null };
 }
 
+/** Uma Técnica com duração em andamento (Quick Draw...): ver `TecnicasAtivas` no servidor. */
+export interface TecnicaAtiva {
+    id: string;
+    personagem_id: number;
+    nome: string;
+    /** Rodadas que faltam. */
+    rodadas: number;
+    concentracao: boolean;
+    /** Alcance em metros. */
+    alcance: number;
+}
+
 export interface Combate {
     ativo: boolean;
     fase: FaseCombate;
@@ -28,9 +40,10 @@ export interface Combate {
     /** `id` do item do turno atual. */
     atual: string | null;
     itens: ItemTurno[];
+    ativas: TecnicaAtiva[];
 }
 
-export const combateVazio = (): Combate => ({ ativo: false, fase: 'inativo', rodada: 1, atual: null, itens: [] });
+export const combateVazio = (): Combate => ({ ativo: false, fase: 'inativo', rodada: 1, atual: null, itens: [], ativas: [] });
 
 /** Garante todos os campos (a prop inicial pode vir de um combate salvo antes de existirem). */
 export function normalizar(c: Partial<Combate> | null | undefined): Combate {
@@ -42,6 +55,7 @@ export function normalizar(c: Partial<Combate> | null | undefined): Combate {
         fase: ativo ? (c?.fase ?? 'em_curso') : 'inativo',
         rodada: c?.rodada ?? base.rodada,
         atual: c?.atual ?? null,
+        ativas: c?.ativas ?? [],
         itens: (c?.itens ?? []).map((i) => ({
             ...i,
             objeto_id: i.objeto_id ?? null,

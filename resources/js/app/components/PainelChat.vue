@@ -4,6 +4,7 @@ import { Send } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import type { AcaoDaRolagem } from '../nucleo/rolagem';
 import type { Mensagem } from '../tipos-mesa';
+import CartaoGatilho from './CartaoGatilho.vue';
 import CartaoRolagem from './CartaoRolagem.vue';
 import CartaoTecnica from './CartaoTecnica.vue';
 
@@ -25,6 +26,9 @@ const emit = defineEmits<{
     aplicarDano: [mensagem: Mensagem];
     rolarSalvaguarda: [mensagem: Mensagem, personagemId: number];
     pedirSalvaguarda: [mensagem: Mensagem];
+    gatilhoAtacar: [mensagem: Mensagem];
+    gatilhoEscolher: [mensagem: Mensagem, opcao: string];
+    gatilhoIgnorar: [mensagem: Mensagem];
 }>();
 
 /** Os botões do card (ex.: Dano) são de quem rolou — e do mestre, que controla todos os personagens. */
@@ -111,6 +115,16 @@ const hora = (m: Mensagem) => (m.criada_em ? new Date(m.criada_em).toLocaleTimeS
                 >
                     <p v-if="m.tipo === 'texto'" class="break-words text-preto-100">{{ m.texto }}</p>
                     <p v-else-if="m.visibilidade === 'secreto_oculto'" class="text-xs italic text-preto-300">🎲 {{ m.texto }}</p>
+                    <CartaoGatilho
+                        v-else-if="m.tipo === 'gatilho' && m.dados"
+                        :mensagem="m"
+                        :meus-personagens="meusPersonagens ?? []"
+                        :mestre="mestre"
+                        :ocupado="(ocupados ?? []).includes(`g${m.id}`)"
+                        @atacar="(msg) => emit('gatilhoAtacar', msg)"
+                        @escolher="(msg, o) => emit('gatilhoEscolher', msg, o)"
+                        @ignorar="(msg) => emit('gatilhoIgnorar', msg)"
+                    />
                     <CartaoTecnica
                         v-else-if="m.tipo === 'tecnica' && m.dados"
                         :mensagem="m"

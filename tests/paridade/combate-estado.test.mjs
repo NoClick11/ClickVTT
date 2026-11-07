@@ -28,7 +28,8 @@ test('normalizar completa o formato antigo do combate', () => {
     assert.equal(c.fase, 'em_curso');
     assert.equal(c.itens[0].disposicao, 'inimigo');
     assert.deepEqual(c.itens[0].movimento, { usado: 0, bonus: 0, base: null });
-    assert.deepEqual(normalizar(null), { ativo: false, fase: 'inativo', rodada: 1, atual: null, itens: [] });
+    assert.deepEqual(normalizar(null), { ativo: false, fase: 'inativo', rodada: 1, atual: null, itens: [], ativas: [] });
+    assert.deepEqual(c.ativas, []); // combates salvos antes das Técnicas ativas continuam válidos
 });
 
 test('em combate só o personagem do turno age; o mestre sempre; fora do combate todos', () => {

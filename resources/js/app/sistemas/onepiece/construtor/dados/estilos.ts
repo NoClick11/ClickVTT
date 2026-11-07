@@ -5,7 +5,7 @@
  * O que o motor de efeitos modela entra em `efeitos`/`usos`/`acao`; o resto vira descrição + `etiquetas` (o resumo curto
  * que aparece na ficha). Características com `nivelMin` só valem a partir do nível indicado.
  */
-import type { AtributoId, CategoriaDeAcao, Tecnica, TesteDaTecnica } from '../../regras.ts';
+import type { AtributoId, CategoriaDeAcao, DuracaoDaTecnica, Tecnica, TesteDaTecnica } from '../../regras.ts';
 import type { DadoDeVida } from '../regras.ts';
 import type { TracoDados } from './tipos.ts';
 
@@ -693,6 +693,22 @@ const TESTES_DO_ATIRADOR: Record<string, TesteDaTecnica> = {
 };
 for (const t of ATIRADOR.tecnicas) if (TESTES_DO_ATIRADOR[t.nome]) t.teste = TESTES_DO_ATIRADOR[t.nome];
 
+/**
+ * Técnicas que duram vários turnos: ficam ativas no combate e pedem um ataque no início do turno de cada criatura ao alcance (o jogador
+ * clica para rolar). Quick Draw: até 1 minuto (10 rodadas); no acerto, causa o dano e o jogador escolhe um dos três efeitos.
+ */
+const DURACOES_DO_ATIRADOR: Record<string, DuracaoDaTecnica> = {
+    'Quick Draw': {
+        rodadas: 10,
+        opcoes: [
+            { id: 'movimento', rotulo: 'Movimento da criatura a 0 até o fim do turno', efeito: { tipo: 'movimento_zero' } },
+            { id: 'dano', rotulo: '+2d10 de dano Contundente ou Perfurante', efeito: { tipo: 'dano', expressao: '2d10', tipoDano: 'perfurante' } },
+            { id: 'acao', rotulo: 'Impedi-la de realizar a ação neste turno', efeito: { tipo: 'sem_acao' } },
+        ],
+    },
+};
+for (const t of ATIRADOR.tecnicas) if (DURACOES_DO_ATIRADOR[t.nome]) t.duracao = DURACOES_DO_ATIRADOR[t.nome];
+
 export const ESTILOS: EstiloDados[] = [ATIRADOR];
 export const estiloPorId = (id: string | undefined | null): EstiloDados | undefined => ESTILOS.find((e) => e.id === id);
 
@@ -743,6 +759,7 @@ export function tecnicaDoEstilo(t: TecnicaDoEstilo & { origem: string }): Tecnic
         ...(t.acao ? { acao: t.acao } : {}),
         ...(t.reacao ? { reacao: t.reacao } : {}),
         ...(t.teste ? { teste: t.teste } : {}),
+        ...(t.duracao ? { duracao: t.duracao } : {}),
         builder: 'estilo',
     };
 }

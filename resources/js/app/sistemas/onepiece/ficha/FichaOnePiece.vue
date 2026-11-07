@@ -72,12 +72,16 @@ const acoesDoCombate = inject<{
     gastar: (personagemId: number, categoria: string | undefined, tecnica?: boolean) => Promise<boolean>;
     ataque: (personagemId: number, ataquesPorAcao: number) => { ok: boolean; motivo?: string; feitos: number; max: number; extras: number };
     darExtras: ((personagemId: number, n: number) => Promise<void>) | null;
+    ativas: (personagemId: number) => { id: string; nome: string; rodadas: number; concentracao: boolean }[];
+    encerrarAtiva: ((id: string) => Promise<void>) | null;
 }>('acoesDoCombate', {
     categorias: computed(() => []),
     pode: () => ({ ok: true }),
     gastar: async () => true,
     ataque: (_id, ataquesPorAcao) => ({ ok: true, feitos: 0, max: ataquesPorAcao, extras: 0 }),
     darExtras: null,
+    ativas: () => [],
+    encerrarAtiva: null,
 });
 
 provide(CHAVE_FICHA, {
@@ -103,6 +107,8 @@ provide(CHAVE_FICHA, {
         rotulo: (categoria) => acoesDoCombate.categorias.value.find((c) => c.id === categoria)?.nome ?? '',
         ataque: (ataquesPorAcao) => acoesDoCombate.ataque(props.personagem.id, ataquesPorAcao),
         darExtras: acoesDoCombate.darExtras ? (n) => acoesDoCombate.darExtras!(props.personagem.id, n) : null,
+        ativas: () => acoesDoCombate.ativas(props.personagem.id),
+        encerrarAtiva: acoesDoCombate.encerrarAtiva,
         todas: () => acoesDoCombate.categorias.value,
     },
     // Shift = vantagem, Ctrl/Alt = desvantagem (manual vence); sem tecla, valem os efeitos dos itens.
