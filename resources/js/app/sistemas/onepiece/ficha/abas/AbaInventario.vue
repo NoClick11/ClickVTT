@@ -212,7 +212,7 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
 </script>
 
 <template>
-    <div class="grid gap-3 p-3">
+    <div class="grid min-w-0 gap-3 overflow-x-hidden p-3">
         <div class="grid gap-3 sm:grid-cols-2">
             <section :class="estilos.cartao" class="p-3" aria-label="Carga">
                 <p class="mb-1.5 flex justify-between text-[11px] font-semibold uppercase tracking-wider text-ouro-400">
@@ -263,7 +263,7 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
 
         <section v-for="(s, si) in ficha.inventario" :key="si" :class="estilos.cartao" :aria-label="s.secao">
             <h3
-                class="flex items-center justify-between border-b border-preto-800 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-ouro-400"
+                class="flex flex-wrap items-center justify-between gap-x-3 border-b border-preto-800 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-ouro-400"
             >
                 <span>{{ s.secao }}</span
                 ><span class="flex items-center gap-2 text-preto-500"
@@ -289,7 +289,7 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
                         {{ g.nome }}
                     </li>
                     <template v-for="{ ref, ri } in g.refs" :key="ri">
-                        <li class="flex items-center gap-3 px-3 py-1.5">
+                        <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5">
                             <template v-if="itens[ref.item_id]">
                                 <button
                                     v-if="itens[ref.item_id].equipavel"
@@ -310,7 +310,7 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
                                     <span v-if="ref.equipado" class="text-[10px] font-bold leading-none">✓</span>
                                 </button>
                                 <span v-else class="size-4 shrink-0" aria-hidden="true" />
-                                <span class="min-w-0 flex-1">
+                                <span class="min-w-[9rem] flex-1 basis-40">
                                     <span class="flex items-center gap-1.5"
                                         ><span class="truncate">{{ itens[ref.item_id].nome }}</span
                                         ><button
@@ -548,7 +548,7 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
             </div>
         </section>
 
-        <form v-if="editar" class="flex gap-1.5" @submit.prevent="adicionarSecao">
+        <form v-if="editar" class="flex flex-wrap gap-1.5" @submit.prevent="adicionarSecao">
             <input
                 v-model="novaSecao"
                 type="text"
