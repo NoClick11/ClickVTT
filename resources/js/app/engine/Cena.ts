@@ -831,10 +831,11 @@ export class Cena {
             { passive: false },
         );
         ouvir(canvas, 'dblclick', (e) => {
-            if (!this.opcoes.mestre) return;
             const t = this.posTela(e);
             const p = this.paraMundo(t.x, t.y);
             const alvo = this.objetoEm(p.x, p.y);
+            if (alvo?.dto.tipo === 'token' && alvo.dto.personagem_id) return this.opcoes.eventos.abrirToken(alvo.dto.id);
+            if (!this.opcoes.mestre) return;
             if (alvo?.dto.tipo === 'parede' && ['porta', 'janela'].includes(alvo.dto.dados?.tipo ?? ''))
                 this.opcoes.eventos.alternarPorta(alvo.dto.id);
             else if (alvo?.dto.tipo === 'loot') this.opcoes.eventos.abrirLoot(alvo.dto.id);

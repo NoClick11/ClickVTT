@@ -30,6 +30,8 @@ export interface ObjetoDto {
     status?: string[];
     /** token: vida, CA e PP do personagem, só para quem pode ver a ficha (o jogador vê os dele; o mestre, todos). */
     barras?: BarraDoToken[];
+    /** token: o personagem está com 0 de vida (NPC): o token é desenhado esmaecido com uma caveira. */
+    morto?: boolean;
     /** jogador que fez (traço/texto) */
     jogador_id: number | null;
     nome: string | null;
@@ -123,6 +125,8 @@ export interface CenaEventos {
     criarLoot: (x: number, y: number) => void;
     /** Clique num loot (jogador) ou duplo clique (mestre): abre o conteúdo. */
     abrirLoot: (id: number) => void;
+    /** Duplo clique num token com personagem (mestre ou jogador): abre a ficha. */
+    abrirToken: (id: number) => void;
     /** `pontos` relativos a (x, y); bbox já calculada. */
     criarTraco: (traco: { x: number; y: number; largura: number; altura: number; pontos: number[] }) => void;
     /** Clique com a ferramenta texto: mundo (x, y) e posição na tela para o campo de digitação. */

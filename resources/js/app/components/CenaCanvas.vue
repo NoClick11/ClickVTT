@@ -34,6 +34,7 @@ const emit = defineEmits<{
     criarLuz: [x: number, y: number];
     criarLoot: [x: number, y: number];
     abrirLoot: [id: number];
+    abrirToken: [id: number];
     memoria: [imagem: string];
     pedirMemoria: [paginaId: number];
     criarTraco: [traco: { x: number; y: number; largura: number; altura: number; pontos: number[] }];
@@ -63,6 +64,7 @@ onMounted(async () => {
             criarLuz: (x, y) => emit('criarLuz', x, y),
             criarLoot: (x, y) => emit('criarLoot', x, y),
             abrirLoot: (id) => emit('abrirLoot', id),
+            abrirToken: (id) => emit('abrirToken', id),
             memoria: (imagem) => emit('memoria', imagem),
             pedirMemoria: (id) => emit('pedirMemoria', id),
             criarTraco: (t) => emit('criarTraco', t),

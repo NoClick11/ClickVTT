@@ -22,6 +22,8 @@ export class ObjetoVisual {
     private barras = new Container();
     private barrasDesenhadas = '';
     private mira = new Graphics();
+    private caveira = new Container();
+    private caveiraDesenhada = '';
     private miraLigada = false;
     private destruido = false;
     private enfase = true;
@@ -33,7 +35,7 @@ export class ObjetoVisual {
         private mestre = false,
     ) {
         this.dto = { ...dto };
-        this.container.addChild(this.fundo, this.marcador, this.iconesStatus, this.barras, this.mira);
+        this.container.addChild(this.fundo, this.marcador, this.caveira, this.iconesStatus, this.barras, this.mira);
         this.aplicar();
         void this.carregarMidia();
     }
@@ -118,9 +120,11 @@ export class ObjetoVisual {
         const { x, y, largura, altura, camada } = this.dto;
         this.container.position.set(x, y);
         // Objetos da camada do mestre aparecem esmaecidos: o jogador não os vê.
-        this.container.alpha = camada === 'mestre' ? 0.6 : this.dto.tipo === 'parede' && this.mestre && !this.enfase ? 0.25 : 1;
+        this.container.alpha =
+            this.ehToken && this.dto.morto ? 0.55 : camada === 'mestre' ? 0.6 : this.dto.tipo === 'parede' && this.mestre && !this.enfase ? 0.25 : 1;
         this.desenharFundo();
         this.desenharMarcador();
+        this.desenharCaveira();
         this.desenharStatus();
         this.desenharBarras();
         this.desenharMira();
@@ -309,6 +313,32 @@ export class ObjetoVisual {
                 .lineTo(x0 + ax * risco, y0 + ay * risco)
                 .stroke({ color: 0xef4444, width: 3, alpha: 0.95, cap: 'round' });
         }
+    }
+
+    /** Token de NPC com 0 de vida: um X vermelho e uma caveira por cima (o token fica esmaecido). */
+    private desenharCaveira(): void {
+        const morto = this.ehToken && !!this.dto.morto;
+        const lado = Math.round(Math.min(this.dto.largura, this.dto.altura));
+        const chave = morto ? `1|${lado}` : '';
+        if (chave === this.caveiraDesenhada) return;
+        this.caveiraDesenhada = chave;
+        for (const filho of this.caveira.removeChildren()) filho.destroy({ children: true });
+        if (!morto) return;
+        const { largura, altura } = this.dto;
+        const m = lado * 0.18;
+        const x = new Graphics()
+            .moveTo(m, m)
+            .lineTo(largura - m, altura - m)
+            .moveTo(largura - m, m)
+            .lineTo(m, altura - m)
+            .stroke({ color: 0xef4444, width: Math.max(3, lado * 0.06), alpha: 0.85, cap: 'round' });
+        const icone = new Text({
+            text: '💀',
+            style: { fontFamily: 'Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif', fontSize: lado * 0.5 },
+        });
+        icone.anchor.set(0.5);
+        icone.position.set(largura / 2, altura / 2);
+        this.caveira.addChild(x, icone);
     }
 
     /**
