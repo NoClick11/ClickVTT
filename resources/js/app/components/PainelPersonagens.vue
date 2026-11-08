@@ -2,6 +2,7 @@
 import { Button } from '@/components/ui/button';
 import type { Jogador, Personagem } from '@/site/types';
 import { Crosshair, Crown, Plus, Users } from 'lucide-vue-next';
+import { computed } from 'vue';
 import type { PaginaDto } from '../engine/tipos';
 import { MIME_PERSONAGEM } from '../nucleo/itens/arrastar';
 
@@ -12,7 +13,7 @@ const arrastar = (e: DragEvent, id: number) => {
     e.dataTransfer.effectAllowed = 'copy';
 };
 
-defineProps<{
+const props = defineProps<{
     personagens: Personagem[];
     jogadores: Jogador[];
     meuId: number;
@@ -28,6 +29,9 @@ defineProps<{
     /** Fogo amigo da mesa (o mestre liga). */
     fogoAmigo?: boolean;
 }>();
+/** O jogador só vê a lista com os personagens dele; o mestre vê todos. */
+const visiveis = computed(() => (props.mestre ? props.personagens : props.personagens.filter((p) => props.meusPersonagens.includes(p.id))));
+
 defineEmits<{
     abrir: [personagemId: number];
     focar: [personagemId: number];
@@ -70,7 +74,7 @@ defineEmits<{
             </label>
             <ul class="grid gap-1.5">
                 <li
-                    v-for="p in personagens"
+                    v-for="p in visiveis"
                     :key="p.id"
                     class="flex items-center gap-1 rounded-md border bg-preto-900/70 pr-1.5 transition"
                     :draggable="mestre"
@@ -137,11 +141,11 @@ defineEmits<{
                     /></Button>
                 </li>
             </ul>
-            <p v-if="!personagens.length" class="mt-4 text-center text-xs text-preto-400">
+            <p v-if="!visiveis.length" class="mt-4 text-center text-xs text-preto-400">
                 {{
                     mestre
                         ? 'Nenhum personagem nesta mesa. Crie o primeiro com o botão acima.'
-                        : 'Nenhum personagem nesta mesa. O mestre cria os personagens.'
+                        : 'Você ainda não tem um personagem nesta mesa. O mestre atribui os personagens.'
                 }}
             </p>
         </section>
