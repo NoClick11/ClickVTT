@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Mesa;
 use App\Models\Objeto;
 use App\Models\Pagina;
+use App\Models\Personagem;
 use App\Nucleo\Cena\Paredes;
 use App\Nucleo\Combate\CombateService;
 use App\Nucleo\Combate\TecnicasAtivas;
@@ -62,6 +63,9 @@ class ObjetoController extends Controller
             'dados.angulo' => ['nullable', 'numeric', 'min:1', 'max:360'],
             'dados.direcao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
             'dados.atravessa' => ['nullable', 'boolean'],
+            'dados.destino_pagina_id' => ['nullable', 'integer'],
+            'dados.destino_objeto_id' => ['nullable', 'integer'],
+            'dados.destino_nome' => ['nullable', 'string', 'max:80'],
         ]);
         $this->validarCamada($dados['camada'], $dados['tipo']);
         $this->validarPares($dados);
@@ -69,11 +73,23 @@ class ObjetoController extends Controller
         if ($acesso->ehMestre()) {
             $somenteMestre = $dados['camada'] === 'mestre';
         } else {
-            // Jogador: só traço e texto, na camada Jogadores, na própria página, em seu nome (jogador).
-            abort_unless(in_array($dados['tipo'], self::TIPOS_DO_JOGADOR, true) && $dados['camada'] === 'jogadores', 403);
+            // Jogador: traço, texto ou o token do seu próprio personagem (camada Jogadores na sua página).
+            $ehSeuToken = $dados['tipo'] === 'token'
+                && ! empty($dados['personagem_id'])
+                && $acesso->podeControlar((int) $dados['personagem_id'])
+                && empty(Personagem::find($dados['personagem_id'])?->ficha['npc']);
+
+            abort_unless(
+                (in_array($dados['tipo'], self::TIPOS_DO_JOGADOR, true) || $ehSeuToken)
+                && $dados['camada'] === 'jogadores',
+                403,
+                'Você não pode criar este tipo de objeto.'
+            );
             abort_unless($pagina->id === $this->paginaDe($mesa, $acesso), 403);
             $dados['jogador_id'] = $acesso->jogador->id;
-            $dados['personagem_id'] = null;
+            if (! $ehSeuToken) {
+                $dados['personagem_id'] = null;
+            }
             $somenteMestre = false;
         }
 
@@ -83,6 +99,13 @@ class ObjetoController extends Controller
             abort_unless($acesso->ehMestre(), 403);
             $dados['arquivo'] = $arquivo->store('cenas', 'public');
             $dados['arquivo_tipo'] = $this->tipoDoArquivo($arquivo->getClientOriginalExtension());
+        } elseif (! empty($dados['personagem_id'])) {
+            $p = Personagem::find($dados['personagem_id']);
+            $fotoToken = $p?->ficha['foto_token'] ?? $p?->ficha['foto'] ?? null;
+            if (! empty($fotoToken) && str_starts_with($fotoToken, '/storage/')) {
+                $dados['arquivo'] = substr($fotoToken, 9);
+                $dados['arquivo_tipo'] = $this->tipoDoArquivo(pathinfo($dados['arquivo'], PATHINFO_EXTENSION));
+            }
         }
 
         $objeto = $pagina->objetos()->create($dados)->refresh();
@@ -125,6 +148,9 @@ class ObjetoController extends Controller
                 'dados.angulo' => ['nullable', 'numeric', 'min:1', 'max:360'],
                 'dados.direcao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
                 'dados.atravessa' => ['nullable', 'boolean'],
+                'dados.destino_pagina_id' => ['nullable', 'integer'],
+                'dados.destino_objeto_id' => ['nullable', 'integer'],
+                'dados.destino_nome' => ['nullable', 'string', 'max:80'],
             ]);
             if (isset($dados['camada'])) {
                 $this->validarCamada($dados['camada'], $objeto->tipo);
@@ -217,6 +243,105 @@ class ObjetoController extends Controller
             ->contains(fn (Objeto $t) => Paredes::distanciaAoSegmento($t->x + $t->largura / 2, $t->y + $t->altura / 2, ...$p) - max($t->largura, $t->altura) / 2 <= $alcance);
     }
 
+    /**
+     * Utilizar um Ponto de Viagem para transitar para outro mapa.
+     * O personagem do jogador precisa estar próximo ao ponto de viagem (a até 1,5 quadrados da borda).
+     */
+    public function viajar(Request $request, Mesa $mesa, Objeto $objeto): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+        $this->pertence($mesa, $objeto);
+        abort_unless($objeto->tipo === 'viagem', 422, 'Este objeto não é um ponto de viagem.');
+
+        $destinoPaginaId = (int) ($objeto->dados['destino_pagina_id'] ?? 0);
+        abort_unless($destinoPaginaId > 0, 422, 'Este ponto de viagem não possui mapa de destino configurado.');
+
+        $destinoPagina = $mesa->paginas()->find($destinoPaginaId);
+        abort_unless($destinoPagina !== null, 404, 'Mapa de destino não encontrado.');
+
+        $tokenAMover = null;
+
+        if (! $acesso->ehMestre()) {
+            abort_unless($objeto->pagina_id === $this->paginaDe($mesa, $acesso), 403);
+            $tokenAMover = $this->tokenPertoDaViagem($objeto, $acesso);
+            abort_unless($tokenAMover !== null, 422, 'Aproxime seu personagem do ponto de viagem para usá-lo.');
+        } else {
+            if ($request->filled('personagem_id')) {
+                $tokenAMover = $objeto->pagina->objetos()
+                    ->where('tipo', 'token')
+                    ->where('personagem_id', $request->input('personagem_id'))
+                    ->first();
+            }
+        }
+
+        $destX = (float) ($destinoPagina->largura / 2);
+        $destY = (float) ($destinoPagina->altura / 2);
+
+        // Se há um ponto de viagem conectado no mapa de destino:
+        $pontoDestino = null;
+        if (! empty($objeto->dados['destino_objeto_id'])) {
+            $pontoDestino = $destinoPagina->objetos()->where('tipo', 'viagem')->find($objeto->dados['destino_objeto_id']);
+        }
+        if (! $pontoDestino) {
+            $pontoDestino = $destinoPagina->objetos()
+                ->where('tipo', 'viagem')
+                ->where('dados->destino_pagina_id', $objeto->pagina_id)
+                ->first();
+        }
+
+        if ($pontoDestino) {
+            $destX = (float) ($pontoDestino->x + $pontoDestino->largura / 2);
+            $destY = (float) ($pontoDestino->y + $pontoDestino->altura / 2);
+        }
+
+        $origemPaginaId = $objeto->pagina_id;
+
+        DB::transaction(function () use ($acesso, $destinoPagina, $tokenAMover, $destX, $destY) {
+            $acesso->jogador->update(['pagina_id' => $destinoPagina->id]);
+
+            if ($tokenAMover) {
+                $tokenAMover->update([
+                    'pagina_id' => $destinoPagina->id,
+                    'x' => $destX - ($tokenAMover->largura / 2),
+                    'y' => $destY - ($tokenAMover->altura / 2),
+                    'z' => ((int) $destinoPagina->objetos()->max('z')) + 1,
+                ]);
+            }
+        });
+
+        Transmitir::cena($mesa, $origemPaginaId, $acesso->jogador->id);
+        Transmitir::cena($mesa, $destinoPagina->id, $acesso->jogador->id);
+
+        return response()->json([
+            'destino_pagina_id' => $destinoPagina->id,
+            'x' => $destX,
+            'y' => $destY,
+            'token_movido' => $tokenAMover !== null,
+        ]);
+    }
+
+    /** Algum token do jogador está perto do ponto de viagem (a até 1,5 quadrados da borda)? */
+    private function tokenPertoDaViagem(Objeto $viagem, AcessoMesa $acesso): ?Objeto
+    {
+        $cx = $viagem->x + $viagem->largura / 2;
+        $cy = $viagem->y + $viagem->altura / 2;
+        $alcance = (float) ($viagem->pagina->tamanho_quadrado * 1.5);
+        $raioViagem = max($viagem->largura, $viagem->altura) / 2;
+
+        return $viagem->pagina->objetos()
+            ->where('tipo', 'token')
+            ->where('camada', 'jogadores')
+            ->whereIn('personagem_id', $acesso->personagensPermitidos() ?: [0])
+            ->get()
+            ->first(function (Objeto $t) use ($cx, $cy, $alcance, $raioViagem) {
+                $tcx = $t->x + $t->largura / 2;
+                $tcy = $t->y + $t->altura / 2;
+                $dist = hypot($tcx - $cx, $tcy - $cy) - (max($t->largura, $t->altura) / 2 + $raioViagem);
+
+                return $dist <= $alcance;
+            });
+    }
+
     public function destroy(Request $request, Mesa $mesa, Objeto $objeto): JsonResponse
     {
         $acesso = AcessoMesa::exigir($request, $mesa);
@@ -283,7 +408,7 @@ class ObjetoController extends Controller
     private function validarCamada(string $camada, string $tipo): void
     {
         $iluminacao = in_array($tipo, ['luz', 'parede'], true);
-        abort_if($tipo === 'loot' && ! in_array($camada, ['mestre', 'jogadores'], true), 422, 'O loot fica na camada Mestre (oculto) ou Jogadores (aberto).');
+        abort_if(in_array($tipo, ['loot', 'viagem'], true) && ! in_array($camada, ['mestre', 'jogadores'], true), 422, 'O objeto fica na camada Mestre ou Jogadores.');
         abort_if($iluminacao && $camada !== 'iluminacao', 422, 'Luzes e paredes pertencem à camada de iluminação.');
         abort_if(! $iluminacao && $camada === 'iluminacao', 422, 'Esta camada só aceita luzes e paredes.');
     }

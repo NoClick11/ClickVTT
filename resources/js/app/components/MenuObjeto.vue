@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check } from 'lucide-vue-next';
+import { Check, Settings } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { CAMADAS, type Camada, type ObjetoDto } from '../engine/tipos';
 
@@ -8,7 +8,7 @@ import { CAMADAS, type Camada, type ObjetoDto } from '../engine/tipos';
  * A camada atual aparece marcada; a iluminação (luzes e paredes) não entra, porque só aceita esses tipos.
  */
 const props = defineProps<{ objeto: ObjetoDto; x: number; y: number }>();
-const emit = defineEmits<{ mover: [camada: Camada]; abrir: []; fechar: [] }>();
+const emit = defineEmits<{ mover: [camada: Camada]; abrir: []; configurar: []; fechar: [] }>();
 
 /** O loot só vive oculto (Mestre) ou aberto aos jogadores (Jogadores). */
 const camadas = computed(() => CAMADAS.filter((c) => c.id !== 'iluminacao' && (props.objeto.tipo !== 'loot' || c.id !== 'mapa')));
@@ -34,6 +34,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', aoTecla));
         :aria-label="`Opções de ${titulo}`"
     >
         <p class="truncate px-2 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wider text-ouro-400" :title="titulo">{{ titulo }}</p>
+        <button
+            type="button"
+            role="menuitem"
+            class="mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-preto-100 transition hover:bg-ouro-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+            @click="emit('configurar')"
+        >
+            <Settings class="size-4 text-ouro-400" />
+            Configurações
+        </button>
         <button
             v-if="objeto.tipo === 'loot'"
             type="button"

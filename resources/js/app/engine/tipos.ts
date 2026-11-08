@@ -8,7 +8,7 @@ export const CAMADAS: { id: Camada; nome: string; dica: string }[] = [
     { id: 'iluminacao', nome: 'Iluminação', dica: 'Luzes, paredes, portas e janelas' },
 ];
 
-export type Ferramenta = 'selecionar' | 'mirar' | 'mover' | 'regua' | 'pintar' | 'texto' | 'parede' | 'porta' | 'janela' | 'luz' | 'loot';
+export type Ferramenta = 'selecionar' | 'mirar' | 'mover' | 'regua' | 'pintar' | 'texto' | 'parede' | 'porta' | 'janela' | 'luz' | 'loot' | 'viagem';
 
 /** Estilo atual das ferramentas de pintar (traço) e texto. */
 export interface EstiloPintura {
@@ -24,7 +24,7 @@ import type { BarraDoToken } from '../nucleo/sistemas/tipos';
 export interface ObjetoDto {
     id: number;
     camada: Camada;
-    tipo: 'imagem' | 'token' | 'luz' | 'parede' | 'traco' | 'texto' | 'loot';
+    tipo: 'imagem' | 'token' | 'luz' | 'parede' | 'traco' | 'texto' | 'loot' | 'viagem';
     personagem_id: number | null;
     /** token: ids dos efeitos (condições) ativos do personagem, desenhados como ícones no token. */
     status?: string[];
@@ -32,6 +32,8 @@ export interface ObjetoDto {
     barras?: BarraDoToken[];
     /** token: o personagem está com 0 de vida (NPC): o token é desenhado esmaecido com uma caveira. */
     morto?: boolean;
+    /** token: se é um NPC (para estilização de borda etc.) */
+    npc?: boolean;
     /** jogador que fez (traço/texto) */
     jogador_id: number | null;
     nome: string | null;
@@ -74,6 +76,10 @@ export interface ObjetoDto {
         direcao?: number;
         /** luz: ignora as paredes. */
         atravessa?: boolean;
+        /** viagem: página e ponto de destino conectados */
+        destino_pagina_id?: number | null;
+        destino_objeto_id?: number | null;
+        destino_nome?: string | null;
     } | null;
 }
 
@@ -134,12 +140,23 @@ export interface CenaEventos {
     criarParede: (pontos: [number, number, number, number], tipo: TipoParede) => void;
     /** Clique numa porta (ferramenta selecionar, mestre ou jogador) alterna aberta/fechada. */
     alternarPorta: (id: number) => void;
+    /** Clique num ponto de viagem (mestre ou jogador próximo) para transitar entre mapas. */
+    usarPontoViagem: (id: number) => void;
+    /** Clique com a ferramenta Viagem (mestre): cria um ponto de viagem. */
+    criarViagem: (x: number, y: number) => void;
     /** Botão direito (sem arrastar) sobre um objeto, em qualquer camada: posição na tela (client) para abrir o menu. */
     menuObjeto: (id: number, tela: { x: number; y: number }) => void;
     /** Ferramenta Mirar (ou tecla T + clique): o token de personagem clicado vira o alvo (`null` = limpar o alvo). */
     mirar: (id: number | null) => void;
     /** O gabarito de área foi confirmado (ids dos personagens dentro dele) ou cancelado (`null`). */
-    gabarito: (personagemIds: number[] | null) => void;
+    gabarito: (
+        personagemIds: number[] | null,
+        info?: {
+            medida: { forma: 'linha' | 'cone' | 'esfera'; metros: number; angulo: number };
+            origem: { x: number; y: number };
+            mpp: number;
+        } | null,
+    ) => void;
     /** Ponto marcado no mapa para uma esfera (Vigília): o centro em pixels do mundo, ou null (Esc). */
     ponto: (ponto: { x: number; y: number } | null) => void;
     /** A memória das áreas vistas mudou: PNG (data URL) para guardar no servidor. */

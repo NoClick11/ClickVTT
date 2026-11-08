@@ -33,6 +33,8 @@ const emit = defineEmits<{
     zoom: [escala: number];
     criarLuz: [x: number, y: number];
     criarLoot: [x: number, y: number];
+    criarViagem: [x: number, y: number];
+    usarPontoViagem: [id: number];
     abrirLoot: [id: number];
     abrirToken: [id: number];
     memoria: [imagem: string];
@@ -43,7 +45,14 @@ const emit = defineEmits<{
     alternarPorta: [id: number];
     menuObjeto: [id: number, tela: { x: number; y: number }];
     mirar: [id: number | null];
-    gabarito: [personagemIds: number[] | null];
+    gabarito: [
+        personagemIds: number[] | null,
+        info?: {
+            medida: { forma: 'linha' | 'cone' | 'esfera'; metros: number; angulo: number };
+            origem: { x: number; y: number };
+            mpp: number;
+        } | null,
+    ];
     ponto: [ponto: { x: number; y: number } | null];
 }>();
 
@@ -63,6 +72,8 @@ onMounted(async () => {
             zoom: (e) => emit('zoom', e),
             criarLuz: (x, y) => emit('criarLuz', x, y),
             criarLoot: (x, y) => emit('criarLoot', x, y),
+            criarViagem: (x, y) => emit('criarViagem', x, y),
+            usarPontoViagem: (id) => emit('usarPontoViagem', id),
             abrirLoot: (id) => emit('abrirLoot', id),
             abrirToken: (id) => emit('abrirToken', id),
             memoria: (imagem) => emit('memoria', imagem),
@@ -73,7 +84,7 @@ onMounted(async () => {
             alternarPorta: (id) => emit('alternarPorta', id),
             menuObjeto: (id, tela) => emit('menuObjeto', id, tela),
             mirar: (id) => emit('mirar', id),
-            gabarito: (ids) => emit('gabarito', ids),
+            gabarito: (ids, info) => emit('gabarito', ids, info),
             ponto: (p) => emit('ponto', p),
         },
     });
@@ -174,6 +185,21 @@ defineExpose({
     carregarMemoria: (imagem: string | null) => cena?.carregarMemoria(imagem),
     /** O mestre apagou a memória das áreas vistas. */
     limparMemoria: () => cena?.limparMemoria(),
+    /** Dispara um efeito visual temporário no mapa. */
+    tocarEfeito: (
+        x: number,
+        y: number,
+        urlAnimacao: string,
+        opcoes?: {
+            largura?: number;
+            altura?: number;
+            duracaoMs?: number;
+            rotacao?: number;
+            ancoraX?: number;
+            ancoraY?: number;
+        },
+    ) => void cena?.tocarEfeito(x, y, urlAnimacao, opcoes),
+    mostrarTextoFlutuante: (x: number, y: number, texto: string, tipo: 'dano' | 'cura') => cena?.mostrarTextoFlutuante(x, y, texto, tipo),
 });
 </script>
 

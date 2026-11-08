@@ -1,4 +1,5 @@
-import { Application, Container, Graphics, Text } from 'pixi.js';
+import { Application, Assets, Container, Graphics, Text } from 'pixi.js';
+import { GifSprite } from 'pixi.js/gif';
 import { areaMedida, desenhoDaArea, tokensNaArea, type AreaDeEfeito } from '../nucleo/combate/area';
 import { fatorParaMetros, limitar as limitarPasso, metros as metrosDe } from '../nucleo/combate/movimento';
 import { Iluminacao } from './Iluminacao';
@@ -24,6 +25,16 @@ const ALCAS: AlcaRedimensionar[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
 type Modo = 'nenhum' | 'pan' | 'mover' | 'redimensionar' | 'regua' | 'desenhar' | 'pintar' | 'laco';
 
+interface AnimacaoToken {
+    objetoId: number;
+    de: { x: number; y: number };
+    para: { x: number; y: number };
+    decorrido: number;
+    duracao: number;
+    dtoFinal: ObjetoDto;
+    aoConcluir?: () => void;
+}
+
 interface Opcoes {
     mestre: boolean;
     /** Id do JOGADOR desta aba (traços/textos dele). */
@@ -45,6 +56,9 @@ export class Cena {
     private camadas = new Map<Camada, Container>();
     private overlay = new Container();
     private iluminacao!: Iluminacao;
+    private iluminacaoPendente = false;
+    private animacoesTokens = new Map<number, AnimacaoToken>();
+    private tickHandler: ((ticker: { deltaMS: number }) => void) | null = null;
     private temporizadorIluminacao: ReturnType<typeof setTimeout> | undefined;
     private temporizadorMemoria: ReturnType<typeof setTimeout> | undefined;
     private ultimaMemoria = '';
@@ -53,6 +67,8 @@ export class Cena {
     private gabaritoG = new Graphics();
     private zonasG = new Graphics();
     private desenhoG = new Graphics();
+    private efeitosG = new Container();
+    private textosG = new Container();
     private reguaTexto = new Text({
         text: '',
         style: { fontFamily: 'sans-serif', fontSize: 14, fill: 0xfaf0cf, fontWeight: '600', stroke: { color: 0x0d0a12, width: 4 } },
@@ -95,6 +111,10 @@ export class Cena {
     private desenhoInicio = { x: 0, y: 0 };
     /** Destino encaixado no grid durante o redimensionamento (mostrado como contorno-guia). */
     private alvoEncaixe: CamposGeometria | null = null;
+    /** Destino do token durante o arrasto estilo Foundry (o token real fica parado até soltar). */
+    private alvoMovimento: { x: number; y: number } | null = null;
+    /** Destinos dos tokens em grupo durante o arrasto estilo Foundry. */
+    private alvosGrupoMovimento = new Map<number, { x: number; y: number }>();
     private animacao: (() => void) | null = null;
     private estilo: EstiloPintura = { cor: '#ef4444', espessura: 4, tamanho: 28 };
     private tracoAtual: number[] = [];
@@ -132,17 +152,21 @@ export class Cena {
             this.mundo.addChild(c);
             if (id === 'mapa') this.mundo.addChild(this.grade);
         }
-        this.overlay.addChild(this.zonasG, this.selecaoG, this.reguaG, this.gabaritoG, this.desenhoG, this.reguaTexto);
+        this.overlay.addChild(this.zonasG, this.selecaoG, this.reguaG, this.gabaritoG, this.desenhoG, this.efeitosG, this.textosG, this.reguaTexto);
         this.reguaTexto.visible = false;
         this.mundo.addChild(this.overlay);
 
         this.ligarEventos();
+        this.tickHandler = (ticker) => this.tick(ticker.deltaMS);
+        this.app.ticker.add(this.tickHandler);
         this.pronto = true;
         this.atualizarCursor();
         this.redesenharPagina();
     }
 
     destruir(): void {
+        if (this.tickHandler) this.app.ticker.remove(this.tickHandler);
+        this.animacoesTokens.clear();
         clearTimeout(this.temporizadorIluminacao);
         clearTimeout(this.temporizadorMemoria);
         this.iluminacao.destruir();
@@ -167,7 +191,7 @@ export class Cena {
             this.ultimaMemoria = '';
             if (!this.opcoes.mestre && pagina.iluminacao_ativa) this.opcoes.eventos.pedirMemoria(pagina.id);
         }
-        this.agendarIluminacao(30);
+        this.solicitarIluminacao();
     }
 
     setObjetos(lista: ObjetoDto[]): void {
@@ -177,7 +201,16 @@ export class Cena {
             ids.add(dto.id);
             const existente = this.visuais.get(dto.id);
             if (existente) {
-                if (this.modo === 'nenhum' || this.selecionadoId !== dto.id) existente.atualizar(dto);
+                const sendoArrastado = this.modo === 'mover' && (this.selecionadoId === dto.id || this.grupoInicio.has(dto.id));
+                if (!sendoArrastado) {
+                    const mudouPosicao = dto.tipo === 'token' && Math.hypot(dto.x - existente.dto.x, dto.y - existente.dto.y) > 2;
+                    const distancia = mudouPosicao ? Math.hypot(dto.x - existente.dto.x, dto.y - existente.dto.y) : 0;
+                    if (mudouPosicao && distancia < 3000) {
+                        this.deslizarTokenPara(existente, dto);
+                    } else {
+                        existente.atualizar(dto);
+                    }
+                }
                 this.moverParaCamada(existente, dto.camada);
             } else {
                 const v = new ObjetoVisual(dto, this.opcoes.mestre);
@@ -189,6 +222,7 @@ export class Cena {
         }
         for (const [id, v] of this.visuais) {
             if (!ids.has(id)) {
+                this.animacoesTokens.delete(id);
                 v.destruir();
                 this.visuais.delete(id);
                 if (this.selecionadoId === id || this.extras.has(id)) this.definirSelecao(this.selecionadosIds().filter((x) => x !== id));
@@ -196,7 +230,7 @@ export class Cena {
         }
         this.ordenarCamadas();
         this.desenharSelecao();
-        this.agendarIluminacao(60);
+        this.solicitarIluminacao();
     }
 
     setCamadaAtiva(camada: Camada): void {
@@ -357,7 +391,7 @@ export class Cena {
             .sort((a, b) => perto(a) - perto(b))
             .map((id) => this.visuais.get(id)?.dto.personagem_id)
             .filter((x): x is number => typeof x === 'number');
-        this.opcoes.eventos.gabarito(ids);
+        this.opcoes.eventos.gabarito(ids, { medida: r.medida, origem: r.origem, mpp: r.mpp });
     }
 
     setPersonagensPermitidos(ids: number[]): void {
@@ -468,6 +502,107 @@ export class Cena {
         return this.paraMundo(this.app.screen.width / 2, this.app.screen.height / 2);
     }
 
+    /** Reproduz uma animação visual temporária sobre o mapa no ponto (x, y) */
+    async tocarEfeito(
+        x: number,
+        y: number,
+        urlAnimacao: string,
+        opcoes?: {
+            largura?: number;
+            altura?: number;
+            duracaoMs?: number;
+            rotacao?: number;
+            ancoraX?: number;
+            ancoraY?: number;
+        },
+    ): Promise<void> {
+        try {
+            let source: any;
+            try {
+                source = await Assets.load(urlAnimacao);
+            } catch {
+                await Assets.unload(urlAnimacao).catch(() => undefined);
+                source = await Assets.load(urlAnimacao);
+            }
+            const sprite = new GifSprite({ source, autoPlay: true, loop: false });
+            sprite.currentFrame = 0;
+            sprite.play();
+            sprite.anchor.set(opcoes?.ancoraX ?? 0.5, opcoes?.ancoraY ?? 0.5);
+            sprite.position.set(x, y);
+            const largura = opcoes?.largura ?? 180;
+            const altura = opcoes?.altura ?? 180;
+            sprite.width = largura;
+            sprite.height = altura;
+            if (opcoes?.rotacao !== undefined) {
+                sprite.rotation = opcoes.rotacao;
+            }
+            this.efeitosG.addChild(sprite);
+            const duracao = opcoes?.duracaoMs ?? 800;
+            setTimeout(() => {
+                this.efeitosG.removeChild(sprite);
+                sprite.destroy();
+            }, duracao);
+        } catch (e) {
+            console.warn('Falha ao reproduzir efeito visual:', e);
+        }
+    }
+
+    /** Exibe um texto flutuante animado (Scrolling Combat Text) sobre um ponto do mapa (dano em vermelho, cura em verde). */
+    mostrarTextoFlutuante(x: number, y: number, texto: string, tipo: 'dano' | 'cura'): void {
+        const cor = tipo === 'dano' ? 0xef4444 : 0x22c55e;
+        const txt = new Text({
+            text: texto,
+            style: {
+                fontFamily: 'Georgia, serif',
+                fontWeight: '900',
+                fontSize: 28,
+                fill: cor,
+                stroke: { color: 0x000000, width: 5 },
+            },
+        });
+        txt.anchor.set(0.5, 0.5);
+        const jitterX = (Math.random() - 0.5) * 16;
+        const startY = y - 20;
+        txt.position.set(x + jitterX, startY);
+        txt.scale.set(0.6);
+        this.textosG.addChild(txt);
+
+        let frame = 0;
+        const totalFrames = 65; // ~1.1s a 60fps
+
+        const animar = () => {
+            frame++;
+            const t = frame / totalFrames;
+
+            // Pop de impacto inicial
+            if (frame <= 8) {
+                const p = frame / 8;
+                txt.scale.set(0.6 + 0.65 * p);
+            } else if (frame <= 16) {
+                const p = (frame - 8) / 8;
+                txt.scale.set(1.25 - 0.25 * p);
+            } else {
+                txt.scale.set(1.0);
+            }
+
+            // Sobe suavemente em Y com desaceleração
+            txt.position.y = startY - 48 * Math.sin(t * (Math.PI / 2));
+
+            // Fade out gradual na segunda metade
+            if (t > 0.45) {
+                txt.alpha = Math.max(0, 1 - (t - 0.45) / 0.55);
+            }
+
+            if (frame >= totalFrames) {
+                this.app.ticker.remove(animar);
+                this.textosG.removeChild(txt);
+                txt.destroy();
+            }
+        };
+
+        this.app.ticker.add(animar);
+    }
+
     /** Centraliza a vista num objeto (mantém o zoom) e, opcionalmente, o seleciona. */
     focar(id: number, selecionar = false): void {
         const v = this.visuais.get(id);
@@ -550,11 +685,75 @@ export class Cena {
         return (v.dto.tipo === 'traco' || v.dto.tipo === 'texto') && v.dto.jogador_id !== null && v.dto.jogador_id === this.opcoes.jogadorId;
     }
 
+    // --- loop e animação fluida de tokens e iluminação -----------------------------------------------------
+
+    private tick(deltaMS: number): void {
+        if (this.animacoesTokens.size > 0) {
+            for (const [id, anim] of this.animacoesTokens) {
+                anim.decorrido += deltaMS;
+                const t = Math.min(1, anim.decorrido / anim.duracao);
+                // Easing cúbico suave estilo Foundry VTT
+                const e = 1 - Math.pow(1 - t, 3);
+                const x = anim.de.x + (anim.para.x - anim.de.x) * e;
+                const y = anim.de.y + (anim.para.y - anim.de.y) * e;
+                const v = this.visuais.get(id);
+                if (v) {
+                    v.definirGeometria({ x, y });
+                    if (this.selecionadoId === id) this.desenharSelecao();
+                }
+                if (t >= 1) {
+                    if (v) v.atualizar(anim.dtoFinal);
+                    this.animacoesTokens.delete(id);
+                    anim.aoConcluir?.();
+                }
+            }
+            this.iluminacaoPendente = true;
+        }
+
+        if (this.iluminacaoPendente) {
+            this.iluminacaoPendente = false;
+            this.atualizarIluminacao();
+        }
+    }
+
+    private solicitarIluminacao(): void {
+        this.iluminacaoPendente = true;
+    }
+
+    private deslizarTokenPara(v: ObjetoVisual, dto: ObjetoDto, aoConcluir?: () => void): void {
+        const de = { x: v.dto.x, y: v.dto.y };
+        const para = { x: dto.x, y: dto.y };
+        const distancia = Math.hypot(para.x - de.x, para.y - de.y);
+
+        // Movimento suave e perceptível estilo Foundry VTT: o token anda visivelmente pelo mapa
+        const tamQuad = this.pagina?.tamanho_quadrado || 70;
+        const passos = Math.max(1, distancia / tamQuad);
+        const duracao = Math.min(850, Math.max(260, passos * 140));
+
+        // Aplica outras mudanças de dados mantendo a posição inicial da animação
+        v.atualizar({ ...dto, x: de.x, y: de.y });
+
+        this.animacoesTokens.set(dto.id, {
+            objetoId: dto.id,
+            de,
+            para,
+            decorrido: 0,
+            duracao,
+            dtoFinal: { ...dto, x: para.x, y: para.y },
+            aoConcluir,
+        });
+        this.iluminacaoPendente = true;
+    }
+
     // --- iluminação dinâmica ------------------------------------------------------------------------------------------------
 
-    private agendarIluminacao(atraso: number): void {
+    private agendarIluminacao(atraso = 0): void {
+        if (atraso <= 0) {
+            this.solicitarIluminacao();
+            return;
+        }
         clearTimeout(this.temporizadorIluminacao);
-        this.temporizadorIluminacao = setTimeout(() => this.atualizarIluminacao(), atraso);
+        this.temporizadorIluminacao = setTimeout(() => this.solicitarIluminacao(), atraso);
     }
 
     /** Guarda a memória no servidor um pouco depois da última mudança (e só se for diferente da última enviada). */
@@ -573,20 +772,20 @@ export class Cena {
     async carregarMemoria(imagem: string | null): Promise<void> {
         await this.iluminacao.carregarMemoria(imagem);
         this.ultimaMemoria = imagem ?? '';
-        this.agendarIluminacao(0);
+        this.solicitarIluminacao();
     }
 
     /** O mestre apagou a memória: a névoa volta. */
     limparMemoria(): void {
         this.iluminacao.limparMemoria();
         this.ultimaMemoria = '';
-        this.agendarIluminacao(0);
+        this.solicitarIluminacao();
     }
 
     /** Recalcula luz, visão e sombras (na GPU) e mostra só o que o jogador enxerga: controles de porta e janela, tokens e loot. */
     private atualizarIluminacao(): void {
         if (!this.pronto || !this.pagina) return;
-        if (this.modo === 'mover' || this.modo === 'redimensionar') return; // o arrasto termina e agenda de novo
+        if (this.modo === 'redimensionar') return;
         const ativa = this.pagina.iluminacao_ativa;
         const dtos = [...this.visuais.values()].map((v) => v.dto);
         const meus = (o: ObjetoDto) => o.tipo === 'token' && o.personagem_id !== null && this.opcoes.personagensPermitidos.includes(o.personagem_id);
@@ -638,6 +837,14 @@ export class Cena {
     private lootEm(x: number, y: number): ObjetoVisual | null {
         const tol = 6 / this.mundo.scale.x;
         const achados = [...this.visuais.values()].filter((v) => v.dto.tipo === 'loot' && v.dto.camada === 'jogadores' && v.acerta(x, y, tol));
+
+        return achados.sort((a, b) => b.dto.z - a.dto.z || b.dto.id - a.dto.id)[0] ?? null;
+    }
+
+    /** Ponto de viagem sob o cursor. */
+    private viagemEm(x: number, y: number): ObjetoVisual | null {
+        const tol = 10 / this.mundo.scale.x;
+        const achados = [...this.visuais.values()].filter((v) => v.dto.tipo === 'viagem' && v.container.visible && v.acerta(x, y, tol));
 
         return achados.sort((a, b) => b.dto.z - a.dto.z || b.dto.id - a.dto.id)[0] ?? null;
     }
@@ -839,6 +1046,7 @@ export class Cena {
             if (alvo?.dto.tipo === 'parede' && ['porta', 'janela'].includes(alvo.dto.dados?.tipo ?? ''))
                 this.opcoes.eventos.alternarPorta(alvo.dto.id);
             else if (alvo?.dto.tipo === 'loot') this.opcoes.eventos.abrirLoot(alvo.dto.id);
+            else if (alvo?.dto.tipo === 'viagem') this.opcoes.eventos.usarPontoViagem(alvo.dto.id);
         });
         ouvir(canvas, 'pointerdown', (e) => this.aoPressionar(e));
         ouvir(canvas, 'pointermove', (e) => this.aoMover(e));
@@ -862,7 +1070,7 @@ export class Cena {
                 this.atualizarCursor();
             }
             if (e.key === 'Escape') {
-                if (this.gabarito) this.opcoes.eventos.gabarito(null);
+                if (this.gabarito) this.opcoes.eventos.gabarito(null, null);
                 if (this.ponto) this.opcoes.eventos.ponto(null);
                 this.limparRegua();
                 this.selecionar(null);
@@ -942,6 +1150,10 @@ export class Cena {
             if (this.opcoes.mestre) this.opcoes.eventos.criarLuz(this.snapCentro(p.x), this.snapCentro(p.y));
             return;
         }
+        if (this.ferramenta === 'viagem') {
+            if (this.opcoes.mestre) this.opcoes.eventos.criarViagem(this.snapCentro(p.x), this.snapCentro(p.y));
+            return;
+        }
 
         // Jogador: clicar numa porta ou janela à vista pede para abri-la ou fechá-la (o servidor recusa se estiver trancada).
         if (!this.opcoes.mestre) {
@@ -956,6 +1168,19 @@ export class Cena {
             const loot = this.lootEm(p.x, p.y);
             if (loot) {
                 this.opcoes.eventos.abrirLoot(loot.dto.id);
+                return;
+            }
+        }
+
+        // Clicar em ponto de viagem: tanto mestre quanto jogador (quando não estiver segurando ferramenta de edição)
+        const viagem = this.viagemEm(p.x, p.y);
+        if (viagem && (this.ferramenta === 'selecionar' || this.ferramenta === 'mover')) {
+            // Se o mestre estiver com a camada ativa igual à camada da viagem e clicar sem arrastar, ele pode selecionar ou usar.
+            // Para não impedir a seleção no mestre, se o mestre clicar numa viagem já selecionada ou se for jogador, aciona a viagem!
+            // Mais simples e direto: se for jogador OU se clicar duas vezes/direto, usa o ponto de viagem.
+            // Mas o jogador nunca mexe na ferramenta; mestre se quiser selecionar clica normalmente quando a ferramenta é selecionar e a camada é a mesma.
+            if (!this.opcoes.mestre) {
+                this.opcoes.eventos.usarPontoViagem(viagem.dto.id);
                 return;
             }
         }
@@ -1066,14 +1291,30 @@ export class Cena {
             const base = this.grupoInicio.get(this.ancoraDoGrupo) ?? { x: 0, y: 0 };
             const dx = this.snap(base.x + (p.x - this.inicioMundo.x)) - base.x;
             const dy = this.snap(base.y + (p.y - this.inicioMundo.y)) - base.y;
+
+            // Estilo Foundry VTT: durante o arrasto, tokens reais ficam fixos na posição inicial;
+            // desenhamos a silhueta translúcida no destino. Ao soltar, todos deslizam continuamente.
+            let temToken = false;
+            this.alvosGrupoMovimento.clear();
             for (const [id, ini] of this.grupoInicio) {
                 const o = this.visuais.get(id);
                 if (!o) continue;
                 const campos = { x: ini.x + dx, y: ini.y + dy };
-                o.definirGeometria(campos);
-                this.opcoes.eventos.alterar(id, campos, false);
+                if (o.dto.tipo === 'token') {
+                    temToken = true;
+                    this.alvosGrupoMovimento.set(id, campos);
+                } else {
+                    o.definirGeometria(campos);
+                    this.opcoes.eventos.alterar(id, campos, false);
+                }
             }
-            this.desenharSelecao();
+
+            if (temToken) {
+                this.desenharPreviewGrupo();
+            } else {
+                this.desenharSelecao();
+                this.solicitarIluminacao();
+            }
             return;
         }
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
@@ -1082,9 +1323,20 @@ export class Cena {
             if (!this.iniciou && Math.hypot(tela.x - this.inicioTela.x, tela.y - this.inicioTela.y) < 3) return;
             this.iniciou = true;
             const campos = this.posicaoDoArrasto(v, p);
+
+            // Se for token: estilo Foundry VTT!
+            // O token real e sua iluminação/visão continuam na posição de origem até soltar.
+            // Exibimos uma silhueta translúcida e régua apontando para o destino alvo.
+            if (v.dto.tipo === 'token') {
+                this.alvoMovimento = campos;
+                this.desenharPreviewDestino(v, campos);
+                return;
+            }
+
             v.definirGeometria(campos);
             this.desenharSelecao();
             this.opcoes.eventos.alterar(v.dto.id, campos, false);
+            this.solicitarIluminacao();
             return;
         }
         if (this.modo === 'redimensionar' && v && this.alca) {
@@ -1096,9 +1348,11 @@ export class Cena {
             this.opcoes.eventos.alterar(v.dto.id, campos, false);
             return;
         }
-        // Cursor de alça ao passar por cima.
+        // Cursor de alça ou cursor de ponteiro ao passar por cima de porta/janela ou viagem.
         const alca = this.modo === 'nenhum' ? this.alcaEm(p.x, p.y) : null;
-        this.atualizarCursor(alca ? cursorDaAlca(alca) : undefined);
+        const sobrePorta = this.modo === 'nenhum' && !alca && !!this.portaEm(p.x, p.y);
+        const sobreViagem = this.modo === 'nenhum' && !alca && !sobrePorta && !!this.viagemEm(p.x, p.y);
+        this.atualizarCursor(alca ? cursorDaAlca(alca) : sobrePorta || sobreViagem ? 'pointer' : undefined);
     }
 
     /**
@@ -1152,6 +1406,68 @@ export class Cena {
         return { x: livre.x - mx, y: livre.y - my };
     }
 
+    /** Desenha a silhueta translúcida no destino e a régua livre (estilo Foundry VTT) durante o arrasto do token. */
+    private desenharPreviewDestino(v: ObjetoVisual, destino: { x: number; y: number }): void {
+        const ox = this.inicioObjeto.x ?? v.dto.x;
+        const oy = this.inicioObjeto.y ?? v.dto.y;
+        const { largura, altura } = v.dto;
+
+        // Se estiver em turno com movimento medido, a régua de gasto já é desenhada em posicaoDoArrasto
+        if (!this.movimento || this.movimento.objetoId !== v.dto.id) {
+            const pagina = this.pagina;
+            const a = { x: ox + largura / 2, y: oy + altura / 2 };
+            const b = { x: destino.x + largura / 2, y: destino.y + altura / 2 };
+            const distPx = Math.hypot(b.x - a.x, b.y - a.y);
+            const g = this.reguaG.clear();
+
+            if (distPx > 4) {
+                // Linha pontilhada suave conectando a posição original ao destino
+                g.moveTo(a.x, a.y)
+                    .lineTo(b.x, b.y)
+                    .stroke({ color: 0xf4e0a0, width: 3 / this.mundo.scale.x, alpha: 0.85, cap: 'round' });
+                g.circle(a.x, a.y, 4 / this.mundo.scale.x).fill(0xd4a843);
+                g.circle(b.x, b.y, 4 / this.mundo.scale.x).fill(0x4ade80);
+
+                if (pagina) {
+                    const metros = metrosDe(b.x - a.x, b.y - a.y, pagina);
+                    this.reguaTexto.text = `${formatar(metros)} ${pagina.unidade ?? 'm'}`;
+                    this.reguaTexto.style.fill = 0xfaf0cf;
+                    this.reguaTexto.scale.set(1 / this.mundo.scale.x);
+                    this.reguaTexto.position.set((a.x + b.x) / 2 + 8 / this.mundo.scale.x, (a.y + b.y) / 2 - 22 / this.mundo.scale.x);
+                    this.reguaTexto.visible = true;
+                }
+            } else {
+                this.reguaTexto.visible = false;
+            }
+        }
+
+        // Desenha a seleção atual + a silhueta no destino
+        const selG = this.selecaoG.clear();
+        // Borda dourada no token original fixo
+        selG.rect(ox, oy, largura, altura).stroke({ color: 0xd4a843, width: 1.5, alpha: 0.8, pixelLine: true });
+
+        // Silhueta fantasma translúcida do token no destino
+        selG.rect(destino.x, destino.y, largura, altura)
+            .fill({ color: 0xd4a843, alpha: 0.22 })
+            .stroke({ color: 0x4ade80, width: 2 / this.mundo.scale.x, alpha: 0.95 });
+    }
+
+    /** Silhueta para múltiplos tokens sendo arrastados juntos. */
+    private desenharPreviewGrupo(): void {
+        const selG = this.selecaoG.clear();
+        for (const [id, ini] of this.grupoInicio) {
+            const o = this.visuais.get(id);
+            if (!o) continue;
+            const destino = this.alvosGrupoMovimento.get(id) ?? ini;
+            // Original
+            selG.rect(ini.x, ini.y, o.dto.largura, o.dto.altura).stroke({ color: 0xd4a843, width: 1.5, alpha: 0.6, pixelLine: true });
+            // Silhueta no destino
+            selG.rect(destino.x, destino.y, o.dto.largura, o.dto.altura)
+                .fill({ color: 0xd4a843, alpha: 0.22 })
+                .stroke({ color: 0x4ade80, width: 2 / this.mundo.scale.x, alpha: 0.95 });
+        }
+    }
+
     /** Régua do arrasto do token do turno: linha do ponto de partida até o token, com o gasto do turno. */
     private desenharMovimento(
         v: ObjetoVisual,
@@ -1189,10 +1505,10 @@ export class Cena {
         this.reguaTexto.visible = true;
     }
 
-    /** A visão só se atualiza ao SOLTAR o token (nunca durante o arrasto): espera o encaixe terminar e recalcula. */
+    /** A visão e sombras se atualizam imediatamente ao soltar o token (sem atrasos artificiais). */
     private aoSoltar(e: PointerEvent): void {
         this.aoSoltarBase(e);
-        this.agendarIluminacao(350);
+        this.atualizarIluminacao();
     }
 
     private aoSoltarBase(e: PointerEvent): void {
@@ -1243,19 +1559,35 @@ export class Cena {
                 this.definirSelecao(this.lacoSoma ? [...new Set([...this.selecionadosIds(), ...pegos])] : pegos);
             }
         }
-        // Fim do arrasto em grupo: cada objeto manda a posição final
+        // Fim do arrasto em grupo: tokens deslizam suavemente até o destino (Foundry style)
         if (this.modo === 'mover' && this.grupoInicio.size > 1 && this.iniciou) {
-            for (const id of this.grupoInicio.keys()) {
+            for (const [id, ini] of this.grupoInicio) {
                 const o = this.visuais.get(id);
-                if (o) this.opcoes.eventos.alterar(id, { x: o.dto.x, y: o.dto.y }, true);
+                if (!o) continue;
+                if (o.dto.tipo === 'token') {
+                    const destino = this.alvosGrupoMovimento.get(id) ?? ini;
+                    const dist = Math.hypot(destino.x - ini.x, destino.y - ini.y);
+                    if (dist >= 2) {
+                        this.deslizarTokenPara(o, { ...o.dto, x: destino.x, y: destino.y }, () => {
+                            this.opcoes.eventos.alterar(id, { x: destino.x, y: destino.y }, true);
+                        });
+                    } else {
+                        this.opcoes.eventos.alterar(id, { x: destino.x, y: destino.y }, true);
+                    }
+                } else {
+                    this.opcoes.eventos.alterar(id, { x: o.dto.x, y: o.dto.y }, true);
+                }
             }
         }
         const emGrupo = this.grupoInicio.size > 1;
         this.grupoInicio.clear();
         this.ancoraDoGrupo = null;
+        this.alvosGrupoMovimento.clear();
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
         const modo = this.modo;
-        if (modo === 'mover' && this.movimento) {
+        const alvoToken = this.alvoMovimento;
+        this.alvoMovimento = null;
+        if (modo === 'mover') {
             this.limparRegua();
             this.reguaTexto.style.fill = 0xfaf0cf;
         }
@@ -1264,8 +1596,25 @@ export class Cena {
         this.atualizarCursor();
         if (!v || emGrupo) return;
         if (modo === 'mover' && this.iniciou) {
-            const { x, y } = v.dto;
-            this.opcoes.eventos.alterar(v.dto.id, { x, y }, true);
+            if (v.dto.tipo === 'token') {
+                const destino = alvoToken ?? { x: v.dto.x, y: v.dto.y };
+                const iniX = this.inicioObjeto.x ?? v.dto.x;
+                const iniY = this.inicioObjeto.y ?? v.dto.y;
+                const dist = Math.hypot(destino.x - iniX, destino.y - iniY);
+                if (dist >= 2) {
+                    // O token desliza continuamente do ponto inicial até o destino solto,
+                    // atualizando luz, visão e sombras frame a frame sem nenhum delay
+                    this.deslizarTokenPara(v, { ...v.dto, x: destino.x, y: destino.y }, () => {
+                        this.opcoes.eventos.alterar(v.dto.id, { x: destino.x, y: destino.y }, true);
+                    });
+                } else {
+                    this.desenharSelecao();
+                    this.opcoes.eventos.alterar(v.dto.id, { x: destino.x, y: destino.y }, true);
+                }
+            } else {
+                const { x, y } = v.dto;
+                this.opcoes.eventos.alterar(v.dto.id, { x, y }, true);
+            }
         } else if (modo === 'redimensionar') {
             const alvo = this.alvoEncaixe;
             this.alvoEncaixe = null;
@@ -1312,7 +1661,7 @@ export class Cena {
     private tokenEm(x: number, y: number): ObjetoVisual | null {
         let achado: ObjetoVisual | null = null;
         for (const v of this.visuais.values()) {
-            if (v.dto.tipo !== 'token' || v.dto.personagem_id === null || !v.contem(x, y)) continue;
+            if (v.dto.tipo !== 'token' || v.dto.personagem_id === null || !v.contem(x, y) || v.dto.morto) continue;
             if (!achado || v.dto.z >= achado.dto.z) achado = v;
         }
 
@@ -1326,7 +1675,7 @@ export class Cena {
             this.teclaMirar ||
             this.gabarito ||
             this.ponto ||
-            ['mirar', 'regua', 'loot', 'luz', 'parede', 'porta', 'janela', 'pintar'].includes(this.ferramenta)
+            ['mirar', 'regua', 'loot', 'viagem', 'luz', 'parede', 'porta', 'janela', 'pintar'].includes(this.ferramenta)
                 ? 'crosshair'
                 : this.ferramenta === 'texto'
                   ? 'text'

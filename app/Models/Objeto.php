@@ -11,7 +11,7 @@ class Objeto extends Model
 {
     public const CAMADAS = ['mapa', 'mestre', 'jogadores', 'iluminacao'];
 
-    public const TIPOS = ['imagem', 'token', 'luz', 'parede', 'traco', 'texto'];
+    public const TIPOS = ['imagem', 'token', 'luz', 'parede', 'traco', 'texto', 'loot', 'viagem'];
 
     protected $table = 'objetos';
 
