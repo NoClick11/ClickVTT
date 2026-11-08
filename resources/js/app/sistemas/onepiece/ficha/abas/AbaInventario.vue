@@ -212,8 +212,8 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
 </script>
 
 <template>
-    <div class="grid min-w-0 gap-3 overflow-x-hidden p-3">
-        <div class="grid gap-3 sm:grid-cols-2">
+    <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 p-3">
+        <div class="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
             <section :class="estilos.cartao" class="p-3" aria-label="Carga">
                 <p class="mb-1.5 flex justify-between text-[11px] font-semibold uppercase tracking-wider text-ouro-400">
                     <span>Carga</span
@@ -399,16 +399,16 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
                         </li>
                         <li
                             v-if="editando === ref.item_id && rascunho"
-                            class="grid gap-2 bg-preto-900/50 px-3 py-2.5 text-xs"
+                            class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 bg-preto-900/50 px-3 py-2.5 text-xs"
                             :aria-label="`Ajustar ${itens[ref.item_id]?.nome}`"
                         >
                             <p class="text-preto-400">Vale só nesta ficha; o item da mesa e as fichas dos outros não mudam.</p>
-                            <div class="grid gap-2 sm:grid-cols-2">
+                            <div class="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-2">
                                 <label v-if="!armaOriginal(ref.item_id)?.municao" class="grid gap-0.5 text-preto-300"
-                                    >Dado de dano<input v-model="rascunho.dano" type="text" maxlength="8" placeholder="1d8" :class="campo"
+                                    >Dado de dano<input v-model="rascunho.dano" type="text" maxlength="8" placeholder="1d8" :class="campo" class="w-full min-w-0"
                                 /></label>
                                 <label class="grid gap-0.5 text-preto-300"
-                                    >Tipo de dano<input v-model="rascunho.tipoDano" type="text" maxlength="40" :class="campo"
+                                    >Tipo de dano<input v-model="rascunho.tipoDano" type="text" maxlength="40" :class="campo" class="w-full min-w-0"
                                 /></label>
                                 <label class="grid gap-0.5 text-preto-300"
                                     >Bônus de ataque<input
@@ -417,10 +417,10 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
                                         min="-20"
                                         max="20"
                                         step="1"
-                                        :class="campo"
+                                        :class="campo" class="w-full min-w-0"
                                 /></label>
                                 <label class="grid gap-0.5 text-preto-300"
-                                    >Bônus de dano<input v-model.number="rascunho.bonusDano" type="number" min="-50" max="50" step="1" :class="campo"
+                                    >Bônus de dano<input v-model.number="rascunho.bonusDano" type="number" min="-50" max="50" step="1" :class="campo" class="w-full min-w-0"
                                 /></label>
                                 <label class="grid gap-0.5 text-preto-300"
                                     >Crítico a partir de (d20)<input
@@ -429,18 +429,18 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
                                         min="2"
                                         max="20"
                                         step="1"
-                                        :class="campo"
+                                        :class="campo" class="w-full min-w-0"
                                 /></label>
                                 <label class="grid gap-0.5 text-preto-300"
                                     >Atributo do ataque
-                                    <select v-model="rascunho.atributo" :class="campo">
+                                    <select v-model="rascunho.atributo" :class="campo" class="w-full min-w-0">
                                         <option v-for="a in ATRIBUTOS" :key="a.id" :value="a.id">{{ a.nome }}</option>
                                         <option value="acuidade">Acuidade (Força ou Destreza)</option>
                                     </select></label
                                 >
                                 <label class="grid gap-0.5 text-preto-300"
                                     >Atributo do dano
-                                    <select v-model="rascunho.atributoDano" :class="campo">
+                                    <select v-model="rascunho.atributoDano" :class="campo" class="w-full min-w-0">
                                         <option value="">O mesmo do ataque</option>
                                         <option v-for="a in ATRIBUTOS" :key="a.id" :value="a.id">{{ a.nome }}</option>
                                         <option value="acuidade">Acuidade (Força ou Destreza)</option>
@@ -448,7 +448,7 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
                                     </select></label
                                 >
                             </div>
-                            <fieldset class="grid gap-1">
+                            <fieldset class="grid min-w-0 gap-1">
                                 <legend class="text-preto-300">Dados extras de dano (até 3; dobram no crítico)</legend>
                                 <div v-for="(e, ei) in rascunho.danoExtra" :key="ei" class="flex gap-1.5">
                                     <input
@@ -517,7 +517,7 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
         </section>
 
         <!-- o mestre entrega itens da mesa ou cria um novo no editor -->
-        <section v-if="editar && mestre" :class="estilos.cartao" class="grid gap-2 p-3" aria-label="Entregar item">
+        <section v-if="editar && mestre" :class="estilos.cartao" class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 p-3" aria-label="Entregar item">
             <h3 class="text-[11px] font-semibold uppercase tracking-wider text-ouro-400">Entregar item (mestre)</h3>
             <form class="flex flex-wrap gap-1.5" @submit.prevent="entregar">
                 <select v-model="escolhido" aria-label="Item da mesa" :class="campo" class="min-w-40 flex-1">

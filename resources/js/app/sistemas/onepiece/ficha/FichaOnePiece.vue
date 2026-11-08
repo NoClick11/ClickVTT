@@ -208,7 +208,7 @@ const conteudo: Record<AbaId, Component> = {
                         <component :is="a.icone" class="size-4" /> {{ a.rotulo }}
                     </button>
                 </nav>
-                <div class="min-h-0 flex-1 overflow-y-auto" role="tabpanel" :aria-labelledby="`ficha-aba-${aba}`">
+                <div class="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden" role="tabpanel" :aria-labelledby="`ficha-aba-${aba}`">
                     <component :is="conteudo[aba]" :ficha="ficha" />
                 </div>
             </div>
