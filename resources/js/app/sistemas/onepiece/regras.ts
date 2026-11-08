@@ -333,7 +333,18 @@ export interface Caracteristica {
     /** Texto da característica (regras, restrições). */
     descricao?: string;
     /** Quem criou: o assistente de criação marca `especie`/`variacao`, para refazer o passo sem duplicar. */
-    builder?: 'especie' | 'variacao' | 'estilo' | 'maestria' | 'haki' | 'treinamento' | 'antecedente' | 'profissao' | 'akuma' | 'individualidade';
+    builder?:
+        | 'especie'
+        | 'variacao'
+        | 'estilo'
+        | 'maestria'
+        | 'haki'
+        | 'treinamento'
+        | 'antecedente'
+        | 'profissao'
+        | 'akuma'
+        | 'individualidade'
+        | 'fruta';
     /** Categoria de ação que ligar/usar a característica gasta no combate (nenhuma = não gasta). */
     acao?: CategoriaDeAcao;
     /** Faixa de nível em que a característica vale (as Habilidades Básicas mudam com o nível). */
@@ -438,7 +449,7 @@ export interface Tecnica {
     /** A Técnica tem uma arma cortante como requisito: as armas Meito equipadas somam dados ao dano dela. */
     armaCortante?: boolean;
     /** Quem criou: o assistente de criação marca `especie`, para refazer o passo sem duplicar. */
-    builder?: 'especie' | 'estilo' | 'maestria' | 'treinamento' | 'criador' | 'akuma';
+    builder?: 'especie' | 'estilo' | 'maestria' | 'treinamento' | 'criador' | 'akuma' | 'fruta';
     /** Escolhas do Criador de Técnicas (o servidor refaz o custo e os limites a partir delas). */
     criador?: EscolhasDaTecnica;
 }

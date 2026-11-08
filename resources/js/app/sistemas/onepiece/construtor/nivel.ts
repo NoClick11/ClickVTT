@@ -7,7 +7,8 @@
  * Quebrador de Regras escolhe outra característica no 6º nível.
  */
 import { camposDaAkuma } from '../akuma/regras.ts';
-import { ATRIBUTOS, bonusProficiencia, usosMax, type AtributoId, type Caracteristica, type FichaOnePiece } from '../regras.ts';
+import { camposDaFrutaNoNivel } from '../frutas/regras.ts';
+import { ATRIBUTOS, bonusProficiencia, usosMax, type AtributoId, type Caracteristica, type FichaOnePiece, type Tecnica } from '../regras.ts';
 import { dadoDoEstilo, estiloPorId, tecnicaDoEstilo, tecnicasDoEstiloNoNivel, tracosDoEstiloNoNivel } from './dados/estilos.ts';
 import { aumentosDoAprimoramento, hbPorId, OPCOES_QUEBRADOR } from './dados/habilidades-basicas.ts';
 import { maestriaPorId, NIVEIS_DE_MAESTRIA, problemasDaMaestria } from './dados/maestrias.ts';
@@ -240,6 +241,14 @@ export function camposDoNivel(f: FichaOnePiece, esc: EscolhasDoNivel): Record<st
         campos.caracteristicas = feita.caracteristicas;
         campos['akuma.lista'] = feita['akuma.lista'];
     }
+    // Fruta pronta entregue pelo mestre: as Técnicas e características dela que este nível libera
+    Object.assign(
+        campos,
+        camposDaFrutaNoNivel({ ...f, nivel: novo }, novo, {
+            caracteristicas: campos.caracteristicas as Caracteristica[],
+            lista: (campos['akuma.lista'] as Tecnica[] | undefined) ?? f.akuma?.lista,
+        }),
+    );
 
     // técnicas do estilo no novo nível
     const lista = f.tecnicas?.lista ?? [];

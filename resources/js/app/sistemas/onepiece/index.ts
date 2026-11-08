@@ -21,4 +21,5 @@ export const modulo: ModuloSistema = {
     dadosDaLoja: { categorias: CATEGORIAS.filter((c) => !['hospedagem', 'estilo-de-vida'].includes(c.id)), raridades: RARIDADES, moeda: '฿' },
     Loja: defineAsyncComponent(() => import('./itens/LojaDoJogador.vue')),
     CatalogoDeItens: defineAsyncComponent(() => import('./itens/CatalogoDeItens.vue')),
+    PainelDeFrutas: defineAsyncComponent(() => import('./frutas/PainelDeFrutas.vue')),
 };

@@ -338,7 +338,7 @@ final class FichaOnePiece
         $r['caracteristicas.*.usos.porNivel'] = ['nullable', 'boolean'];
         $r['caracteristicas.*.descricao'] = ['nullable', 'string', 'max:4000'];
         // Quem criou: o assistente de criação marca `especie`/`variacao` para refazer o passo sem duplicar.
-        $r['caracteristicas.*.builder'] = ['nullable', 'string', Rule::in(['especie', 'variacao', 'estilo', 'maestria', 'haki', 'treinamento', 'antecedente', 'profissao', 'akuma', 'individualidade'])];
+        $r['caracteristicas.*.builder'] = ['nullable', 'string', Rule::in(['especie', 'variacao', 'estilo', 'maestria', 'haki', 'treinamento', 'antecedente', 'profissao', 'akuma', 'individualidade', 'fruta'])];
         // Etiquetas de combate mostradas na ficha (ex.: "Alcança alvos Enormes", "Ignora terreno difícil").
         // Categoria de ação que ligar/usar a característica gasta (nenhuma = não gasta ação).
         // Faixa de nível em que a característica vale (as Habilidades Básicas mudam com o nível) e de qual HB ela vem
@@ -424,7 +424,7 @@ final class FichaOnePiece
         $r['tecnicas.lista.*.armaCortante'] = ['boolean:strict'];
         $r['akuma.lista.*.armaCortante'] = ['boolean:strict'];
         // Quem criou a técnica: o assistente de criação marca `especie` para refazer o passo sem duplicar.
-        $r['tecnicas.lista.*.builder'] = ['nullable', 'string', Rule::in(['especie', 'estilo', 'maestria', 'treinamento', 'criador', 'akuma'])];
+        $r['tecnicas.lista.*.builder'] = ['nullable', 'string', Rule::in(['especie', 'estilo', 'maestria', 'treinamento', 'criador', 'akuma', 'fruta'])];
 
         // Como a Técnica acerta: ataque, Salvaguarda da área ou automática (e a Salvaguarda do efeito, se houver).
         foreach (['tecnicas.lista.*', 'akuma.lista.*'] as $base) {
@@ -508,7 +508,8 @@ final class FichaOnePiece
         $r['akuma.lista.*.rolagem'] = ['present', 'string', 'max:100'];
         $r['akuma.lista.*.tipoDano'] = ['nullable', 'string', 'max:30'];
         $r['akuma.lista.*.acao'] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];
-        $r['akuma.lista.*.builder'] = ['nullable', 'string', Rule::in(['especie', 'criador', 'akuma'])];
+        $r['akuma.lista.*.builder'] = ['nullable', 'string', Rule::in(['especie', 'criador', 'akuma', 'fruta'])];
+        $r['akuma.fruta'] = ['nullable', 'string', 'max:40']; // a fruta pronta entregue pelo mestre
         $r['akuma.usuario'] = ['string', Rule::in(['simples', 'avancado'])];
         $r['akuma.categoria'] = ['string', Rule::in(['', 's', 'a', 'b', 'c'])];
         $r['akuma.propriedades'] = ['array', 'max:6'];

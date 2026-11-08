@@ -62,6 +62,8 @@ export interface AkumaFicha {
     mpEspeciais: string[];
     tracos: { comuns: string[]; especificos: string[]; ancestrais: string[] };
     points: PointDaFicha[];
+    /** A fruta pronta que o mestre entregou (id do catálogo de frutas): as Técnicas dela chegam por nível. */
+    fruta?: string;
 }
 
 export const akumaPadrao = (): AkumaFicha => ({
@@ -78,6 +80,7 @@ export const akumaPadrao = (): AkumaFicha => ({
     mpEspeciais: [],
     tracos: { comuns: [], especificos: [], ancestrais: [] },
     points: [],
+    fruta: '',
 });
 
 type FichaDaAkuma = Pick<FichaOnePiece, 'nivel' | 'caracteristicas' | 'atributos'> & { akuma: Partial<AkumaFicha> };

@@ -97,6 +97,11 @@ export interface ModuloSistema {
      * na mesa; emite `update:open`. A loja usará o mesmo catálogo.
      */
     CatalogoDeItens?: Component;
+    /**
+     * Aba "Frutas" da barra lateral (opcional, só o mestre): frutas prontas para entregar aos personagens. Recebe `personagens` e `fichas`
+     * e emite `salvar(personagemId, campos)`.
+     */
+    PainelDeFrutas?: Component;
     /** Loja do jogador (painel flutuante, opcional): catálogo do sistema para comprar e arrastar para a ficha. */
     Loja?: Component;
     /** Categorias, raridades e moeda da loja do sistema (alimenta o editor de itens do catálogo). */

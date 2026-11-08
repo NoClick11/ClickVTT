@@ -174,7 +174,7 @@ const naoLidas = ref(0);
 function abaSalva(): AbaLateral {
     const salva = lerLocal('clickvtt.abaLateral', 'chat');
 
-    return salva === 'personagens' || (salva === 'itens' && props.mestre) ? salva : 'chat';
+    return salva === 'personagens' || ((salva === 'itens' || salva === 'frutas') && props.mestre) ? salva : 'chat';
 }
 watch(abaLateral, (v) => gravarLocal('clickvtt.abaLateral', v));
 watch(lateralAberta, (v) => gravarLocal('clickvtt.lateralAberta', v ? '1' : '0'));
@@ -1726,7 +1726,13 @@ function alternarPorta(id: number) {
                 <JanelaDeReacao :janelas="janelasDeReacao" :mestre="mestre" @encerrar="encerrarJanela" />
                 <ModalReacao :ofertas="ofertasDeReacao" :ocupado="reagindo" @reagir="reagir" />
                 <ModalIniciativa :itens="iniciativasPendentes" :ocupado="false" @rolar="rolarMinhaIniciativa" />
-                <BarraLateral v-model:aba="abaLateral" v-model:aberta="lateralAberta" :nao-lidas="naoLidas" :mestre="mestre">
+                <BarraLateral
+                    v-model:aba="abaLateral"
+                    v-model:aberta="lateralAberta"
+                    :nao-lidas="naoLidas"
+                    :mestre="mestre"
+                    :tem-frutas="!!moduloSistema?.PainelDeFrutas"
+                >
                     <template #chat>
                         <PainelChat
                             :mensagens="mensagens"
@@ -1765,6 +1771,14 @@ function alternarPorta(id: number) {
                             :fogo-amigo="fogoAmigo"
                             @fogo-amigo="alternarFogoAmigo"
                             @criar="novoPersonagemAberto = true"
+                        />
+                    </template>
+                    <template v-if="mestre && moduloSistema?.PainelDeFrutas" #frutas>
+                        <component
+                            :is="moduloSistema.PainelDeFrutas"
+                            :personagens="personagens"
+                            :fichas="fichas"
+                            @salvar="(id: number, campos: Record<string, unknown>) => salvarFicha(id, campos)"
                         />
                     </template>
                     <template v-if="mestre" #itens>

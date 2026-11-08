@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ChevronsRight, MessageSquare, Package, Users } from 'lucide-vue-next';
+import { Cherry, ChevronsRight, MessageSquare, Package, Users } from 'lucide-vue-next';
 import { computed, type Component } from 'vue';
 
-export type AbaLateral = 'chat' | 'personagens' | 'itens';
+export type AbaLateral = 'chat' | 'personagens' | 'itens' | 'frutas';
 
-const props = defineProps<{ aba: AbaLateral; aberta: boolean; naoLidas: number; mestre?: boolean }>();
+const props = defineProps<{ aba: AbaLateral; aberta: boolean; naoLidas: number; mestre?: boolean; temFrutas?: boolean }>();
 const emit = defineEmits<{ 'update:aba': [AbaLateral]; 'update:aberta': [boolean] }>();
 
 const abas = computed<{ id: AbaLateral; rotulo: string; icone: Component }[]>(() => [
@@ -12,6 +12,8 @@ const abas = computed<{ id: AbaLateral; rotulo: string; icone: Component }[]>(()
     { id: 'personagens', rotulo: 'Personagens', icone: Users },
     // Os itens (e seus efeitos) são do mestre: só ele vê e edita o catálogo.
     ...(props.mestre ? [{ id: 'itens' as const, rotulo: 'Itens', icone: Package }] : []),
+    // As frutas prontas (e a entrega delas) também são do mestre, nos sistemas que as têm.
+    ...(props.mestre && props.temFrutas ? [{ id: 'frutas' as const, rotulo: 'Frutas', icone: Cherry }] : []),
 ]);
 </script>
 
@@ -83,6 +85,16 @@ const abas = computed<{ id: AbaLateral; rotulo: string; icone: Component }[]>(()
                 aria-labelledby="aba-itens"
             >
                 <slot name="itens" />
+            </section>
+            <section
+                v-if="mestre && temFrutas"
+                v-show="aba === 'frutas'"
+                class="flex min-h-0 flex-1 flex-col"
+                role="tabpanel"
+                id="painel-frutas"
+                aria-labelledby="aba-frutas"
+            >
+                <slot name="frutas" />
             </section>
         </div>
     </aside>

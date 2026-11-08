@@ -1169,3 +1169,14 @@ test('Usuário Ínsito: a Escolha Diabólica é feita ao subir de nível (2º e 
     const onze = { ...base, nivel: 10, estiloEscolhas: ['defesa-infundida'] };
     assert.ok(problemasDoNivel(onze, esc('defesa-infundida')).some((m) => m.includes('Escolha Diabólica')));
 });
+
+test('fruta pronta: ao subir de nível a ficha ganha as Técnicas da fruta que o nível libera', () => {
+    const f = fichaCompleta(comHB('robusto'), 1);
+    f.akuma = { ...f.akuma, tipo: 'paramecia', usuario: 'avancado', fruta: 'ito-ito-no-mi' };
+    const campos = camposDoNivel(f, { hb: { id: 'sortudo' }, pvGanho: 6 }); // 2º nível
+    assert.deepEqual((campos['akuma.lista'] ?? []).filter((t) => t.builder === 'fruta').map((t) => t.nome), ['Goshikito', 'Sora no Michi']);
+    const f2 = { ...f, nivel: 2, akuma: { ...f.akuma, lista: campos['akuma.lista'] } };
+    const campos3 = camposDoNivel(f2, { hb: { id: 'mira-treinada' }, pvGanho: 6 }); // 3º nível: chega o Tamaito
+    assert.ok(campos3['akuma.lista'].some((t) => t.nome === 'Tamaito'));
+    assert.ok(campos3.caracteristicas.some((c) => c.builder === 'fruta'));
+});

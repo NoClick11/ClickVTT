@@ -28,7 +28,7 @@ class Akuma
         return [
             'tipo' => '', 'despertada' => false, 'usuario' => 'simples', 'lista' => [], 'categoria' => '', 'propriedades' => [], 'zoan' => '',
             'predador' => false, 'despertar' => '', 'aspecto' => 'padrao', 'mpEspeciais' => [], 'tracos' => ['comuns' => [], 'especificos' => [], 'ancestrais' => []],
-            'points' => [],
+            'points' => [], 'fruta' => '',
         ];
     }
 
