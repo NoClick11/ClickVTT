@@ -734,7 +734,370 @@ const DURACOES_DO_ATIRADOR: Record<string, DuracaoDaTecnica> = {
 };
 for (const t of ATIRADOR.tecnicas) if (DURACOES_DO_ATIRADOR[t.nome]) t.duracao = DURACOES_DO_ATIRADOR[t.nome];
 
-export const ESTILOS: EstiloDados[] = [ATIRADOR];
+/**
+ * Aventureiro (chicote e pistola). Regra do projeto: só dano, área e PP são automáticos (Técnicas); condições, estados, gatilhos e as
+ * reações que não reduzem o dano do próprio personagem ficam como texto para a mesa conduzir. `etiquetas` é o resumo curto da ficha.
+ */
+export const AVENTUREIRO: EstiloDados = {
+    id: 'aventureiro',
+    nome: 'Aventureiro',
+    descricao:
+        'Acostumado a todo tipo de perigo, reage de forma instantânea às adversidades, tem um sexto sentido para o perigo e transforma desafios em oportunidades. Chicote e pistola garantem alcance e versatilidade; resistência e foco permitem contornar a exaustão.',
+    dado: 'd10',
+    atributosPrimarios: ['des'],
+    salvaguardas: ['des', 'con'],
+    proficiencias: ['Armas Cortantes', 'Armas de Fogo', 'Armas Especiais', 'Armas Marciais'],
+    pericias: 3,
+    armasFavoritas: ['Chicote', 'Pistola'],
+    habilidadesInatas: [
+        { id: 'defesa-ofensiva', nome: 'Defesa Ofensiva' },
+        { id: 'perito-em-tecnicas', nome: 'Perito em Técnicas' },
+    ],
+    equipamento: '1 pistola com 80 unidades de munição esférica, 1 chicote, 1 adaga e 10d10 x 1000 Bellys.',
+    equipamentoInicial: {
+        itens: [
+            { catalogo: 'pistola', qtd: 1 },
+            { catalogo: 'municao-esferica', qtd: 80 },
+            { catalogo: 'chicote', qtd: 1 },
+            { catalogo: 'adaga', qtd: 1 },
+        ],
+        dinheiro: { dados: '10d10', multiplicador: 1000 },
+    },
+    niveisAva: [4, 8, 12, 16, 20],
+    niveisDeTecnica: [1, 3, 6, 9, 12, 16, 20],
+    tracos: [
+        // --- Whip and Gun (1º) ---
+        {
+            id: 'whip-and-gun-chicote',
+            nome: 'Whip and Gun: Chicote',
+            descricao:
+                'Poder e Precisão Máximos: com um chicote, o dado da arma é o 1d10. Crítico Frenético: uma vez por turno, num acerto crítico com jogada de ataque (comum) de chicote, você pode fazer uma jogada de ataque adicional com a pistola. Golpe Moral: seus ataques (comum ou Técnicas) com chicote ignoram resistência a dano Cortante e causam metade do dano em invulnerabilidades. Astúcia da Víbora: use sua reação para uma jogada de ataque (comum) quando um inimigo que você veja entrar ou sair voluntariamente do alcance do chicote.',
+            etiquetas: [
+                'Chicote: dado 1d10 (ajuste a arma)',
+                'Crítico Frenético: acerto crítico → ataque extra de pistola',
+                'Chicote ignora resistência Cortante',
+            ],
+        },
+        {
+            id: 'whip-and-gun-pistola',
+            nome: 'Whip and Gun: Pistola',
+            descricao:
+                'Tiro Oportunista: em acerto crítico com pistola, role os dados de dano da arma três vezes em vez de duas. Olhar Afiado: seus ataques (comum ou Técnicas) à distância ignoram meia cobertura e cobertura de três quartos. Disparo Rápido: tendo feito ao menos um ataque (comum) com chicote no turno, use a ação bônus para um ataque (comum) adicional com pistola.',
+            etiquetas: [
+                'Crítico com pistola: 3 vezes os dados',
+                'Ataques à distância ignoram meia e 3/4 de cobertura',
+                'Disparo Rápido: bônus após ataque de chicote',
+            ],
+        },
+        {
+            id: 'fan-firing',
+            nome: 'Whip and Gun: Fan Firing',
+            usos: { max: 1, descanso: 'longo' },
+            descricao:
+                'Com a ação, faça 3 jogadas de ataque (comum) à distância com a pistola, todas com desvantagem e alcance de até 6 metros. Depois, você fica incapaz de outras jogadas de ataque (comum) até o início do seu próximo turno. No 6º nível de Aventureiro, passam a ser 6 jogadas.',
+            etiquetas: ['Fan Firing: 3 ataques com desvantagem (6 no 6º)'],
+        },
+        // --- Pronto para a Aventura (2º) ---
+        {
+            id: 'pronto-para-o-perigo',
+            nome: 'Pronto para a Aventura: Pronto para o Perigo',
+            nivelMin: 2,
+            descricao:
+                'Fora de combate você usa as Técnicas do Aventureiro sem gastar PP, desde que não afetem encontros futuros nem outras criaturas. Seu máximo de PP aumenta em 4 + seu Bônus de Proficiência. No início de cada encontro você recupera até metade dos seus PP, se não tiver Níveis de Exaustão. Você recupera 1 Nível de Exaustão adicional ao fim de um descanso longo e pode gastar 6 PP ao fim de um descanso curto para recuperar 1.',
+            efeitos: [{ alvo: 'pp.max', modo: 'soma', valor: '@prof+4' }],
+            etiquetas: ['PP máx +4 + prof.', 'Início do encontro: recupera até metade dos PP'],
+        },
+        {
+            id: 'pronto-para-a-exploracao',
+            nome: 'Pronto para a Aventura: Pronto para a Exploração',
+            nivelMin: 2,
+            descricao:
+                'Carregando menos de 10 vezes o seu valor de Força em quilos (ignorando armas e equipamentos que normalmente carrega), você não recebe Níveis de Exaustão em disparada por até 1 hora. Seu deslocamento normal se torna 15 metros e não é reduzido por terreno difícil. Você é proficiente em montarias e veículos e seu deslocamento de natação iguala o normal. Você recebe proficiência em Sabedoria (Investigação), ou dobra o Bônus de Proficiência se já a tiver.',
+            efeitos: [
+                { alvo: 'movimento.normal', modo: 'min', valor: 150 },
+                { alvo: 'movimento.nado', modo: 'min', valor: 150 },
+            ],
+            etiquetas: ['Deslocamento 15 m (nado igual)', 'Ignora terreno difícil', 'Investigação: proficiência ou dobro'],
+        },
+        // --- Estilo Arriscado (3º) ---
+        {
+            id: 'ataque-empolgante',
+            nome: 'Estilo Arriscado: Ataque Empolgante',
+            nivelMin: 3,
+            descricao:
+                'Ao fazer uma jogada de ataque (comum) com chicote e obter um acerto crítico natural, sua margem de crítico com essa arma aumenta em 1 até o fim do encontro (19-20, depois 18-20...), no máximo 15-20.',
+            etiquetas: ['Crítico natural com chicote: margem −1 até o fim do encontro (mín. 15)'],
+        },
+        {
+            id: 'tiro-sem-paciencia',
+            nome: 'Estilo Arriscado: Tiro Sem Paciência',
+            nivelMin: 3,
+            usos: { max: 1, descanso: 'longo' },
+            descricao:
+                'Com a ação poderosa, faça um disparo com arma de fogo: a jogada de ataque (comum) à distância recebe 1 dado de dano adicional (munição) por rodada em que você participou do encontro, limitado a 2 vezes o seu nível de Aventureiro (máximo 30 dados).',
+            etiquetas: ['Ação poderosa: +1 dado de munição por rodada do encontro (máx. 2 × nível)'],
+        },
+        {
+            id: 'domador-da-coragem',
+            nome: 'Estilo Arriscado: Domador da Coragem',
+            nivelMin: 3,
+            usos: { max: 5, descanso: 'curto' },
+            descricao:
+                'Ao acertar uma criatura, use sua reação para reduzir as jogadas de ataque (comum ou Técnicas) de todas as criaturas hostis a até 9 metros de você em um valor igual ao seu Bônus de Proficiência, até o início do seu próximo turno. Até 5 usos; recupera todos ao fim de um descanso curto ou longo.',
+            etiquetas: ['Reação: hostis a 9 m com −prof. nos ataques até seu próximo turno'],
+        },
+        {
+            id: 'errar-com-vontade',
+            nome: 'Estilo Arriscado: Errar com Vontade',
+            nivelMin: 3,
+            descricao:
+                'Ao obter uma falha crítica em jogada de ataque (comum) com chicote, você acerta a si mesmo, sofrendo 2d12 de dano Verdadeiro. Essa falha crítica também aumenta a margem de crítico do Ataque Empolgante.',
+            etiquetas: ['Falha crítica com chicote: 2d12 Verdadeiro em você'],
+        },
+        // --- Caminho da Aventura (5º): Dados de Aventura ---
+        {
+            id: 'dados-de-aventura',
+            nome: 'Caminho da Aventura: Dados de Aventura',
+            nivelMin: 5,
+            usos: { max: 2, formula: 'max(@nivel/2, min(@nivel, (@nivel-9)*100))', descanso: 'curto' },
+            descricao:
+                'Você recebe Dados de Aventura iguais à metade do seu nível de Aventureiro (d8). Gaste 1 dado: +3 m no deslocamento até o fim do turno; ou +1 na CR até o início do seu próximo turno; ou recupere PV iguais ao resultado; ou, numa Técnica instantânea de alvo único, cause metade do dano em outra criatura no alcance; ou some o dado ao dano de uma Técnica instantânea (limitado ao grau dela). Gaste 2 dados para refazer um Teste de Atributo ou Salvaguarda falho, somando seu nível de Aventureiro. Uma vez por turno, quando um ataque falhar contra você ou você errar, recupere 1 dado. Todos voltam em descanso curto ou longo. No 10º nível: dados d12, quantidade igual ao nível, 6 dados para voltar com metade dos PV máximos ao cair a 0, e todos voltam no início de cada encontro.',
+            etiquetas: ['Dados de Aventura: d8 (d12 no 10º); quantidade = ½ nível (nível no 10º)'],
+        },
+        // --- Companheiro Inseparável (6º) ---
+        {
+            id: 'reacao-agressiva',
+            nome: 'Companheiro Inseparável: Reação Agressiva',
+            nivelMin: 6,
+            descricao:
+                'Sempre que usar uma reação, você pode, na mesma reação, fazer uma jogada de ataque contra uma criatura no alcance do seu chicote. O ataque causa 3d6 de dano, sem modificadores nem efeitos adicionais (como críticos ou outras Características de Combate).',
+            etiquetas: ['Toda reação: ataque de chicote extra de 3d6'],
+        },
+        {
+            id: 'mobilidade-aprimorada',
+            nome: 'Companheiro Inseparável: Mobilidade Aprimorada',
+            nivelMin: 6,
+            descricao:
+                'Empunhando um chicote e havendo onde prendê-lo, seu movimento de escalada é o dobro do deslocamento normal e saltos não impõem salvaguardas (respeitando suas capacidades de salto).',
+            etiquetas: ['Com chicote: escalada ×2 e saltos sem salvaguarda'],
+        },
+        {
+            id: 'wha-pah',
+            nome: 'Companheiro Inseparável: Wha-Pah',
+            nivelMin: 6,
+            descricao:
+                'Ao acertar uma jogada de ataque (comum) com o chicote, gaste ação bônus e 2 PP para: Desarmar (mira a arma/objeto que o inimigo segura, sem dano; o objeto vai para uma mão livre sua ou cai a até 1,5 m); Restringir (condição "Impedido" em criatura Grande ou menor até que use uma ação para se libertar; ou como reação quando uma criatura que você veja se mover a até 3 m de você); Imprevisibilidade (altera a trajetória para forçar um acerto crítico).',
+            etiquetas: ['Acerto de chicote + bônus + 2 PP: Desarmar, Restringir ou crítico forçado'],
+        },
+        // --- 7º em diante ---
+        {
+            id: 'ataque-extra',
+            nome: 'Ataque Extra',
+            nivelMin: 7,
+            descricao: 'Você pode atacar duas vezes, em vez de uma, ao usar a ação "Atacar" no seu turno.',
+            etiquetas: ['Ação Atacar: 2 ataques'],
+            efeitos: [{ alvo: 'ataques.acao', modo: 'soma', valor: 1 }],
+        },
+        {
+            id: 'reacao-imediata',
+            nome: 'Reação Imediata',
+            nivelMin: 10,
+            usos: { max: 3, descanso: 'longo' },
+            descricao:
+                'Quando for alvo de uma jogada de ataque (comum ou Técnicas), forçado a uma Salvaguarda ou exposto a qualquer perigo, ganhe um turno especial que interrompe o turno em andamento (sem causar dano a nenhuma criatura); o turno interrompido segue depois. Até 3 usos, apenas um por encontro; recupera todos em descanso longo.',
+            etiquetas: ['Turno especial (sem dano), 1 por encontro'],
+        },
+        {
+            id: 'controle-do-ambiente',
+            nome: 'Controle do Ambiente',
+            nivelMin: 11,
+            descricao:
+                'Por falha ou sucesso, você não sofre dano de Salvaguardas de Força ou Destreza. Se a causa for uma armadilha ou desastre natural, toda criatura a até 3 metros de você também recebe o benefício.',
+            etiquetas: ['Sem dano de Salvaguardas de Força ou Destreza'],
+        },
+        {
+            id: 'domador',
+            nome: 'Domador',
+            nivelMin: 14,
+            descricao:
+                'Quando nenhuma criatura, ambiente, estrutura ou objeto for afetado pela execução de uma Técnica sua, você pode não perder PP. Se for Técnica de Combate instantânea, as criaturas alvejadas fazem Salvaguarda de Sabedoria: se falharem, recebem metade do dano que a Técnica causaria, convertido em Psíquico.',
+            etiquetas: ['Técnica sem efeito: pode não gastar PP; alvos falham em SAB: ½ dano Psíquico'],
+        },
+        {
+            id: 'aventura-frenetica',
+            nome: 'Aventura Frenética',
+            nivelMin: 15,
+            descricao:
+                'Gaste Dados de Aventura para jogadas de ataque (comum) adicionais com chicote ou pistola: cada dado concede 1 ataque adicional até o fim do turno, no máximo 2 dados por rodada com essa finalidade.',
+            etiquetas: ['1 Dado de Aventura = 1 ataque extra (máx. 2 por rodada)'],
+        },
+        {
+            id: 'mestre-aventureiro',
+            nome: 'Mestre Aventureiro',
+            nivelMin: 18,
+            descricao:
+                'Distribua livremente 6 pontos entre seus atributos, respeitando o máximo de 24 em cada um. Você pode escolher dois atributos para aplicar esses pontos até o máximo de 30.',
+        },
+        {
+            id: 'explorador-destemido',
+            nome: 'Explorador Destemido',
+            nivelMin: 19,
+            descricao:
+                'Interrupção Relâmpago: gaste 6 Dados de Aventura para anular todos os efeitos de uma Técnica executada por uma criatura que você veja a até 9 m, no momento em que é ativada. Domínio Fatal: Técnicas com chicote ou pistola como requisito e duração instantânea causam sempre o valor máximo dos dados de dano. Arsenal do Desbravador: seus ataques (comum) com chicote causam 4d8 de dano, e você recebe um ataque (comum) adicional no Ataque Extra, exclusivamente com pistola.',
+            etiquetas: [
+                'Chicote: 4d8 (ajuste a arma)',
+                'Ataque Extra: +1 ataque só com pistola',
+                'Técnicas instantâneas de chicote/pistola: dano máximo',
+            ],
+        },
+    ],
+    tecnicas: [
+        tec(
+            1,
+            1,
+            '',
+            'Whiplash',
+            2,
+            'poderosa',
+            'Até 12 m, Cone',
+            '2d6 Cortante',
+            '2d6',
+            'cortante',
+            'Série de ataques com o chicote. Cada criatura na área faz Salvaguarda de Destreza: todo o dano se falhar, metade se passar. Quem falhar faz Salvaguarda de Constituição ou tem o deslocamento reduzido pela metade até o fim do próximo turno dela. Alternativamente, foque uma criatura com jogada de ataque (Técnicas) corpo a corpo (até 6 m, linha): 2d10 Cortante e a mesma Salvaguarda de Constituição. Requisito: chicote. Ataque combinado: possível.',
+        ),
+        tec(
+            1,
+            undefined,
+            '',
+            'Fire Lash',
+            5,
+            'bonus',
+            'Pessoal',
+            '+5 dados de Fogo (limitado ao grau)',
+            '',
+            undefined,
+            'Com as chamas do ambiente ou um isqueiro, adicione 5 dados de dano de Fogo à sua próxima Técnica de Combate instantânea, limitados ao grau da Técnica (uma de 1º Grau só recebe 1 dado). Para cada dado que não puder ser adicionado, reduza o custo em PP dessa Técnica em 1. Duração: até o fim do seu turno. Requisito: ignição.',
+        ),
+        tec(
+            3,
+            2,
+            '',
+            'Power Pistol',
+            4,
+            'poderosa',
+            'Até 9 m, Linha',
+            '4d8 Perfurante',
+            '4d8',
+            'perfurante',
+            'Disparo que atravessa todos os inimigos no caminho (9 m de comprimento, 1,5 m de largura). Cada criatura na área faz Salvaguarda de Destreza com desvantagem: todo o dano se falhar, metade se passar. Requisito: pistola. Ataque combinado: possível.',
+        ),
+        tec(
+            6,
+            3,
+            '',
+            'Sonic Boom',
+            6,
+            'poderosa',
+            'Até 6 m de raio, Esfera',
+            '6d6 Trovejante',
+            '6d6',
+            'trovejante',
+            'Com o estalar do chicote, uma onda sonora explode em um ponto escolhido a até 21 m, num raio de 6 m. Cada criatura na área faz Salvaguarda de Destreza: todo o dano se falhar, metade se passar. Requisito: chicote. Ataque combinado: possível.',
+        ),
+        tec(
+            6,
+            undefined,
+            '',
+            'Prison Whip',
+            6,
+            'bonus',
+            'Até 6 m, Linha',
+            'Paralisado até 1 minuto',
+            '',
+            undefined,
+            'Escolha uma criatura que você veja no alcance para imobilizar com o chicote. Ela faz Salvaguarda de Destreza ou fica "Paralisada" enquanto a Técnica durar; ao fim de cada turno dela, pode fazer Salvaguarda de Força para encerrar a condição. Duração: até 1 minuto, concentração.',
+        ),
+        tec(
+            9,
+            4,
+            '',
+            'Power Whip',
+            8,
+            'poderosa',
+            'Até 6 m, Linha',
+            '8d10 Cortante',
+            '8d10',
+            'cortante',
+            'Chicoteada única contra um alvo, em jogada de ataque (Técnicas) corpo a corpo. A criatura Grande ou menor que falhar numa Salvaguarda de Força é empurrada até 6 m para um espaço desocupado; se bater num objeto ou estrutura com mais de 1,5 m de raio, recebe 2d8 de dano extra. Requisito: chicote. Ataque combinado: possível.',
+        ),
+        tec(
+            12,
+            5,
+            '',
+            'Laço de Dominação',
+            10,
+            'poderosa',
+            'Até 6 m, Linha',
+            '3d8 Contundente (e 2d8 a cada turno)',
+            '3d8',
+            'contundente',
+            'Envolve uma criatura com o chicote. Ela faz Salvaguarda de Força ou fica "Incapacitada" enquanto a Técnica durar, repetindo a Salvaguarda de Força com desvantagem ao fim de cada turno dela. Ao aplicar, sofre 3d8 Contundente; incapacitada, sofre 2d8 no início de cada turno dela e não pode se mover para longe de você. Duração: até 1 minuto. Requisito: chicote. Ataque combinado: impossível.',
+        ),
+        tec(
+            12,
+            undefined,
+            '',
+            'Nebula Storm',
+            10,
+            'bonus',
+            'Pessoal',
+            'CR +2; 2 ataques extras por turno',
+            '',
+            undefined,
+            'Mantém o chicote em movimento ao seu redor. Enquanto durar: jogadas de ataque (comum) à distância com objetos, armas e projéteis físicos são defletidas antes de acertar e não causam dano; sua CR aumenta em +2; em cada turno você recebe 2 jogadas de ataque (comum) adicionais. Duração: até 1 minuto.',
+        ),
+        tec(
+            16,
+            6,
+            '',
+            'Círculo da Morte',
+            12,
+            'poderosa',
+            'Até 9 m de raio, Esfera',
+            '6d6 Cortante',
+            '6d6',
+            'cortante',
+            'Série de ataques que formam um círculo mortal. Criaturas no espaço (ou que iniciem o turno nele) fazem Salvaguarda de Constituição ou ficam "Impedidas" até o fim do próximo turno delas. A primeira vez que uma criatura entra no círculo, ou o círculo entra no espaço dela, e sempre que inicia o turno nele, ela faz Salvaguarda de Destreza: todo o dano se falhar, metade se passar. Duração: até 1 minuto, concentração. Requisito: chicote. Ataque combinado: impossível.',
+        ),
+        tec(
+            20,
+            7,
+            '',
+            'Pain Whip',
+            14,
+            'poderosa',
+            'Até 6 m, Linha',
+            '14d10 Cortante',
+            '14d10',
+            'cortante',
+            'Chicoteada com toda a sua força. O alvo atingido faz Salvaguarda de Constituição ou não pode realizar mais de uma jogada de ataque (comum), usar reações e ações bônus até o fim do próximo turno dele; no próximo turno, escolhe entre se mover, realizar uma ação ou uma ação poderosa. Requisito: chicote. Ataque combinado: possível.',
+        ),
+    ],
+};
+
+/** Como cada Técnica do Aventureiro causa o dano: ataque (Técnicas) ou Salvaguarda da área. Sem entrada, não há teste automático (buff ou efeito de mesa). */
+const TESTES_DO_AVENTUREIRO: Record<string, TesteDaTecnica> = {
+    Whiplash: { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'metade' },
+    'Power Pistol': { tipo: 'salvaguarda', atributo: 'des', desvantagem: true, aoPassar: 'metade' },
+    'Sonic Boom': { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'metade' },
+    'Power Whip': { tipo: 'ataque' },
+    'Laço de Dominação': { tipo: 'salvaguarda', atributo: 'for', aoPassar: 'nada' },
+    'Círculo da Morte': { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'metade' },
+    'Pain Whip': { tipo: 'ataque' },
+};
+for (const t of AVENTUREIRO.tecnicas) if (TESTES_DO_AVENTUREIRO[t.nome]) t.teste = TESTES_DO_AVENTUREIRO[t.nome];
+
+export const ESTILOS: EstiloDados[] = [ATIRADOR, AVENTUREIRO];
 export const estiloPorId = (id: string | undefined | null): EstiloDados | undefined => ESTILOS.find((e) => e.id === id);
 
 /** O atributo primário do personagem: o escolhido, ou o único possível. */

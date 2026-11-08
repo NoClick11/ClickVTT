@@ -898,3 +898,44 @@ test('Atirador: o equipamento depende da arma favorita e os Bellys são rolados 
     e.dinheiro = { ...e.dinheiro, estilo: 'outro' }; // o rolado era de outro estilo
     assert.ok(problemasDaEtapa(e, 'estilo').some((m) => m.includes('Bellys')));
 });
+
+// --- estilo de luta: Aventureiro --------------------------------------------------------------------------------------
+const aventureiro = (extra = {}) =>
+    feito({
+        estilo: {
+            id: 'aventureiro',
+            nome: 'Aventureiro',
+            dado: 'd10',
+            caminho: null,
+            armaFavorita: 'Chicote',
+            hbInata: 'defesa-ofensiva',
+            pericias: ['acrobacia', 'percepcao', 'sorte'],
+        },
+        especies: ['humano'],
+        variantes: [null],
+        dinheiro: { estilo: 'aventureiro', dados: [5, 5, 5, 5, 5, 5, 5, 5, 5, 5], total: 50, bellys: 50000, expressao: '10d10', multiplicador: 1000 },
+        ...extra,
+    });
+
+test('Aventureiro: sem caminho, d10, salvaguardas DES e CON, DES primário e técnicas por nível', () => {
+    const e = aventureiro();
+    assert.deepEqual(problemasDaEtapa(e, 'estilo'), []);
+    const { campos } = camposDaCriacao(e);
+    assert.equal(campos['dadosVida.tipo'], 'd10');
+    assert.equal(campos.atributoPrimario, 'des');
+    assert.ok(['des', 'con'].every((s) => campos.salvaguardas.includes(s)));
+    const tecnicas = (nivel) => camposDaCriacao(aventureiro(), { nivel }).campos['tecnicas.lista'].map((t) => t.nome);
+    assert.deepEqual(tecnicas(1), ['Whiplash', 'Fire Lash']);
+    assert.equal(tecnicas(20).length, 10);
+    assert.ok(tecnicas(3).includes('Power Pistol'));
+});
+
+test('Aventureiro: Dados de Aventura (½ nível, nível no 10º) e PP máx +4+prof', () => {
+    const t = ESTILOS.find((x) => x.id === 'aventureiro').tracos.find((x) => x.id === 'dados-de-aventura');
+    const dados = (n) => camposDaCriacao(aventureiro(), { nivel: n }).campos.caracteristicas.find((c) => c.nome.includes('Dados de Aventura'));
+    assert.equal(dados(5).usos.max, 2);
+    assert.equal(dados(9).usos.max, 4);
+    assert.equal(dados(10).usos.max, 10);
+    assert.equal(dados(20).usos.max, 20);
+    assert.ok(t.usos.formula);
+});

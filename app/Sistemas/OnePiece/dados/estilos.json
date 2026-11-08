@@ -29,6 +29,34 @@
           "multiplicador": 1000
         }
       }
+    },
+    {
+      "id": "aventureiro",
+      "nome": "Aventureiro",
+      "equipamentoInicial": {
+        "itens": [
+          {
+            "catalogo": "pistola",
+            "qtd": 1
+          },
+          {
+            "catalogo": "municao-esferica",
+            "qtd": 80
+          },
+          {
+            "catalogo": "chicote",
+            "qtd": 1
+          },
+          {
+            "catalogo": "adaga",
+            "qtd": 1
+          }
+        ],
+        "dinheiro": {
+          "dados": "10d10",
+          "multiplicador": 1000
+        }
+      }
     }
   ]
 }
