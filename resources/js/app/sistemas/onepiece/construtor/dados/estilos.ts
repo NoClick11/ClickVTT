@@ -5,7 +5,7 @@
  * O que o motor de efeitos modela entra em `efeitos`/`usos`/`acao`; o resto vira descrição + `etiquetas` (o resumo curto
  * que aparece na ficha). Características com `nivelMin` só valem a partir do nível indicado.
  */
-import type { AjusteDeArma, AtributoId, CategoriaDeAcao, DuracaoDaTecnica, Tecnica, TesteDaTecnica } from '../../regras.ts';
+import type { AjusteDeArma, AtributoId, BonusDeDano, CategoriaDeAcao, DuracaoDaTecnica, Tecnica, TesteDaTecnica } from '../../regras.ts';
 import type { DadoDeVida } from '../regras.ts';
 import type { TracoDados } from './tipos.ts';
 
@@ -2318,7 +2318,235 @@ export const HEROI: EstiloDados = {
     tecnicas: [],
 };
 
-export const ESTILOS: EstiloDados[] = [ATIRADOR, AVENTUREIRO, BRUTAMONTES, BLACK_LEG, HEROI];
+/**
+ * Usuário Ínsito (sem Técnicas prontas: elas vêm só dos treinamentos). Regra do projeto: só dano, PP e reações defensivas são automáticos; o resto
+ * fica como texto. Automáticos aqui: PP máximo, PT da Akuma no Chikara (pela Categoria do fruto), dano extra de Logia e Zoan Mítica nas Técnicas e no
+ * ataque desarmado, Ataque Extra, usos por descanso, a cura e os PD da Defesa Infundida e a margem de crítico da Transformação Diabólica.
+ */
+const I_OBJETO = 'objeto-infundido';
+const I_DEFESA = 'defesa-infundida';
+const I_SELVAGERIA = 'selvageria-infundida';
+
+/** Logia e Zoan Mítica: 1d4 de dano extra nos ataques (comum ou Técnicas), 1d8 a partir do 10º nível. */
+const danoDoFruto = (): BonusDeDano[] =>
+    (['tecnica', 'desarmado'] as const).flatMap((alvo) =>
+        [
+            { dados: '1d4', nivelMax: 9 },
+            { dados: '1d8', nivelMin: 10 },
+        ].flatMap((faixa) => [
+            { alvo, ...faixa, requerAkuma: { tipo: ['logia'] } },
+            { alvo, ...faixa, requerAkuma: { tipo: ['zoan'], zoan: ['mitica'] } },
+        ]),
+    );
+
+export const USUARIO_INSITO: EstiloDados = {
+    id: 'usuario-insito',
+    nome: 'Usuário Ínsito',
+    descricao:
+        'Consumiu um Fruto do Diabo há muitos anos e, a cada etapa do desenvolvimento das técnicas, incorporou as habilidades sobrenaturais: os poderes dele e os do fruto ficam praticamente indistinguíveis. Não aprende Técnicas prontas: só as cria por treinamentos, mas conta com vários meios de aprimorá-las, reduzir o custo e aumentar o poder de fogo ao extremo.',
+    dado: 'd10',
+    atributosPrimarios: ['for', 'von'],
+    salvaguardas: ['con', 'von'],
+    proficiencias: [],
+    pericias: 2,
+    periciasPermitidas: ['atletismo', 'acrobacia', 'furtividade', 'sobrenatural', 'sobrevivencia'],
+    armasFavoritas: ['Corporal'],
+    habilidadesInatas: [
+        { id: 'aprimoramento-de-atributo', nome: 'Aprimoramento de Atributo' },
+        { id: 'perito-em-tecnicas', nome: 'Perito em Técnicas' },
+    ],
+    equipamento: '12d10 x 1000 Bellys.',
+    equipamentoInicial: { itens: [], dinheiro: { dados: '12d10', multiplicador: 1000 } },
+    caminhos: [
+        {
+            id: I_OBJETO,
+            nome: 'Escolha Diabólica: Objeto Infundido',
+            descricao: 'Incorpora o poder do fruto num objeto (espada, pincel, chicote...) para liberar ou ajudar a usar esses poderes.',
+        },
+        {
+            id: I_DEFESA,
+            nome: 'Escolha Diabólica: Defesa Infundida',
+            descricao: 'Foca parte dos poderes na proteção, com Pontos de Defesa para CR, cura e PV máximos.',
+        },
+        {
+            id: I_SELVAGERIA,
+            nome: 'Escolha Diabólica: Selvageria Infundida',
+            descricao: 'Usa os poderes de forma explosiva e inconsequente: ignora resistências a um tipo de dano e executa técnicas sem PP.',
+        },
+    ],
+    // Escolha Aprimorada (11º): usufrui das duas escolhas (aqui, de todas)
+    herdaTudoEm: 11,
+    niveisAva: [4, 8, 12, 16, 20],
+    niveisDeTecnica: [],
+    tracos: [
+        {
+            id: 'akuma-no-chikara',
+            nome: 'Akuma no Chikara',
+            descricao:
+                'Você é portador dos poderes de uma Akuma no Mi (o Narrador decide se escolhe o fruto ou se é aleatório) e usa as técnicas dela fora de combate sem gastar PP, desde que não afetem um encontro futuro nem outras criaturas. Tipos: Paramecia, Zoan (Comum, Ancestral ou Mítica) ou Logia, de Categoria S, A, B ou C. Você recebe 2 PT a cada nível par, só para a Genialidade Inusitada, e, no 1º nível, PT adicionais pela Categoria: S, 3; A, 4; B ou C, 6 (em Zoan Comum e Ancestral, os das categorias A, B e C valem em qualquer Treinamento). O seu máximo de PP aumenta em 1 e mais 1 a cada nível de Usuário Ínsito.',
+            efeitos: [{ alvo: 'pp.max', modo: 'soma', valor: '@nivel' }],
+            etiquetas: ['PP máx +1 por nível', 'PT: 2 por nível par + Categoria (S 3, A 4, B/C 6)'],
+        },
+        {
+            id: 'crescimento-imprevisivel',
+            nome: 'Crescimento Imprevisível',
+            descricao:
+                'Você não aprende nenhuma técnica automaticamente (nem as da Akuma no Mi): só por treinamentos ou Maestrias. As Técnicas do treinamento "Genialidade Inusitada" têm os benefícios das Técnicas dos Estilos de Combate, e você pode criar uma Técnica Auxiliar em vez de uma de Combate, gastando 1 PT mais 1 PT por Auxiliar já aprendida (respeitando o nível de cada grau).',
+        },
+        {
+            id: 'tipo-logia-mitica',
+            nome: 'Tipo de Fruto: Logia e Zoan Mítica',
+            descricao:
+                'O poder do fruto permeia o corpo: 1d4 de dano adicional (da natureza do fruto) nas jogadas de ataque (comum ou Técnicas), 1d8 a partir do 10º nível. Suas Técnicas de Combate sempre causam, no mínimo, metade do dano possível. (O dado extra entra sozinho nas Técnicas e no ataque desarmado quando o tipo do fruto, na aba Akuma, é Logia ou Zoan Mítica; em armas, some à mão.)',
+            bonusDano: danoDoFruto(),
+            etiquetas: ['Logia / Zoan Mítica: +1d4 de dano (1d8 no 10º); Técnicas com ao menos metade do dano'],
+        },
+        {
+            id: 'tipo-paramecia',
+            nome: 'Tipo de Fruto: Paramecia',
+            descricao:
+                'Você usa Técnicas Auxiliares de custo igual ou inferior à metade do seu nível de Usuário Ínsito (mín. 2 PP) até 3 vezes sem gastar PP (voltam em descanso longo). O limite de Pontos Virtuais na criação de 1 Manifestação de Poder do fruto aumenta em 2.',
+            usos: { max: 3, descanso: 'longo' },
+            etiquetas: ['Paramecia: 3 Técnicas Auxiliares baratas sem PP; MP com +2 Pontos Virtuais'],
+        },
+        {
+            id: 'tipo-zoan',
+            nome: 'Tipo de Fruto: Zoan Comum e Ancestral',
+            descricao:
+                'Seu dado de vida vira d12; você recebe as Habilidades Básicas "Corpo de Guerreiro" e "Prodígio do Combate"; os PT adicionais das categorias A, B e C valem em qualquer Treinamento; seu dano desarmado sobe 1 passo (1 → 1d4 → 1d6 → 1d8 → 1d10 → 1d12 → 2d6).',
+            etiquetas: ['Zoan Comum/Ancestral: d12, Corpo de Guerreiro, Prodígio do Combate, desarmado +1 passo'],
+        },
+        // --- Escolha Diabólica ---
+        {
+            id: 'objeto-infundido',
+            caminho: I_OBJETO,
+            nome: 'Escolha Diabólica: Objeto Infundido',
+            nivelMin: 2,
+            descricao:
+                'Poder Canalizado: gastando 2 PP, o objeto vira uma arma: some o Bônus de Proficiência ao ataque (comum) e use o modificador de Vontade no lugar do normal; causa 2d8 + Vontade de dano de um tipo compatível com o fruto ou o objeto, até o fim do encontro (no 8º nível não gasta mais PP). Armazenamento Ínsito: uma vez por dia, guarde 1 PP no objeto (guarda até o seu nível, máx. 10 PP) e, empunhando-o, gaste esses PP ao executar qualquer Técnica da Akuma no Mi. Objeto Auxiliador: ao errar um ataque (comum), cause dano igual ao modificador de Vontade (se o d20 não for 1); e o objeto recebe só um destes: manter uma técnica sem concentração, ou Técnicas de 1 minuto com o objeto como requisito custam 1 PP a menos e 1 PP a menos por minuto aumentado. Troque o objeto a cada nível ou se ele for destruído.',
+            etiquetas: [
+                'Objeto: arma de 2d8 + Vontade (2 PP até o fim do encontro; grátis a partir do 8º)',
+                'Armazenamento Ínsito: guarda PP no objeto',
+            ],
+        },
+        {
+            id: 'defesa-infundida',
+            caminho: I_DEFESA,
+            nome: 'Escolha Diabólica: Defesa Infundida',
+            nivelMin: 2,
+            usos: { max: 1, formula: '@nivel', descanso: 'longo' },
+            descricao:
+                'Você tem Pontos de Defesa (PD) iguais ao seu nível de Usuário Ínsito, que voltam em descanso longo: com a reação, +1 na CR a cada 3 PD gastos até o fim do encontro (máx. +3); com a ação bônus, recupere 20 PV a cada 2 PD gastos (até 5 vezes o seu nível de PV por esta característica); ou aumente seus PV máximos em 30 a cada 5 PD gastos (esses PD não voltam após o uso).',
+            acoes: [
+                { rotulo: 'Ação bônus: recuperar 20 PV (2 PD)', tipo: 'recuperar', rolagem: '20', recurso: 'pv', acao: 'bonus', usa: true, custo: 2 },
+                { rotulo: 'Reação: +1 CR (3 PD)', tipo: 'gastar', acao: 'reacao', usa: true, custo: 3 },
+                { rotulo: 'PV máximos +30 (5 PD)', tipo: 'gastar', usa: true, custo: 5 },
+            ],
+            etiquetas: ['Pontos de Defesa = nível: CR +1 (3 PD, máx. +3), 20 PV (2 PD), PV máx +30 (5 PD)'],
+        },
+        {
+            id: 'selvageria-infundida',
+            caminho: I_SELVAGERIA,
+            nome: 'Escolha Diabólica: Selvageria Infundida',
+            nivelMin: 2,
+            usos: { max: 3, descanso: 'longo' },
+            descricao:
+                'Você escolhe um tipo de dano para o qual seus ataques e técnicas ignoram resistências e causam metade do dano em invulnerabilidades. Você executa uma Técnica de Combate de 3º grau ou menor sem gastar PP, só uma vez por turno, até 3 vezes (voltam em descanso longo). Com 0 PP, você continua usando técnicas gastando PV: 5 PV para cada PP que a técnica consumiria.',
+            etiquetas: ['3 Técnicas (até 3º grau) sem PP; com 0 PP gasta 5 PV por PP', 'Um tipo de dano ignora resistências'],
+        },
+        {
+            id: 'tecnica-principal',
+            nome: 'Técnica Principal',
+            nivelMin: 3,
+            usos: { max: 3, descanso: 'longo' },
+            descricao:
+                'Você escolhe uma Técnica de Combate de 4º grau ou menor como técnica principal: ela pode ser executada pela metade dos PP (arredondada para cima) até 3 vezes (voltam em descanso longo) e, sempre que executada, causa 2 dados de dano adicionais, ignora resistências e invulnerabilidades e não é descontada de PV temporários. Troque a técnica a cada novo nível de Usuário Ínsito.',
+            etiquetas: ['Técnica Principal: metade dos PP (3 usos), +2 dados e ignora resistências'],
+        },
+        {
+            id: 'rompante-diabolico',
+            nome: 'Rompante Diabólico',
+            nivelMin: 5,
+            usos: { max: 1, formula: '1+floor((@nivel-5)/5)', descanso: 'curto' },
+            descricao:
+                'No seu turno, você faz uma ação adicional ou ação poderosa adicional (Técnicas Auxiliares ou Técnicas de Combate de 3º grau ou menor). Um uso até descanso curto ou longo; no 10º nível, até 2 usos (1 por rodada) e, no 15º, até 3 (1 por rodada), voltando em descanso longo.',
+            etiquetas: ['Ação ou ação poderosa adicional (técnica até 3º grau)'],
+        },
+        {
+            id: 'sobrecarga-explosiva',
+            nome: 'Sobrecarga Explosiva',
+            nivelMin: 6,
+            descricao:
+                'Num encontro, ao usar uma Técnica de Combate da Akuma no Mi, você pode ganhar Dados de Sobrecarga (d6) na quantidade de um d4; continuando a usar Técnicas, role o d4 de novo para acumular mais (perdem-se ao fim do encontro). Após rolar o d4 pelo menos duas vezes, os dados acumulados somam dano numa Técnica de Combate instantânea (ex.: d4 de 2 e 3 = 5d6) e zeram. Com 6 ou mais Dados de Sobrecarga há descontrole: você sofre metade do total (para baixo) em dano Verdadeiro e zera os dados. A partir do 12º nível, em vez do dano, você pode perder a reação (se a tiver).',
+            etiquetas: ['Dados de Sobrecarga: d4 de d6 por técnica; 6+ causa descontrole'],
+        },
+        {
+            id: 'ataque-extra',
+            nome: 'Ataque Extra',
+            nivelMin: 7,
+            descricao: 'Você pode atacar duas vezes, em vez de uma, ao usar a ação "Atacar" no seu turno.',
+            efeitos: [{ alvo: 'ataques.acao', modo: 'soma', valor: 1 }],
+            etiquetas: ['Ação Atacar: 2 ataques'],
+        },
+        {
+            id: 'uso-controlado',
+            nome: 'Uso Controlado',
+            nivelMin: 10,
+            descricao:
+                'No 10º nível, se você não tem ao menos uma Técnica de cada grau (até o 4º) e 2 Técnicas Auxiliares, você as aprende; se já as tem, aprende 3 técnicas novas (até 4º grau ou Auxiliar). Nos níveis 12, 16 e 20 você recebe as técnicas de 5º, 6º e 7º grau e, no 12º, uma Técnica Auxiliar extra.',
+            etiquetas: ['Técnicas de graus que faltam e Auxiliares (crie na aba Técnicas)'],
+        },
+        {
+            id: 'escolha-aprimorada',
+            nome: 'Escolha Aprimorada',
+            nivelMin: 11,
+            descricao:
+                'Você escolhe mais um traço da "Escolha Diabólica" e usufrui das duas escolhas ao mesmo tempo (aqui, os traços das outras escolhas aparecem todos; use os dois que escolheu).',
+        },
+        {
+            id: 'transformacao-diabolica',
+            nome: 'Transformação Diabólica',
+            nivelMin: 14,
+            tipo: 'ativa',
+            acao: 'bonus',
+            usos: { max: 1, descanso: 'longo' },
+            descricao:
+                'Por 1 minuto: a margem de acerto crítico dos seus ataques (comum ou Técnicas) vira 18-20; você pode forçar uma criatura a falhar numa Salvaguarda qualquer, até 3 vezes; Técnicas de 1º grau custam 0 PP e podem substituir um dos ataques do Ataque Extra, sem contar no limite de 1 técnica por turno; num acerto crítico, você faz uma Técnica de Combate de 3º grau ou menor com uma ação bônus, também sem contar nesse limite. Um uso até descanso longo.',
+            efeitos: [
+                { alvo: 'margem.corpo', modo: 'min', valor: 18 },
+                { alvo: 'margem.distancia', modo: 'min', valor: 18 },
+            ],
+            etiquetas: ['Transformação: crítico 18-20, 3 Salvaguardas forçadas, Técnicas de 1º grau sem PP'],
+        },
+        {
+            id: 'singularidade-exaltada',
+            nome: 'Singularidade Exaltada',
+            nivelMin: 15,
+            descricao:
+                'O fruto atinge o potencial máximo: Logia, ao realizar uma Técnica de Combate, causa o dano máximo possível (até 3 vezes, voltam em descanso longo); Paramecia recebe uma ação bônus ou reação adicional por rodada, que não pode ser um ataque nem causar dano (até 3 vezes, voltam em descanso longo); Zoan Comum ou Ancestral, +150 nos PV máximos; Zoan Mítica escolhe qualquer uma. No 18º nível, escolha outra característica, ignorando o tipo de fruto.',
+            usos: { max: 3, descanso: 'longo' },
+            etiquetas: ['Logia: dano máximo (3 usos); Paramecia: ação adicional (3 usos); Zoan: PV máx +150'],
+        },
+        {
+            id: 'mestre-usuario',
+            nome: 'Mestre Usuário',
+            nivelMin: 18,
+            descricao:
+                'Distribua livremente 6 pontos entre seus atributos, respeitando o máximo de 24 em cada um. Você pode escolher dois atributos para aplicar esses pontos até o máximo de 30.',
+        },
+        {
+            id: 'poder-sem-limites',
+            nome: 'Poder Sem Limites',
+            nivelMin: 19,
+            descricao:
+                'Você entra em sintonia plena com o fruto: cria uma nova "Manifestação de Poder", executa Técnicas e características sem gastar PP e pode usar 2 ações poderosas no mesmo turno (o Rompante Diabólico continua valendo normalmente).',
+            etiquetas: ['Sem gastar PP; 2 ações poderosas por turno'],
+        },
+    ],
+    tecnicas: [],
+};
+
+export const ESTILOS: EstiloDados[] = [ATIRADOR, AVENTUREIRO, BRUTAMONTES, BLACK_LEG, HEROI, USUARIO_INSITO];
 export const estiloPorId = (id: string | undefined | null): EstiloDados | undefined => ESTILOS.find((e) => e.id === id);
 
 /** O dado de vida do estilo para o caminho escolhido (o caminho pode mudá-lo). */

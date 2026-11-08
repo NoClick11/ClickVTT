@@ -175,6 +175,17 @@
           "multiplicador": 1000
         }
       }
+    },
+    {
+      "id": "usuario-insito",
+      "nome": "Usuário Ínsito",
+      "equipamentoInicial": {
+        "itens": [],
+        "dinheiro": {
+          "dados": "12d10",
+          "multiplicador": 1000
+        }
+      }
     }
   ]
 }

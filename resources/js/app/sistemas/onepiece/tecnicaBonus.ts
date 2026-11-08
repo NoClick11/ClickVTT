@@ -34,7 +34,9 @@ export function bonusQueValem(f: FichaOnePiece, alvo: BonusDeDano['alvo']): Bonu
             b.alvo === alvo &&
             nivel >= (b.nivelMin ?? 1) &&
             nivel <= (b.nivelMax ?? 99) &&
-            (b.requer ?? []).every((nome) => temCaracteristica(f, nome)),
+            (b.requer ?? []).every((nome) => temCaracteristica(f, nome)) &&
+            (!b.requerAkuma ||
+                (b.requerAkuma.tipo.includes(f.akuma?.tipo ?? '') && (!b.requerAkuma.zoan || b.requerAkuma.zoan.includes(f.akuma?.zoan ?? '')))),
     );
     const melhorDoGrupo = new Map<string, number>();
     for (const b of aplicaveis) if (b.grupo) melhorDoGrupo.set(b.grupo, Math.max(melhorDoGrupo.get(b.grupo) ?? -Infinity, b.prioridade ?? 0));
@@ -119,7 +121,13 @@ export function montarDanoDaTecnica(f: FichaOnePiece, t: Tecnica, grau: number, 
         if (b.reduzCusto) custo = Math.max(0, custo - (b.dados - n));
         consumiuBonus = true;
     }
-    if (grau > 0 && faces) extras.push(...extrasDeDano(f, 'tecnica', grau, faces));
+    if (grau > 0 && faces) {
+        // dano extra do mesmo tipo da Técnica (sem tipo próprio) soma na rolagem principal; o de outro tipo rola à parte
+        for (const e of extrasDeDano(f, 'tecnica', grau, faces)) {
+            if (e.tipo === null) principal = `${principal}+${e.expressao}`;
+            else extras.push(e);
+        }
+    }
     if (danoMaximoDaTecnica(f, t))
         return { expressao: maximizar(principal), extras: extras.map((e) => ({ ...e, expressao: maximizar(e.expressao) })), custo, consumiuBonus };
 

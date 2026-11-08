@@ -61,7 +61,12 @@ class Treinamentos
             ? 5 + 2 * intdiv(min(20, max(1, (int) ($ficha['nivel'] ?? 1))), 2)
             : 0;
 
-        return $cultural + $disciplinado + $heroico;
+        // Akuma no Chikara (Usuário Ínsito): 2 PT a cada nível par e, no 1º nível, 3 (categoria S), 4 (A) ou 6 (B ou C) PT extras
+        $insito = collect($ficha['caracteristicas'] ?? [])->contains(fn ($c) => str_contains((string) ($c['nome'] ?? ''), 'Akuma no Chikara'))
+            ? 2 * intdiv(min(20, max(1, (int) ($ficha['nivel'] ?? 1))), 2) + (['s' => 3, 'a' => 4, 'b' => 6, 'c' => 6][$ficha['akuma']['categoria'] ?? ''] ?? 0)
+            : 0;
+
+        return $cultural + $disciplinado + $heroico + $insito;
     }
 
     /** @param list<array<string, mixed>> $anteriores */

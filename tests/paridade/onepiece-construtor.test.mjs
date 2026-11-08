@@ -472,6 +472,8 @@ test('Atirador: Corpo Treinado soma 1 PV por nível e Corrida Contínua dá 15 m
 
 // --- Habilidades Básicas e subir de nível ------------------------------------------------------------------------------
 import { aumentosDoAprimoramento, HABILIDADES_BASICAS, OPCOES_APRIMORAMENTO } from '../../resources/js/app/sistemas/onepiece/construtor/dados/habilidades-basicas.ts';
+import { ptCulturais } from '../../resources/js/app/sistemas/onepiece/treinamentos/regras.ts';
+import { extrasDeDano, montarDanoDaTecnica } from '../../resources/js/app/sistemas/onepiece/tecnicaBonus.ts';
 import { camposDoNivel, problemasDoNivel, pvPelaMedia } from '../../resources/js/app/sistemas/onepiece/construtor/nivel.ts';
 import { caracteristicasDasHB, dadoDeVidaFinal } from '../../resources/js/app/sistemas/onepiece/construtor/regras.ts';
 
@@ -1104,4 +1106,51 @@ test('Herói: o Aprimoramento de Atributo inato exige a escolha e soma nos atrib
     const sem = camposDaCriacao(heroi()).campos['atributos.for'];
     assert.equal(camposDaCriacao(ok).campos['atributos.for'], Math.min(20, sem + 2));
     assert.ok(camposDaCriacao(ok).campos.caracteristicas.some((c) => c.nome.startsWith('Aprimoramento de Atributo: +2 FOR')));
+});
+
+// --- estilo de luta: Usuário Ínsito -----------------------------------------------------------------------------------
+const insito = (caminho = 'objeto-infundido', extra = {}) =>
+    feito({
+        estilo: { id: 'usuario-insito', nome: 'Usuário Ínsito', dado: 'd10', primario: 'von', caminho, armaFavorita: 'Corporal', hbInata: 'perito-em-tecnicas', pericias: ['atletismo', 'sobrenatural'] },
+        especies: ['humano'],
+        variantes: [null],
+        dinheiro: { estilo: 'usuario-insito', dados: Array(12).fill(5), total: 60, bellys: 60000, fixo: 0, expressao: '12d10', multiplicador: 1000 },
+        ...extra,
+    });
+
+test('Usuário Ínsito: d10, perícias da lista, sem Técnicas prontas, PP máx +1 por nível e Ataque Extra no 7º', () => {
+    assert.deepEqual(problemasDaEtapa(insito(), 'estilo'), []);
+    const e = insito();
+    assert.ok(problemasDaEtapa({ ...e, estilo: { ...e.estilo, pericias: ['atletismo', 'persuasao'] } }, 'estilo').some((m) => m.includes('permitidas')));
+    const c = (n) => camposDaCriacao(insito(), { nivel: n }).campos;
+    assert.equal(c(1)['dadosVida.tipo'], 'd10');
+    assert.deepEqual(c(20)['tecnicas.lista'], []);
+    const pp = c(5).caracteristicas.find((x) => x.nome === 'Akuma no Chikara').efeitos[0];
+    assert.deepEqual([pp.alvo, pp.valor], ['pp.max', '@nivel']);
+    assert.ok(!c(6).caracteristicas.some((x) => x.nome === 'Ataque Extra'));
+    assert.ok(c(7).caracteristicas.some((x) => x.nome === 'Ataque Extra'));
+    // Escolha Diabólica: o traço do caminho vem no 2º nível e, no 11º (Escolha Aprimorada), os dos outros
+    const nomes = (n, cam) => camposDaCriacao(insito(cam), { nivel: n }).campos.caracteristicas.map((x) => x.nome);
+    assert.ok(!nomes(1, 'defesa-infundida').some((x) => x.includes('Defesa Infundida')));
+    assert.ok(nomes(2, 'defesa-infundida').some((x) => x.includes('Defesa Infundida')));
+    assert.ok(!nomes(10, 'defesa-infundida').some((x) => x.includes('Objeto Infundido')));
+    assert.ok(nomes(11, 'defesa-infundida').some((x) => x.includes('Objeto Infundido')));
+});
+
+test('Usuário Ínsito: PT da Akuma no Chikara (2 por nível par + categoria) e dano extra só de Logia ou Zoan Mítica', () => {
+    const car = (n) => camposDaCriacao(insito(), { nivel: n }).campos.caracteristicas;
+    const ficha = (n, akuma) => ({ nivel: n, caracteristicas: car(n), atributos: { sab: 10 }, akuma });
+    assert.equal(ptCulturais(ficha(1, { categoria: 's' })), 3);
+    assert.equal(ptCulturais(ficha(1, { categoria: 'a' })), 4);
+    assert.equal(ptCulturais(ficha(1, { categoria: 'b' })), 6);
+    assert.equal(ptCulturais(ficha(6, { categoria: 'c' })), 6 + 6); // 3 níveis pares
+    const dado = (n, akuma) => extrasDeDano({ nivel: n, caracteristicas: car(n).map((x) => ({ ...x })), akuma }, 'tecnica', 3, 8).map((e) => e.expressao);
+    assert.deepEqual(dado(3, { tipo: 'logia' }), ['1d4']);
+    assert.deepEqual(dado(10, { tipo: 'logia' }), ['1d8']);
+    assert.deepEqual(dado(3, { tipo: 'zoan', zoan: 'mitica' }), ['1d4']);
+    assert.deepEqual(dado(3, { tipo: 'zoan', zoan: 'comum' }), []);
+    assert.deepEqual(dado(3, { tipo: 'paramecia' }), []);
+    // o dano do fruto soma na rolagem principal (sem tipo próprio)
+    const f = { nivel: 3, caracteristicas: car(3), akuma: { tipo: 'logia' }, bonusTecnica: {} };
+    assert.equal(montarDanoDaTecnica(f, { nome: 'T', origem: '', custo: 2, alcance: '', efeito: '', descricao: '', rolagem: '2d8' }, 1, '2d8').expressao, '2d8+1d4');
 });

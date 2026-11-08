@@ -351,6 +351,11 @@ final class FichaOnePiece
         $r['caracteristicas.*.bonusDano.*.prioridade'] = ['nullable', 'integer:strict', 'between:0,99'];
         $r['caracteristicas.*.bonusDano.*.requer'] = ['nullable', 'array', 'max:4'];
         $r['caracteristicas.*.bonusDano.*.requer.*'] = ['string', 'max:80'];
+        $r['caracteristicas.*.bonusDano.*.requerAkuma'] = ['nullable', 'array'];
+        $r['caracteristicas.*.bonusDano.*.requerAkuma.tipo'] = ['required_with:caracteristicas.*.bonusDano.*.requerAkuma', 'array', 'max:3'];
+        $r['caracteristicas.*.bonusDano.*.requerAkuma.tipo.*'] = ['string', 'in:logia,paramecia,zoan'];
+        $r['caracteristicas.*.bonusDano.*.requerAkuma.zoan'] = ['nullable', 'array', 'max:3'];
+        $r['caracteristicas.*.bonusDano.*.requerAkuma.zoan.*'] = ['string', 'in:comum,ancestral,mitica'];
         $r['caracteristicas.*.hb'] = ['nullable', 'string', 'max:40'];
         $r['caracteristicas.*.acao'] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];
         $r['caracteristicas.*.acoes.*.acao'] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];

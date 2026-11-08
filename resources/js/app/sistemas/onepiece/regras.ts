@@ -285,6 +285,8 @@ export interface BonusDeDano {
     grupo?: string;
     prioridade?: number;
     requer?: string[];
+    /** Só vale com este tipo de Akuma no Mi na ficha (e, em Zoan, este subtipo): Logia e Zoan Mítica do Usuário Ínsito. */
+    requerAkuma?: { tipo: string[]; zoan?: string[] };
 }
 /** Técnica auxiliar que arma um bônus para a PRÓXIMA Técnica de Combate (Fire Lash, Strike): dados extras e custo menor. */
 export interface ArmarBonus {

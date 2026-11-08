@@ -98,8 +98,13 @@ async function agirComAcao(a: AcaoCaracteristica, i: number) {
             modo === 'vantagem' ? a.rolagem.replace(/^1d20/, '2d20kh1') : modo === 'desvantagem' ? a.rolagem.replace(/^1d20/, '2d20kl1') : a.rolagem;
         if (a.passo === 'desarmado' && !a.vantagemAlvo) {
             // Dano do ataque desarmado: leva o tipo (aplicável ao alvo) e os passos de dado; os danos extras de outro tipo (Fogo do Diable Jambe) rolam à parte
-            rolar(expandirRolagem(expr, calc.value, a.passo), c.nome, undefined, { tipo: 'Contundente' });
-            for (const extra of juntarPorTipo(extrasDeDano(f, 'desarmado'))) {
+            const extras = juntarPorTipo(extrasDeDano(f, 'desarmado'));
+            // o dano extra sem tipo próprio (Logia: 1d4) soma na rolagem do ataque; o de outro tipo rola à parte
+            const mesmoTipo = extras.find((x) => x.tipo === null);
+            rolar(expandirRolagem(expr, calc.value, a.passo) + (mesmoTipo ? `+${mesmoTipo.expressao}` : ''), c.nome, undefined, {
+                tipo: 'Contundente',
+            });
+            for (const extra of extras.filter((x) => x.tipo !== null)) {
                 rolar(extra.expressao, `${c.nome} (${extra.tipo ?? 'extra'})`, undefined, { tipo: extra.tipo, fonte: 'black-leg' });
             }
         } else rolar(expr, c.nome);

@@ -43,7 +43,7 @@ export const ptDoNivel = (nivel: number): number => 3 * Math.floor(Math.min(Math
 const modificador = (valor: number): number => Math.floor((valor - 10) / 2);
 
 /** Traço Cultural (espécie): PT igual ao mod. de Sabedoria, quando positivo. */
-export function ptCulturais(f: Pick<FichaOnePiece, 'caracteristicas' | 'atributos'> & { nivel?: number }): number {
+export function ptCulturais(f: Pick<FichaOnePiece, 'caracteristicas' | 'atributos'> & { nivel?: number; akuma?: { categoria?: string } }): number {
     const tem = (f.caracteristicas ?? []).some((c) => c.nome === 'Traços Culturais');
     const cultural = tem ? Math.max(0, modificador(f.atributos?.sab ?? 10)) : 0;
     // Singularidade Disciplinado: 1 PT a cada nível par de personagem.
@@ -56,7 +56,13 @@ export function ptCulturais(f: Pick<FichaOnePiece, 'caracteristicas' | 'atributo
         ? 5 + 2 * Math.floor(Math.min(20, Math.max(1, Math.floor(Number(f.nivel)) || 1)) / 2)
         : 0;
 
-    return cultural + disciplinado + heroico;
+    // Akuma no Chikara (Usuário Ínsito): 2 PT a cada nível par e, no 1º nível, 3 (categoria S), 4 (A) ou 6 (B ou C) PT extras
+    const insito = (f.caracteristicas ?? []).some((c) => c.nome.includes('Akuma no Chikara'))
+        ? 2 * Math.floor(Math.min(20, Math.max(1, Math.floor(Number(f.nivel)) || 1)) / 2) +
+          (({ s: 3, a: 4, b: 6, c: 6 } as Record<string, number>)[f.akuma?.categoria ?? ''] ?? 0)
+        : 0;
+
+    return cultural + disciplinado + heroico + insito;
 }
 
 const norm = (s: string): string => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
