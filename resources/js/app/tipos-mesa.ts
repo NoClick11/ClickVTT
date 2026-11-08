@@ -111,3 +111,24 @@ export interface DiarioDto {
     pastas: DiarioPastaDto[];
     folhetos: FolhetoDto[];
 }
+
+export interface ItemMusica {
+    id: string;
+    url: string;
+    videoId: string;
+    titulo: string;
+}
+
+export interface EstadoMusicaTocando {
+    url: string;
+    videoId: string;
+    titulo: string;
+    tocando: boolean;
+    loop: boolean;
+    tempo?: number;
+}
+
+export interface MusicaMesaDto {
+    tocando?: EstadoMusicaTocando | null;
+    playlist?: ItemMusica[];
+}

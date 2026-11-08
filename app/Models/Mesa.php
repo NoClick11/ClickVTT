@@ -12,13 +12,14 @@ class Mesa extends Model
 {
     protected $fillable = [
         'nome', 'slug', 'sistema_id', 'descricao', 'capa', 'tema_entrada', 'favorita', 'travada', 'fogo_amigo',
-        'descanso_curto', 'descanso_longo', 'subir_nivel',
+        'descanso_curto', 'descanso_longo', 'subir_nivel', 'musica',
     ];
 
     protected function casts(): array
     {
         return [
             'combate' => 'array',
+            'musica' => 'array',
             'favorita' => 'boolean',
             'travada' => 'boolean',
             'fogo_amigo' => 'boolean',
