@@ -46,6 +46,7 @@ export function camposDaFruta(f: FichaOnePiece, id: string | null, nivel = f.niv
     const lista = ((campos['akuma.lista'] as Tecnica[]) ?? f.akuma?.lista ?? []).filter((t) => t.builder !== 'fruta');
     campos.caracteristicas = fruta ? [...caracteristicas, ...caracteristicasDaFruta(fruta, nivel, f.caracteristicas)] : caracteristicas;
     campos['akuma.lista'] = fruta ? [...lista, ...tecnicasDaFruta(fruta, nivel)] : lista;
+    campos.fruta = fruta ? fruta.nome : '';
 
     return campos;
 }
@@ -62,6 +63,7 @@ export function camposDaFrutaNoNivel(
     const lista = (base.lista ?? f.akuma?.lista ?? []).filter((t) => t.builder !== 'fruta');
 
     return {
+        fruta: fruta.nome,
         caracteristicas: [...caracteristicas, ...caracteristicasDaFruta(fruta, novoNivel, f.caracteristicas)],
         'akuma.lista': [...lista, ...tecnicasDaFruta(fruta, novoNivel)],
     };

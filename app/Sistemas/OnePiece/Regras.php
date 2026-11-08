@@ -365,7 +365,7 @@ final class Regras
         $base['ataque.arma'] = 0;
         $base['dano.arma'] = 0;
         $base['carga.max'] = 15 * $r['atributos.for'];
-        $base['pv.max'] = $f['pv']['max'] ?? 0;
+        $base['pv.max'] = max(0, ($f['pv']['max'] ?? 0) - ($f['pv']['brutal'] ?? 0));
         $base['pp.max'] = $nivel * ($f['pp']['porNivel'] ?? 4);
         // Pontos de Escudo (Endurecimento Defensivo): o máximo vem dos efeitos; sem o talento é 0
         $base['escudo.max'] = 0;
@@ -386,8 +386,13 @@ final class Regras
         // Ataques da Ação "Atacar": 1 + Ataque Extra e afins; os extras à distância só valem para armas à distância
         $base['ataques.acao'] = 1;
         $base['ataques.distancia'] = 0;
-        $base['ataque.desarmado'] = $prof + $mod['for'];
-        $base['dano.desarmado'] = $mod['for'];
+        $desarmado = $f['desarmado'] ?? [];
+        $atrDesarmado = $desarmado['atributo'] ?? 'for';
+        $modDesarmado = $mod[$atrDesarmado] ?? $mod['for'];
+        $bonusAtaqueDesarmado = (int) ($desarmado['bonusAtaque'] ?? 0);
+        $bonusDanoDesarmado = (int) ($desarmado['bonusDano'] ?? 0);
+        $base['ataque.desarmado'] = $prof + $modDesarmado + $bonusAtaqueDesarmado;
+        $base['dano.desarmado'] = $modDesarmado + $bonusDanoDesarmado;
 
         // Fase 3: efeitos sobre os valores-base (as fórmulas veem a fase 2)
         $variaveis = $r + $base;
@@ -513,13 +518,20 @@ final class Regras
     {
         $itens = self::comAjustes($ficha, $itens);
         $arma = null;
+        $ehDesarmado = false;
         foreach ($termos as $t) {
-            if (($t['tipo'] ?? null) === 'variavel' && preg_match('/^arma\.(\d+)\.ataque$/', $t['nome'], $m)) {
-                $arma = (int) $m[1];
-                break;
+            if (($t['tipo'] ?? null) === 'variavel') {
+                if (preg_match('/^arma\.(\d+)\.ataque$/', $t['nome'], $m)) {
+                    $arma = (int) $m[1];
+                    break;
+                }
+                if ($t['nome'] === 'ataque.desarmado') {
+                    $ehDesarmado = true;
+                    break;
+                }
             }
         }
-        if ($arma === null) {
+        if ($arma === null && ! $ehDesarmado) {
             return [];
         }
 
@@ -534,6 +546,45 @@ final class Regras
                     break 2;
                 }
             }
+        }
+
+        if ($ehDesarmado) {
+            $desarmado = $ficha['desarmado'] ?? [];
+            $margem = (int) ($desarmado['margem'] ?? 20);
+            $meta = ['arma' => 'desarmado', 'margem' => $margem];
+            if ($natural !== null) {
+                if ($natural >= $margem) {
+                    $meta['destaque'] = 'critico';
+                } elseif ($natural === 1) {
+                    $meta['destaque'] = 'falha';
+                }
+            }
+            $danoDado = trim((string) ($desarmado['dano'] ?? ''));
+            $tipoDano = trim((string) ($desarmado['tipoDano'] ?? 'Contundente')) ?: 'Contundente';
+            $bonus = (int) ($variaveis['dano.desarmado'] ?? 0);
+            if (($meta['destaque'] ?? null) !== 'falha') {
+                $dados = $danoDado !== '' ? [$danoDado] : [];
+                $resumo = $dados !== [] ? implode('+', $dados).($bonus > 0 ? "+{$bonus}" : ($bonus < 0 ? (string) $bonus : '')) : (string) $bonus;
+                $expressao = $dados !== [] ? implode('+', $dados).'+@dano.desarmado' : '@dano.desarmado';
+                $acao = fn (string $id, string $rotulo, string $expr, string $res) => [
+                    'id' => $id, 'rotulo' => $rotulo, 'resumo' => $res,
+                    'expressao' => $expr, 'rotuloRolagem' => 'Ataque Desarmado', 'dano' => ['tipo' => $tipoDano],
+                ];
+                $normal = $acao('dano', 'Dano', $expressao, $resumo);
+                if (($meta['destaque'] ?? null) === 'critico') {
+                    $dadosCrit = array_map(fn ($d) => self::multiplicarDados($d, 2), $dados);
+                    $resCrit = $dadosCrit !== [] ? implode('+', $dadosCrit).($bonus > 0 ? "+{$bonus}" : ($bonus < 0 ? (string) $bonus : '')) : (string) ($bonus * 2);
+                    $exprCrit = $dadosCrit !== [] ? implode('+', $dadosCrit).'+@dano.desarmado' : '@dano.desarmado*2';
+                    $meta['acoes'] = [
+                        [...$acao('dano-critico', 'Dano crítico', $exprCrit, $resCrit), 'destaque' => 'critico'],
+                        [...$normal, 'rotulo' => 'Dano normal'],
+                    ];
+                } else {
+                    $meta['acoes'] = [$normal];
+                }
+            }
+
+            return $meta;
         }
 
         $margem = (int) ($variaveis["arma.{$arma}.margem"] ?? 20);

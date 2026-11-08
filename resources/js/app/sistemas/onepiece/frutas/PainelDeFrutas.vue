@@ -68,13 +68,25 @@ const campo =
                 </button>
                 <div v-if="aberta === f.id" class="grid gap-2 border-t border-preto-800 px-3 py-2">
                     <p class="text-xs text-preto-300">{{ f.descricao }}</p>
-                    <ul class="grid gap-0.5 text-xs" aria-label="Técnicas por nível">
-                        <li v-for="t in tecnicasPorNivel(f)" :key="t.nome" class="flex items-center gap-2">
-                            <span class="w-9 shrink-0 text-ouro-300">{{ t.nivel }}º</span>
-                            <span class="min-w-0 flex-1 truncate">{{ t.nome }}</span>
-                            <span class="shrink-0 text-preto-400">{{ t.grau }} · {{ t.custo }} PP</span>
-                        </li>
-                    </ul>
+                    <div v-if="f.tracos?.length" class="grid gap-1">
+                        <span class="text-[11px] font-semibold uppercase tracking-wider text-ouro-300/80">Manifestações de Poder</span>
+                        <ul class="grid gap-1 text-xs" aria-label="Manifestações de poder">
+                            <li v-for="tr in f.tracos" :key="tr.id" class="rounded border border-preto-800 bg-preto-950/70 p-1.5">
+                                <div class="font-medium text-ouro-200">{{ tr.nome }}</div>
+                                <div class="text-[11px] leading-snug text-preto-400">{{ tr.descricao }}</div>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="grid gap-1">
+                        <span class="text-[11px] font-semibold uppercase tracking-wider text-ouro-300/80">Técnicas por Nível</span>
+                        <ul class="grid gap-0.5 text-xs" aria-label="Técnicas por nível">
+                            <li v-for="t in tecnicasPorNivel(f)" :key="t.nome" class="flex items-center gap-2">
+                                <span class="w-9 shrink-0 text-ouro-300">{{ t.nivel }}º</span>
+                                <span class="min-w-0 flex-1 truncate">{{ t.nome }}</span>
+                                <span class="shrink-0 text-preto-400">{{ t.grau }} · {{ t.custo }} PP</span>
+                            </li>
+                        </ul>
+                    </div>
                     <form class="flex flex-wrap gap-1.5" @submit.prevent="entregar(f)">
                         <select v-model="destino[f.id]" :class="campo" :aria-label="`Personagem que recebe a ${f.nome}`">
                             <option value="" disabled>Entregar a…</option>

@@ -253,6 +253,7 @@ export const TO_ITO_NO_MI: FrutaDados = {
         {
             id: 'mestre-dos-titeres',
             nome: 'Mestre dos Títeres',
+            nivelMin: 16,
             descricao:
                 'Manifestação de Poder (inação, só no Estágio Desperto): o ambiente ao seu redor vira fios sob o seu comando. Uma vez por turno, sempre que uma criatura for atingida por uma jogada de ataque ou falhar na Salvaguarda de uma técnica da Ito-Ito no Mi, os fios do solo a amarram: o deslocamento dela cai a 0 e ela tem desvantagem na próxima Salvaguarda de Força ou Destreza, até o início do seu próximo turno.',
             etiquetas: ['Desperto: alvo atingido fica com deslocamento 0 e desvantagem em Salv. FOR/DES'],
@@ -260,6 +261,7 @@ export const TO_ITO_NO_MI: FrutaDados = {
         {
             id: 'estagio-desperto',
             nome: 'Estágio Desperto',
+            nivelMin: 16,
             tipo: 'ativa',
             acao: 'bonus',
             interruptor: true,

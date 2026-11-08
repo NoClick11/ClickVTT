@@ -111,7 +111,7 @@ final class FichaOnePiece
             'salvaguardas' => [],
             'pericias' => $porChave(array_keys(self::PERICIAS), 0),
             'deslocamento' => '9 m',
-            'pv' => ['atual' => 0, 'max' => 0, 'temp' => 0, 'escudo' => 0],
+            'pv' => ['atual' => 0, 'max' => 0, 'temp' => 0, 'escudo' => 0, 'brutal' => 0],
             'pp' => ['atual' => 0, 'porNivel' => 4],
             'dadosVida' => ['restantes' => 1, 'tipo' => 'd8'],
             'exaustao' => 0,
@@ -140,6 +140,15 @@ final class FichaOnePiece
                 'proficiencia' => 0, 'ca' => 0, 'iniciativa' => 0, 'cd' => 0, 'ataque' => 0, 'cargaMax' => 0,
                 'salvaguardas' => $porChave(self::ATRIBUTOS, 0),
                 'pericias' => $porChave(array_keys(self::PERICIAS), 0),
+            ],
+            // Ataque Desarmado (inerente a todo personagem): o dano padrão é o mod. de FOR, editável pelo mestre
+            'desarmado' => [
+                'dano' => '',
+                'tipoDano' => 'Contundente',
+                'atributo' => 'for',
+                'bonusAtaque' => 0,
+                'bonusDano' => 0,
+                'margem' => 20,
             ],
         ];
     }
@@ -253,7 +262,7 @@ final class FichaOnePiece
             $r["pericias.{$p}"] = ['integer:strict', Rule::in([0, 1, 2])];
         }
         $r['deslocamento'] = $texto;
-        foreach (['atual', 'max', 'temp', 'escudo'] as $c) {
+        foreach (['atual', 'max', 'temp', 'escudo', 'brutal'] as $c) {
             $r["pv.{$c}"] = $inteiro(0, 9999);
         }
         $r['dadosVida.restantes'] = $inteiro(0, 40);
@@ -582,6 +591,15 @@ final class FichaOnePiece
         foreach (array_keys(self::PERICIAS) as $p) {
             $r["ajustes.pericias.{$p}"] = $inteiro(-20, 20);
         }
+
+        // Ataque Desarmado: dano (vazio = mod. FOR puro, ou "1d4", "1d6"...), bônus e atributo editáveis pelo mestre
+        $r['desarmado'] = ['array'];
+        $r['desarmado.dano'] = ['nullable', 'string', 'max:20'];
+        $r['desarmado.tipoDano'] = ['nullable', 'string', 'max:30'];
+        $r['desarmado.atributo'] = ['nullable', 'string', Rule::in(self::ATRIBUTOS)];
+        $r['desarmado.bonusAtaque'] = ['nullable', 'integer:strict', 'between:-20,20'];
+        $r['desarmado.bonusDano'] = ['nullable', 'integer:strict', 'between:-20,20'];
+        $r['desarmado.margem'] = ['nullable', 'integer:strict', 'between:2,20'];
 
         return $r;
     }

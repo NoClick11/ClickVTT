@@ -132,8 +132,8 @@ provide(CHAVE_FICHA, {
         const manual = evento.shiftKey ? 'vantagem' : evento.ctrlKey || evento.altKey ? 'desvantagem' : null;
         const modo = manual ?? modoDe(variavel);
         const dados = modo === 'vantagem' ? '2d20kh1' : modo === 'desvantagem' ? '2d20kl1' : '1d20';
-        // Ataque (arma ou técnica) contra o alvo mirado: a mesa abre a janela de reação e resolve o acerto
-        const ehAtaque = variavel === 'ataque' || /^arma\.\d+\.ataque$/.test(variavel);
+        // Ataque (arma, técnica ou desarmado) contra o alvo mirado: a mesa abre a janela de reação e resolve o acerto
+        const ehAtaque = variavel === 'ataque' || variavel === 'ataque.desarmado' || /^arma\.\d+\.ataque$/.test(variavel);
         emit(
             'rolar',
             `${dados}+@${variavel}`,

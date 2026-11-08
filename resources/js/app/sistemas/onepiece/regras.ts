@@ -481,6 +481,7 @@ export interface Ajustes {
 
 /** Só o que é ESCOLHIDO/ANOTADO fica salvo; CA, iniciativa, bônus, CD, carga... são calculados (`calcular`). */
 export interface FichaOnePiece {
+    foto?: string | null;
     nivel: number;
     especie: string;
     /** Estilo de luta (ex.: Espadachim). */
@@ -534,7 +535,7 @@ export interface FichaOnePiece {
     salvaguardas: AtributoId[];
     pericias: Partial<Record<string, Proficiencia>>;
     deslocamento: string;
-    pv: { atual: number; max: number; temp: number; escudo?: number };
+    pv: { atual: number; max: number; temp: number; escudo?: number; brutal?: number };
     /** Pontos de poder: o recurso das técnicas. O máximo é `nivel × porNivel` (mais efeitos); volta no descanso longo. */
     pp: { atual: number; porNivel: number };
     dadosVida: { restantes: number; tipo: string };
@@ -562,6 +563,17 @@ export interface FichaOnePiece {
     /** Técnicas do personagem; `atributo` é o que define a CD e o ataque delas. */
     tecnicas: { atributo: AtributoId; lista: Tecnica[] };
     ajustes: Ajustes;
+    /** Ataque Desarmado (inerente a todo personagem): dano, bônus e atributo editáveis pelo mestre. */
+    desarmado?: DesarmadoFicha;
+}
+
+export interface DesarmadoFicha {
+    dano?: string;
+    tipoDano?: string;
+    atributo?: AtributoId;
+    bonusAtaque?: number;
+    bonusDano?: number;
+    margem?: number;
 }
 
 /** Deslocamentos em texto (`9 m · nado 4,5 m`): só os que a criatura tem. */
@@ -737,7 +749,7 @@ export function analisar(f: FichaOnePiece, itensDaMesa: ItensPorId = {}): Analis
     base['ataque.arma'] = 0;
     base['dano.arma'] = 0;
     base['carga.max'] = 15 * r['atributos.for'];
-    base['pv.max'] = f.pv?.max ?? 0;
+    base['pv.max'] = Math.max(0, (f.pv?.max ?? 0) - (f.pv?.brutal ?? 0));
     base['pp.max'] = nivel * (f.pp?.porNivel ?? 4);
     // Pontos de Escudo (Endurecimento Defensivo): o máximo vem dos efeitos; sem o talento é 0
     base['escudo.max'] = 0;
@@ -754,8 +766,13 @@ export function analisar(f: FichaOnePiece, itensDaMesa: ItensPorId = {}): Analis
     // Ataques da Ação "Atacar": 1 + Ataque Extra e afins; os extras à distância só valem para armas à distância
     base['ataques.acao'] = 1;
     base['ataques.distancia'] = 0;
-    base['ataque.desarmado'] = prof + mod.for;
-    base['dano.desarmado'] = mod.for;
+    const dDesarmado = f.desarmado;
+    const atrDesarmado = dDesarmado?.atributo ?? 'for';
+    const modDesarmado = mod[atrDesarmado] ?? mod.for;
+    const bonusAtaqueDesarmado = dDesarmado?.bonusAtaque ?? 0;
+    const bonusDanoDesarmado = dDesarmado?.bonusDano ?? 0;
+    base['ataque.desarmado'] = prof + modDesarmado + bonusAtaqueDesarmado;
+    base['dano.desarmado'] = modDesarmado + bonusDanoDesarmado;
 
     // Fase 3: efeitos sobre os valores-base
     const variaveis = { ...r, ...base };
