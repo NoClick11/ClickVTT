@@ -405,7 +405,13 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
                             <p class="text-preto-400">Vale só nesta ficha; o item da mesa e as fichas dos outros não mudam.</p>
                             <div class="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-2">
                                 <label v-if="!armaOriginal(ref.item_id)?.municao" class="grid gap-0.5 text-preto-300"
-                                    >Dado de dano<input v-model="rascunho.dano" type="text" maxlength="8" placeholder="1d8" :class="campo" class="w-full min-w-0"
+                                    >Dado de dano<input
+                                        v-model="rascunho.dano"
+                                        type="text"
+                                        maxlength="8"
+                                        placeholder="1d8"
+                                        :class="campo"
+                                        class="w-full min-w-0"
                                 /></label>
                                 <label class="grid gap-0.5 text-preto-300"
                                     >Tipo de dano<input v-model="rascunho.tipoDano" type="text" maxlength="40" :class="campo" class="w-full min-w-0"
@@ -417,10 +423,18 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
                                         min="-20"
                                         max="20"
                                         step="1"
-                                        :class="campo" class="w-full min-w-0"
+                                        :class="campo"
+                                        class="w-full min-w-0"
                                 /></label>
                                 <label class="grid gap-0.5 text-preto-300"
-                                    >Bônus de dano<input v-model.number="rascunho.bonusDano" type="number" min="-50" max="50" step="1" :class="campo" class="w-full min-w-0"
+                                    >Bônus de dano<input
+                                        v-model.number="rascunho.bonusDano"
+                                        type="number"
+                                        min="-50"
+                                        max="50"
+                                        step="1"
+                                        :class="campo"
+                                        class="w-full min-w-0"
                                 /></label>
                                 <label class="grid gap-0.5 text-preto-300"
                                     >Crítico a partir de (d20)<input
@@ -429,7 +443,8 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
                                         min="2"
                                         max="20"
                                         step="1"
-                                        :class="campo" class="w-full min-w-0"
+                                        :class="campo"
+                                        class="w-full min-w-0"
                                 /></label>
                                 <label class="grid gap-0.5 text-preto-300"
                                     >Atributo do ataque
