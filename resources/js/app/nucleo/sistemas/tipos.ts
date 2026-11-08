@@ -8,6 +8,8 @@ export interface PersonagemFicha {
     id: number;
     nome: string;
     cor: string;
+    foto?: string | null;
+    foto_token?: string | null;
     /** Quem joga com ele (vazio = NPC). */
     jogadores?: unknown[];
     /** NPC aliado dos jogadores (público). */

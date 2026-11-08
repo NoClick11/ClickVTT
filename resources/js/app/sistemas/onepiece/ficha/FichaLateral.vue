@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Flame, Footprints, Heart, Shield, Sparkle, Sparkles, Swords, Zap } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { Camera, Flame, Footprints, Heart, Shield, Sparkle, Sparkles, Swords, Zap } from 'lucide-vue-next';
+import { computed, inject, ref } from 'vue';
 import DadoIcone from '../../../components/DadoIcone.vue';
 import type { PersonagemFicha } from '../../../nucleo/sistemas/tipos';
 import { iconeDoStatus } from '../../../nucleo/status';
@@ -12,10 +12,71 @@ import { condicaoPorId } from '../condicoes';
 import { estilos, useFicha } from '../contexto';
 import EfeitosDialog from '../EfeitosDialog.vue';
 import { pilhasDeMunicao, type PilhaDeMunicao } from '../itens/pilhas';
-import { camposDoDadoDeVida, comSinal, DADOS_DE_VIDA, textoDeMovimento, type FichaOnePiece } from '../regras';
+import { camposDoDadoDeVida, comSinal, DADOS_DE_VIDA, textoDeMovimento, type AtributoId, type FichaOnePiece } from '../regras';
 
 const props = defineProps<{ ficha: FichaOnePiece; personagem: PersonagemFicha }>();
 const { editar, calc, salvar, rolar, d20, modoDe, armas, origens, acoes, rodada, itens } = useFicha();
+
+const abrirAlterarFoto = inject<((p: { id: number; nome: string; foto?: string | null; fotoToken?: string | null; ehNpc?: boolean }) => void) | null>(
+    'abrirAlterarFoto',
+    null,
+);
+const foto = computed(() => (props.ficha as any).foto ?? props.personagem.foto ?? null);
+const fotoToken = computed(() => (props.ficha as any).foto_token ?? props.personagem.foto_token ?? null);
+function aoClicarFoto() {
+    abrirAlterarFoto?.({
+        id: props.personagem.id,
+        nome: props.personagem.nome,
+        foto: foto.value,
+        fotoToken: fotoToken.value,
+        ehNpc: false,
+    });
+}
+
+const editandoDesarmado = ref(false);
+const rascunhoDesarmado = ref({
+    dano: '',
+    tipoDano: 'Contundente',
+    atributo: 'for' as AtributoId,
+    bonusAtaque: 0,
+    bonusDano: 0,
+    margem: 20,
+});
+function abrirAjusteDesarmado() {
+    const d = props.ficha.desarmado;
+    rascunhoDesarmado.value = {
+        dano: d?.dano ?? '',
+        tipoDano: d?.tipoDano ?? 'Contundente',
+        atributo: d?.atributo ?? 'for',
+        bonusAtaque: d?.bonusAtaque ?? 0,
+        bonusDano: d?.bonusDano ?? 0,
+        margem: d?.margem ?? 20,
+    };
+    editandoDesarmado.value = true;
+}
+function salvarDesarmado() {
+    const r = rascunhoDesarmado.value;
+    salvar({
+        'desarmado.dano': r.dano.trim(),
+        'desarmado.tipoDano': r.tipoDano.trim() || 'Contundente',
+        'desarmado.atributo': r.atributo,
+        'desarmado.bonusAtaque': Number(r.bonusAtaque) || 0,
+        'desarmado.bonusDano': Number(r.bonusDano) || 0,
+        'desarmado.margem': Math.min(20, Math.max(2, Number(r.margem) || 20)),
+    });
+    editandoDesarmado.value = false;
+}
+function restaurarDesarmado() {
+    salvar({
+        'desarmado.dano': '',
+        'desarmado.tipoDano': 'Contundente',
+        'desarmado.atributo': 'for',
+        'desarmado.bonusAtaque': 0,
+        'desarmado.bonusDano': 0,
+        'desarmado.margem': 20,
+    });
+    editandoDesarmado.value = false;
+}
 /** Ataques com arma: o 1º gasta a Ação; os seguintes valem até o limite (Ataque Extra e afins, mais os extras do turno). */
 const ataquesDaAcao = (distancia: boolean) =>
     Math.max(1, (calc.value['ataques.acao'] ?? 1) + (distancia ? (calc.value['ataques.distancia'] ?? 0) : 0));
@@ -68,17 +129,35 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
         class="flex w-60 shrink-0 flex-col gap-3 overflow-y-auto border-r border-ouro-500/20 bg-preto-900/40 p-3 [&>*]:shrink-0"
         aria-label="Resumo do personagem"
     >
-        <!-- retrato (por enquanto a inicial na cor do personagem) -->
+        <!-- retrato (foto ou inicial na cor do personagem) -->
         <div
-            class="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg border border-ouro-500/30"
-            :style="{ background: `radial-gradient(circle at 30% 25%, ${personagem.cor}, #0d0a12 85%)` }"
-            role="img"
-            :aria-label="`Retrato de ${personagem.nome}`"
+            class="group relative flex aspect-[4/3] cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-ouro-500/30 transition hover:border-ouro-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+            :style="{ background: foto ? undefined : `radial-gradient(circle at 30% 25%, ${personagem.cor}, #0d0a12 85%)` }"
+            role="button"
+            tabindex="0"
+            :aria-label="`Alterar foto de ${personagem.nome}`"
+            title="Clique para alterar a foto do personagem"
+            @click="aoClicarFoto"
+            @keydown.enter="aoClicarFoto"
+            @keydown.space.prevent="aoClicarFoto"
         >
-            <span class="font-serif text-7xl font-semibold text-preto-950/80 mix-blend-overlay">{{ personagem.nome.slice(0, 1).toUpperCase() }}</span>
+            <img v-if="foto" :src="foto" :alt="`Retrato de ${personagem.nome}`" class="h-full w-full object-cover" />
+            <span v-else class="font-serif text-7xl font-semibold text-preto-950/80 mix-blend-overlay">{{
+                personagem.nome.slice(0, 1).toUpperCase()
+            }}</span>
+
+            <!-- Overlay de hover com ícone de câmera -->
+            <div
+                class="absolute inset-0 flex flex-col items-center justify-center bg-preto-950/60 opacity-0 backdrop-blur-[1px] transition-opacity group-hover:opacity-100"
+                aria-hidden="true"
+            >
+                <Camera class="mb-1 size-6 text-ouro-300" />
+                <span class="text-[11px] font-medium text-ouro-100">Alterar foto</span>
+            </div>
+
             <!-- CA (calculada: 10 + mod. de Destreza + ajuste) -->
             <div
-                class="absolute -bottom-px left-1/2 flex -translate-x-1/2 translate-y-1/3 items-center justify-center"
+                class="pointer-events-none absolute -bottom-px left-1/2 z-10 flex -translate-x-1/2 translate-y-1/3 items-center justify-center"
                 title="Classe de Armadura: 10 + modificador de Destreza + ajuste"
                 aria-label="Classe de Armadura"
             >
@@ -326,6 +405,20 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                     </button>
                 </span>
             </label>
+            <div
+                v-if="(ficha.pv?.brutal ?? 0) > 0"
+                class="mt-1.5 flex items-center justify-between rounded border border-red-500/40 bg-red-950/40 px-2 py-1 text-xs text-red-200"
+            >
+                <span class="flex items-center gap-1 text-[11px] font-semibold text-red-300"> 🩸 Dano Brutal: −{{ ficha.pv.brutal }} PV máx </span>
+                <button
+                    type="button"
+                    class="rounded border border-red-400/50 bg-red-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-red-100 transition hover:bg-red-500/40"
+                    title="Tratar a ferida com cuidados médicos / cirurgia (restaura os PV máximos)"
+                    @click="salvar({ 'pv.brutal': 0 })"
+                >
+                    Tratar Ferida
+                </button>
+            </div>
         </section>
 
         <!-- ataques (como no Foundry): a linha inteira da arma é o botão que rola o ataque; o dano vem depois, pelos botões do
@@ -371,7 +464,156 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                 </span>
             </div>
             <!-- coluna flexível (não grade): o nome comprido da arma é cortado com "…" em vez de esticar a barra -->
-            <ul v-if="armas.length" class="flex flex-col gap-1.5">
+            <ul class="flex flex-col gap-1.5">
+                <!-- Ataque Desarmado (sempre presente para todos os personagens de jogadores) -->
+                <li class="min-w-0">
+                    <div class="relative">
+                        <button
+                            type="button"
+                            class="group flex min-h-12 w-full items-center gap-2.5 rounded-lg border border-preto-700 bg-gradient-to-br from-preto-800/70 to-preto-950 px-2 py-1.5 text-left transition hover:border-ouro-400 hover:from-ouro-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                            :aria-label="`Atacar com Ataque Desarmado: ${comSinal(calc['ataque.desarmado'] ?? 0)} para acertar, dano ${ficha.desarmado?.dano ? ficha.desarmado.dano + (calc['dano.desarmado'] ? comSinal(calc['dano.desarmado']) : '') : comSinal(calc['dano.desarmado'] ?? 0)}`"
+                            :disabled="!acoes.pode(personagem.id, 'padrao').ok"
+                            :title="
+                                !acoes.pode(personagem.id, 'padrao').ok
+                                    ? acoes.pode(personagem.id, 'padrao').motivo
+                                    : `Clique para atacar desarmado (gasta a ${acoes.rotulo('padrao').toLowerCase()}). Dano padrão: modificador de FOR. Shift = vantagem, Ctrl = desvantagem.`
+                            "
+                            @click="d20($event, 'ataque.desarmado', 'Ataque Desarmado', { categoria: 'padrao' })"
+                        >
+                            <span class="relative size-8 shrink-0 transition group-hover:scale-110">
+                                <DadoIcone :faces="20" />
+                                <span
+                                    v-if="modoDe('ataque.desarmado')"
+                                    class="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full text-[8px] font-bold leading-none text-preto-950"
+                                    :class="modoDe('ataque.desarmado') === 'vantagem' ? 'bg-green-400' : 'bg-red-400'"
+                                    :title="`${modoDe('ataque.desarmado')} (efeito ativo)`"
+                                    aria-hidden="true"
+                                    >{{ modoDe('ataque.desarmado') === 'vantagem' ? 'V' : 'D' }}</span
+                                >
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="line-clamp-2 break-words text-sm font-semibold leading-tight text-preto-100 group-hover:text-ouro-100">
+                                    Ataque Desarmado
+                                </span>
+                                <span class="mt-0.5 block truncate font-mono text-[11px] text-preto-400">
+                                    <template v-if="ficha.desarmado?.dano">
+                                        {{ ficha.desarmado.dano }}{{ calc['dano.desarmado'] ? comSinal(calc['dano.desarmado']) : '' }} ·
+                                        {{ ficha.desarmado?.tipoDano || 'Contundente' }}
+                                    </template>
+                                    <template v-else>
+                                        {{ comSinal(calc['dano.desarmado'] ?? 0) }} · {{ ficha.desarmado?.tipoDano || 'Contundente' }}
+                                    </template>
+                                </span>
+                            </span>
+                            <span class="shrink-0 pr-6 text-right">
+                                <span class="block font-serif text-xl font-bold tabular-nums leading-none text-ouro-100">{{
+                                    comSinal(calc['ataque.desarmado'] ?? 0)
+                                }}</span>
+                                <span
+                                    v-if="(ficha.desarmado?.margem ?? 20) < 20"
+                                    class="mt-0.5 block text-[9px] font-semibold uppercase text-ouro-300"
+                                    :title="`Crítico com ${ficha.desarmado?.margem} ou mais no d20`"
+                                    >crít. {{ ficha.desarmado?.margem }}–20</span
+                                >
+                            </span>
+                        </button>
+                        <button
+                            v-if="editar"
+                            type="button"
+                            class="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-xs text-preto-400 transition hover:bg-preto-700 hover:text-ouro-300"
+                            title="Editar dano, bônus e atributo do ataque desarmado (Mestre)"
+                            @click="editandoDesarmado ? (editandoDesarmado = false) : abrirAjusteDesarmado()"
+                        >
+                            ⚙
+                        </button>
+                    </div>
+
+                    <!-- Painel de ajuste do Ataque Desarmado pelo Mestre -->
+                    <div
+                        v-if="editar && editandoDesarmado"
+                        class="mt-1.5 rounded-lg border border-ouro-500/40 bg-preto-950 p-2.5 text-xs text-preto-200 shadow-xl"
+                    >
+                        <p class="font-semibold text-ouro-300">Ajustar Ataque Desarmado</p>
+                        <div class="mt-2 grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] text-preto-400">Dado de dano</label>
+                                <input
+                                    v-model="rascunhoDesarmado.dano"
+                                    type="text"
+                                    placeholder="Vazio = mod. FOR"
+                                    class="mt-0.5 w-full rounded border border-preto-700 bg-preto-900 px-1.5 py-0.5 text-xs text-preto-100 focus:border-ouro-400 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-preto-400">Tipo de dano</label>
+                                <input
+                                    v-model="rascunhoDesarmado.tipoDano"
+                                    type="text"
+                                    placeholder="Contundente"
+                                    class="mt-0.5 w-full rounded border border-preto-700 bg-preto-900 px-1.5 py-0.5 text-xs text-preto-100 focus:border-ouro-400 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-preto-400">Bônus de ataque</label>
+                                <input
+                                    v-model.number="rascunhoDesarmado.bonusAtaque"
+                                    type="number"
+                                    class="mt-0.5 w-full rounded border border-preto-700 bg-preto-900 px-1.5 py-0.5 text-xs text-preto-100 focus:border-ouro-400 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-preto-400">Bônus de dano</label>
+                                <input
+                                    v-model.number="rascunhoDesarmado.bonusDano"
+                                    type="number"
+                                    class="mt-0.5 w-full rounded border border-preto-700 bg-preto-900 px-1.5 py-0.5 text-xs text-preto-100 focus:border-ouro-400 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-preto-400">Atributo base</label>
+                                <select
+                                    v-model="rascunhoDesarmado.atributo"
+                                    class="mt-0.5 w-full rounded border border-preto-700 bg-preto-900 px-1.5 py-0.5 text-xs text-preto-100 focus:border-ouro-400 focus:outline-none"
+                                >
+                                    <option value="for">Força (padrão)</option>
+                                    <option value="des">Destreza</option>
+                                    <option value="con">Constituição</option>
+                                    <option value="sab">Sabedoria</option>
+                                    <option value="pre">Presença</option>
+                                    <option value="von">Vontade</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-preto-400">Margem crítica</label>
+                                <input
+                                    v-model.number="rascunhoDesarmado.margem"
+                                    type="number"
+                                    min="2"
+                                    max="20"
+                                    class="mt-0.5 w-full rounded border border-preto-700 bg-preto-900 px-1.5 py-0.5 text-xs text-preto-100 focus:border-ouro-400 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+                        <div class="mt-2.5 flex justify-end gap-2 border-t border-preto-800 pt-2">
+                            <button
+                                type="button"
+                                class="rounded px-2 py-0.5 text-xs text-preto-400 transition hover:text-preto-200"
+                                @click="restaurarDesarmado"
+                            >
+                                Restaurar padrão
+                            </button>
+                            <button
+                                type="button"
+                                class="rounded bg-ouro-500/20 px-2.5 py-0.5 text-xs font-semibold text-ouro-200 transition hover:bg-ouro-500/30"
+                                @click="salvarDesarmado"
+                            >
+                                Salvar
+                            </button>
+                        </div>
+                    </div>
+                </li>
+
+                <!-- Armas equipadas do inventário -->
                 <li v-for="a in armas" :key="a.itemId" class="min-w-0">
                     <button
                         type="button"
@@ -453,7 +695,6 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                     </ul>
                 </li>
             </ul>
-            <p v-else class="text-[10px] text-preto-500">Equipe uma arma (o mestre cria o item com dado de dano) e ela aparece aqui.</p>
         </section>
 
         <!-- dados de vida (máximo = nível) -->

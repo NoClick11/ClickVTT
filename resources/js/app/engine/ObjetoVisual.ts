@@ -15,7 +15,10 @@ export class ObjetoVisual {
     private texturaVideo: Texture | null = null;
     private rotulo: Text | null = null;
     private textoLivre: Text | null = null;
+    private rotuloViagem: Text | null = null;
     private arquivoCarregado: string | null = null;
+    private bordaToken = new Graphics();
+    private mascaraToken: Graphics | null = null;
     private marcador = new Graphics();
     private iconesStatus = new Container();
     private statusDesenhado = '';
@@ -35,7 +38,7 @@ export class ObjetoVisual {
         private mestre = false,
     ) {
         this.dto = { ...dto };
-        this.container.addChild(this.fundo, this.marcador, this.caveira, this.iconesStatus, this.barras, this.mira);
+        this.container.addChild(this.fundo, this.bordaToken, this.marcador, this.caveira, this.iconesStatus, this.barras, this.mira);
         this.aplicar();
         void this.carregarMidia();
     }
@@ -68,10 +71,24 @@ export class ObjetoVisual {
     /** Clique em (x, y): retângulo para a maioria; segmento (com tolerância) para paredes. */
     acerta(x: number, y: number, tolerancia: number): boolean {
         const pts = this.dto.dados?.pontos;
-        if (this.dto.tipo === 'parede' && pts?.length === 4) return distanciaAoSegmento(x, y, pts[0], pts[1], pts[2], pts[3]) <= tolerancia;
+        if (this.dto.tipo === 'parede' && pts?.length === 4) {
+            const tipo = this.dto.dados?.tipo;
+            if (tipo === 'porta' || tipo === 'janela') {
+                const cx = (pts[0] + pts[2]) / 2;
+                const cy = (pts[1] + pts[3]) / 2;
+                // Área circular expandida de clique no centro da porta/janela (ícone do controle r=30)
+                if (Math.hypot(x - cx, y - cy) <= Math.max(34, tolerancia)) return true;
+            }
+            return distanciaAoSegmento(x, y, pts[0], pts[1], pts[2], pts[3]) <= tolerancia;
+        }
         if (this.dto.tipo === 'luz') {
             const { x: ox, y: oy, largura, altura } = this.dto;
             return Math.hypot(x - (ox + largura / 2), y - (oy + altura / 2)) <= Math.max(Math.min(largura, altura) / 2, tolerancia);
+        }
+        if (this.dto.tipo === 'viagem') {
+            const { x: ox, y: oy, largura, altura } = this.dto;
+            const raio = Math.max(Math.min(largura, altura) / 2, 28);
+            return Math.hypot(x - (ox + largura / 2), y - (oy + altura / 2)) <= Math.max(raio, tolerancia);
         }
 
         if (this.dto.tipo === 'traco' && this.dto.dados?.pontos) {
@@ -123,6 +140,7 @@ export class ObjetoVisual {
         this.container.alpha =
             this.ehToken && this.dto.morto ? 0.55 : camada === 'mestre' ? 0.6 : this.dto.tipo === 'parede' && this.mestre && !this.enfase ? 0.25 : 1;
         this.desenharFundo();
+        this.desenharBordaToken();
         this.desenharMarcador();
         this.desenharCaveira();
         this.desenharStatus();
@@ -130,6 +148,7 @@ export class ObjetoVisual {
         this.desenharMira();
         this.ajustarMidia();
         this.atualizarRotulo(largura, altura);
+        this.atualizarRotuloViagem(largura, altura);
     }
 
     private desenharFundo(): void {
@@ -145,15 +164,11 @@ export class ObjetoVisual {
             this.desenharParede(g);
         } else if (this.dto.tipo === 'loot') {
             this.desenharLoot(g);
+        } else if (this.dto.tipo === 'viagem') {
+            this.desenharViagem(g);
         } else if (this.ehToken && !this.arquivoCarregado) {
-            // Sem imagem: círculo colorido com a inicial. Com imagem, ela ocupa o token inteiro.
-            // Preenche o token inteiro (elipse): esticar o token estica o desenho, como a imagem.
+            // Sem imagem: círculo colorido com a inicial.
             g.ellipse(largura / 2, altura / 2, largura / 2, altura / 2).fill({ color: corHex(dados?.cor), alpha: 1 });
-            g.ellipse(largura / 2, altura / 2, largura / 2, altura / 2).stroke({
-                color: camada === 'mestre' ? 0xd4a843 : 0x0d0a12,
-                width: 3,
-                alpha: 0.9,
-            });
         } else if (!this.arquivoCarregado) {
             // Mapa/imagem ainda carregando ou sem arquivo.
             g.rect(0, 0, largura, altura).fill({ color: 0x25212b, alpha: 0.6 }).stroke({ color: 0x4a4452, width: 2 });
@@ -233,7 +248,74 @@ export class ObjetoVisual {
         g.blendMode = 'add';
     }
 
-    /** Parede, porta ou janela: só o mestre recebe estes objetos. */
+    /** Ponto de viagem entre mapas: marcador de porta/passagem aberta entre mapas */
+    private desenharViagem(g: Graphics): void {
+        const { largura, altura, dados } = this.dto;
+        const cx = largura / 2;
+        const cy = altura / 2;
+        const s = Math.min(largura, altura);
+        const r = s * 0.44;
+        const cor = corHex(dados?.cor ?? '#e2e8f0');
+
+        // Fundo circular escuro minimalista
+        g.circle(cx, cy, r).fill({ color: 0x09090b, alpha: 0.88 });
+        g.circle(cx, cy, r).stroke({ color: cor, width: 2, alpha: 0.65 });
+
+        // Desenho estilo "DoorOpen" (batente da porta + folha aberta em perspectiva)
+        const pw = r * 0.95;
+        const ph = r * 1.25;
+        const x0 = cx - pw / 2;
+        const y0 = cy - ph / 2;
+
+        // Batente retangular da porta
+        g.rect(x0, y0, pw, ph).stroke({ color: cor, width: 2.5, alpha: 0.85 });
+
+        // Folha da porta aberta em perspectiva para a direita
+        const xAbrir = x0 + pw * 0.62;
+        g.poly([x0, y0, xAbrir, y0 + ph * 0.12, xAbrir, y0 + ph * 0.88, x0, y0 + ph])
+            .fill({ color: cor, alpha: 0.25 })
+            .stroke({ color: cor, width: 2 });
+
+        // Maçaneta na folha da porta
+        g.circle(x0 + (xAbrir - x0) * 0.8, y0 + ph * 0.52, Math.max(1.5, r * 0.055)).fill(0xffffff);
+
+        // Degrau / soleira na base
+        g.moveTo(x0 - 4, y0 + ph)
+            .lineTo(x0 + pw + 4, y0 + ph)
+            .stroke({ color: cor, width: 3, alpha: 0.95, cap: 'round' });
+    }
+
+    private atualizarRotuloViagem(largura: number, altura: number): void {
+        if (this.dto.tipo !== 'viagem') {
+            if (this.rotuloViagem) {
+                this.rotuloViagem.destroy();
+                this.rotuloViagem = null;
+            }
+            return;
+        }
+
+        const texto = (this.dto.nome || this.dto.dados?.destino_nome || 'Viagem').trim();
+        if (!this.rotuloViagem) {
+            this.rotuloViagem = new Text({
+                text: '',
+                style: {
+                    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                    fontWeight: '700',
+                    fontSize: 12,
+                    fill: 0xffffff,
+                    stroke: { color: 0x000000, width: 3 },
+                    align: 'center',
+                },
+            });
+            this.rotuloViagem.anchor.set(0.5, 0);
+            this.container.addChild(this.rotuloViagem);
+        }
+
+        this.rotuloViagem.text = texto;
+        this.rotuloViagem.position.set(largura / 2, altura + 4);
+    }
+
+    /** Parede, porta ou janela: no mestre desenha o segmento; no jogador ou mestre desenha o controle de porta/janela. */
     private desenharParede(g: Graphics): void {
         const pts = this.dto.dados?.pontos;
         if (!pts || pts.length !== 4) return;
@@ -249,27 +331,113 @@ export class ObjetoVisual {
             .stroke({ color: cor, width: tipo === 'janela' ? 6 : 9, alpha: tipo === 'porta' && aberta ? 0.35 : 0.95, cap: 'round' });
         g.circle(a.x, a.y, 7).fill(0x0d0a12).stroke({ color: cor, width: 2 });
         g.circle(b.x, b.y, 7).fill(0x0d0a12).stroke({ color: cor, width: 2 });
+        if (tipo === 'porta' || tipo === 'janela') {
+            this.desenharControle(g, pts, tipo, aberta);
+        }
     }
 
-    /** Para o jogador a parede não aparece (só a sombra dela); porta e janela viram um controle pequeno em que se clica. */
+    /**
+     * Controle visual de Porta ou Janela:
+     * Botão redondo bem visível e grande com ícone intuitivo que muda conforme aberta/fechada e trancada.
+     */
     private desenharControle(g: Graphics, pts: number[], tipo: string, aberta: boolean): void {
         if (tipo !== 'porta' && tipo !== 'janela') return;
         const trancada = !!this.dto.dados?.trancada;
-        const cor = trancada ? 0xf87171 : tipo === 'porta' ? 0x38bdf8 : 0x67e8f9;
         const cx = (pts[0] + pts[2]) / 2 - this.dto.x;
         const cy = (pts[1] + pts[3]) / 2 - this.dto.y;
-        const r = 13;
-        g.circle(cx, cy, r).fill({ color: 0x0d0a12, alpha: 0.88 }).stroke({ color: cor, width: 3 });
-        // fechada: uma barra atravessada; aberta: a barra de pé (a passagem livre)
-        if (aberta)
-            g.moveTo(cx, cy - r * 0.55)
-                .lineTo(cx, cy + r * 0.55)
-                .stroke({ color: cor, width: 3, cap: 'round' });
-        else
-            g.moveTo(cx - r * 0.55, cy)
-                .lineTo(cx + r * 0.55, cy)
-                .stroke({ color: cor, width: 3, cap: 'round' });
-        if (trancada) g.roundRect(cx - 4, cy - 3, 8, 7, 1.5).fill(cor);
+        const r = 28;
+
+        // Cores temáticas bem visíveis e contrastantes
+        // Porta: Âmbar/Dourado quando fechada, Esmeralda quando aberta, Vermelho se trancada
+        // Janela: Azul-ciano quando fechada, Esmeralda quando aberta, Vermelho se trancada
+        const corTema = trancada ? 0xef4444 : aberta ? 0x22c55e : tipo === 'porta' ? 0xf59e0b : 0x06b6d4;
+        const corBorda = trancada ? 0xf87171 : aberta ? 0x4ade80 : tipo === 'porta' ? 0xfbbf24 : 0x38bdf8;
+        const corIcone = aberta ? 0x86efac : 0xffffff;
+
+        // Brilho suave externo para destacar do mapa/escuro
+        g.circle(cx, cy, r + 6).fill({ color: corTema, alpha: 0.32 });
+
+        // Fundo circular escuro com borda destacada e espessa
+        g.circle(cx, cy, r).fill({ color: 0x0f172a, alpha: 0.95 }).stroke({ color: corBorda, width: 3.5 });
+
+        if (tipo === 'porta') {
+            if (aberta) {
+                // Porta aberta: batente e a folha da porta aberta em perspectiva/ângulo
+                // Batente retangular da porta
+                g.rect(cx - 12, cy - 16, 24, 32).stroke({ color: corIcone, width: 2.5, alpha: 0.85 });
+                // Folha aberta em perspectiva para o lado direito
+                g.poly([cx - 12, cy - 16, cx + 4, cy - 11, cx + 4, cy + 14, cx - 12, cy + 16])
+                    .fill({ color: 0x15803d, alpha: 0.75 })
+                    .stroke({ color: corBorda, width: 2.5 });
+                // Maçaneta da folha aberta
+                g.circle(cx - 2, cy + 2, 2).fill(0xffffff);
+            } else {
+                // Porta fechada: arco superior e porta de madeira sólida com maçaneta
+                // Batente externo em arco
+                g.roundRect(cx - 12, cy - 16, 24, 32, 5)
+                    .fill({ color: trancada ? 0x7f1d1d : 0x78350f, alpha: 0.6 })
+                    .stroke({ color: corBorda, width: 3 });
+                // Divisória do meio dos painéis da porta
+                g.moveTo(cx - 12, cy)
+                    .lineTo(cx + 12, cy)
+                    .stroke({ color: corBorda, width: 2, alpha: 0.75 });
+                // Painel superior e inferior detalhados
+                g.roundRect(cx - 9, cy - 13, 18, 10, 2).stroke({ color: corBorda, width: 1.5, alpha: 0.5 });
+                g.roundRect(cx - 9, cy + 3, 18, 10, 2).stroke({ color: corBorda, width: 1.5, alpha: 0.5 });
+                // Maçaneta dourada/branca bem evidente
+                g.circle(cx + 6, cy + 3, 3)
+                    .fill(0xffffff)
+                    .stroke({ color: 0x0f172a, width: 1.5 });
+            }
+        } else {
+            // JANELA
+            // Moldura externa da janela
+            g.roundRect(cx - 14, cy - 14, 28, 28, 4)
+                .fill({ color: aberta ? 0x064e3b : 0x0c4a6e, alpha: 0.7 })
+                .stroke({ color: corBorda, width: 3 });
+
+            if (aberta) {
+                // Janela aberta: duas folhas basculantes abertas para fora
+                // Folha esquerda aberta
+                g.poly([cx - 14, cy - 12, cx - 20, cy - 7, cx - 20, cy + 7, cx - 14, cy + 12]).stroke({ color: corBorda, width: 2.5 });
+                // Folha direita aberta
+                g.poly([cx + 14, cy - 12, cx + 20, cy - 7, cx + 20, cy + 7, cx + 14, cy + 12]).stroke({ color: corBorda, width: 2.5 });
+                // Centro vazio aberto com cruz sutil
+                g.moveTo(cx, cy - 9)
+                    .lineTo(cx, cy + 9)
+                    .stroke({ color: 0x86efac, width: 2, alpha: 0.8 });
+            } else {
+                // Janela fechada: vidros com cruz clássica de esquadria de 4 painéis
+                // Linha vertical central
+                g.moveTo(cx, cy - 12)
+                    .lineTo(cx, cy + 12)
+                    .stroke({ color: corIcone, width: 2.5 });
+                // Linha horizontal central
+                g.moveTo(cx - 12, cy)
+                    .lineTo(cx + 12, cy)
+                    .stroke({ color: corIcone, width: 2.5 });
+                // Brilho no vidro (painel superior esquerdo)
+                g.moveTo(cx - 9, cy - 4)
+                    .lineTo(cx - 4, cy - 9)
+                    .stroke({ color: 0xffffff, width: 2, alpha: 0.85 });
+            }
+        }
+
+        // Se estiver trancada: cadeado de alerta maior no canto
+        if (trancada) {
+            const lx = cx + 13;
+            const ly = cy + 13;
+            // Arco do cadeado
+            g.moveTo(lx - 4, ly - 4)
+                .lineTo(lx - 4, ly - 8)
+                .lineTo(lx + 4, ly - 8)
+                .lineTo(lx + 4, ly - 4)
+                .stroke({ color: 0xffffff, width: 2 });
+            // Corpo do cadeado
+            g.roundRect(lx - 6, ly - 4, 12, 10, 2)
+                .fill(0xef4444)
+                .stroke({ color: 0xffffff, width: 1.5 });
+        }
     }
 
     /** Luz: ponto de controle visível só ao mestre (o jogador vê apenas o brilho). */
@@ -455,13 +623,42 @@ export class ObjetoVisual {
         this.rotulo.position.set(largura / 2, altura / 2);
     }
 
+    private desenharBordaToken(): void {
+        this.bordaToken.clear();
+        if (!this.ehToken) return;
+        const { largura, altura, camada } = this.dto;
+        const ehNpc = !!this.dto.npc || camada === 'mestre';
+        // Jogadores: borda preta (0x0d0a12). NPCs: borda dourada (0xd4a843)
+        const cor = ehNpc ? 0xd4a843 : 0x0d0a12;
+        this.bordaToken.ellipse(largura / 2, altura / 2, largura / 2, altura / 2).stroke({ color: cor, width: 3.5, alpha: 0.95 });
+    }
+
     /** A mídia preenche todo o objeto (estica, sem recortar): o que foi colocado dentro nunca é cortado. */
     private ajustarMidia(): void {
         const m = this.midia;
         if (!m) return;
-        m.width = this.dto.largura;
-        m.height = this.dto.altura;
+        const { largura, altura } = this.dto;
+        m.width = largura;
+        m.height = altura;
         m.position.set(0, 0);
+
+        if (this.ehToken) {
+            if (!this.mascaraToken) {
+                this.mascaraToken = new Graphics();
+                this.container.addChild(this.mascaraToken);
+            }
+            this.mascaraToken
+                .clear()
+                .ellipse(largura / 2, altura / 2, largura / 2, altura / 2)
+                .fill(0xffffff);
+            m.mask = this.mascaraToken;
+        } else if (m.mask) {
+            m.mask = null;
+            if (this.mascaraToken) {
+                this.mascaraToken.destroy();
+                this.mascaraToken = null;
+            }
+        }
     }
 
     private async carregarMidia(): Promise<void> {
@@ -487,7 +684,8 @@ export class ObjetoVisual {
         if (midia) {
             this.midia = midia;
             this.arquivoCarregado = arquivo;
-            this.container.addChildAt(midia, 1);
+            const indexBorda = this.container.getChildIndex(this.bordaToken);
+            this.container.addChildAt(midia, Math.max(1, indexBorda));
         }
         this.aplicar();
     }
@@ -521,6 +719,10 @@ export class ObjetoVisual {
         }
         this.texturaVideo?.destroy(true);
         this.texturaVideo = null;
+        if (this.mascaraToken) {
+            this.mascaraToken.destroy();
+            this.mascaraToken = null;
+        }
         if (this.midia) {
             this.midia.destroy();
             this.midia = null;

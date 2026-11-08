@@ -56,9 +56,13 @@ class Personagem extends Model
             'pasta_id' => $this->pasta_id,
             'nome' => $this->nome,
             'cor' => $this->cor,
+            'foto' => $this->ficha['foto'] ?? null,
+            'foto_token' => $this->ficha['foto_token'] ?? $this->ficha['foto'] ?? null,
             'status' => array_values($this->ficha['condicoes'] ?? []),
             // NPC marcado pelo mestre como aliado dos jogadores: os jogadores não o atingem (sem fogo amigo)
             'aliado' => (bool) ($this->ficha['aliado'] ?? false),
+            // NPC com 0 de vida: morto, recebe indicador e não pode ser alvo
+            'morto' => (bool) (($this->ficha['npc'] ?? false) && ((int) ($this->ficha['pv']['atual'] ?? 1) <= 0)),
             'jogadores' => $this->jogadores->map(fn (Jogador $j) => ['id' => $j->id, 'nome' => $j->nome, 'cor' => $j->cor])->values(),
         ];
     }

@@ -13,6 +13,7 @@ use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -48,6 +49,101 @@ class PersonagemController extends Controller
         Transmitir::cena($mesa, null, $acesso->jogador->id);
 
         return response()->json($personagem->load('jogadores')->paraFront());
+    }
+
+    /**
+     * Altera ou remove a foto do personagem (PC ou NPC).
+     * O mestre pode alterar qualquer um; o jogador só os seus.
+     */
+    public function foto(Request $request, Mesa $mesa, Personagem $personagem): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+        abort_unless($personagem->mesa_id === $mesa->id, 404);
+        abort_unless($acesso->podeControlar($personagem->id), 403, 'Você não controla este personagem.');
+
+        $request->validate([
+            'arquivo' => ['nullable', 'file', 'image', 'mimes:png,jpg,jpeg,webp,gif', 'max:10240'],
+            'arquivo_token' => ['nullable', 'file', 'image', 'mimes:png,jpg,jpeg,webp,gif', 'max:10240'],
+            'url' => ['nullable', 'string', 'max:2000'],
+            'remover' => ['nullable', 'boolean'],
+        ]);
+
+        $ficha = $personagem->ficha ?? [];
+        $fotoAntiga = $ficha['foto'] ?? null;
+        $fotoTokenAntiga = $ficha['foto_token'] ?? null;
+        $novaFoto = null;
+        $novaFotoToken = null;
+
+        if ($request->boolean('remover')) {
+            $novaFoto = null;
+            $novaFotoToken = null;
+        } elseif ($request->hasFile('arquivo')) {
+            $caminho = $request->file('arquivo')->store('personagens', 'public');
+            $novaFoto = '/storage/'.$caminho;
+            if ($request->hasFile('arquivo_token')) {
+                $caminhoToken = $request->file('arquivo_token')->store('personagens', 'public');
+                $novaFotoToken = '/storage/'.$caminhoToken;
+            } else {
+                $novaFotoToken = $novaFoto;
+            }
+        } elseif ($request->filled('url')) {
+            $novaFoto = trim((string) $request->input('url'));
+            $novaFotoToken = $novaFoto;
+        } else {
+            return response()->json(['ok' => true, 'foto' => $fotoAntiga, 'foto_token' => $fotoTokenAntiga]);
+        }
+
+        if ($fotoAntiga && $fotoAntiga !== $novaFoto && str_starts_with($fotoAntiga, '/storage/personagens/')) {
+            Storage::disk('public')->delete(substr($fotoAntiga, 9));
+        }
+        if ($fotoTokenAntiga && $fotoTokenAntiga !== $novaFotoToken && $fotoTokenAntiga !== $fotoAntiga && str_starts_with($fotoTokenAntiga, '/storage/personagens/')) {
+            Storage::disk('public')->delete(substr($fotoTokenAntiga, 9));
+        }
+
+        if ($novaFoto) {
+            $ficha['foto'] = $novaFoto;
+            $ficha['foto_token'] = $novaFotoToken;
+        } else {
+            unset($ficha['foto'], $ficha['foto_token']);
+        }
+
+        $personagem->forceFill(['ficha' => $ficha])->save();
+
+        // Atualiza tokens existentes do personagem que usavam a foto antiga ou não tinham arquivo
+        $tokens = Objeto::query()
+            ->where('personagem_id', $personagem->id)
+            ->where('tipo', 'token')
+            ->get();
+
+        $caminhoRelativoTokenNovo = ($novaFotoToken && str_starts_with($novaFotoToken, '/storage/')) ? substr($novaFotoToken, 9) : null;
+        $caminhoRelativoTokenAntigo = ($fotoTokenAntiga && str_starts_with($fotoTokenAntiga, '/storage/')) ? substr($fotoTokenAntiga, 9) : null;
+        $caminhoRelativoFotoAntigo = ($fotoAntiga && str_starts_with($fotoAntiga, '/storage/')) ? substr($fotoAntiga, 9) : null;
+
+        foreach ($tokens as $token) {
+            if (empty($token->arquivo) || $token->arquivo === $caminhoRelativoTokenAntigo || $token->arquivo === $caminhoRelativoFotoAntigo) {
+                $token->arquivo = $caminhoRelativoTokenNovo;
+                if ($caminhoRelativoTokenNovo) {
+                    $ext = pathinfo($caminhoRelativoTokenNovo, PATHINFO_EXTENSION);
+                    $token->arquivo_tipo = match (strtolower($ext)) {
+                        'webm', 'mp4' => 'video',
+                        'gif' => 'gif',
+                        default => 'imagem',
+                    };
+                } else {
+                    $token->arquivo_tipo = null;
+                }
+                $token->save();
+            }
+        }
+
+        Transmitir::cena($mesa, null, $acesso->jogador->id);
+
+        return response()->json([
+            'ok' => true,
+            'foto' => $novaFoto,
+            'foto_token' => $novaFotoToken,
+            'personagem' => $personagem->fresh()->load('jogadores')->paraFront($acesso->podeControlar($personagem->id)),
+        ]);
     }
 
     /**

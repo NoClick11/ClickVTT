@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
-import { Minus, Pencil, Plus, RotateCcw, Save, Swords, Trash2, X, Zap } from 'lucide-vue-next';
+import { Camera, Minus, Pencil, Plus, RotateCcw, Save, Swords, Trash2, X, Zap } from 'lucide-vue-next';
 import { computed, inject, ref, type ComputedRef } from 'vue';
 import type { UsoDeTecnica } from '../contexto';
 import {
@@ -47,6 +47,22 @@ const alvoDoAtaque = inject<ComputedRef<number | null>>(
     'alvoDoAtaque',
     computed(() => null),
 );
+
+const abrirAlterarFoto = inject<((p: { id: number; nome: string; foto?: string | null; fotoToken?: string | null; ehNpc?: boolean }) => void) | null>(
+    'abrirAlterarFoto',
+    null,
+);
+const foto = computed(() => (props.ficha as any).foto ?? (props.personagem as any).foto ?? null);
+const fotoToken = computed(() => (props.ficha as any).foto_token ?? (props.personagem as any).foto_token ?? null);
+function alterarFoto() {
+    abrirAlterarFoto?.({
+        id: props.personagem.id,
+        nome: props.personagem.nome,
+        foto: foto.value,
+        fotoToken: fotoToken.value,
+        ehNpc: true,
+    });
+}
 
 const npc = computed<NpcDados>(() => lerNpc(props.ficha)!);
 const pv = computed(() => (props.ficha.pv ?? { atual: 0, max: 0, temp: 0 }) as { atual: number; max: number; temp: number });
@@ -177,15 +193,28 @@ const rotuloSecao = 'mb-1 text-[11px] font-semibold uppercase tracking-wider tex
     <div class="h-full overflow-y-auto bg-preto-950 p-3 text-sm text-preto-100">
         <!-- Cabeçalho -->
         <header class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1">
-            <div class="min-w-0 flex-1">
-                <h2 class="truncate font-serif text-lg font-semibold" :style="{ color: personagem.cor }">{{ personagem.nome }}</h2>
-                <p class="text-xs text-preto-400">
-                    ND {{ npc.nd }} · {{ npc.xp.toLocaleString('pt-BR') }} XP<template v-if="npc.faccao"> · {{ npc.faccao }}</template
-                    ><template v-if="npc.instancia_de"> · cópia no mapa</template>
-                </p>
+            <div class="flex min-w-0 flex-1 items-center gap-2.5">
+                <div
+                    v-if="foto"
+                    class="size-10 shrink-0 cursor-pointer overflow-hidden rounded-full border border-ouro-500/40 transition hover:border-ouro-300"
+                    title="Clique para alterar a foto do NPC"
+                    @click="alterarFoto"
+                >
+                    <img :src="foto" :alt="personagem.nome" class="h-full w-full object-cover" />
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h2 class="truncate font-serif text-lg font-semibold" :style="{ color: personagem.cor }">{{ personagem.nome }}</h2>
+                    <p class="text-xs text-preto-400">
+                        ND {{ npc.nd }} · {{ npc.xp.toLocaleString('pt-BR') }} XP<template v-if="npc.faccao"> · {{ npc.faccao }}</template
+                        ><template v-if="npc.instancia_de"> · cópia no mapa</template>
+                    </p>
+                </div>
             </div>
             <div v-if="mestre" class="flex gap-1">
                 <template v-if="!editando">
+                    <Button size="sm" variant="ghost" class="h-7 gap-1 px-2 text-xs" title="Alterar a foto deste personagem" @click="alterarFoto">
+                        <Camera class="size-3.5" /> Foto
+                    </Button>
                     <Button
                         size="sm"
                         variant="ghost"

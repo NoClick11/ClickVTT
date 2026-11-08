@@ -49,10 +49,14 @@ export interface Personagem {
     pasta_id?: number | null;
     nome: string;
     cor: string;
+    foto?: string | null;
+    foto_token?: string | null;
     /** Ids dos efeitos (condições) ativos: públicos, viram ícones no token. */
     status?: string[];
     /** NPC marcado pelo mestre como aliado dos jogadores (os jogadores não o atingem). */
     aliado?: boolean;
+    /** NPC com 0 de vida: indicador de morte ativo e não pode ser alvo. */
+    morto?: boolean;
     jogadores: DonoPersonagem[];
     /** Dados da ficha (formato do sistema da mesa): só vêm para o mestre e para os jogadores do personagem. */
     ficha?: Record<string, unknown> | null;

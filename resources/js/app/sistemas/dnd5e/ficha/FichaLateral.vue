@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Flame, Footprints, Heart, Shield, Skull, Sparkles, Swords, Zap } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { Camera, Flame, Footprints, Heart, Shield, Skull, Sparkles, Swords, Zap } from 'lucide-vue-next';
+import { computed, inject } from 'vue';
 import DadoIcone from '../../../components/DadoIcone.vue';
 import type { PersonagemFicha } from '../../../nucleo/sistemas/tipos';
 import AreaRolavel from '../../../nucleo/ui/AreaRolavel.vue';
@@ -13,6 +13,22 @@ import { camposDoDadoDeVida, camposDoTesteContraMorte, comSinal, DADOS_DE_VIDA, 
 
 const props = defineProps<{ ficha: FichaDnd5e; personagem: PersonagemFicha }>();
 const { editar, calc, salvar, rolar, d20, modoDe, armas } = useFicha();
+
+const abrirAlterarFoto = inject<((p: { id: number; nome: string; foto?: string | null; fotoToken?: string | null; ehNpc?: boolean }) => void) | null>(
+    'abrirAlterarFoto',
+    null,
+);
+const foto = computed(() => (props.ficha as any).foto ?? props.personagem.foto ?? null);
+const fotoToken = computed(() => (props.ficha as any).foto_token ?? props.personagem.foto_token ?? null);
+function aoClicarFoto() {
+    abrirAlterarFoto?.({
+        id: props.personagem.id,
+        nome: props.personagem.nome,
+        foto: foto.value,
+        fotoToken: fotoToken.value,
+        ehNpc: false,
+    });
+}
 
 const pvPct = computed(() => (calc.value['pv.max'] > 0 ? Math.max(0, Math.min(100, (props.ficha.pv.atual / calc.value['pv.max']) * 100)) : 0));
 const pvCor = computed(() => (pvPct.value > 50 ? '#22c55e' : pvPct.value > 25 ? '#eab308' : '#ef4444'));
@@ -36,17 +52,35 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
         class="flex w-60 shrink-0 flex-col gap-3 overflow-y-auto border-r border-ouro-500/20 bg-preto-900/40 p-3 [&>*]:shrink-0"
         aria-label="Resumo do personagem"
     >
-        <!-- retrato (por enquanto a inicial na cor do personagem) -->
+        <!-- retrato (foto ou inicial na cor do personagem) -->
         <div
-            class="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg border border-ouro-500/30"
-            :style="{ background: `radial-gradient(circle at 30% 25%, ${personagem.cor}, #0d0a12 85%)` }"
-            role="img"
-            :aria-label="`Retrato de ${personagem.nome}`"
+            class="group relative flex aspect-[4/3] cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-ouro-500/30 transition hover:border-ouro-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+            :style="{ background: foto ? undefined : `radial-gradient(circle at 30% 25%, ${personagem.cor}, #0d0a12 85%)` }"
+            role="button"
+            tabindex="0"
+            :aria-label="`Alterar foto de ${personagem.nome}`"
+            title="Clique para alterar a foto do personagem"
+            @click="aoClicarFoto"
+            @keydown.enter="aoClicarFoto"
+            @keydown.space.prevent="aoClicarFoto"
         >
-            <span class="font-serif text-7xl font-semibold text-preto-950/80 mix-blend-overlay">{{ personagem.nome.slice(0, 1).toUpperCase() }}</span>
+            <img v-if="foto" :src="foto" :alt="`Retrato de ${personagem.nome}`" class="h-full w-full object-cover" />
+            <span v-else class="font-serif text-7xl font-semibold text-preto-950/80 mix-blend-overlay">{{
+                personagem.nome.slice(0, 1).toUpperCase()
+            }}</span>
+
+            <!-- Overlay de hover com ícone de câmera -->
+            <div
+                class="absolute inset-0 flex flex-col items-center justify-center bg-preto-950/60 opacity-0 backdrop-blur-[1px] transition-opacity group-hover:opacity-100"
+                aria-hidden="true"
+            >
+                <Camera class="mb-1 size-6 text-ouro-300" />
+                <span class="text-[11px] font-medium text-ouro-100">Alterar foto</span>
+            </div>
+
             <!-- CA (calculada: 10 + mod. de Destreza + ajuste) -->
             <div
-                class="absolute -bottom-px left-1/2 flex -translate-x-1/2 translate-y-1/3 items-center justify-center"
+                class="pointer-events-none absolute -bottom-px left-1/2 z-10 flex -translate-x-1/2 translate-y-1/3 items-center justify-center"
                 title="Classe de Armadura: 10 + modificador de Destreza + ajuste"
                 aria-label="Classe de Armadura"
             >

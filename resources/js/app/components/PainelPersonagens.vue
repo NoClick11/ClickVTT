@@ -69,8 +69,28 @@ const props = defineProps<{
     /** Pastas e folhetos do diário (o jogador só recebe o que o mestre liberou). */
     diario: DiarioDto;
 }>();
-/** O jogador só vê a lista com os personagens dele; o mestre vê todos. */
-const visiveis = computed(() => (props.mestre ? props.personagens : props.personagens.filter((p) => props.meusPersonagens.includes(p.id))));
+/** Cópias de token de NPC no mapa (possuem `instancia_de`) não aparecem na lista lateral — apenas o modelo do catálogo fica visível. */
+const ehCopiaDeNpc = (p: Personagem) => !!(p.ficha?.npc && (p.ficha.npc as { instancia_de?: number }).instancia_de);
+
+const fotoDoPersonagem = (p: Personagem): string | null => {
+    return (
+        p.foto_token ||
+        p.foto ||
+        ((p.ficha as Record<string, unknown> | null)?.foto_token as string | null) ||
+        ((p.ficha as Record<string, unknown> | null)?.foto as string | null) ||
+        null
+    );
+};
+
+const ehNpc = (p: Personagem): boolean => {
+    return !p.jogadores?.length || !!(p.ficha as Record<string, unknown> | null)?.npc;
+};
+
+/** O jogador só vê a lista com os personagens dele; o mestre vê todos (exceto as cópias de token dos NPCs). */
+const visiveis = computed(() => {
+    const lista = props.personagens.filter((p) => !ehCopiaDeNpc(p));
+    return props.mestre ? lista : lista.filter((p) => props.meusPersonagens.includes(p.id));
+});
 
 const emit = defineEmits<{
     abrir: [personagemId: number];
@@ -265,9 +285,13 @@ const vazio = computed(() => !visiveis.value.length && !props.diario.folhetos.le
                     <div
                         v-else
                         class="flex items-center gap-1 rounded-md border bg-preto-900/70 pr-1.5 transition"
-                        :draggable="mestre"
-                        :title="mestre ? 'Arraste para o mapa para criar o token, ou para uma pasta; botão direito para mais opções' : undefined"
-                        @dragstart.stop="mestre && arrastar($event, 'personagem', l.personagem.id)"
+                        :draggable="mestre || meusPersonagens.includes(l.personagem.id)"
+                        :title="
+                            mestre || meusPersonagens.includes(l.personagem.id)
+                                ? 'Arraste para o mapa para posicionar seu token; clique para abrir a ficha'
+                                : undefined
+                        "
+                        @dragstart.stop="(mestre || meusPersonagens.includes(l.personagem.id)) && arrastar($event, 'personagem', l.personagem.id)"
                         @contextmenu="mestre && ($event.preventDefault(), $emit('menu', l.personagem.id, { x: $event.clientX, y: $event.clientY }))"
                         :class="ativoId === l.personagem.id ? 'border-ouro-400' : 'border-transparent hover:border-preto-700'"
                     >
@@ -279,14 +303,26 @@ const vazio = computed(() => !visiveis.value.length && !props.diario.folhetos.le
                             @click="$emit('abrir', l.personagem.id)"
                         >
                             <span
-                                class="relative flex size-9 shrink-0 items-center justify-center rounded-full font-serif text-base font-semibold text-preto-950"
+                                class="relative flex size-9 shrink-0 items-center justify-center rounded-full font-serif text-base font-semibold text-preto-950 shadow-sm"
+                                :class="ehNpc(l.personagem) ? 'ring-2 ring-ouro-400' : 'ring-2 ring-preto-950'"
                                 :style="{ backgroundColor: l.personagem.cor }"
                                 aria-hidden="true"
                             >
-                                {{ l.personagem.nome.slice(0, 1).toUpperCase() }}
+                                <span class="flex size-full items-center justify-center overflow-hidden rounded-full">
+                                    <img
+                                        v-if="fotoDoPersonagem(l.personagem)"
+                                        :src="fotoDoPersonagem(l.personagem)!"
+                                        :alt="l.personagem.nome"
+                                        class="size-full object-cover"
+                                        loading="lazy"
+                                    />
+                                    <template v-else>
+                                        {{ l.personagem.nome.slice(0, 1).toUpperCase() }}
+                                    </template>
+                                </span>
                                 <span
                                     v-if="ativoId === l.personagem.id"
-                                    class="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-ouro-400 ring-2 ring-preto-900"
+                                    class="absolute -bottom-0.5 -right-0.5 z-10 size-3 rounded-full bg-ouro-400 ring-2 ring-preto-900"
                                     title="Personagem ativo"
                                 />
                             </span>
