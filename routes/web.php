@@ -11,6 +11,8 @@ use App\Http\Controllers\App\ForjaController;
 use App\Http\Controllers\App\ItemController;
 use App\Http\Controllers\App\LojaController;
 use App\Http\Controllers\App\JogoController;
+use App\Http\Controllers\App\LojaController;
+use App\Http\Controllers\App\LootController;
 use App\Http\Controllers\App\ObjetoController;
 use App\Http\Controllers\App\PaginaController;
 use App\Http\Controllers\App\PastaController;
@@ -82,6 +84,14 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::patch('itens/{item}', [ItemController::class, 'update'])->middleware('throttle:60,1')->name('itens.update');
     Route::delete('itens/{item}', [ItemController::class, 'destroy'])->name('itens.destroy');
     Route::post('paginas/{pagina}/objetos', [ObjetoController::class, 'store'])->name('objetos.store');
+    // Loot no mapa: o mestre cria e monta; o jogador abre e pega (o servidor trava o loot a cada retirada).
+    Route::post('paginas/{pagina}/loot', [LootController::class, 'criar'])->middleware('throttle:60,1')->name('loot.criar');
+    Route::get('loot/catalogo', [LootController::class, 'catalogo'])->middleware('throttle:60,1')->name('loot.catalogo');
+    Route::get('loot/{objeto}', [LootController::class, 'mostrar'])->middleware('throttle:120,1')->name('loot.mostrar');
+    Route::post('loot/{objeto}/pegar', [LootController::class, 'pegar'])->middleware('throttle:120,1')->name('loot.pegar');
+    Route::post('loot/{objeto}/itens', [LootController::class, 'adicionarItem'])->middleware('throttle:60,1')->name('loot.itens.store');
+    Route::patch('loot/{objeto}/itens/{linha}', [LootController::class, 'definirQtd'])->middleware('throttle:120,1')->name('loot.itens.update');
+    Route::patch('loot/{objeto}', [LootController::class, 'atualizar'])->middleware('throttle:60,1')->name('loot.update');
     Route::post('pastas', [PastaController::class, 'store'])->name('pastas.store');
     Route::patch('pastas/{pasta}', [PastaController::class, 'update'])->name('pastas.update');
     Route::delete('pastas/{pasta}', [PastaController::class, 'destroy'])->name('pastas.destroy');

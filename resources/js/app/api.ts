@@ -1,5 +1,5 @@
 import type { Criacao, Personagem } from '@/site/types';
-import type { ObjetoDto, PaginaDto } from './engine/tipos';
+import type { LootDto, ObjetoDto, PaginaDto } from './engine/tipos';
 import type { ResumoEvento } from './nucleo/combate/reacoes';
 import type {
     ArmaParaForja,
@@ -18,6 +18,7 @@ export class ErroApi extends Error {
     constructor(
         mensagem: string,
         public status: number,
+        public dados?: unknown,
     ) {
         super(mensagem);
     }
@@ -47,8 +48,10 @@ async function requisitar<T>(jogadorId: number, metodo: string, url: string, cor
     const resposta = await fetch(url, { method: metodo, headers: cabecalhos, body, credentials: 'same-origin' });
     if (!resposta.ok) {
         let mensagem = `Erro ${resposta.status}`;
+        let dados: unknown;
         try {
             const json = await resposta.json();
+            dados = json;
             mensagem = json.message ?? mensagem;
             // Laravel 422: junta as mensagens de cada campo (a principal sozinha diz só "e mais N erros").
             const detalhes = json.errors ? [...new Set(Object.values(json.errors as Record<string, string[]>).map((m) => m[0]))] : [];
@@ -56,7 +59,7 @@ async function requisitar<T>(jogadorId: number, metodo: string, url: string, cor
         } catch {
             /* corpo não é JSON */
         }
-        throw new ErroApi(mensagem, resposta.status);
+        throw new ErroApi(mensagem, resposta.status, dados);
     }
 
     return (await resposta.json()) as T;
@@ -81,6 +84,33 @@ export function apiMesa(mesaId: number, atorId: number) {
         criarObjeto: (paginaId: number, dados: object | FormData) => requisitar<ObjetoDto>(atorId, 'POST', r('jogo.objetos.store', paginaId), dados),
         atualizarObjeto: (id: number, campos: object) => requisitar<ObjetoDto>(atorId, 'PATCH', r('jogo.objetos.update', id), campos),
         removerObjeto: (id: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.objetos.destroy', id)),
+        // Loot no mapa: o mestre monta; o jogador abre e pega (409 = alguém levou antes; `ErroApi.dados.loot` traz o conteúdo de agora).
+        criarLoot: (paginaId: number, dados: { nome?: string; camada: 'mestre' | 'jogadores'; x: number; y: number }) =>
+            requisitar<{ objeto: ObjetoDto; loot: LootDto }>(atorId, 'POST', r('jogo.loot.criar', paginaId), dados),
+        abrirLoot: (id: number) => requisitar<LootDto>(atorId, 'GET', r('jogo.loot.mostrar', id)),
+        pegarDoLoot: (id: number, dados: { personagem_id: number; loot_item_id?: number; dinheiro?: boolean; qtd?: number; tudo?: boolean }) =>
+            requisitar<{ campos: Record<string, unknown>; loot: LootDto; texto: string }>(atorId, 'POST', r('jogo.loot.pegar', id), dados),
+        catalogoParaLoot: () =>
+            requisitar<{ itens: { ref: string; nome: string; categoria: string; raridade: string | null }[] }>(
+                atorId,
+                'GET',
+                r('jogo.loot.catalogo'),
+            ),
+        adicionarAoLoot: (
+            id: number,
+            dados: {
+                origem: 'catalogo' | 'item' | 'novo';
+                ref?: string;
+                item_id?: number;
+                nome?: string;
+                descricao?: string;
+                peso?: number;
+                qtd?: number;
+            },
+        ) => requisitar<LootDto>(atorId, 'POST', r('jogo.loot.itens.store', id), dados),
+        qtdNoLoot: (id: number, linha: number, qtd: number) => requisitar<LootDto>(atorId, 'PATCH', r('jogo.loot.itens.update', id, linha), { qtd }),
+        atualizarLoot: (id: number, campos: { dinheiro?: number; nome?: string }) =>
+            requisitar<LootDto>(atorId, 'PATCH', r('jogo.loot.update', id), campos),
         criarPagina: (dados: object) => requisitar<PaginaDto>(atorId, 'POST', r('jogo.paginas.store'), dados),
         atualizarPagina: (id: number, campos: object) => requisitar<PaginaDto>(atorId, 'PATCH', r('jogo.paginas.update', id), campos),
         removerPagina: (id: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.paginas.destroy', id)),

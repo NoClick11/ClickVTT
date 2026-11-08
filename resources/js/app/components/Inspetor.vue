@@ -27,7 +27,11 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
         aria-label="Objeto selecionado"
     >
         <p class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ouro-400">
-            {{ { token: 'Token', luz: 'Luz', parede: 'Parede, porta ou janela', imagem: 'Imagem', traco: 'Desenho', texto: 'Texto' }[objeto.tipo] }}
+            {{
+                { token: 'Token', luz: 'Luz', parede: 'Parede, porta ou janela', imagem: 'Imagem', traco: 'Desenho', texto: 'Texto', loot: 'Loot' }[
+                    objeto.tipo
+                ]
+            }}
         </p>
         <div class="grid gap-3">
             <label v-if="objeto.tipo !== 'parede' && objeto.tipo !== 'texto' && objeto.tipo !== 'traco'" class="grid gap-1">

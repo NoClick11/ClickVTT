@@ -131,6 +131,8 @@ export class ObjetoVisual {
             this.desenharLuz(g);
         } else if (this.dto.tipo === 'parede') {
             this.desenharParede(g);
+        } else if (this.dto.tipo === 'loot') {
+            this.desenharLoot(g);
         } else if (this.ehToken && !this.arquivoCarregado) {
             // Sem imagem: círculo colorido com a inicial. Com imagem, ela ocupa o token inteiro.
             // Preenche o token inteiro (elipse): esticar o token estica o desenho, como a imagem.
@@ -145,6 +147,31 @@ export class ObjetoVisual {
             g.rect(0, 0, largura, altura).fill({ color: 0x25212b, alpha: 0.6 }).stroke({ color: 0x4a4452, width: 2 });
         }
         void nome;
+    }
+
+    /** Loot: um saco simples (corpo redondo, pescoço amarrado e a boca franzida no topo), numa cor só com contorno escuro. */
+    private desenharLoot(g: Graphics): void {
+        const { largura: w, altura: h } = this.dto;
+        const s = Math.min(w, h);
+        const ox = (w - s) / 2;
+        const oy = (h - s) / 2;
+        const px = (v: number) => ox + v * s;
+        const py = (v: number) => oy + v * s;
+        const cor = 0xb08850;
+        const contorno = { color: 0x0d0a12, width: 3 };
+        // boca franzida
+        g.poly([px(0.36), py(0.16), px(0.5), py(0.28), px(0.64), py(0.16), px(0.6), py(0.34), px(0.4), py(0.34)])
+            .fill(cor)
+            .stroke(contorno);
+        // corpo
+        g.ellipse(px(0.5), py(0.64), s * 0.3, s * 0.27)
+            .fill(cor)
+            .stroke(contorno);
+        // pescoço e laço
+        g.poly([px(0.41), py(0.34), px(0.59), py(0.34), px(0.57), py(0.43), px(0.43), py(0.43)]).fill(cor);
+        g.roundRect(px(0.4), py(0.37), s * 0.2, s * 0.05, s * 0.025)
+            .fill(0xd4a843)
+            .stroke({ color: 0x0d0a12, width: 2 });
     }
 
     /** Traço livre: pontos relativos ao objeto; esticar o objeto estica o desenho. */

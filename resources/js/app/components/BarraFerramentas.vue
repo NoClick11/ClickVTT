@@ -10,6 +10,7 @@ import {
     Lightbulb,
     ListOrdered,
     MousePointer2,
+    PackageOpen,
     Paintbrush,
     Ruler,
     Settings2,
@@ -27,6 +28,8 @@ interface Item {
     icone: Component;
     mestre?: boolean;
     iluminacao?: boolean;
+    /** Só aparece fora da camada de iluminação (o loot não vive nela). */
+    foraIluminacao?: boolean;
 }
 const ferramentas: Item[] = [
     { id: 'selecionar', rotulo: 'Selecionar e mover', icone: MousePointer2 },
@@ -35,6 +38,7 @@ const ferramentas: Item[] = [
     { id: 'regua', rotulo: 'Régua', icone: Ruler },
     { id: 'pintar', rotulo: 'Pintar', icone: Paintbrush },
     { id: 'texto', rotulo: 'Texto', icone: Type },
+    { id: 'loot', rotulo: 'Loot: clique no mapa para criar um baú com itens e dinheiro', icone: PackageOpen, mestre: true, foraIluminacao: true },
     { id: 'luz', rotulo: 'Luz', icone: Lightbulb, mestre: true, iluminacao: true },
     { id: 'parede', rotulo: 'Parede', icone: BrickWall, mestre: true, iluminacao: true },
     { id: 'porta', rotulo: 'Porta', icone: DoorClosed, mestre: true, iluminacao: true },
@@ -51,7 +55,7 @@ const botao =
             aria-label="Ferramentas"
         >
             <template v-for="f in ferramentas" :key="f.id">
-                <Tooltip v-if="(!f.mestre || mestre) && (!f.iluminacao || camadaIluminacao)">
+                <Tooltip v-if="(!f.mestre || mestre) && (!f.iluminacao || camadaIluminacao) && (!f.foraIluminacao || !camadaIluminacao)">
                     <TooltipTrigger as-child>
                         <button
                             type="button"

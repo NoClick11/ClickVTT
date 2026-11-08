@@ -18,6 +18,7 @@ import ControlesZoom from '../components/ControlesZoom.vue';
 import DadosAnimacao from '../components/DadosAnimacao.vue';
 import ExcluirPersonagemDialog from '../components/ExcluirPersonagemDialog.vue';
 import Inspetor from '../components/Inspetor.vue';
+import LootDialog from '../components/LootDialog.vue';
 import MenuObjeto from '../components/MenuObjeto.vue';
 import MenuPaginas from '../components/MenuPaginas.vue';
 import MenuPersonagem from '../components/MenuPersonagem.vue';
@@ -35,6 +36,7 @@ import {
     type CamposGeometria,
     type EstiloPintura,
     type Ferramenta,
+    type LootDto,
     type ObjetoDto,
     type PaginaDto,
     type TipoParede,
@@ -492,6 +494,103 @@ function centroEmQuadrados(): { x: number; y: number; t: number } {
     const c = canvas.value?.centro() ?? { x: 0, y: 0 };
 
     return { x: Math.floor(c.x / t) * t, y: Math.floor(c.y / t) * t, t };
+}
+
+// --- memória das áreas vistas (névoa de exploração) --------------------------------------------------------------------------
+// Cada jogador guarda no servidor o que já viu em cada página (uma imagem pequena); vale em qualquer aparelho. O mestre apaga a de todos.
+const guardarMemoria = (imagem: string) => props.pagina && api.guardarExploracao(props.pagina.id, imagem).catch(() => undefined);
+async function pedirMemoria(paginaId: number) {
+    try {
+        const r = await api.exploracao(paginaId);
+        if (props.pagina?.id === paginaId) canvas.value?.carregarMemoria(r.imagem);
+    } catch {
+        /* sem memória guardada: a névoa começa limpa */
+    }
+}
+
+// --- loot -----------------------------------------------------------------------------------------------------------------
+// Um loot é um objeto do mapa com itens e dinheiro. Quem manda é o servidor: se alguém levou antes, a resposta (409) já traz o conteúdo de
+// agora e a janela se corrige. As janelas abertas também se atualizam ao vivo (evento `loot`).
+const lootObjetoId = ref<number | null>(null);
+const lootEstado = ref<LootDto | null>(null);
+const lootAberto = computed({
+    get: () => lootObjetoId.value !== null,
+    set: (v: boolean) => {
+        if (!v) {
+            lootObjetoId.value = null;
+            lootEstado.value = null;
+        }
+    },
+});
+const simboloDaMoeda = computed(() => moduloSistema?.dadosDaLoja?.moeda ?? '');
+const personagensDoLoot = computed(() =>
+    props.personagens.filter((p) => props.mestre || props.meusPersonagens.includes(p.id)).map((p) => ({ id: p.id, nome: p.nome })),
+);
+async function abrirLoot(id: number) {
+    lootObjetoId.value = id;
+    lootEstado.value = null;
+    try {
+        const estado = await api.abrirLoot(id);
+        if (lootObjetoId.value === id) lootEstado.value = estado;
+    } catch (e) {
+        if (lootObjetoId.value === id) lootObjetoId.value = null;
+        avisar(mensagemDe(e));
+    }
+}
+/** O conteúdo mudou (alguém pegou, o mestre mexeu): atualiza a janela se for este loot. */
+function aplicarLoot(estado: LootDto) {
+    if (estado.objeto_id === lootObjetoId.value) lootEstado.value = estado;
+}
+async function pegarDoLoot(dados: { personagem_id: number; loot_item_id?: number; dinheiro?: boolean; qtd?: number; tudo?: boolean }) {
+    const id = lootObjetoId.value;
+    if (id === null) return;
+    try {
+        const r = await api.pegarDoLoot(id, dados);
+        aplicarNaFicha(dados.personagem_id, r.campos);
+        recarregar(['itens']);
+        aplicarLoot(r.loot);
+        avisar(`Você pegou ${r.texto}.`);
+    } catch (e) {
+        if (e instanceof ErroApi && e.status === 409) {
+            // Chegou tarde: mostra o que sobrou e avisa.
+            const estado = (e.dados as { loot?: LootDto } | undefined)?.loot;
+            if (estado) aplicarLoot(estado);
+        } else if (e instanceof ErroApi && e.status === 404) {
+            lootObjetoId.value = null; // o loot sumiu ou foi escondido
+        }
+        avisar(mensagemDe(e));
+    }
+}
+const mestreDoLoot = (fn: (id: number) => Promise<LootDto>) => async () => {
+    const id = lootObjetoId.value;
+    if (id === null) return;
+    try {
+        aplicarLoot(await fn(id));
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+};
+function abrirLootDoMenu() {
+    const o = objetoDoMenu.value;
+    menuObjeto.value = null;
+    if (o) abrirLoot(o.id);
+}
+async function criarLoot(cx: number, cy: number) {
+    if (!props.pagina || !props.mestre) return;
+    const lado = props.pagina.tamanho_quadrado;
+    try {
+        // Nasce na camada ativa se for a dos jogadores; senão fica oculto (camada Mestre) até o mestre abri-lo aos jogadores.
+        const r = await api.criarLoot(props.pagina.id, {
+            camada: camada.value === 'jogadores' ? 'jogadores' : 'mestre',
+            x: cx - lado / 2,
+            y: cy - lado / 2,
+        });
+        objetos.value.push(r.objeto);
+        lootObjetoId.value = r.objeto.id;
+        lootEstado.value = r.loot;
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
 }
 
 // Botão direito sobre um objeto: menu para movê-lo entre camadas (só o mestre).
@@ -1512,6 +1611,13 @@ onMounted(() => {
                     if (e.aberta) lojaVisivel.value = true;
                     recarregar(['lojaDoJogador']);
                 })
+                .listen('.loot', (e: { loot: LootDto; aviso: string | null; ator: number | null }) => {
+                    aplicarLoot(e.loot);
+                    if (e.aviso && e.ator !== meuId) avisar(e.aviso);
+                })
+                .listen('.exploracao', (e: { pagina_id: number }) => {
+                    if (e.pagina_id === props.pagina?.id) canvas.value?.limparMemoria();
+                })
                 .listen('.loja-compra', (e: { jogador: string; item: string; qtd: number; total: number }) =>
                     avisar(`${e.jogador} comprou ${e.qtd}× ${e.item} por ฿ ${e.total.toLocaleString('pt-BR')}.`),
                 )
@@ -1633,6 +1739,10 @@ function alternarPorta(id: number) {
                     @alterar="aoAlterar"
                     @zoom="escala = $event"
                     @criar-luz="criarLuz"
+                    @criar-loot="criarLoot"
+                    @abrir-loot="abrirLoot"
+                    @memoria="guardarMemoria"
+                    @pedir-memoria="pedirMemoria"
                     @criar-parede="criarParede"
                     @alternar-porta="alternarPorta"
                     @menu-objeto="abrirMenuObjeto"
@@ -1897,12 +2007,26 @@ function alternarPorta(id: number) {
             @update:open="(v: boolean) => !v && (excluindoId = null)"
             @confirmar="excluirPersonagem"
         />
+        <LootDialog
+            v-model:open="lootAberto"
+            :loot="lootEstado"
+            :mestre="mestre"
+            :personagens="personagensDoLoot"
+            :simbolo="simboloDaMoeda"
+            :itens-proprios="itensDaMesa.filter((i) => !i.catalogo_id).map((i) => ({ id: i.id, nome: i.nome }))"
+            :pegar="pegarDoLoot"
+            :adicionar="(d) => mestreDoLoot((id) => api.adicionarAoLoot(id, d))()"
+            :definir-qtd="(linha, qtd) => mestreDoLoot((id) => api.qtdNoLoot(id, linha, qtd))()"
+            :definir-dinheiro="(v) => mestreDoLoot((id) => api.atualizarLoot(id, { dinheiro: v }))()"
+            :carregar-catalogo="() => api.catalogoParaLoot().then((r) => r.itens)"
+        />
         <MenuObjeto
             v-if="menuObjeto && objetoDoMenu"
             :objeto="objetoDoMenu"
             :x="menuObjeto.x"
             :y="menuObjeto.y"
             @mover="moverParaCamada"
+            @abrir="abrirLootDoMenu"
             @fechar="menuObjeto = null"
         />
 

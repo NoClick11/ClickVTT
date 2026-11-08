@@ -187,6 +187,7 @@ class ObjetoController extends Controller
     private function validarCamada(string $camada, string $tipo): void
     {
         $iluminacao = in_array($tipo, ['luz', 'parede'], true);
+        abort_if($tipo === 'loot' && ! in_array($camada, ['mestre', 'jogadores'], true), 422, 'O loot fica na camada Mestre (oculto) ou Jogadores (aberto).');
         abort_if($iluminacao && $camada !== 'iluminacao', 422, 'Luzes e paredes pertencem à camada de iluminação.');
         abort_if(! $iluminacao && $camada === 'iluminacao', 422, 'Esta camada só aceita luzes e paredes.');
     }

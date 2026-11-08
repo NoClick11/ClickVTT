@@ -8,7 +8,7 @@ export const CAMADAS: { id: Camada; nome: string; dica: string }[] = [
     { id: 'iluminacao', nome: 'Iluminação', dica: 'Luzes, paredes, portas e janelas' },
 ];
 
-export type Ferramenta = 'selecionar' | 'mirar' | 'mover' | 'regua' | 'pintar' | 'texto' | 'parede' | 'porta' | 'janela' | 'luz';
+export type Ferramenta = 'selecionar' | 'mirar' | 'mover' | 'regua' | 'pintar' | 'texto' | 'parede' | 'porta' | 'janela' | 'luz' | 'loot';
 
 /** Estilo atual das ferramentas de pintar (traço) e texto. */
 export interface EstiloPintura {
@@ -24,7 +24,7 @@ import type { BarraDoToken } from '../nucleo/sistemas/tipos';
 export interface ObjetoDto {
     id: number;
     camada: Camada;
-    tipo: 'imagem' | 'token' | 'luz' | 'parede' | 'traco' | 'texto';
+    tipo: 'imagem' | 'token' | 'luz' | 'parede' | 'traco' | 'texto' | 'loot';
     personagem_id: number | null;
     /** token: ids dos efeitos (condições) ativos do personagem, desenhados como ícones no token. */
     status?: string[];
@@ -55,6 +55,14 @@ export interface ObjetoDto {
     } | null;
 }
 
+/** Conteúdo de um loot: o item vem completo porque o jogador ainda não o tem na ficha. */
+export interface LootDto {
+    objeto_id: number;
+    nome: string | null;
+    dinheiro: number;
+    itens: { id: number; qtd: number; item: { id: number; nome: string; descricao: string | null; peso: number; efeitos: unknown[] } }[];
+}
+
 export interface PaginaDto {
     id: number;
     pasta_id: number | null;
@@ -81,6 +89,10 @@ export interface CenaEventos {
     alterar: (id: number, campos: CamposGeometria, final: boolean) => void;
     zoom: (escala: number) => void;
     criarLuz: (x: number, y: number) => void;
+    /** Clique com a ferramenta Loot (mestre): cria um loot no ponto. */
+    criarLoot: (x: number, y: number) => void;
+    /** Clique num loot (jogador) ou duplo clique (mestre): abre o conteúdo. */
+    abrirLoot: (id: number) => void;
     /** `pontos` relativos a (x, y); bbox já calculada. */
     criarTraco: (traco: { x: number; y: number; largura: number; altura: number; pontos: number[] }) => void;
     /** Clique com a ferramenta texto: mundo (x, y) e posição na tela para o campo de digitação. */

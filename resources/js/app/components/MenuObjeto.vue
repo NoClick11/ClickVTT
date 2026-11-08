@@ -8,14 +8,15 @@ import { CAMADAS, type Camada, type ObjetoDto } from '../engine/tipos';
  * A camada atual aparece marcada; a iluminação (luzes e paredes) não entra, porque só aceita esses tipos.
  */
 const props = defineProps<{ objeto: ObjetoDto; x: number; y: number }>();
-const emit = defineEmits<{ mover: [camada: Camada]; fechar: [] }>();
+const emit = defineEmits<{ mover: [camada: Camada]; abrir: []; fechar: [] }>();
 
-const camadas = CAMADAS.filter((c) => c.id !== 'iluminacao');
+/** O loot só vive oculto (Mestre) ou aberto aos jogadores (Jogadores). */
+const camadas = computed(() => CAMADAS.filter((c) => c.id !== 'iluminacao' && (props.objeto.tipo !== 'loot' || c.id !== 'mapa')));
 const titulo = computed(() => props.objeto.nome || 'Objeto');
 /** Mantém o menu dentro da janela. */
 const posicao = computed(() => ({
     left: Math.min(props.x, window.innerWidth - 220) + 'px',
-    top: Math.min(props.y, window.innerHeight - 40 - camadas.length * 36) + 'px',
+    top: Math.min(props.y, window.innerHeight - 40 - camadas.value.length * 36) + 'px',
 }));
 
 const aoTecla = (e: KeyboardEvent) => e.key === 'Escape' && emit('fechar');
@@ -33,6 +34,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', aoTecla));
         :aria-label="`Opções de ${titulo}`"
     >
         <p class="truncate px-2 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wider text-ouro-400" :title="titulo">{{ titulo }}</p>
+        <button
+            v-if="objeto.tipo === 'loot'"
+            type="button"
+            role="menuitem"
+            class="mb-1 flex w-full items-center rounded-md bg-ouro-500/15 px-2 py-1.5 text-left text-sm text-ouro-100 transition hover:bg-ouro-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+            @click="emit('abrir')"
+        >
+            Abrir loot
+        </button>
         <p class="px-2 pb-1 text-[10px] text-preto-500">Mover para a camada</p>
         <button
             v-for="c in camadas"

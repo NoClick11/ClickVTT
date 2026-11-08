@@ -532,6 +532,98 @@ export class Cena {
         return (v.dto.tipo === 'traco' || v.dto.tipo === 'texto') && v.dto.jogador_id !== null && v.dto.jogador_id === this.opcoes.jogadorId;
     }
 
+    // --- iluminação dinâmica ------------------------------------------------------------------------------------------------
+
+    private agendarIluminacao(atraso: number): void {
+        clearTimeout(this.temporizadorIluminacao);
+        this.temporizadorIluminacao = setTimeout(() => this.atualizarIluminacao(), atraso);
+    }
+
+    /** Guarda a memória no servidor um pouco depois da última mudança (e só se for diferente da última enviada). */
+    private agendarMemoria(): void {
+        clearTimeout(this.temporizadorMemoria);
+        this.temporizadorMemoria = setTimeout(async () => {
+            const imagem = await this.iluminacao.exportarMemoria().catch(() => null);
+            if (imagem && imagem !== this.ultimaMemoria) {
+                this.ultimaMemoria = imagem;
+                this.opcoes.eventos.memoria(imagem);
+            }
+        }, 2500);
+    }
+
+    /** A memória guardada no servidor chegou: passa a valer no próximo cálculo. */
+    async carregarMemoria(imagem: string | null): Promise<void> {
+        await this.iluminacao.carregarMemoria(imagem);
+        this.ultimaMemoria = imagem ?? '';
+        this.agendarIluminacao(0);
+    }
+
+    /** O mestre apagou a memória: a névoa volta. */
+    limparMemoria(): void {
+        this.iluminacao.limparMemoria();
+        this.ultimaMemoria = '';
+        this.agendarIluminacao(0);
+    }
+
+    /** Recalcula luz, visão e sombras (na GPU) e mostra só o que o jogador enxerga: controles de porta e janela, tokens e loot. */
+    private atualizarIluminacao(): void {
+        if (!this.pronto || !this.pagina) return;
+        if (this.modo === 'mover' || this.modo === 'redimensionar') return; // o arrasto termina e agenda de novo
+        const ativa = this.pagina.iluminacao_ativa;
+        const dtos = [...this.visuais.values()].map((v) => v.dto);
+        const meus = (o: ObjetoDto) => o.tipo === 'token' && o.personagem_id !== null && this.opcoes.personagensPermitidos.includes(o.personagem_id);
+        const meusTokens = this.opcoes.mestre ? [] : dtos.filter((o) => meus(o) && o.camada === 'jogadores');
+        const r = this.iluminacao.atualizar(ativa ? { pagina: this.pagina, objetos: dtos, mestre: this.opcoes.mestre, meusTokens } : null);
+        for (const v of this.visuais.values()) {
+            const o = v.dto;
+            if (o.tipo === 'luz') v.definirLuzDinamica(ativa);
+            if (this.opcoes.mestre) continue;
+            if (o.tipo === 'parede') v.container.visible = this.controleVisivel(v, r?.visao ?? []);
+            // O que o jogador não enxerga agora (fora da linha de visão ou no escuro) some: token e loot dos outros não aparecem na penumbra.
+            else if ((o.tipo === 'token' && !meus(o)) || o.tipo === 'loot')
+                v.container.visible = !r || r.pontoVisivel(o.x + o.largura / 2, o.y + o.altura / 2);
+        }
+    }
+
+    /** O controle da porta/janela está à vista do jogador? (sem token com visão, vê todos) */
+    private controleVisivel(v: ObjetoVisual, visao: number[][]): boolean {
+        const tipo = v.dto.dados?.tipo;
+        const p = v.dto.dados?.pontos;
+        if ((tipo !== 'porta' && tipo !== 'janela') || !p || p.length !== 4) return false;
+        if (!visao.length) return true;
+        const mx = (p[0] + p[2]) / 2;
+        const my = (p[1] + p[3]) / 2;
+        // a porta fica sobre a parede: testa em volta do ponto médio, não exatamente na borda do polígono
+        return visao.some((poli) =>
+            [
+                [0, 0],
+                [4, 0],
+                [-4, 0],
+                [0, 4],
+                [0, -4],
+            ].some(([dx, dy]) => pontoNoPoligono(mx + dx, my + dy, poli)),
+        );
+    }
+
+    /** Porta ou janela (visível) sob o ponto, para o jogador abrir ou fechar. */
+    private portaEm(x: number, y: number): ObjetoVisual | null {
+        const tol = 14 / this.mundo.scale.x;
+        for (const v of this.visuais.values()) {
+            const tipo = v.dto.dados?.tipo;
+            if (v.dto.tipo === 'parede' && (tipo === 'porta' || tipo === 'janela') && v.container.visible && v.acerta(x, y, tol)) return v;
+        }
+
+        return null;
+    }
+
+    /** Loot aberto aos jogadores sob o ponto (o de cima vence). */
+    private lootEm(x: number, y: number): ObjetoVisual | null {
+        const tol = 6 / this.mundo.scale.x;
+        const achados = [...this.visuais.values()].filter((v) => v.dto.tipo === 'loot' && v.dto.camada === 'jogadores' && v.acerta(x, y, tol));
+
+        return achados.sort((a, b) => b.dto.z - a.dto.z || b.dto.id - a.dto.id)[0] ?? null;
+    }
+
     /** Objeto sob o ponto em QUALQUER camada (menos a iluminação); o de cima vence. Só o mestre mexe fora da camada ativa. */
     private objetoDeQualquerCamadaEm(x: number, y: number): ObjetoVisual | null {
         const tol = 10 / this.mundo.scale.x;
@@ -725,7 +817,9 @@ export class Cena {
             const t = this.posTela(e);
             const p = this.paraMundo(t.x, t.y);
             const alvo = this.objetoEm(p.x, p.y);
-            if (alvo?.dto.tipo === 'parede' && alvo.dto.dados?.tipo === 'porta') this.opcoes.eventos.alternarPorta(alvo.dto.id);
+            if (alvo?.dto.tipo === 'parede' && ['porta', 'janela'].includes(alvo.dto.dados?.tipo ?? ''))
+                this.opcoes.eventos.alternarPorta(alvo.dto.id);
+            else if (alvo?.dto.tipo === 'loot') this.opcoes.eventos.abrirLoot(alvo.dto.id);
         });
         ouvir(canvas, 'pointerdown', (e) => this.aoPressionar(e));
         ouvir(canvas, 'pointermove', (e) => this.aoMover(e));
@@ -821,9 +915,30 @@ export class Cena {
             this.desenhoInicio = { x: this.snap(p.x), y: this.snap(p.y) };
             return;
         }
+        if (this.ferramenta === 'loot') {
+            if (this.opcoes.mestre) this.opcoes.eventos.criarLoot(this.snapCentro(p.x), this.snapCentro(p.y));
+            return;
+        }
         if (this.ferramenta === 'luz') {
             if (this.opcoes.mestre) this.opcoes.eventos.criarLuz(this.snapCentro(p.x), this.snapCentro(p.y));
             return;
+        }
+
+        // Jogador: clicar numa porta ou janela à vista pede para abri-la ou fechá-la (o servidor recusa se estiver trancada).
+        if (!this.opcoes.mestre) {
+            const porta = this.portaEm(p.x, p.y);
+            if (porta) {
+                this.opcoes.eventos.alternarPorta(porta.dto.id);
+                return;
+            }
+        }
+        // Jogador: clicar num loot aberto (camada Jogadores) abre o conteúdo; ele não seleciona nem move o loot.
+        if (!this.opcoes.mestre) {
+            const loot = this.lootEm(p.x, p.y);
+            if (loot) {
+                this.opcoes.eventos.abrirLoot(loot.dto.id);
+                return;
+            }
         }
 
         // Ferramenta "selecionar": alça > objeto > vazio.
@@ -1164,7 +1279,7 @@ export class Cena {
             this.teclaMirar ||
             this.gabarito ||
             this.ponto ||
-            ['mirar', 'regua', 'luz', 'parede', 'porta', 'janela', 'pintar'].includes(this.ferramenta)
+            ['mirar', 'regua', 'loot', 'luz', 'parede', 'porta', 'janela', 'pintar'].includes(this.ferramenta)
                 ? 'crosshair'
                 : this.ferramenta === 'texto'
                   ? 'text'

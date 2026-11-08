@@ -32,6 +32,10 @@ const emit = defineEmits<{
     alterar: [id: number, campos: CamposGeometria, final: boolean];
     zoom: [escala: number];
     criarLuz: [x: number, y: number];
+    criarLoot: [x: number, y: number];
+    abrirLoot: [id: number];
+    memoria: [imagem: string];
+    pedirMemoria: [paginaId: number];
     criarTraco: [traco: { x: number; y: number; largura: number; altura: number; pontos: number[] }];
     criarTexto: [x: number, y: number, tela: { x: number; y: number }];
     criarParede: [pontos: [number, number, number, number], tipo: TipoParede];
@@ -57,6 +61,10 @@ onMounted(async () => {
             alterar: (id, campos, final) => emit('alterar', id, campos, final),
             zoom: (e) => emit('zoom', e),
             criarLuz: (x, y) => emit('criarLuz', x, y),
+            criarLoot: (x, y) => emit('criarLoot', x, y),
+            abrirLoot: (id) => emit('abrirLoot', id),
+            memoria: (imagem) => emit('memoria', imagem),
+            pedirMemoria: (id) => emit('pedirMemoria', id),
             criarTraco: (t) => emit('criarTraco', t),
             criarTexto: (x, y, tela) => emit('criarTexto', x, y, tela),
             criarParede: (pontos, tipo) => emit('criarParede', pontos, tipo),
