@@ -1186,6 +1186,8 @@ export const BRUTAMONTES: EstiloDados = {
             descricao:
                 'Seus PV máximos aumentam permanentemente em 60. Ao sofrer qualquer dano, você pode usar a reação para reduzi-lo a 0. Até 3 usos; todos voltam em descanso curto ou longo.',
             efeitos: [{ alvo: 'pv.max', modo: 'soma', valor: 60 }],
+            // Reação defensiva automática: oferecida quando é atacado; o uso só é gasto quando o dano é de fato zerado
+            reacao: { gatilho: 'ataque_declarado', alcance: 'si', reducao: { zerar: true } },
             etiquetas: ['PV máx +60', 'Reação: dano sofrido vira 0 (3 usos)'],
         },
         {
@@ -1336,6 +1338,7 @@ export const BRUTAMONTES: EstiloDados = {
             '',
             undefined,
             'Ao ser alvo de jogada de ataque (comum ou Técnicas), ou de Salvaguarda de Força ou Destreza, use a fúria para criar uma reserva de redução de dano igual a 10d8. Sempre que sofrer dano, reduza-o usando a reserva, que perde o que evitou. Gaste 1 PP para somar 2d8 à reserva, até 20d8. Duração: até o fim do seu próximo turno.',
+            { reacao: { gatilho: 'ataque_declarado', alcance: 'si', reducao: { reserva: '10d8', mais: '2d8', maximo: 20 } } },
         ),
         tec(
             9,

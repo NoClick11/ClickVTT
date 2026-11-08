@@ -4,6 +4,7 @@ namespace App\Sistemas\OnePiece;
 
 use App\Nucleo\Combate\SistemaDeCombate;
 use App\Nucleo\Efeitos\Formula;
+use App\Nucleo\Rolagem\Rolador;
 use App\Nucleo\Sistemas\Sistema;
 use App\Nucleo\Sistemas\SistemaComLoja;
 
@@ -153,7 +154,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
             $ofertas[] = [
                 // `categoria`: a reação gasta a categoria `reacao` (a do turno); algumas (Aparar Aprimorado) gastam outra, como `livre`
                 'id' => $id, 'rotulo' => $dados['nome'] ?? 'Reação', 'descricao' => $dados['descricao'] ?? '', 'categoria' => $r['categoria'] ?? 'reacao',
-                'alcance' => $r['alcance'] ?? 'si', 'cura' => $r['cura'] ?? null, 'custo' => $custo,
+                'alcance' => $r['alcance'] ?? 'si', 'cura' => $r['cura'] ?? null, 'custo' => $custo, 'reducao' => $r['reducao'] ?? null,
                 // `defesa` é um número ou uma fórmula da ficha de quem reage (ex.: `@prof-floor(@prof/2)`)
                 'efeitos' => isset($r['defesa']) ? [['alvo' => 'defesa', 'modo' => 'soma', 'valor' => is_numeric($r['defesa']) ? (int) $r['defesa'] : (int) Formula::avaliar((string) $r['defesa'], $variaveis)]] : [],
             ];
@@ -162,6 +163,15 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
             foreach ($lista as $i => $t) {
                 if ((int) ($t['custo'] ?? 0) <= (int) ($ficha['pp']['atual'] ?? 0)) {
                     $monta("{$tipo}:{$i}", $t, ['pp' => (int) ($t['custo'] ?? 0)]);
+                    // Yamantaka: com a reserva já armada, 1 PP soma mais dados a ela (até o máximo)
+                    $mais = $t['reacao']['reducao'] ?? null;
+                    if (is_array($mais) && isset($mais['mais']) && (int) ($ficha['reducao']['reserva'] ?? 0) > 0
+                        && (int) ($ficha['reducao']['dados'] ?? 0) < (int) ($mais['maximo'] ?? 0) && (int) ($ficha['pp']['atual'] ?? 0) >= 1) {
+                        $ofertas[] = [
+                            'id' => "{$tipo}:{$i}:mais", 'rotulo' => ($t['nome'] ?? 'Reação').': +'.$mais['mais'], 'descricao' => 'Gaste 1 PP para somar '.$mais['mais'].' à reserva de redução de dano.',
+                            'categoria' => 'livre', 'alcance' => 'si', 'cura' => null, 'custo' => ['pp' => 1], 'efeitos' => [], 'reducao' => ['mais' => $mais['mais'], 'maximo' => (int) ($mais['maximo'] ?? 0)],
+                        ];
+                    }
                 }
             }
         }
@@ -170,7 +180,8 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
                 continue;
             }
             if (! isset($c['usos']) || (int) $c['usos']['atual'] > 0) {
-                $monta("c:{$i}", $c, isset($c['usos']) ? ['uso' => 1] : []);
+                // Corpo de Criatura (`reducao.zerar`): o uso só é gasto quando o dano é de fato zerado (`absorverDano`)
+                $monta("c:{$i}", $c, isset($c['usos']) && ! ($c['reacao']['reducao']['zerar'] ?? false) ? ['uso' => 1] : []);
             }
         }
 
@@ -182,14 +193,92 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         [$tipo, $i] = explode(':', (string) $oferta['id']);
         if ($tipo === 'c') {
             $lista = $ficha['caracteristicas'] ?? [];
-            if (isset($lista[(int) $i]['usos'])) {
+            if (isset($lista[(int) $i]['usos']) && ! empty($oferta['custo']['uso'])) {
                 $lista[(int) $i]['usos']['atual'] = max(0, (int) $lista[(int) $i]['usos']['atual'] - 1);
+                $campos = ['caracteristicas' => $lista];
+            } else {
+                $campos = [];
             }
-
-            return ['caracteristicas' => $lista];
+        } else {
+            $campos = ($oferta['custo']['pp'] ?? 0) > 0 ? ['pp.atual' => max(0, (int) ($ficha['pp']['atual'] ?? 0) - (int) $oferta['custo']['pp'])] : [];
         }
 
-        return ($oferta['custo']['pp'] ?? 0) > 0 ? ['pp.atual' => max(0, (int) ($ficha['pp']['atual'] ?? 0) - (int) $oferta['custo']['pp'])] : [];
+        return [...$campos, ...$this->armarReducao($ficha, $oferta['reducao'] ?? null)];
+    }
+
+    /**
+     * Reações defensivas: arma a redução do dano que o personagem sofrer depois. `reserva` (Yamantaka) rola os dados da reserva; `mais` soma dados a ela
+     * (até `maximo` dados); `zerar` (Corpo de Criatura) zera o próximo dano. `turnos`: quantos fins de turno do dono ela dura (o núcleo informa).
+     *
+     * @return array<string, mixed>
+     */
+    private function armarReducao(array $ficha, ?array $reducao): array
+    {
+        if (! $reducao) {
+            return [];
+        }
+        $turnos = (int) ($reducao['turnos'] ?? 1);
+        $atual = $ficha['reducao'] ?? [];
+        $rolar = fn (string $d): array => [(int) app(Rolador::class)->rolar($d)['total'], (int) explode('d', $d)[0]];
+        if (isset($reducao['reserva'])) {
+            [$total, $dados] = $rolar($reducao['reserva']);
+
+            return ['reducao.reserva' => $total, 'reducao.dados' => $dados, 'reducao.turnos' => $turnos];
+        }
+        if (isset($reducao['mais'])) {
+            $n = (int) explode('d', $reducao['mais'])[0];
+            $cabe = max(0, (int) ($reducao['maximo'] ?? 0) - (int) ($atual['dados'] ?? 0));
+            $dados = min($n, $cabe);
+            if ($dados === 0) {
+                return [];
+            }
+            $total = (int) app(Rolador::class)->rolar($dados.'d'.explode('d', $reducao['mais'])[1])['total'];
+
+            return ['reducao.reserva' => (int) ($atual['reserva'] ?? 0) + $total, 'reducao.dados' => (int) ($atual['dados'] ?? 0) + $dados];
+        }
+        if (! empty($reducao['zerar'])) {
+            return ['reducao.zerar' => true, 'reducao.turnos' => $turnos];
+        }
+
+        return [];
+    }
+
+    /**
+     * O dano que o personagem vai sofrer (já depois de imunidade/resistência) passa pelas reduções armadas: `zerar` (Corpo de Criatura, gasta 1 uso da
+     * característica) e a reserva de dano (Yamantaka). Devolve o dano final, os campos da ficha a salvar e um aviso para o chat.
+     *
+     * @return array{final: int, campos: array<string, mixed>, aviso: ?string}
+     */
+    public function absorverDano(array $ficha, int $dano): array
+    {
+        $r = $ficha['reducao'] ?? [];
+        $campos = [];
+        $avisos = [];
+        if ($dano > 0 && ! empty($r['zerar'])) {
+            $lista = $ficha['caracteristicas'] ?? [];
+            foreach ($lista as $i => $c) {
+                if (($c['reacao']['reducao']['zerar'] ?? false) && (int) ($c['usos']['atual'] ?? 0) > 0) {
+                    $lista[$i]['usos']['atual'] = (int) $c['usos']['atual'] - 1;
+                    $campos['caracteristicas'] = $lista;
+                    $avisos[] = ($c['nome'] ?? 'Corpo de Criatura').' reduz o dano a 0';
+                    $dano = 0;
+                    break;
+                }
+            }
+            $campos['reducao.zerar'] = false;
+        }
+        $reserva = (int) ($r['reserva'] ?? 0);
+        if ($dano > 0 && $reserva > 0) {
+            $abs = min($dano, $reserva);
+            $dano -= $abs;
+            $campos['reducao.reserva'] = $reserva - $abs;
+            if ($reserva - $abs === 0) {
+                $campos['reducao.dados'] = 0;
+            }
+            $avisos[] = "a reserva de redução absorve {$abs} (restam ".($reserva - $abs).')';
+        }
+
+        return ['final' => $dano, 'campos' => $campos, 'aviso' => $avisos ? ucfirst(implode('; ', $avisos)).'.' : null];
     }
 
     /**

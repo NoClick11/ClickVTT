@@ -224,4 +224,67 @@ class ReacaoTest extends TestCase
         $this->assertSame(17, Pipeline::naturalDoD20($termos)); // o mantido (vantagem)
         $this->assertNull(Pipeline::naturalDoD20([['tipo' => 'numero', 'valor' => 5]]));
     }
+
+    private function aplicarDano($c, int $personagemId, int $dano): array
+    {
+        $sistema = app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece');
+
+        return \Illuminate\Support\Facades\DB::transaction(fn () => app(\App\Nucleo\Combate\AplicarDano::class)->aplicar($c->mesa, $personagemId, $sistema, $dano, 'Contundente'));
+    }
+
+    private function reagir($c, Jogador $dono, $personagem, string $opcao): void
+    {
+        $this->como($dono)->postJson(route('jogo.combate.eventos.reagir', [$c->mesa->id, EventoDeCombate::latest('id')->first()->id]), ['personagem_id' => $personagem->id, 'opcao' => $opcao])->assertOk();
+    }
+
+    public function test_yamantaka_arma_a_reserva_ao_ser_atacado_e_o_dano_seguinte_e_absorvido(): void
+    {
+        $c = $this->cenario();
+        $this->combate($c);
+        $this->ficha($c, $c->ana, $c->aria, ['pp.atual' => 8, 'tecnicas.lista' => [[
+            'nome' => 'Yamantaka', 'origem' => 'Estilo', 'custo' => 4, 'alcance' => 'Pessoal', 'efeito' => 'reserva', 'rolagem' => '', 'descricao' => 'Reserva de redução.', 'acao' => 'reacao',
+            'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'si', 'reducao' => ['reserva' => '10d8', 'mais' => '2d8', 'maximo' => 20]],
+        ]]]);
+        $this->ataque($c);
+        $this->reagir($c, $c->ana, $c->aria, 't:0');
+
+        $f = $c->aria->fresh()->fichaCompleta(app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece'));
+        $reserva = $f['reducao']['reserva'];
+        $this->assertGreaterThanOrEqual(10, $reserva);
+        $this->assertLessThanOrEqual(80, $reserva);
+        $this->assertSame(10, $f['reducao']['dados']);
+        $this->assertSame(4, $f['pp']['atual']); // 8 - 4 PP
+
+        $r = $this->aplicarDano($c, $c->aria->id, 200);
+        $this->assertSame(200 - $reserva, $r['calculo']['final']);
+        $this->assertStringContainsString('reserva de redução', (string) $r['aviso']);
+        $f = $c->aria->fresh()->fichaCompleta(app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece'));
+        $this->assertSame(0, $f['reducao']['reserva']);
+    }
+
+    public function test_corpo_de_criatura_so_gasta_o_uso_quando_zera_o_dano(): void
+    {
+        $c = $this->cenario();
+        $this->combate($c);
+        $this->ficha($c, $c->ana, $c->aria, ['caracteristicas' => [[
+            'nome' => 'Corpo de Criatura', 'origem' => 'Brutamontes', 'tipo' => 'passiva', 'usos' => ['atual' => 3, 'max' => 3], 'descricao' => '',
+            'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'si', 'reducao' => ['zerar' => true]],
+        ]]]);
+        $this->ataque($c);
+        $this->reagir($c, $c->ana, $c->aria, 'c:0');
+        $sis = app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece');
+        $f = $c->aria->fresh()->fichaCompleta($sis);
+        $this->assertTrue($f['reducao']['zerar']);
+        $this->assertSame(3, $f['caracteristicas'][0]['usos']['atual']); // armar não gasta o uso
+
+        $pvAntes = $f['pv']['atual'];
+        $r = $this->aplicarDano($c, $c->aria->id, 20);
+        $this->assertSame(0, $r['calculo']['final']);
+        $f = $c->aria->fresh()->fichaCompleta($sis);
+        $this->assertSame($pvAntes, $f['pv']['atual']);
+        $this->assertSame(2, $f['caracteristicas'][0]['usos']['atual']);
+        $this->assertFalse($f['reducao']['zerar']);
+        // o dano seguinte volta ao normal
+        $this->assertSame(5, $this->aplicarDano($c, $c->aria->id, 5)['calculo']['final']);
+    }
 }

@@ -21,7 +21,7 @@ final class AplicarDano
 
     /**
      * @param  list<string>  $ignora  defesas que o dano ignora (densidade e balanço da arma forjada)
-     * @return array{p: Personagem, calculo: array, total: int, tipo: ?string, campos: array, acabaram: list<string>, hospedes: list<array>, execucao: ?array}
+     * @return array{p: Personagem, calculo: array, total: int, tipo: ?string, campos: array, acabaram: list<string>, hospedes: list<array>, execucao: ?array, aviso: ?string}
      */
     public function aplicar(Mesa $mesa, int $personagemId, Sistema $sistema, int $total, ?string $tipo, array $ignora = [], ?int $atacanteId = null): array
     {
@@ -31,6 +31,12 @@ final class AplicarDano
             throw ValidationException::withMessages(['mensagem_id' => "{$p->nome} está hospedado no espaço de outro personagem: ataque o hospedeiro."]);
         }
         $calculo = Dano::calcular($ficha, $total, $tipo, $ignora);
+        // Reações defensivas armadas (reserva de redução, Corpo de Criatura): o sistema reduz o dano já calculado
+        $absorcao = null;
+        if (method_exists($sistema, 'absorverDano') && $calculo['final'] > 0) {
+            $absorcao = $sistema->absorverDano($ficha, $calculo['final']);
+            $calculo['final'] = $absorcao['final'];
+        }
         // Pontos de Escudo (Haki do Armamento) absorvem antes dos PV temporários, com a resistência do sistema
         if (method_exists($sistema, 'escudoResiste') && (int) ($ficha['pv']['escudo'] ?? 0) > 0) {
             $pv = Dano::noPvComEscudo($ficha['pv'], $calculo['final'], $sistema->escudoResiste($ficha, $tipo));
@@ -38,6 +44,10 @@ final class AplicarDano
         } else {
             $pv = Dano::noPv($ficha['pv'] ?? [], $calculo['final']);
             $campos = ['pv.atual' => $pv['atual'], 'pv.temp' => $pv['temp']];
+        }
+
+        if ($absorcao && $absorcao['campos']) {
+            $campos = [...$campos, ...$absorcao['campos']];
         }
 
         // Condições "até receber dano" (ex.: Atordoado de Instintos Animalescos) acabam com o dano.
@@ -84,7 +94,9 @@ final class AplicarDano
             $hospedes[] = [$outro, $camposHospede, intdiv($calculo['final'], 2)];
         }
 
-        return compact('p', 'calculo', 'total', 'tipo', 'campos', 'acabaram', 'hospedes', 'execucao');
+        $aviso = $absorcao['aviso'] ?? null;
+
+        return compact('p', 'calculo', 'total', 'tipo', 'campos', 'acabaram', 'hospedes', 'execucao', 'aviso');
     }
 
     /** Depois da transação: avisa as fichas (PV novos) e posta no chat o que aconteceu. Devolve o texto do dano do alvo. */
@@ -102,6 +114,9 @@ final class AplicarDano
             self::postar($mesa, $acesso, $visibilidade, "{$hospede->nome} sofreu {$parte} de dano como hóspede de {$alvo->nome}.");
         }
         $texto = self::texto($alvo->nome, $r['total'], $r['tipo'], $r['calculo']);
+        if (! empty($r['aviso'])) {
+            $texto .= ' '.$r['aviso'];
+        }
         if ($postar) {
             self::postar($mesa, $acesso, $visibilidade, $texto);
         }

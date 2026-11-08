@@ -150,6 +150,12 @@ final class Pipeline
                     ?? throw ValidationException::withMessages(['opcao' => 'Reação indisponível.']);
                 // A categoria gasta primeiro: se não puder (limite da rodada), nada é pago
                 $this->combate->gastar($mesa, $acesso, $personagemId, $oferta['categoria'] ?? 'reacao');
+                // Redução armada: dura até o fim do PRÓXIMO turno do dono (1 fim de turno dele se ainda vem; 2 se já está no turno dele)
+                if (is_array($oferta['reducao'] ?? null)) {
+                    $estado = CombateService::normalizar($mesa->fresh()->combate);
+                    $noTurno = (CombateService::itemAtual($estado)['personagem_id'] ?? null) === $personagemId;
+                    $oferta['reducao']['turnos'] = $noTurno ? 2 : 1;
+                }
                 $p = Personagem::query()->whereKey($personagemId)->lockForUpdate()->firstOrFail();
                 $ficha = $p->fichaCompleta($sistema);
                 $pago = $sistema->pagarReacao($ficha, $oferta);

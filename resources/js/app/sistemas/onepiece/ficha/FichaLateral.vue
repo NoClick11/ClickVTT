@@ -238,6 +238,18 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                     >
                 </li>
             </ul>
+            <p
+                v-if="(ficha.reducao?.reserva ?? 0) > 0 || ficha.reducao?.zerar"
+                class="mt-1.5 flex flex-wrap gap-1 text-[10px] font-semibold text-ouro-100"
+                aria-label="Reduções de dano armadas"
+            >
+                <span v-if="(ficha.reducao?.reserva ?? 0) > 0" class="rounded-full border border-ouro-400/60 bg-ouro-500/15 px-2 py-0.5" title="Reserva de redução de dano (Yamantaka)"
+                    >🛡 Reserva {{ ficha.reducao?.reserva }}</span
+                >
+                <span v-if="ficha.reducao?.zerar" class="rounded-full border border-ouro-400/60 bg-ouro-500/15 px-2 py-0.5" title="O próximo dano vira 0 (Corpo de Criatura)"
+                    >🛡 Próximo dano = 0</span
+                >
+            </p>
             <EfeitosDialog v-model:open="efeitosAberto" :ficha="ficha" />
         </section>
 

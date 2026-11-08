@@ -120,6 +120,9 @@ final class FichaOnePiece
             'condicoes' => [],
             // Condições com duração: id da condição => {turnos que faltam, acaba ao receber dano}. Quem mexe é o servidor (turnos, dano).
             'duracoes' => [],
+            // Reduções de dano armadas por reações defensivas (Yamantaka: reserva em pontos; Corpo de Criatura: zera o próximo dano).
+            // Quem mexe é o servidor: o dano aplicado as consome (`OnePiece::absorverDano`) e o fim do turno do dono as vence.
+            'reducao' => [],
             'caracteristicas' => [],
             'tecnicas' => ['atributo' => 'von', 'lista' => []],
             // A Akuma no Mi: o nome é `fruta`; os poderes têm o mesmo formato das técnicas e gastam os mesmos PP.
@@ -289,6 +292,12 @@ final class FichaOnePiece
         $r['inventario.*.itens.*.arma.danoExtra.*.dados'] = ['required', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/'];
         $r['inventario.*.itens.*.arma.danoExtra.*.tipo'] = ['nullable', 'string', 'max:40'];
 
+        $r['reducao'] = ['array'];
+        $r['reducao.reserva'] = $inteiro(0, 9999);
+        $r['reducao.dados'] = $inteiro(0, 99);
+        $r['reducao.zerar'] = ['boolean:strict'];
+        $r['reducao.turnos'] = $inteiro(0, 9);
+
         $r['condicoes'] = ['array', 'max:'.count(Condicoes::ids())];
         $r['condicoes.*'] = ['string', Rule::in(Condicoes::ids()), 'distinct'];
         $r['duracoes'] = ['array', 'max:'.count(Condicoes::ids())];
@@ -417,6 +426,12 @@ final class FichaOnePiece
                     $fail('A defesa da reação é um número de -20 a 20 ou uma fórmula válida.');
                 }
             }];
+            // Reação defensiva: arma uma redução do dano que o personagem sofrer (reserva de dados, `mais` dados por PP, ou zerar o próximo dano)
+            $r["{$base}.reacao.reducao"] = ['nullable', 'array'];
+            $r["{$base}.reacao.reducao.reserva"] = ['nullable', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/'];
+            $r["{$base}.reacao.reducao.mais"] = ['nullable', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/'];
+            $r["{$base}.reacao.reducao.maximo"] = ['nullable', 'integer:strict', 'between:1,99'];
+            $r["{$base}.reacao.reducao.zerar"] = ['nullable', 'boolean:strict'];
             $r["{$base}.reacao.categoria"] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];
             $r["{$base}.reacao.cura"] = ['nullable', 'string', 'regex:/^\d{1,3}$|^\d{1,2}d\d{1,3}$/'];
         }

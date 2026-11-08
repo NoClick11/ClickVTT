@@ -48,6 +48,15 @@ final class Duracoes
             }
             $ficha = $p->fichaCompleta($sistema);
             $duracoes = $ficha['duracoes'] ?? [];
+            // Redução armada por reação defensiva: vence quando acabam os turnos dela (o resto some junto)
+            $reducao = $ficha['reducao'] ?? [];
+            if (($reducao['turnos'] ?? 0) > 0) {
+                $restam = (int) $reducao['turnos'] - 1;
+                $ficha['reducao'] = $restam > 0 ? [...$reducao, 'turnos' => $restam] : [];
+                $p->ficha = $ficha;
+                $p->save();
+                self::transmitir($mesa, $p, ['reducao' => $ficha['reducao']], false);
+            }
             if (! $duracoes) {
                 return null;
             }

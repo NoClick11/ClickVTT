@@ -979,6 +979,10 @@ test('Brutamontes: 10 Técnicas por nível, Corpo de Criatura +60 PV e Invencibi
     assert.ok(!car(5).some((c) => c.nome === 'Corpo de Criatura'));
     assert.ok(car(6).some((c) => c.nome === 'Corpo de Criatura'));
     assert.ok(car(19).some((c) => c.nome === 'Invencibilidade'));
+    // reações defensivas automáticas: Corpo de Criatura (zera o dano) e Yamantaka (reserva 10d8, +2d8 por PP até 20d8)
+    assert.deepEqual(car(6).find((c) => c.nome === 'Corpo de Criatura').reacao, { gatilho: 'ataque_declarado', alcance: 'si', reducao: { zerar: true } });
+    const yama = camposDaCriacao(brutamontes(), { nivel: 6 }).campos['tecnicas.lista'].find((t) => t.nome === 'Yamantaka');
+    assert.deepEqual(yama.reacao.reducao, { reserva: '10d8', mais: '2d8', maximo: 20 });
     const res = (n) => camposDaCriacao(brutamontes(), { nivel: n }).campos.resistencias;
     assert.deepEqual(res(18), []);
     assert.ok(res(19).includes('Verdadeiro') && res(19).includes('Contundente'));
