@@ -1031,3 +1031,49 @@ test('Black Leg: 10 Técnicas, deslocamento por nível (12/15/18 m) e Parry Shot
     assert.deepEqual(andar(3), [[3, 4]]);
     assert.ok(andar(12).some(([min]) => min === 12));
 });
+
+// --- estilo de luta: Herói --------------------------------------------------------------------------------------------
+const heroi = (caminho = 'poder-oculto', armaFavorita = 'Corporal', extra = {}) =>
+    feito({
+        estilo: { id: 'heroi', nome: 'Herói', dado: 'd8', primario: 'for', caminho, armaFavorita, hbInata: 'perito-em-tecnicas', pericias: ['atletismo', 'sorte'] },
+        especies: ['humano'],
+        variantes: [null],
+        dinheiro: { estilo: 'heroi', dados: Array(12).fill(5), total: 60, bellys: 60000, fixo: 0, expressao: '12d10', multiplicador: 1000 },
+        ...extra,
+    });
+
+test('Herói: o caminho muda o dado de vida e as armas favoritas; perícias só da lista', () => {
+    assert.deepEqual(problemasDaEtapa(heroi(), 'estilo'), []);
+    assert.deepEqual(problemasDaEtapa(heroi('arma-lanca', 'Lança'), 'estilo'), []);
+    assert.ok(problemasDaEtapa(heroi('arma-lanca', 'Corporal'), 'estilo').some((m) => m.includes('arma favorita'))); // Deus da Arma não luta no corporal
+    assert.ok(problemasDaEtapa(heroi('poder-oculto', 'Arco'), 'estilo').length > 0);
+    const dado = (c, a) => camposDaCriacao(heroi(c, a)).campos['dadosVida.tipo'];
+    assert.equal(dado('poder-oculto', 'Corporal'), 'd12');
+    assert.equal(dado('harem', 'Corporal'), 'd8');
+    assert.equal(dado('arma-espada', 'Sabre'), 'd10');
+    const e = heroi();
+    assert.ok(problemasDaEtapa({ ...e, estilo: { ...e.estilo, pericias: ['atletismo', 'intimidacao'] } }, 'estilo').some((m) => m.includes('permitidas')));
+    assert.equal(pvInicial(heroi('poder-oculto')), 12 + 1 + 0 + (fisicoDe(heroi())?.pv ?? 0));
+});
+
+test('Herói: sem Técnicas prontas, Dados Heroicos por nível e Ataque Extra por caminho', () => {
+    const campos = (n, c = 'poder-oculto', a = 'Corporal') => camposDaCriacao(heroi(c, a), { nivel: n }).campos;
+    assert.deepEqual(campos(20)['tecnicas.lista'], []);
+    const dados = (n, c) => campos(n, c, c === 'harem' ? 'Corporal' : 'Corporal').caracteristicas.find((x) => x.nome === 'Dados Heroicos').usos.max;
+    assert.deepEqual([1, 5, 10, 20].map((n) => dados(n, 'poder-oculto')), [1, 5, 15, 15]); // +5 no Despertar Heroico
+    assert.deepEqual([1, 5, 10, 20].map((n) => dados(n, 'harem')), [1, 5, 10, 10]);
+    const ataques = (n, c, a) => campos(n, c, a).caracteristicas.flatMap((x) => (x.efeitos ?? []).filter((e) => e.alvo === 'ataques.acao').map((e) => [x.nivelMin, x.nivelMax ?? null, e.valor]));
+    assert.deepEqual(ataques(10, 'poder-oculto', 'Corporal'), [[10, null, 1]]);
+    assert.ok(ataques(11, 'arma-espada', 'Sabre').some(([min, , v]) => min === 11 && v === 2)); // 3 ataques no 11º
+    assert.ok(ataques(10, 'arma-arco', 'Arco').some(([min, , v]) => min === 10 && v === 3)); // 4 no 10º
+    // Esforço Heroico: PT = 5 + 2 por nível par
+    assert.ok(campos(1).caracteristicas.some((x) => x.nome.includes('Esforço Heroico')));
+});
+
+test('Herói: a Virada Heroica e o Escudo são reações defensivas que gastam Dados Heroicos', () => {
+    const car = (n, c, a, nome) => camposDaCriacao(heroi(c, a), { nivel: n }).campos.caracteristicas.find((x) => x.nome.includes(nome));
+    assert.deepEqual(car(5, 'poder-oculto', 'Corporal', 'Virada Heroica').reacao.reducao, { zerar: true, gasta: { de: 'Dados Heroicos', qtd: 5 }, pvAbaixoDaMetade: true });
+    assert.deepEqual(car(5, 'arma-escudo', 'Escudo', 'Escudo (5º)').reacao.reducao, { reserva: '3d10', unica: true, gasta: { de: 'Dados Heroicos', qtd: 3 } });
+    assert.equal(car(1, 'arma-lanca', 'Lança', 'Lança (1º)').efeitos[0].valor, 1); // +1 na CR
+    assert.equal(car(11, 'arma-escudo', 'Escudo', 'Escudo (1º)').efeitos[0].valor, 3); // +3 na CR
+});

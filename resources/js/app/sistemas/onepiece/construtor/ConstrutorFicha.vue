@@ -10,7 +10,7 @@ import type { ProfissoesFicha } from '../profissoes/regras';
 import { ATRIBUTOS, comSinal, modificador, PERICIAS, PERICIAS_ESCOLHIVEIS, type AtributoId, type Caracteristica, type Tecnica } from '../regras';
 import { antecedentePorId, ANTECEDENTES } from './dados/antecedentes';
 import { ESPECIES } from './dados/especies';
-import { estiloPorId, ESTILOS } from './dados/estilos';
+import { armasFavoritasDoCaminho, dadoDoEstilo, estiloPorId, ESTILOS } from './dados/estilos';
 import { HABILIDADES_BASICAS, hbPorId, OPCOES_QUEBRADOR } from './dados/habilidades-basicas';
 import { AVISO_VARIACAO_RARA, VARIACOES_RARAS } from './dados/variacoes';
 import {
@@ -198,7 +198,7 @@ function escolherEstilo(id: string | null) {
         ? {
               id: est.id,
               nome: est.nome,
-              dado: est.dado,
+              dado: dadoDoEstilo(est, est.caminhos?.[0]?.id),
               primario: est.atributosPrimarios.length === 1 ? est.atributosPrimarios[0] : null,
               caminho: est.caminhos?.[0]?.id ?? null,
               armaFavorita: null,
@@ -206,6 +206,14 @@ function escolherEstilo(id: string | null) {
               pericias: [],
           }
         : { id: '', nome: '', dado: 'd8', primario: null, caminho: null, armaFavorita: null, hbInata: null, pericias: [] };
+}
+/** Escolhe o caminho do estilo: o dado de vida e as armas favoritas podem mudar com ele (Herói). */
+function escolherCaminho(id: string) {
+    e.estilo.caminho = id;
+    const est = estiloPorId(e.estilo.id);
+    if (!est) return;
+    e.estilo.dado = dadoDoEstilo(est, id);
+    if (e.estilo.armaFavorita && !armasFavoritasDoCaminho(est, id).includes(e.estilo.armaFavorita)) e.estilo.armaFavorita = null;
 }
 function alternarPericiaDoEstilo(id: string) {
     const lista = e.estilo.pericias ?? (e.estilo.pericias = []);
@@ -1002,7 +1010,7 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1.5 text-sm 
                                     type="button"
                                     :class="[cartao, e.estilo.caminho === c.id ? ativo : inativo]"
                                     :aria-pressed="e.estilo.caminho === c.id"
-                                    @click="e.estilo.caminho = c.id"
+                                    @click="escolherCaminho(c.id)"
                                 >
                                     <span class="font-semibold">{{ c.nome }}</span>
                                     <span class="block text-xs text-preto-400">{{ c.descricao }}</span>
@@ -1013,7 +1021,7 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1.5 text-sm 
                             <span :class="rotulo">Arma favorita</span>
                             <div class="flex flex-wrap gap-2" role="group" aria-label="Arma favorita">
                                 <button
-                                    v-for="a in estiloEscolhido.armasFavoritas"
+                                    v-for="a in armasFavoritasDoCaminho(estiloEscolhido, e.estilo.caminho)"
                                     :key="a"
                                     type="button"
                                     :class="[cartao, e.estilo.armaFavorita === a ? ativo : inativo]"

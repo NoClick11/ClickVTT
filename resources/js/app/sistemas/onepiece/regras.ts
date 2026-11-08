@@ -226,7 +226,17 @@ export interface ReacaoDeCombate {
      * Reação defensiva que reduz o dano que quem reage sofrer depois: `reserva` (dados da reserva de redução), `mais` (dados somados por 1 PP, até
      * `maximo` dados no total) ou `zerar` (o próximo dano vira 0). O servidor rola e consome (`OnePiece::absorverDano`).
      */
-    reducao?: { reserva?: string; mais?: string; maximo?: number; zerar?: boolean; unica?: boolean };
+    reducao?: {
+        reserva?: string;
+        mais?: string;
+        maximo?: number;
+        zerar?: boolean;
+        unica?: boolean;
+        /** A reação gasta usos de OUTRA característica (os Dados Heroicos): quantos, e o nome dela. Na reserva paga ao armar; no `zerar`, ao zerar o dano. */
+        gasta?: { de: string; qtd: number };
+        /** Só é oferecida com menos da metade dos PV máximos (Virada Heroica). */
+        pvAbaixoDaMetade?: boolean;
+    };
 }
 export type CategoriaDeAcao = 'padrao' | 'poderosa' | 'bonus' | 'livre' | 'reacao';
 export interface AcaoCaracteristica {
@@ -242,6 +252,8 @@ export interface AcaoCaracteristica {
     fator?: number;
     /** O botão gasta 1 uso da característica. */
     usa?: boolean;
+    /** Quantos usos o botão gasta (padrão 1; 2 = "gastar 2 Dados Heroicos"). */
+    custo?: number;
     /** `rolar`/`recuperar`: sobe os dados desta rolagem pelos passos do alvo `passo.<x>` (ex.: `desarmado`). */
     passo?: 'corpo' | 'distancia' | 'desarmado' | 'tecnica';
     /** `socorrer`: só encerra as condições (sem cura nem PV temporários); vale quantas vezes quiser. */

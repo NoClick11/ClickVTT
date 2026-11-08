@@ -144,6 +144,11 @@ class ChatController extends Controller
             if (preg_match('/@arma\.(\d+)\.dano/', (string) $dados['expressao'], $m)) {
                 $ignora = \App\Sistemas\OnePiece\Forja::ignoraDoDano($itens[(int) $m[1]]['dados']['arma'] ?? null);
                 // Golpe Moral (Aventureiro): o chicote ignora resistência a Cortante e causa metade em invulnerabilidade a ele
+                // Dano Inevitável (Herói, Deus da Arma): a arma sagrada ignora resistências
+                if (in_array($itens[(int) $m[1]]['dados']['catalogo']['id'] ?? null, ['sabre', 'katana', 'espada-montante', 'lanca', 'escudo-de-ferro', 'arco'], true)
+                    && \App\Sistemas\OnePiece\Regras::temCaracteristica($ficha, 'Deus da Arma: Traços Gerais')) {
+                    $ignora = [...$ignora, 'resistencia'];
+                }
                 if (($itens[(int) $m[1]]['dados']['catalogo']['id'] ?? null) === 'chicote') {
                     $ignora = [...$ignora, ...\App\Sistemas\OnePiece\Regras::golpeMoral($ficha, $marcas['dano']['tipo'] ?? null)];
                 }

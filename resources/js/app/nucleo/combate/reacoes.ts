@@ -8,7 +8,7 @@ export interface OpcaoDeReacao {
     rotulo: string;
     descricao: string;
     /** Custo em PP ou usos (o sistema define). */
-    custo: { pp?: number; uso?: number };
+    custo: { pp?: number; uso?: number; dados?: number };
     /** Cura (valor ou dados) aplicada a quem foi atacado. */
     cura: string | null;
     /** Bônus na defesa de quem foi atacado (pode ser de outro jogador: o efeito é redirecionado). */
@@ -37,7 +37,7 @@ export interface ResumoEvento {
 
 /** Texto curto do custo de uma opção (`2 PP`, `1 uso`, ou vazio). */
 export function textoDoCusto(c: OpcaoDeReacao['custo']): string {
-    return [c.pp ? `${c.pp} PP` : '', c.uso ? `${c.uso} uso` : ''].filter(Boolean).join(' · ');
+    return [c.pp ? `${c.pp} PP` : '', c.uso ? `${c.uso} uso` : '', c.dados ? `${c.dados} Dados Heroicos` : ''].filter(Boolean).join(' · ');
 }
 
 /** O efeito da opção em palavras (`+3 na defesa`, `cura 1d8`), para o jogador escolher sabendo o que acontece. */

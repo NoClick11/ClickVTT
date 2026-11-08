@@ -56,7 +56,12 @@ class Treinamentos
             ? intdiv(min(20, max(1, (int) ($ficha['nivel'] ?? 1))), 2)
             : 0;
 
-        return $cultural + $disciplinado;
+        // Esforço Heroico (Herói): 5 PT no 1º nível e 2 a cada nível par (o texto pede que sejam usados na Genialidade Inusitada)
+        $heroico = collect($ficha['caracteristicas'] ?? [])->contains(fn ($c) => str_contains((string) ($c['nome'] ?? ''), 'Esforço Heroico'))
+            ? 5 + 2 * intdiv(min(20, max(1, (int) ($ficha['nivel'] ?? 1))), 2)
+            : 0;
+
+        return $cultural + $disciplinado + $heroico;
     }
 
     /** @param list<array<string, mixed>> $anteriores */

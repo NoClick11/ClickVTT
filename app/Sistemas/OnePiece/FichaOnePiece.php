@@ -372,6 +372,7 @@ final class FichaOnePiece
         $r['caracteristicas.*.acoes.*.rolagem'] = ['nullable', 'string', 'max:60'];
         $r['caracteristicas.*.acoes.*.fator'] = ['nullable', 'integer:strict', 'between:1,4'];
         $r['caracteristicas.*.acoes.*.usa'] = ['nullable', 'boolean'];
+        $r['caracteristicas.*.acoes.*.custo'] = ['nullable', 'integer:strict', 'between:1,30'];
         $r['caracteristicas.*.acoes.*.passo'] = ['nullable', 'string', Rule::in(['corpo', 'distancia', 'desarmado', 'tecnica'])];
         $r['caracteristicas.*.acoes.*.soCondicoes'] = ['nullable', 'boolean'];
         $r['caracteristicas.*.acoes.*.vantagemAlvo'] = ['nullable', 'string', 'max:30'];
@@ -469,6 +470,10 @@ final class FichaOnePiece
             $r["{$base}.reacao.reducao.maximo"] = ['nullable', 'integer:strict', 'between:1,99'];
             $r["{$base}.reacao.reducao.zerar"] = ['nullable', 'boolean:strict'];
             $r["{$base}.reacao.reducao.unica"] = ['nullable', 'boolean:strict'];
+            $r["{$base}.reacao.reducao.pvAbaixoDaMetade"] = ['nullable', 'boolean:strict'];
+            $r["{$base}.reacao.reducao.gasta"] = ['nullable', 'array'];
+            $r["{$base}.reacao.reducao.gasta.de"] = ['required_with:'.$base.'.reacao.reducao.gasta', 'string', 'max:80'];
+            $r["{$base}.reacao.reducao.gasta.qtd"] = ['required_with:'.$base.'.reacao.reducao.gasta', 'integer:strict', 'between:1,30'];
             $r["{$base}.reacao.categoria"] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];
             $r["{$base}.reacao.cura"] = ['nullable', 'string', 'regex:/^\d{1,3}$|^\d{1,2}d\d{1,3}$/'];
         }

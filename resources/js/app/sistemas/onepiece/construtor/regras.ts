@@ -29,7 +29,9 @@ import {
 import { antecedentePorId, comAumentoDeAntecedente } from './dados/antecedentes.ts';
 import { ESPECIES, TRACO_CULTURAL } from './dados/especies.ts';
 import {
+    armasFavoritasDoCaminho,
     atributoPrimarioDe,
+    dadoDoEstilo,
     estiloPorId,
     tecnicaDoEstilo,
     tecnicasDoEstiloNoNivel,
@@ -133,7 +135,9 @@ export interface Escolhas {
 export { textoDeMovimento };
 
 /** O estilo rola os Bellys iniciais (`5d10 × 1000`)? Devolve a regra, ou null se o dinheiro é fixo ou não há. */
-export function dinheiroRoladoDoEstilo(est: { equipamentoInicial?: EquipamentoInicial }): { dados: string; multiplicador: number; fixo?: number } | null {
+export function dinheiroRoladoDoEstilo(est: {
+    equipamentoInicial?: EquipamentoInicial;
+}): { dados: string; multiplicador: number; fixo?: number } | null {
     const d = est.equipamentoInicial?.dinheiro;
 
     return d && 'dados' in d ? d : null;
@@ -427,7 +431,8 @@ export function atributosFinais(e: Escolhas): Record<AtributoId, number> {
 
 /** PV máximo no nível 1: dado de vida do estilo no máximo + mod. CON + PV base da espécie. */
 export function pvInicial(e: Escolhas): number {
-    const dado = Number(dadoDeVidaFinal(estiloPorId(e.estilo.id)?.dado ?? e.estilo.dado, hbsDoAssistente(e), 1).slice(1));
+    const est = estiloPorId(e.estilo.id);
+    const dado = Number(dadoDeVidaFinal(est ? dadoDoEstilo(est, e.estilo.caminho) : e.estilo.dado, hbsDoAssistente(e), 1).slice(1));
     const fisico = fisicoDe(e);
 
     return Math.max(1, dado + modificador(atributosFinais(e).con) + (fisico?.pv ?? 0));
@@ -517,7 +522,7 @@ export function problemasDaEtapa(e: Escolhas, etapa: EtapaId): string[] {
         } else {
             if (!atributoPrimarioDe(est, e.estilo.primario)) p.push('Escolha o atributo primário do estilo.');
             if (est.caminhos?.length && !est.caminhos.some((c) => c.id === e.estilo.caminho)) p.push('Escolha o caminho do estilo.');
-            if (!est.armasFavoritas.includes(e.estilo.armaFavorita ?? '')) p.push('Escolha a arma favorita.');
+            if (!armasFavoritasDoCaminho(est, e.estilo.caminho).includes(e.estilo.armaFavorita ?? '')) p.push('Escolha a arma favorita.');
             if (!est.habilidadesInatas.some((h) => h.id === e.estilo.hbInata)) p.push('Escolha a Habilidade Básica Inata.');
             if (dinheiroRoladoDoEstilo(est) && e.dinheiro?.estilo !== est.id) p.push('Role os Bellys iniciais do estilo.');
             const pericias = e.estilo.pericias ?? [];
@@ -785,7 +790,7 @@ export function camposDaCriacao(
     if (profissaoInicial) geradas.push(...caracteristicasDasProfissoes(profissaoInicial.profissoes, nivel));
     const hbsAntigas = (atual.habilidadesBasicas ?? []).filter((h) => h.nivel > 1);
     const hbs: HBDaFicha[] = [...hbsDoAssistente(e), ...hbsAntigas];
-    const dadoBase = estilo?.dado ?? e.estilo.dado;
+    const dadoBase = estilo ? dadoDoEstilo(estilo, e.estilo.caminho) : e.estilo.dado;
     const finaisComHB = atributosComAprimoramentoInato(finais, hbs);
     if (estilo)
         geradas.push(...caracteristicasDasHB(hbs, atributoPrimarioDe(estilo, e.estilo.primario) ?? estilo.atributosPrimarios[0], nivel, dadoBase));

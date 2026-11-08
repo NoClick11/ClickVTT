@@ -8,7 +8,7 @@
  */
 import { camposDaAkuma } from '../akuma/regras.ts';
 import { ATRIBUTOS, bonusProficiencia, usosMax, type AtributoId, type Caracteristica, type FichaOnePiece } from '../regras.ts';
-import { estiloPorId, tecnicaDoEstilo, tecnicasDoEstiloNoNivel, tracosDoEstiloNoNivel } from './dados/estilos.ts';
+import { dadoDoEstilo, estiloPorId, tecnicaDoEstilo, tecnicasDoEstiloNoNivel, tracosDoEstiloNoNivel } from './dados/estilos.ts';
 import { hbPorId, OPCOES_QUEBRADOR } from './dados/habilidades-basicas.ts';
 import { maestriaPorId, NIVEIS_DE_MAESTRIA, problemasDaMaestria } from './dados/maestrias.ts';
 import {
@@ -167,14 +167,15 @@ export function camposDoNivel(f: FichaOnePiece, esc: EscolhasDoNivel): Record<st
     // Habilidades Básicas
     const hbs: HBDaFicha[] = [...hbsDe(f), ...(esc.hb ? [{ id: esc.hb.id, nivel: novo, ...(esc.hb.opcao ? { opcao: esc.hb.opcao } : {}) }] : [])];
     campos.habilidadesBasicas = hbs;
-    const dado = dadoDeVidaFinal(estilo.dado, hbs, novo);
+    const dadoDoCaminho = dadoDoEstilo(estilo, f.estiloCaminho);
+    const dado = dadoDeVidaFinal(dadoDoCaminho, hbs, novo);
     campos['dadosVida.tipo'] = dado;
     campos['dadosVida.restantes'] = Math.min(novo, f.dadosVida.restantes + 1);
 
     // características: as das HB são refeitas; os usos que valem por nível ou por proficiência acompanham
     const profNova = bonusProficiencia({ ...f, nivel: novo });
     const profAntiga = bonusProficiencia(f);
-    const feitas = caracteristicasDasHB(hbs, f.atributoPrimario, novo, estilo.dado);
+    const feitas = caracteristicasDasHB(hbs, f.atributoPrimario, novo, dadoDoCaminho);
     const velhas = new Map((f.caracteristicas ?? []).filter((c) => c.hb).map((c) => [`${c.hb}|${c.nome}`, c]));
     const novasHB = feitas.map((c) => {
         const antiga = velhas.get(`${c.hb}|${c.nome}`);

@@ -179,6 +179,23 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
             if (! Regras::ativaNoNivel($c, $nivel) || Regras::hakiDesligado($c, $ficha)) {
                 continue;
             }
+            $red = $c['reacao']['reducao'] ?? null;
+            // Virada Heroica: só com menos da metade dos PV máximos
+            if (is_array($red) && ! empty($red['pvAbaixoDaMetade'])) {
+                $pvMax = (int) ($variaveis['pv.max'] ?? ($ficha['pv']['max'] ?? 0));
+                if (! ($pvMax > 0 && (int) ($ficha['pv']['atual'] ?? 0) * 2 < $pvMax)) {
+                    continue;
+                }
+            }
+            // Gasta usos de outra característica (os Dados Heroicos): só se ela tem o bastante
+            if (is_array($red) && isset($red['gasta'])) {
+                if ($this->indiceDaCaracteristica($ficha, (string) $red['gasta']['de'], (int) $red['gasta']['qtd']) === null) {
+                    continue;
+                }
+                $monta("c:{$i}", $c, ['dados' => (int) $red['gasta']['qtd']]);
+
+                continue;
+            }
             if (! isset($c['usos']) || (int) $c['usos']['atual'] > 0) {
                 // Corpo de Criatura (`reducao.zerar`): o uso só é gasto quando o dano é de fato zerado (`absorverDano`)
                 $monta("c:{$i}", $c, isset($c['usos']) && ! ($c['reacao']['reducao']['zerar'] ?? false) ? ['uso' => 1] : []);
@@ -191,6 +208,17 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
     public function pagarReacao(array $ficha, array $oferta): array
     {
         [$tipo, $i] = explode(':', (string) $oferta['id']);
+        // Reserva que gasta Dados Heroicos (Escudo do Deus da Arma): paga ao armar. No `zerar` (Virada Heroica) paga ao zerar o dano.
+        $gasta = $oferta['reducao']['gasta'] ?? null;
+        if ($tipo === 'c' && is_array($gasta) && empty($oferta['reducao']['zerar'])) {
+            $lista = $ficha['caracteristicas'] ?? [];
+            $k = $this->indiceDaCaracteristica($ficha, (string) $gasta['de'], (int) $gasta['qtd']);
+            if ($k !== null) {
+                $lista[$k]['usos']['atual'] = max(0, (int) $lista[$k]['usos']['atual'] - (int) $gasta['qtd']);
+            }
+
+            return ['caracteristicas' => $lista, ...$this->armarReducao($ficha, $oferta['reducao'] ?? null)];
+        }
         if ($tipo === 'c') {
             $lista = $ficha['caracteristicas'] ?? [];
             if (isset($lista[(int) $i]['usos']) && ! empty($oferta['custo']['uso'])) {
@@ -204,6 +232,18 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         }
 
         return [...$campos, ...$this->armarReducao($ficha, $oferta['reducao'] ?? null)];
+    }
+
+    /** O índice da característica (pelo nome) que ainda tem `$qtd` usos, ou null. */
+    private function indiceDaCaracteristica(array $ficha, string $nome, int $qtd): ?int
+    {
+        foreach ($ficha['caracteristicas'] ?? [] as $k => $c) {
+            if (($c['nome'] ?? '') === $nome && (int) ($c['usos']['atual'] ?? 0) >= $qtd) {
+                return $k;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -263,6 +303,11 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         $origem = $contexto['origem'] ?? null;
         $atributo = $contexto['atributo'] ?? null;
         // Características passivas do estilo que mudam o dano que o personagem sofre
+        // Plot Armor (Herói, ligada): nenhum tipo de dano, nem Verdadeiro, durante o efeito
+        if ($dano > 0 && $tem('Plot Armor')) {
+            $avisos[] = 'Plot Armor: nenhum dano';
+            $dano = 0;
+        }
         if ($dano > 0 && $origem === 'salvaguarda' && in_array($atributo, ['for', 'des'], true) && $tem('Controle do Ambiente')) {
             $avisos[] = 'Controle do Ambiente: nenhum dano de Salvaguarda de Força ou Destreza';
             $dano = 0;
@@ -279,13 +324,26 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         if ($dano > 0 && ! empty($r['zerar'])) {
             $lista = $ficha['caracteristicas'] ?? [];
             foreach ($lista as $i => $c) {
-                if (($c['reacao']['reducao']['zerar'] ?? false) && (int) ($c['usos']['atual'] ?? 0) > 0) {
-                    $lista[$i]['usos']['atual'] = (int) $c['usos']['atual'] - 1;
-                    $campos['caracteristicas'] = $lista;
-                    $avisos[] = ($c['nome'] ?? 'Corpo de Criatura').' reduz o dano a 0';
-                    $dano = 0;
-                    break;
+                $gasta = $c['reacao']['reducao']['gasta'] ?? null;
+                if (! ($c['reacao']['reducao']['zerar'] ?? false)) {
+                    continue;
                 }
+                if (is_array($gasta)) {
+                    // Virada Heroica: gasta os Dados Heroicos (de outra característica) ao zerar o dano
+                    $k = $this->indiceDaCaracteristica(['caracteristicas' => $lista], (string) $gasta['de'], (int) $gasta['qtd']);
+                    if ($k === null) {
+                        continue;
+                    }
+                    $lista[$k]['usos']['atual'] = (int) $lista[$k]['usos']['atual'] - (int) $gasta['qtd'];
+                } elseif ((int) ($c['usos']['atual'] ?? 0) > 0) {
+                    $lista[$i]['usos']['atual'] = (int) $c['usos']['atual'] - 1;
+                } else {
+                    continue;
+                }
+                $campos['caracteristicas'] = $lista;
+                $avisos[] = ($c['nome'] ?? 'Corpo de Criatura').' reduz o dano a 0';
+                $dano = 0;
+                break;
             }
             $campos['reducao.zerar'] = false;
         }

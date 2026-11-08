@@ -5,7 +5,7 @@
  * O que o motor de efeitos modela entra em `efeitos`/`usos`/`acao`; o resto vira descrição + `etiquetas` (o resumo curto
  * que aparece na ficha). Características com `nivelMin` só valem a partir do nível indicado.
  */
-import type { AtributoId, CategoriaDeAcao, DuracaoDaTecnica, Tecnica, TesteDaTecnica } from '../../regras.ts';
+import type { AjusteDeArma, AtributoId, CategoriaDeAcao, DuracaoDaTecnica, Tecnica, TesteDaTecnica } from '../../regras.ts';
 import type { DadoDeVida } from '../regras.ts';
 import type { TracoDados } from './tipos.ts';
 
@@ -24,12 +24,18 @@ export interface CaminhoDoEstilo {
     id: string;
     nome: string;
     descricao: string;
+    /** O dado de vida deste caminho, se mudar o do estilo (Herói: Guerreiro do Poder Oculto d12, Deus da Arma d10). */
+    dado?: DadoDeVida;
+    /** As armas favoritas permitidas neste caminho (sem isto valem as do estilo). */
+    armasFavoritas?: string[];
 }
 
 /** Um item do catálogo do Cap. 8 (id) e quantas unidades. */
 export interface ItemInicial {
     catalogo: string;
     qtd: number;
+    /** Ajustes da arma só nesta ficha (a espada do Deus da Arma: 2d8, +2/+2): vão para o inventário já aplicados. */
+    arma?: AjusteDeArma;
 }
 
 /**
@@ -1831,8 +1837,497 @@ const TESTES_DO_BLACK_LEG: Record<string, TesteDaTecnica> = {
 };
 for (const t of BLACK_LEG.tecnicas) if (TESTES_DO_BLACK_LEG[t.nome]) t.teste = TESTES_DO_BLACK_LEG[t.nome];
 
-export const ESTILOS: EstiloDados[] = [ATIRADOR, AVENTUREIRO, BRUTAMONTES, BLACK_LEG];
+/**
+ * Herói (sem Técnicas prontas: elas vêm só dos treinamentos). Regra do projeto: só dano, PP e as reações defensivas são automáticos; o resto fica
+ * como texto na ficha. Automáticos aqui: dado de vida e armas favoritas por caminho, as armas do Deus da Arma (já ajustadas), Ataque Extra, CR de
+ * Lança e Escudo, PT do Esforço Heroico, Dados Heroicos como contador com botões, Virada Heroica e o Escudo (reduzem dano) e a Plot Armor.
+ */
+const HEROI_FAVORITAS_ARMA = ['Sabre', 'Daito Katana', 'Montante', 'Lança', 'Escudo', 'Arco'];
+const C_PODER = 'poder-oculto';
+const C_HAREM = 'harem';
+const C_ESPADA = 'arma-espada';
+const C_LANCA = 'arma-lanca';
+const C_ESCUDO = 'arma-escudo';
+const C_ARCO = 'arma-arco';
+const DEUS_DA_ARMA = [C_ESPADA, C_LANCA, C_ESCUDO, C_ARCO];
+const ESPADA_2D8: AjusteDeArma = { dano: '2d8', tipoDano: 'Cortante', bonusAtaque: 2, bonusDano: 2 };
+
+/** Os Dados Heroicos (1d10): 1 no 1º nível e mais 1 por nível até o 10º (e +5 no Despertar Heroico do Guerreiro do Poder Oculto). */
+const dadosHeroicos = (caminho: string, despertar: boolean): TracoDoEstilo => ({
+    id: `dados-heroicos-${caminho}`,
+    caminho,
+    nome: 'Dados Heroicos',
+    tipo: 'passiva',
+    usos: { max: 1, formula: despertar ? 'min(@nivel,10)+5*max(0,min(1,@nivel-9))' : 'min(@nivel,10)', descanso: 'longo' },
+    descricao:
+        'Os Dados Heroicos (1d10) alimentam as características de combate do Herói: 1 dado no 1º nível e mais 1 a cada nível até o 10º' +
+        (despertar ? ' (e +5 no 10º nível, com o Despertar Heroico)' : '') +
+        '. Todos voltam em descanso longo. Também dá para recuperar 1 dado quando uma criatura desconhecida lhe agradece diretamente por socorro, ou ao dividir itens (dinheiro, objetos, comida) de valor mínimo ฿ 70.000 com uma ou mais criaturas. No 15º nível o Herói Lendário pode trocar a escolha de caminho por até 30 dados no máximo.',
+    acoes: [
+        { rotulo: 'Gastar 1 Dado Heroico (1d10)', tipo: 'rolar', rolagem: '1d10', usa: true, custo: 1 },
+        { rotulo: 'Gastar 2 Dados Heroicos (2d10)', tipo: 'rolar', rolagem: '2d10', usa: true, custo: 2 },
+        { rotulo: 'Gastar 3 Dados Heroicos (3d10)', tipo: 'rolar', rolagem: '3d10', usa: true, custo: 3 },
+        { rotulo: 'Gastar 5 Dados Heroicos', tipo: 'gastar', usa: true, custo: 5 },
+    ],
+    etiquetas: ['Dados Heroicos: 1d10, 1 por nível até o 10º (descanso longo)'],
+});
+
+/** O Ataque Extra por caminho: Deus da Arma 2 no 7º e 3 no 11º (Arco: 4 no 10º); Poder Oculto 2 no 10º. */
+const ataqueExtra = (caminho: string, nivelMin: number, nivelMax: number | undefined, mais: number, texto: string): TracoDoEstilo => ({
+    id: `ataque-extra-${caminho}-${nivelMin}`,
+    caminho,
+    nome: `Ataque Extra (${texto})`,
+    nivelMin,
+    ...(nivelMax ? { nivelMax } : {}),
+    descricao: `Você pode atacar ${texto} ao usar a ação "Atacar" no seu turno.`,
+    efeitos: [{ alvo: 'ataques.acao', modo: 'soma', valor: mais }],
+    etiquetas: [`Ação Atacar: ${texto}`],
+});
+
+const TRUNFO =
+    'Um movimento secreto para as ocasiões mais necessárias: conta como Técnica de 1º grau, só ofensiva, sem condição nem efeito e sem custo de PP; não volta até descanso curto ou longo; ganha +2 dados de dano ao fim de cada encontro em que você participar sem usá-la (máximo igual ao seu nível de Herói); depois de usada, volta a 2 dados. Crie a Técnica na aba Técnicas.';
+
+export const HEROI: EstiloDados = {
+    id: 'heroi',
+    nome: 'Herói',
+    descricao:
+        'Para ser herói basta a vontade inabalável de ajudar os outros. Por árduo treino, companheirismo ou poderes misteriosos, protege os mais fracos; o mundo parece mudar as próprias regras a seu favor, e os amigos lhe dão a determinação para passar por cima de qualquer obstáculo. Não aprende Técnicas prontas: só as cria por treinamentos.',
+    dado: 'd8',
+    atributosPrimarios: ['for', 'von'],
+    salvaguardas: ['con', 'von'],
+    proficiencias: [],
+    pericias: 2,
+    periciasPermitidas: ['atletismo', 'acrobacia', 'haki', 'sorte', 'persuasao'],
+    armasFavoritas: ['Corporal', ...HEROI_FAVORITAS_ARMA],
+    habilidadesInatas: [
+        { id: 'aprimoramento-de-atributo', nome: 'Aprimoramento de Atributo' },
+        { id: 'perito-em-tecnicas', nome: 'Perito em Técnicas' },
+    ],
+    equipamento: '12d10 x 1000 Bellys (e a arma sagrada, para o Deus da Arma).',
+    equipamentoInicial: {
+        porArma: {
+            Sabre: [{ catalogo: 'sabre', qtd: 1, arma: ESPADA_2D8 }],
+            'Daito Katana': [{ catalogo: 'katana', qtd: 1, arma: ESPADA_2D8 }],
+            Montante: [{ catalogo: 'espada-montante', qtd: 1, arma: ESPADA_2D8 }],
+            Lança: [{ catalogo: 'lanca', qtd: 1, arma: { dano: '2d8', tipoDano: 'Perfurante', bonusAtaque: 1, bonusDano: 2 } }],
+            Escudo: [{ catalogo: 'escudo-de-ferro', qtd: 1, arma: { dano: '1d8', tipoDano: 'Contundente' } }],
+            Arco: [
+                { catalogo: 'arco', qtd: 1, arma: { bonusAtaque: 3, bonusDano: 1 } },
+                { catalogo: 'flecha', qtd: 20 },
+            ],
+        },
+        itens: [],
+        dinheiro: { dados: '12d10', multiplicador: 1000 },
+    },
+    caminhos: [
+        {
+            id: C_PODER,
+            nome: 'Guerreiro do Poder Oculto',
+            descricao:
+                'Determinação inabalável que faz emergir o verdadeiro potencial: Corpo de Guerreiro, dado de vida d12 e punhos movidos pela Vontade.',
+            dado: 'd12',
+            armasFavoritas: ['Corporal'],
+        },
+        {
+            id: C_HAREM,
+            nome: 'Mestre do Harém',
+            descricao: 'Carisma que inspira respeito e a vontade de seguir: companheiros fiéis (Healer, Tanker e Warrior).',
+            armasFavoritas: ['Corporal'],
+        },
+        {
+            id: C_ESPADA,
+            nome: 'Deus da Arma: Espada',
+            descricao: 'Dedicação incessante à espada (sabre, daito katana ou montante, 2d8 Cortante, +2 no ataque e no dano).',
+            dado: 'd10',
+            armasFavoritas: ['Sabre', 'Daito Katana', 'Montante'],
+        },
+        {
+            id: C_LANCA,
+            nome: 'Deus da Arma: Lança',
+            descricao: 'Dedicação incessante à lança (2d8 Perfurante, +1 no ataque, +2 no dano e +1 na CR).',
+            dado: 'd10',
+            armasFavoritas: ['Lança'],
+        },
+        {
+            id: C_ESCUDO,
+            nome: 'Deus da Arma: Escudo',
+            descricao: 'Dedicação incessante ao escudo (grande e indestrutível, 1d8 Contundente, +3 na CR e 10 PV temporários por turno).',
+            dado: 'd10',
+            armasFavoritas: ['Escudo'],
+        },
+        {
+            id: C_ARCO,
+            nome: 'Deus da Arma: Arco',
+            descricao: 'Dedicação incessante ao arco (flechas de 1d12 Perfurante, +3 no ataque e +1 no dano).',
+            dado: 'd10',
+            armasFavoritas: ['Arco'],
+        },
+    ],
+    niveisAva: [4, 8, 12, 16, 20],
+    niveisDeTecnica: [],
+    tracos: [
+        // --- Jornada do Herói (todos) ---
+        {
+            id: 'esforco-heroico',
+            nome: 'Jornada do Herói: Esforço Heroico',
+            descricao:
+                'Você não aprende Técnicas (nem as da Akuma no Mi) automaticamente: só por treinamentos ou Maestrias. As Técnicas do treinamento "Genialidade Inusitada" têm os mesmos benefícios das Técnicas dos Estilos de Combate, e você pode criar uma Técnica Auxiliar em vez de uma de Combate, gastando 1 PT mais 1 PT por Auxiliar já aprendida (respeitando o nível de cada grau). O Herói recebe 5 Pontos de Treinamento no 1º nível e mais 2 a cada nível par, que devem ser usados só na Genialidade Inusitada.',
+            etiquetas: ['5 PT no 1º nível e +2 por nível par (só Genialidade Inusitada)'],
+        },
+        dadosHeroicos(C_PODER, true),
+        dadosHeroicos(C_HAREM, false),
+        ...DEUS_DA_ARMA.map((c) => dadosHeroicos(c, false)),
+        {
+            id: 'protagonismo',
+            nome: 'Protagonismo',
+            nivelMin: 2,
+            usos: { max: 1, descanso: 'curto' },
+            descricao:
+                'Você pode escolher uma rolagem de dado qualquer para assumir a jogada (podendo definir a CD): só você vê o resultado e diz ao Narrador se foi bem-sucedida ou malsucedida. Não volta até descanso curto ou longo. Há ainda uma característica extra do seu caminho.',
+            etiquetas: ['Assume uma rolagem qualquer (descanso curto)'],
+        },
+        {
+            id: 'ultimo-a-chegar',
+            nome: 'Último a Chegar',
+            nivelMin: 3,
+            descricao:
+                'Ao entrar num encontro em que já passou ao menos 1 rodada, você faz um turno especial logo ao entrar (um turno normal, exceto causar dano). The Hero Arrives: recupera 1 Dado Heroico por rodada que já passou (o que passar do máximo fica como sobressalente e some no fim do encontro). Poder da Amizade: recupera 10 PV por aliado consciente no seu primeiro turno (excesso some no fim do encontro). "Eu Não Perdoo!": no primeiro turno recupera 5 PP por aliado caído a 0 PV e, depois, 5 PP cada vez que um aliado cair a 0 PV (excesso some no fim do encontro).',
+            etiquetas: ['Entra com atraso: turno especial, +1 Dado Heroico por rodada, +10 PV e +5 PP por aliado'],
+        },
+        {
+            id: 'trunfo',
+            nome: 'Trunfo',
+            nivelMin: 6,
+            usos: { max: 1, descanso: 'curto' },
+            descricao: TRUNFO,
+            etiquetas: ['Técnica Trunfo: 1º grau, sem PP, +2 dados por encontro sem usar'],
+        },
+        {
+            id: 'super-hero',
+            nome: 'Super Hero',
+            nivelMin: 7,
+            tipo: 'ativa',
+            acao: 'bonus',
+            usos: { max: 1, descanso: 'longo' },
+            descricao:
+                'Com uma ação bônus, você acessa o máximo potencial por até 1 minuto: o dado de dano dos seus ataques (comum) vira 1d12 (prevalece o maior); sempre que executar uma característica que gaste 1 ou mais Dados Heroicos, +1 na CR até o início do seu próximo turno; deslocamento de 18 metros. Não volta até descanso longo.',
+            efeitos: [{ alvo: 'movimento.normal', modo: 'min', valor: 180 }],
+            etiquetas: ['Super Hero: ataques 1d12 (ajuste a arma), +1 CR por Dado Heroico gasto'],
+        },
+        {
+            id: 'plot-armor',
+            nome: 'Plot Armor',
+            nivelMin: 11,
+            tipo: 'ativa',
+            acao: 'bonus',
+            interruptor: true,
+            usos: { max: 1, descanso: 'longo' },
+            descricao:
+                'Com uma ação bônus, você fica até 1 minuto sem receber nenhum tipo de dano (nem Verdadeiro), com desvantagem em todas as Salvaguardas. Depois recebe "Inconsciente" por 1 minuto (desligue ao fim do efeito). Não volta até descanso longo.',
+            etiquetas: ['Ligada: nenhum dano (nem Verdadeiro); desvantagem nas Salvaguardas; depois Inconsciente 1 min'],
+        },
+        {
+            id: 'recuperacao-heroica',
+            nome: 'Recuperação Heroica',
+            nivelMin: 14,
+            descricao:
+                'Ao fim de um descanso curto ou longo, você pode gastar 10 Dados Heroicos para recuperar todos os PP e PV e perder os efeitos de Exaustão e doenças até o fim do próximo descanso longo. A cada uso, seu máximo de Constituição cai 2 (até −8 acumulados); os 2 pontos voltam ao fim de 3 descansos longos.',
+            etiquetas: ['10 Dados Heroicos: PP e PV totais; −2 de CON máx. por uso'],
+        },
+        {
+            id: 'heroi-lendario',
+            nome: 'Herói Lendário',
+            nivelMin: 15,
+            descricao:
+                'Você pode receber todas as características de um dos 2 caminhos de "Tipo de Herói" que não escolheu, ou, em vez disso, aumentar para 30 o máximo de Dados Heroicos.',
+        },
+        {
+            id: 'mestre-heroi',
+            nome: 'Mestre Herói',
+            nivelMin: 18,
+            descricao:
+                'Distribua livremente 6 pontos entre seus atributos, respeitando o máximo de 24 em cada um. Você pode escolher dois atributos para aplicar esses pontos até o máximo de 30.',
+        },
+        {
+            id: 'versus',
+            nome: 'Versus',
+            nivelMin: 19,
+            usos: { max: 1, descanso: 'longo' },
+            descricao:
+                'Escolha uma criatura humanoide que você veja a até 3 m: ambos entram em rodadas especiais num duelo mortal sem interferências. Começa quem tem mais Vontade; ambos trocam os PV por 8 e a CR por 10; acerto +1 e dano 1 (2 no crítico natural); sem reações, ações bônus nem outras características; deslocamento só para se aproximar; a ação só ataca, 1 vez. Antes de saber se acertou, gaste 5 Dados Heroicos para +1 de dano ou vantagem no ataque. Quem chegar a 0 PV morre (o vencedor pode poupar). Registre os PV atuais antes; ao fim os do vencedor voltam ao registrado e então se aplica 10 de dano por ponto de dano recebido no duelo. Não volta até descanso longo.',
+            etiquetas: ['Duelo mortal: 8 PV, CR 10, +1 e dano 1; dano final ×10'],
+        },
+        // --- Guerreiro do Poder Oculto ---
+        {
+            id: 'corpo-heroico',
+            caminho: C_PODER,
+            nome: 'Guerreiro do Poder Oculto: Corpo Heroico',
+            descricao:
+                'Você recebe a Habilidade Básica Geral "Corpo de Guerreiro" e o seu dado de vida passa a ser o d12. Punho da Vontade: você pode usar o modificador de Vontade nas jogadas de ataque (comum) corpo a corpo e de dano. Espírito Indomável: uma vez por rodada, gaste 1 Dado Heroico para aumentar uma rolagem qualquer em um valor igual ao resultado do dado (até 2 dados juntos a partir do 5º nível de Herói).',
+            efeitos: [
+                { alvo: 'ataque.desarmado', modo: 'soma', valor: 'max(0,@mod.von-@mod.for)' },
+                { alvo: 'dano.desarmado', modo: 'soma', valor: 'max(0,@mod.von-@mod.for)' },
+            ],
+            etiquetas: [
+                'Punho da Vontade: usa a Vontade no ataque e no dano corpo a corpo',
+                'Espírito Indomável: +1 Dado Heroico à rolagem (1 por rodada)',
+            ],
+        },
+        {
+            id: 'discurso-heroico',
+            caminho: C_PODER,
+            nome: 'Guerreiro do Poder Oculto (5º): Discurso Heroico, Impulso Heroico',
+            nivelMin: 5,
+            usos: { max: 1, descanso: 'longo' },
+            descricao:
+                'Discurso Heroico: se uma criatura hostil está com menos da metade dos PV máximos, ela faz Salvaguarda de Vontade; se falhar, se alia a você por até 24 horas, desde que os objetivos não sejam totalmente contrários (1 uso até descanso longo). Impulso Heroico: ao fim do seu turno, você pode fazer uma ação adicional (1 uso até descanso curto ou longo).',
+            etiquetas: ['Discurso Heroico: hostil com menos da metade dos PV pode virar aliado', 'Impulso Heroico: ação adicional ao fim do turno'],
+        },
+        {
+            id: 'virada-heroica',
+            caminho: C_PODER,
+            nome: 'Guerreiro do Poder Oculto (5º): Virada Heroica',
+            nivelMin: 5,
+            descricao:
+                'Com menos da metade dos seus PV, você pode usar a reação para gastar 5 Dados Heroicos e negar um dano qualquer que tenha recebido. A reação é oferecida ao ser atacado e os Dados Heroicos só são gastos quando o dano é de fato negado.',
+            reacao: {
+                gatilho: 'ataque_declarado',
+                alcance: 'si',
+                reducao: { zerar: true, gasta: { de: 'Dados Heroicos', qtd: 5 }, pvAbaixoDaMetade: true },
+            },
+            etiquetas: ['Reação (PV < ½): 5 Dados Heroicos negam um dano'],
+        },
+        ataqueExtra(C_PODER, 10, undefined, 1, 'duas vezes'),
+        {
+            id: 'tecnica-assinatura',
+            caminho: C_PODER,
+            nome: 'Guerreiro do Poder Oculto (10º): Técnica Assinatura e Despertar Heroico',
+            nivelMin: 10,
+            usos: { porProf: true, max: 2, descanso: 'longo' },
+            descricao:
+                'Técnica Assinatura: escolha uma Técnica de 4º grau ou menor como principal: ela custa metade dos PP uma quantidade de vezes igual ao Bônus de Proficiência (voltam em descanso longo) e, sempre que executada, causa 2 dados de dano adicionais. Despertar Heroico: +5 no máximo de Dados Heroicos (já somado ao contador).',
+            etiquetas: ['Técnica Assinatura: metade dos PP (usos = prof.) e +2 dados de dano'],
+        },
+        {
+            id: 'protagonismo-poder',
+            caminho: C_PODER,
+            nome: 'Protagonismo: Guerreiro do Poder Oculto',
+            nivelMin: 2,
+            usos: { max: 1, descanso: 'longo' },
+            descricao:
+                'Num encontro, se você cair inconsciente com 0 PV sem morrer, após 2 minutos no mesmo encontro você recobra a consciência com um terço dos seus PV. Não volta até descanso longo.',
+            etiquetas: ['Inconsciente a 0 PV: acorda após 2 min com ⅓ dos PV'],
+        },
+        // --- Mestre do Harém ---
+        {
+            id: 'companheiros',
+            caminho: C_HAREM,
+            nome: 'Mestre do Harém: Companheiros',
+            descricao:
+                'Você escolhe um companheiro inicial, totalmente fiel a você (Healer, Tanker ou Warrior); nova escolha no 3º e no 5º nível de Herói, uma vez cada tipo. Healer: CR 10, PV metade dos seus, dano 1d4+1, 9 m, 10 kits de primeiros socorros. Tanker: CR 19, PV o dobro dos seus, dano 1d6+3, 6 m, 1 escudo. Warrior: CR 16, PV iguais aos seus, dano 1d10+5, 15 m, 1 arma corpo a corpo. Cada um tem vantagem numa Salvaguarda (Vontade, Warrior; Força, Tanker; Sabedoria, Healer) e usa os seus atributos e bônus; não usam Akuma no Mi, Treinamentos nem Profissões. O turno deles é logo depois do seu; ao fim de cada turno seu você recebe uma reserva de 3 Ações de Companheiros (+2 por companheiro além do primeiro), sem acumular: Deslocamento (1 ação) e Ataque (2 ações, com o dano da tabela). Healer (1º): gasta Dados Heroicos para curar a 1,5 m com o dobro do resultado; (5º) 2 dados removem 1 Exaustão, ou 1 dado suspende uma condição até o fim do encontro; (10º) 5 dados levantam um caído com metade dos PV. Tanker (1º): perto dele (3 m), sua CR vira 10 + prof. + Vontade (ou concede a outro); (5º) ação bônus para cobertura total; (10º) reação para passar o dano a ele. Warrior (1º): uma vez por turno executa uma Técnica sua com a ação Ataque e os seus PP, e lhe dá proficiência numa arma; (5º) 1 Dado Heroico para atacar duas vezes; (10º) até 2 Dados Heroicos somam o resultado ao dano.',
+            etiquetas: ['Companheiros: Healer, Tanker, Warrior (3 ações compartilhadas por turno)'],
+        },
+        {
+            id: 'protagonismo-harem',
+            caminho: C_HAREM,
+            nome: 'Protagonismo: Mestre do Harém',
+            nivelMin: 2,
+            descricao:
+                'Sempre que o Narrador pedir um Teste de Atributo para convencer uma pessoa a ajudar, você recebe o dobro do seu Bônus de Proficiência.',
+            etiquetas: ['Convencer alguém: prof. dobrada'],
+        },
+        // --- Deus da Arma (todos os caminhos de arma) ---
+        ...DEUS_DA_ARMA.flatMap((c): TracoDoEstilo[] => [
+            {
+                id: `tracos-gerais-${c}`,
+                caminho: c,
+                nome: 'Deus da Arma: Traços Gerais',
+                descricao:
+                    'Arma Sagrada: a arma escolhida é a sua arma favorita e os bônus dela valem só para você. Resistência Heroica: uma vez por rodada, some o resultado de 1 Dado Heroico a uma Salvaguarda sua; dado de vida d10. Defesa Heroica: você recebe a Habilidade Básica "Defesa Ofensiva". Dano Inevitável: o dano das jogadas de ataque (comum ou Técnicas) com a arma sagrada ignora resistências. Superação Heroica: a partir do 10º nível, uma característica de 5º nível de outra arma passa a valer na sua; a partir do 15º, uma de 10º nível.',
+                etiquetas: [
+                    'Dano Inevitável: a arma sagrada ignora resistências',
+                    'Resistência Heroica: +1 Dado Heroico numa Salvaguarda (1 por rodada)',
+                ],
+            },
+            {
+                id: `protagonismo-arma-${c}`,
+                caminho: c,
+                nome: 'Protagonismo: Deus da Arma',
+                nivelMin: 2,
+                tipo: 'ativa',
+                interruptor: true,
+                usos: { max: 1, descanso: 'longo' },
+                descricao:
+                    'Por 1 minuto você atinge o máximo da sintonia com a sua arma e soma o Bônus de Proficiência às jogadas de dano com a arma favorita. Não volta até descanso longo.',
+                efeitos: [{ alvo: 'dano.arma', modo: 'soma', valor: '@prof' }],
+                etiquetas: ['Sintonia: +prof. no dano da arma favorita (1 min)'],
+            },
+        ]),
+        ataqueExtra(C_ESPADA, 7, 10, 1, 'duas vezes'),
+        ataqueExtra(C_ESPADA, 11, undefined, 2, 'três vezes'),
+        ataqueExtra(C_LANCA, 7, 10, 1, 'duas vezes'),
+        ataqueExtra(C_LANCA, 11, undefined, 2, 'três vezes'),
+        ataqueExtra(C_ESCUDO, 7, 10, 1, 'duas vezes'),
+        ataqueExtra(C_ESCUDO, 11, undefined, 2, 'três vezes'),
+        ataqueExtra(C_ARCO, 7, 9, 1, 'duas vezes'),
+        ataqueExtra(C_ARCO, 10, undefined, 3, 'quatro vezes'),
+        // --- Espada ---
+        {
+            id: 'espada-5',
+            caminho: C_ESPADA,
+            nome: 'Espada (5º): dano com Dados Heroicos',
+            nivelMin: 5,
+            descricao:
+                'Uma vez por rodada, ao atacar (comum) com a arma favorita, gaste até 2 Dados Heroicos para aumentar o dano em um valor igual ao resultado dos dados gastos.',
+            etiquetas: ['Até 2 Dados Heroicos somam o resultado ao dano (1 por rodada)'],
+        },
+        {
+            id: 'espada-10',
+            caminho: C_ESPADA,
+            nome: 'Espada (10º): ataque garantido',
+            nivelMin: 10,
+            descricao: 'Uma vez por rodada, com a ação bônus, faça uma jogada de ataque (comum) adicional com a arma favorita: acerto garantido.',
+            etiquetas: ['Ação bônus: ataque adicional com acerto garantido (1 por rodada)'],
+        },
+        {
+            id: 'espada-15',
+            caminho: C_ESPADA,
+            nome: 'Espada (15º): técnica sem PP',
+            nivelMin: 15,
+            usos: { max: 1, descanso: 'curto' },
+            descricao:
+                'Gaste 5 Dados Heroicos para executar uma técnica de 5º grau ou inferior com "arma favorita" como requisito sem gastar PP. Não volta até descanso curto ou longo.',
+            etiquetas: ['5 Dados Heroicos: técnica de arma favorita (até 5º grau) sem PP'],
+        },
+        // --- Lança ---
+        {
+            id: 'lanca-1',
+            caminho: C_LANCA,
+            nome: 'Lança (1º): bônus de CR',
+            descricao: 'A lança recebida causa 2d8 Perfurante, +1 no ataque e +2 no dano (já ajustados no item) e garante +1 na sua CR.',
+            efeitos: [{ alvo: 'ca', modo: 'soma', valor: 1 }],
+            etiquetas: ['Lança: +1 na CR'],
+        },
+        {
+            id: 'lanca-5',
+            caminho: C_LANCA,
+            nome: 'Lança (5º): repetir o ataque',
+            nivelMin: 5,
+            descricao: 'Ao errar uma jogada de ataque (comum ou Técnicas), gaste 1 Dado Heroico para executar o ataque novamente.',
+            etiquetas: ['1 Dado Heroico: repete o ataque que errou'],
+        },
+        {
+            id: 'lanca-margem-18',
+            caminho: C_LANCA,
+            nome: 'Lança (10º): crítico 18-20',
+            nivelMin: 10,
+            nivelMax: 14,
+            descricao: 'A margem de acerto crítico da lança muda para 18-20.',
+            efeitos: [{ alvo: 'margem.corpo', modo: 'min', valor: 18 }],
+            etiquetas: ['Lança: crítico 18-20'],
+        },
+        {
+            id: 'lanca-margem-17',
+            caminho: C_LANCA,
+            nome: 'Lança (15º): crítico 17-20',
+            nivelMin: 15,
+            descricao: 'A margem de acerto crítico da lança muda para 17-20.',
+            efeitos: [{ alvo: 'margem.corpo', modo: 'min', valor: 17 }],
+            etiquetas: ['Lança: crítico 17-20'],
+        },
+        {
+            id: 'lanca-15',
+            caminho: C_LANCA,
+            nome: 'Lança (15º): técnica com +3 dados',
+            nivelMin: 15,
+            usos: { max: 1, descanso: 'curto' },
+            descricao:
+                'Gaste 5 Dados Heroicos para executar uma técnica qualquer com "arma favorita" como requisito com 3 dados de dano adicionais. Não volta até descanso curto ou longo.',
+            etiquetas: ['5 Dados Heroicos: técnica de arma favorita com +3 dados de dano'],
+        },
+        // --- Escudo ---
+        {
+            id: 'escudo-1',
+            caminho: C_ESCUDO,
+            nome: 'Escudo (1º): grande e indestrutível',
+            descricao:
+                'O escudo é de grande porte e indestrutível, causa 1d8 Contundente (já no item), tem "duas mãos" e "pesada", garante +3 na CR e 10 PV temporários que se renovam no início de cada turno seu.',
+            efeitos: [{ alvo: 'ca', modo: 'soma', valor: 3 }],
+            etiquetas: ['Escudo: +3 na CR; 10 PV temporários a cada turno'],
+        },
+        {
+            id: 'escudo-5',
+            caminho: C_ESCUDO,
+            nome: 'Escudo (5º): reduzir o dano',
+            nivelMin: 5,
+            descricao:
+                'Ao sofrer qualquer dano (mesmo Verdadeiro), use a reação e gaste até 3 Dados Heroicos para reduzi-lo em um valor igual ao resultado dos dados. A reação é oferecida ao ser atacado e gasta 3 Dados Heroicos (3d10 de redução no próximo dano).',
+            reacao: {
+                gatilho: 'ataque_declarado',
+                alcance: 'si',
+                reducao: { reserva: '3d10', unica: true, gasta: { de: 'Dados Heroicos', qtd: 3 } },
+            },
+            etiquetas: ['Reação: 3 Dados Heroicos reduzem o dano em 3d10'],
+        },
+        {
+            id: 'escudo-10',
+            caminho: C_ESCUDO,
+            nome: 'Escudo (10º): ataque de escudo',
+            nivelMin: 10,
+            descricao:
+                'Uma vez por rodada, com a ação bônus, faça uma jogada de ataque (comum) adicional com a arma favorita; no acerto causa 1d12 Contundente e, em acerto crítico, o alvo recebe "Atordoado" até o fim do próximo turno dele.',
+            etiquetas: ['Ação bônus: ataque de escudo 1d12 (crítico atordoa)'],
+        },
+        {
+            id: 'escudo-15',
+            caminho: C_ESCUDO,
+            nome: 'Escudo (15º): recuperar todos os PV',
+            nivelMin: 15,
+            usos: { max: 1, descanso: 'curto' },
+            descricao: 'Com uma ação, gaste 5 Dados Heroicos para recuperar todos os seus PV. Não volta até descanso curto ou longo.',
+            etiquetas: ['Ação + 5 Dados Heroicos: todos os PV'],
+        },
+        // --- Arco ---
+        {
+            id: 'arco-1',
+            caminho: C_ARCO,
+            nome: 'Arco (1º): flechas de 1d12',
+            descricao: 'As flechas atiradas com o arco causam 1d12 Perfurante; o arco garante +3 no ataque e +1 no dano (já ajustados no item).',
+            etiquetas: ['Arco: flechas 1d12 Perfurante (ajuste a munição)'],
+        },
+        {
+            id: 'arco-5',
+            caminho: C_ARCO,
+            nome: 'Arco (5º): ataque extra por dado',
+            nivelMin: 5,
+            descricao:
+                'Uma vez por rodada, ao atacar (comum) com a arma favorita, gaste 1 Dado Heroico para fazer mais uma jogada de ataque (comum).',
+            etiquetas: ['1 Dado Heroico: mais um ataque (1 por rodada)'],
+        },
+        {
+            id: 'arco-15',
+            caminho: C_ARCO,
+            nome: 'Arco (15º): técnicas pela metade',
+            nivelMin: 15,
+            usos: { max: 1, descanso: 'curto' },
+            descricao:
+                'Gaste 5 Dados Heroicos para executar técnicas com "arma favorita" como requisito pela metade dos PP (mínimo 1 PP) por até 1 minuto. Não volta até descanso curto ou longo.',
+            etiquetas: ['5 Dados Heroicos: técnicas de arma favorita pela metade dos PP (1 min)'],
+        },
+    ],
+    tecnicas: [],
+};
+
+export const ESTILOS: EstiloDados[] = [ATIRADOR, AVENTUREIRO, BRUTAMONTES, BLACK_LEG, HEROI];
 export const estiloPorId = (id: string | undefined | null): EstiloDados | undefined => ESTILOS.find((e) => e.id === id);
+
+/** O dado de vida do estilo para o caminho escolhido (o caminho pode mudá-lo). */
+export const dadoDoEstilo = (estilo: EstiloDados, caminho: string | null | undefined): DadoDeVida =>
+    estilo.caminhos?.find((c) => c.id === caminho)?.dado ?? estilo.dado;
+
+/** As armas favoritas que o caminho permite. */
+export const armasFavoritasDoCaminho = (estilo: EstiloDados, caminho: string | null | undefined): string[] =>
+    estilo.caminhos?.find((c) => c.id === caminho)?.armasFavoritas ?? estilo.armasFavoritas;
 
 /** O atributo primário do personagem: o escolhido, ou o único possível. */
 export const atributoPrimarioDe = (estilo: EstiloDados, escolhido: string | null | undefined): AtributoId | null =>

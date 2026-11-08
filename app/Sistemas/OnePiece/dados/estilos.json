@@ -90,6 +90,91 @@
           "fixo": 90000
         }
       }
+    },
+    {
+      "id": "heroi",
+      "nome": "Herói",
+      "equipamentoInicial": {
+        "porArma": {
+          "Sabre": [
+            {
+              "catalogo": "sabre",
+              "qtd": 1,
+              "arma": {
+                "dano": "2d8",
+                "tipoDano": "Cortante",
+                "bonusAtaque": 2,
+                "bonusDano": 2
+              }
+            }
+          ],
+          "Daito Katana": [
+            {
+              "catalogo": "katana",
+              "qtd": 1,
+              "arma": {
+                "dano": "2d8",
+                "tipoDano": "Cortante",
+                "bonusAtaque": 2,
+                "bonusDano": 2
+              }
+            }
+          ],
+          "Montante": [
+            {
+              "catalogo": "espada-montante",
+              "qtd": 1,
+              "arma": {
+                "dano": "2d8",
+                "tipoDano": "Cortante",
+                "bonusAtaque": 2,
+                "bonusDano": 2
+              }
+            }
+          ],
+          "Lança": [
+            {
+              "catalogo": "lanca",
+              "qtd": 1,
+              "arma": {
+                "dano": "2d8",
+                "tipoDano": "Perfurante",
+                "bonusAtaque": 1,
+                "bonusDano": 2
+              }
+            }
+          ],
+          "Escudo": [
+            {
+              "catalogo": "escudo-de-ferro",
+              "qtd": 1,
+              "arma": {
+                "dano": "1d8",
+                "tipoDano": "Contundente"
+              }
+            }
+          ],
+          "Arco": [
+            {
+              "catalogo": "arco",
+              "qtd": 1,
+              "arma": {
+                "bonusAtaque": 3,
+                "bonusDano": 1
+              }
+            },
+            {
+              "catalogo": "flecha",
+              "qtd": 20
+            }
+          ]
+        },
+        "itens": [],
+        "dinheiro": {
+          "dados": "12d10",
+          "multiplicador": 1000
+        }
+      }
     }
   ]
 }

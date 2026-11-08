@@ -80,9 +80,10 @@ async function usarAlternativo(i: number) {
 /** Botão de ação (condição, hospedar): gasta a categoria dele e só então age. */
 async function agirComAcao(a: AcaoCaracteristica, i: number) {
     const c = props.ficha.caracteristicas[i];
-    if (a.usa && (!c.usos || c.usos.atual <= 0)) return;
+    const custo = a.custo ?? 1;
+    if (a.usa && (!c.usos || c.usos.atual < custo)) return;
     if (!(await acoes.gastar(a.acao))) return;
-    if (a.usa && c.usos) mudar((l) => (l[i] = { ...c, usos: { ...c.usos!, atual: c.usos!.atual - 1 } }));
+    if (a.usa && c.usos) mudar((l) => (l[i] = { ...c, usos: { ...c.usos!, atual: c.usos!.atual - custo } }));
     const f = props.ficha;
     if (a.tipo === 'recuperar' && a.rolagem && a.recurso) {
         const recurso = a.recurso; // pv | pp
@@ -283,7 +284,7 @@ function aoSalvar(c: Caracteristica) {
                                 v-else
                                 type="button"
                                 class="rounded-md border border-ouro-500/50 px-2 py-0.5 text-xs font-semibold text-ouro-100 transition hover:bg-ouro-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
-                                :disabled="apagada(c) || !acoes.pode(a.acao).ok || (a.usa && (!c.usos || c.usos.atual <= 0))"
+                                :disabled="apagada(c) || !acoes.pode(a.acao).ok || (a.usa && (!c.usos || c.usos.atual < (a.custo ?? 1)))"
                                 :title="
                                     acoes.pode(a.acao).ok
                                         ? a.alvo === 'mirado'

@@ -369,4 +369,66 @@ class ReacaoTest extends TestCase
         $this->assertSame(0, $this->aplicarDano($c, $c->aria->id, 20, ['origem' => 'salvaguarda', 'atributo' => 'for', 'passou' => false])['calculo']['final']);
         $this->assertSame(20, $this->aplicarDano($c, $c->aria->id, 20, ['origem' => 'salvaguarda', 'atributo' => 'con', 'passou' => false])['calculo']['final']);
     }
+
+    private function pool($c, int $dados = 10): array
+    {
+        return ['nome' => 'Dados Heroicos', 'origem' => 'Herói', 'tipo' => 'passiva', 'usos' => ['atual' => $dados, 'max' => 10], 'descricao' => ''];
+    }
+
+    public function test_virada_heroica_so_aparece_com_pv_abaixo_da_metade_e_gasta_5_dados_ao_zerar_o_dano(): void
+    {
+        $c = $this->cenario();
+        $this->combate($c); // a Aria tem 10 de 20 PV (não é menos da metade)
+        $sis = app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece');
+        $virada = ['nome' => 'Guerreiro do Poder Oculto (5º): Virada Heroica', 'origem' => 'Herói', 'tipo' => 'passiva', 'descricao' => '',
+            'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'si', 'reducao' => ['zerar' => true, 'gasta' => ['de' => 'Dados Heroicos', 'qtd' => 5], 'pvAbaixoDaMetade' => true]]];
+        $this->ficha($c, $c->ana, $c->aria, ['caracteristicas' => [$this->pool($c), $virada]]);
+        $this->ataque($c);
+        $this->assertSame([], EventoDeCombate::latest('id')->first()->ofertas); // 10 de 20 PV: não está abaixo da metade
+
+        $this->ficha($c, $c->ana, $c->aria, ['pv.atual' => 9]);
+        $this->cmd($c, 'turno'); $this->cmd($c, 'turno'); $this->cmd($c, 'turno'); // outra rodada: a reação voltou
+        $this->ataque($c);
+        $this->assertNotSame([], EventoDeCombate::latest('id')->first()->ofertas);
+        $this->reagir($c, $c->ana, $c->aria, 'c:1');
+        $f = $c->aria->fresh()->fichaCompleta($sis);
+        $this->assertTrue($f['reducao']['zerar']);
+        $this->assertSame(10, $f['caracteristicas'][0]['usos']['atual']); // armar não gasta os dados
+
+        $r = $this->aplicarDano($c, $c->aria->id, 30);
+        $this->assertSame(0, $r['calculo']['final']);
+        $f = $c->aria->fresh()->fichaCompleta($sis);
+        $this->assertSame(5, $f['caracteristicas'][0]['usos']['atual']); // 5 Dados Heroicos gastos
+        $this->assertFalse($f['reducao']['zerar']);
+    }
+
+    public function test_escudo_do_deus_da_arma_gasta_3_dados_ao_armar_e_reduz_so_o_proximo_dano(): void
+    {
+        $c = $this->cenario();
+        $this->combate($c);
+        $sis = app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece');
+        $escudo = ['nome' => 'Escudo (5º): reduzir o dano', 'origem' => 'Herói', 'tipo' => 'passiva', 'descricao' => '',
+            'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'si', 'reducao' => ['reserva' => '3d10', 'unica' => true, 'gasta' => ['de' => 'Dados Heroicos', 'qtd' => 3]]]];
+        $this->ficha($c, $c->ana, $c->aria, ['caracteristicas' => [$this->pool($c), $escudo]]);
+        $this->ataque($c);
+        $this->reagir($c, $c->ana, $c->aria, 'c:1');
+        $f = $c->aria->fresh()->fichaCompleta($sis);
+        $this->assertSame(7, $f['caracteristicas'][0]['usos']['atual']); // 3 dados gastos ao armar
+        $reserva = $f['reducao']['reserva'];
+        $this->assertGreaterThanOrEqual(3, $reserva);
+        $this->assertLessThanOrEqual(30, $reserva);
+        $this->assertSame(500 - $reserva, $this->aplicarDano($c, $c->aria->id, 500)['calculo']['final']);
+        $this->assertSame(9, $this->aplicarDano($c, $c->aria->id, 9)['calculo']['final']); // uso único
+    }
+
+    public function test_plot_armor_ligada_anula_qualquer_dano_inclusive_verdadeiro(): void
+    {
+        $c = $this->cenario();
+        $this->combate($c);
+        $plot = fn (bool $ativa) => ['nome' => 'Plot Armor', 'origem' => 'Herói', 'tipo' => 'ativa', 'ativa' => $ativa, 'interruptor' => true, 'descricao' => '', 'nivelMin' => 11];
+        $this->ficha($c, $c->ana, $c->aria, ['nivel' => 11, 'caracteristicas' => [$plot(false)]]);
+        $this->assertSame(10, $this->aplicarDano($c, $c->aria->id, 10)['calculo']['final']);
+        $this->ficha($c, $c->ana, $c->aria, ['caracteristicas' => [$plot(true)]]);
+        $this->assertSame(0, $this->aplicarDano($c, $c->aria->id, 999)['calculo']['final']);
+    }
 }

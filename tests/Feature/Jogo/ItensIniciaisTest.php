@@ -230,4 +230,19 @@ class ItensIniciaisTest extends TestCase
         ])->assertOk();
         $this->assertSame($r['bellys'], $c->aria->fresh()->criacao['dados']['dinheiro']['bellys']);
     }
+
+    public function test_heroi_deus_da_arma_recebe_a_espada_ja_ajustada_para_a_ficha(): void
+    {
+        $c = $this->cenario();
+        $this->rolarDinheiro($c, 'heroi')->assertOk();
+        $this->como($c->ana)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->aria->id]), [
+            'campos' => ['estiloId' => 'heroi', 'estilo' => 'Herói', 'estiloCaminho' => 'arma-espada'],
+            'criacao' => ['etapa' => 'resumo', 'concluida' => true, 'dados' => ['escolhas' => ['estilo' => ['id' => 'heroi', 'armaFavorita' => 'Sabre']]]],
+        ])->assertOk();
+        $this->assertArrayHasKey('Sabre', $this->inventario($c));
+        $ref = collect($c->aria->fresh()->ficha['inventario'])->flatMap(fn ($s) => $s['itens'])->first();
+        $this->assertSame(['dano' => '2d8', 'tipoDano' => 'Cortante', 'bonusAtaque' => 2, 'bonusDano' => 2], $ref['arma']);
+        // o item da mesa continua com o dado do livro: o ajuste vale só para esta ficha
+        $this->assertSame('1d6', $c->mesa->itens()->find($ref['item_id'])->dados['arma']['dano']);
+    }
 }

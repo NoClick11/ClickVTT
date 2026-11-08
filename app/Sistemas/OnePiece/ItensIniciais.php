@@ -128,6 +128,10 @@ final class ItensIniciais
                 $item = Itens::item($i['catalogo']);
                 if ($item) {
                     $entregar(['qtd' => (int) $i['qtd'], 'nome' => $item['nome'], 'catalogo' => $i['catalogo']], '');
+                    // a arma já vem ajustada para esta ficha (a espada do Deus da Arma: 2d8, +2/+2)
+                    if (! empty($i['arma'])) {
+                        $ficha = self::ajustarArma($ficha, (int) end($entregues)['item_id'], $i['arma']);
+                    }
                 }
             }
             $d = $equipamento['dinheiro'] ?? null;
@@ -141,6 +145,22 @@ final class ItensIniciais
         $ficha['belly'] = min(1_000_000_000_000, (int) ($ficha['belly'] ?? 0) + $dinheiro);
         $ficha['itensIniciais'] = $entregues;
         $ficha['dinheiroInicial'] = $dinheiro;
+
+        return $ficha;
+    }
+
+    /** Guarda o ajuste da arma (só desta ficha) na linha do inventário. */
+    private static function ajustarArma(array $ficha, int $itemId, array $ajuste): array
+    {
+        foreach ($ficha['inventario'] ?? [] as $s => $secao) {
+            foreach ($secao['itens'] ?? [] as $i => $ref) {
+                if ((int) ($ref['item_id'] ?? 0) === $itemId) {
+                    $ficha['inventario'][$s]['itens'][$i]['arma'] = $ajuste;
+
+                    return $ficha;
+                }
+            }
+        }
 
         return $ficha;
     }

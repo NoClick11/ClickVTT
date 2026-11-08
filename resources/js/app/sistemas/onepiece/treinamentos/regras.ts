@@ -51,7 +51,12 @@ export function ptCulturais(f: Pick<FichaOnePiece, 'caracteristicas' | 'atributo
         ? Math.floor(Math.min(20, Math.max(1, Math.floor(Number(f.nivel)) || 1)) / 2)
         : 0;
 
-    return cultural + disciplinado;
+    // Esforço Heroico (Herói): 5 PT no 1º nível e 2 a cada nível par (o texto pede que sejam usados na Genialidade Inusitada)
+    const heroico = (f.caracteristicas ?? []).some((c) => c.nome.includes('Esforço Heroico'))
+        ? 5 + 2 * Math.floor(Math.min(20, Math.max(1, Math.floor(Number(f.nivel)) || 1)) / 2)
+        : 0;
+
+    return cultural + disciplinado + heroico;
 }
 
 const norm = (s: string): string => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
