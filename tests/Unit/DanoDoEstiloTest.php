@@ -122,4 +122,16 @@ class DanoDoEstiloTest extends TestCase
         $this->assertSame(20, Dano::calcular($alvo, 20, 'Fogo', Regras::ignoraDaPrincipal($f, 'Golpe'))['final']);
         $this->assertSame(20, Dano::calcular($alvo, 20, 'Gelo', Regras::ignoraDaPrincipal($f, 'Golpe'))['final']);
     }
+
+    public function test_margem_de_critico_da_tecnica_e_a_menor_entre_a_propria_e_a_dos_efeitos(): void
+    {
+        $f = [...$this->ficha([], 5), 'tecnicas' => ['lista' => [['nome' => 'Tamaito', 'margemCritica' => 19], ['nome' => 'Overheat']]], 'akuma' => ['lista' => [['nome' => 'God Thread', 'margemCritica' => 19]]]];
+        $this->assertSame(19, Regras::margemDaTecnica($f, [], 'Tamaito'));
+        $this->assertSame(20, Regras::margemDaTecnica($f, [], 'Overheat'));
+        $this->assertSame(19, Regras::margemDaTecnica($f, ['margem.tecnica' => 19], 'Overheat')); // Fios Imperceptíveis
+        $this->assertSame(18, Regras::margemDaTecnica($f, ['margem.tecnica' => 18], 'Tamaito')); // a menor
+        $this->assertSame(19, Regras::margemDaTecnica($f, [], 'God Thread')); // técnica da Akuma
+        $this->assertSame(20, Regras::margemDaTecnica($f, [], 'Inexistente'));
+        $this->assertSame(2, Regras::margemDaTecnica($f, ['margem.tecnica' => -3], 'Overheat')); // nunca abaixo de 2
+    }
 }

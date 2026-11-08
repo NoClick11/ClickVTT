@@ -82,6 +82,26 @@ final class Regras
     }
 
     /**
+     * A margem de acerto crítico de uma Técnica de ataque (20 = só o 20; 19 = 19-20): a menor entre a da própria Técnica (`margemCritica`) e a
+     * `margem.tecnica` dos efeitos (Fios Imperceptíveis, Transformação Diabólica). Nunca abaixo de 2.
+     *
+     * @param  array<string, mixed>  $f
+     * @param  array<string, int|float>  $variaveis
+     */
+    public static function margemDaTecnica(array $f, array $variaveis, string $nomeTecnica): int
+    {
+        $propria = 20;
+        foreach ([...($f['tecnicas']['lista'] ?? []), ...($f['akuma']['lista'] ?? [])] as $t) {
+            if (($t['nome'] ?? null) === $nomeTecnica) {
+                $propria = (int) ($t['margemCritica'] ?? 20);
+                break;
+            }
+        }
+
+        return max(2, min(20, $propria, (int) ($variaveis['margem.tecnica'] ?? 20)));
+    }
+
+    /**
      * Golpe Moral (Aventureiro): ataques com chicote ignoram resistência a dano Cortante e causam metade do dano em invulnerabilidades (de qualquer tipo).
      *
      * @param  array<string, mixed>  $f
@@ -361,6 +381,8 @@ final class Regras
         }
         $base['margem.corpo'] = 20;
         $base['margem.distancia'] = 20;
+        $base['margem.tecnica'] = 20;
+        $base['alcance.linha'] = 0;
         // Ataques da Ação "Atacar": 1 + Ataque Extra e afins; os extras à distância só valem para armas à distância
         $base['ataques.acao'] = 1;
         $base['ataques.distancia'] = 0;

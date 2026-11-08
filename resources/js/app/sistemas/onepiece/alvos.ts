@@ -50,6 +50,9 @@ export const ALVOS_DE_EFEITO: AlvoEfeitoOnePiece[] = [
     { id: 'ataques.distancia', rotulo: 'Ataques extras à distância (Ação Atacar)', modos: NUMERICOS },
     { id: 'margem.corpo', rotulo: 'Margem de crítico (corpo a corpo)', modos: NUMERICOS },
     { id: 'margem.distancia', rotulo: 'Margem de crítico (à distância)', modos: NUMERICOS },
+    { id: 'margem.tecnica', rotulo: 'Margem de crítico (Técnicas)', modos: NUMERICOS },
+    // alcance extra das Técnicas em Linha, em decímetros (60 = 6 m)
+    { id: 'alcance.linha', rotulo: 'Alcance extra das Técnicas em Linha (dm)', modos: NUMERICOS },
     { id: 'ataque.desarmado', rotulo: 'Ataque desarmado', modos: AMBOS },
     { id: 'dano.desarmado', rotulo: 'Dano desarmado', modos: NUMERICOS },
     { id: 'concentracao', rotulo: 'Teste de concentração', modos: ROLAGEM },

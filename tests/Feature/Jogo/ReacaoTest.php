@@ -431,4 +431,33 @@ class ReacaoTest extends TestCase
         $this->ficha($c, $c->ana, $c->aria, ['caracteristicas' => [$plot(true)]]);
         $this->assertSame(0, $this->aplicarDano($c, $c->aria->id, 999)['calculo']['final']);
     }
+
+    public function test_costura_interna_da_pv_temporarios_ao_ser_atacado_sem_precisar_de_sangramento_e_acaba_no_inicio_do_turno(): void
+    {
+        $c = $this->cenario();
+        $this->combate($c); // vez do Bruno; depois a Aria
+        $sis = app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece');
+        $costura = ['nome' => 'Costura Interna de Emergência', 'origem' => 'Fruta', 'tipo' => 'passiva', 'descricao' => '', 'builder' => 'fruta',
+            'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'si', 'pvTemporarios' => '4d10']];
+        $this->ficha($c, $c->ana, $c->aria, ['caracteristicas' => [$costura], 'condicoes' => ['sangramento']]);
+        $this->ataque($c);
+        $this->reagir($c, $c->ana, $c->aria, 'c:0');
+        $f = $c->aria->fresh()->fichaCompleta($sis);
+        $this->assertGreaterThanOrEqual(4, $f['pv']['temp']);
+        $this->assertLessThanOrEqual(40, $f['pv']['temp']);
+        $this->assertSame($f['pv']['temp'], $f['reducao']['pvTemp']);
+        $this->assertNotContains('sangramento', $f['condicoes']); // o Sangramento termina, mas não era preciso tê-lo
+
+        // o dano gasta os PV temporários antes dos PV
+        $this->aplicarDano($c, $c->aria->id, 3);
+        $depois = $c->aria->fresh()->fichaCompleta($sis);
+        $this->assertSame(10, $depois['pv']['atual']);
+        $this->assertSame($f['pv']['temp'] - 3, $depois['pv']['temp']);
+
+        // no início do próximo turno da Aria os PV temporários da reação acabam
+        $this->cmd($c, 'turno');
+        $f2 = $c->aria->fresh()->fichaCompleta($sis);
+        $this->assertSame(0, $f2['pv']['temp']);
+        $this->assertSame(0, $f2['reducao']['pvTemp']);
+    }
 }

@@ -236,6 +236,8 @@ function vigiaDoUso(t: Tecnica) {
 /** A área da Técnica; "Arma, Cone/Linha/Esfera" não passa do alcance máximo da arma equipada (sem arma ou sem alcance cadastrado, fica bloqueada). */
 function areaComLimite(alcance: string) {
     const area = areaDoAlcance(alcance);
+    // Alcance extra das Técnicas em Linha (Fios Imperceptíveis: +6 m), em decímetros nos efeitos
+    if (area && area.forma === 'linha' && area.metros !== null) return { ...area, metros: area.metros + (calc.value['alcance.linha'] ?? 0) / 10 };
     if (!area || area.metros !== null) return area;
     const r = alcanceMaximoDaArma(props.ficha, itens.value);
 

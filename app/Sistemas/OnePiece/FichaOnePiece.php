@@ -58,7 +58,7 @@ final class FichaOnePiece
             'ca', 'iniciativa', 'cd', 'ataque', 'ataque.arma', 'dano.arma', 'carga.max', 'pv.max', 'escudo.max',
             'salv.*', 'pericia.*', 'atributos.*', 'pp.max', 'dano.tecnica',
             // alcance corpo a corpo e deslocamentos (em decímetros: 15 = 1,5 m) e a fração do dano das armas à distância (100 = inteiro)
-            'alcance.corpo', 'passo.corpo', 'passo.distancia', 'passo.desarmado', 'passo.tecnica', 'margem.corpo', 'margem.distancia', 'ataques.acao', 'ataques.distancia', 'ataque.desarmado', 'dano.desarmado', 'concentracao', 'movimento.*', 'movimento.normal', 'movimento.nado', 'movimento.escalada', 'movimento.voo', 'dano.distancia.pct',
+            'alcance.corpo', 'passo.corpo', 'passo.distancia', 'passo.desarmado', 'passo.tecnica', 'margem.corpo', 'margem.distancia', 'margem.tecnica', 'alcance.linha', 'ataques.acao', 'ataques.distancia', 'ataque.desarmado', 'dano.desarmado', 'concentracao', 'movimento.*', 'movimento.normal', 'movimento.nado', 'movimento.escalada', 'movimento.voo', 'dano.distancia.pct',
             // só para vantagem/desvantagem: testes de atributo e de ferramenta (os demais alvos de rolagem são os de cima)
             'teste.*', 'ferramenta.*', ...array_map(fn ($a) => "teste.{$a}", self::ATRIBUTOS),
             ...array_map(fn ($a) => "salv.{$a}", self::ATRIBUTOS),
@@ -314,6 +314,7 @@ final class FichaOnePiece
         $r['reducao.reserva'] = $inteiro(0, 9999);
         $r['reducao.dados'] = $inteiro(0, 99);
         $r['reducao.zerar'] = ['boolean:strict'];
+        $r['reducao.pvTemp'] = $inteiro(0, 9999); // PV temporários dados por uma reação (vencem no início do próximo turno do dono)
         $r['reducao.unica'] = ['boolean:strict'];
         $r['reducao.turnos'] = $inteiro(0, 9);
 
@@ -448,6 +449,7 @@ final class FichaOnePiece
         // Técnica que dura vários turnos (Quick Draw): rodadas, concentração e os efeitos que o jogador escolhe no acerto.
         // Técnica auxiliar que arma um bônus para a próxima Técnica de Combate (Fire Lash, Strike)
         foreach (['tecnicas.lista.*', 'akuma.lista.*'] as $base) {
+            $r["{$base}.margemCritica"] = ['nullable', 'integer:strict', 'between:2,20']; // 19 = crítico com 19-20 (Técnicas de ataque)
             $r["{$base}.armarBonus"] = ['nullable', 'array'];
             $r["{$base}.armarBonus.dados"] = ['required_with:'.$base.'.armarBonus', 'integer:strict', 'between:1,20'];
             $r["{$base}.armarBonus.tipo"] = ['nullable', 'string', 'max:20'];
@@ -482,6 +484,7 @@ final class FichaOnePiece
                 }
             }];
             // Reação defensiva: arma uma redução do dano que o personagem sofrer (reserva de dados, `mais` dados por PP, ou zerar o próximo dano)
+            $r["{$base}.reacao.pvTemporarios"] = ['nullable', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/']; // PV temporários da reação (Costura Interna)
             $r["{$base}.reacao.reducao"] = ['nullable', 'array'];
             $r["{$base}.reacao.reducao.reserva"] = ['nullable', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/'];
             $r["{$base}.reacao.reducao.mais"] = ['nullable', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/'];

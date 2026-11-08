@@ -1,5 +1,6 @@
 [
     "alcance.corpo",
+    "alcance.linha",
     "ataque",
     "ataque.arma",
     "ataque.desarmado",
@@ -25,6 +26,7 @@
     "iniciativa",
     "margem.corpo",
     "margem.distancia",
+    "margem.tecnica",
     "movimento.*",
     "movimento.escalada",
     "movimento.nado",

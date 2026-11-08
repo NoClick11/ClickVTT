@@ -1323,6 +1323,7 @@ export const BRUTAMONTES: EstiloDados = {
             '2d10',
             'contundente',
             'Golpe poderoso e preciso que transforma o ar, rochas ou destroços em projétil contra uma criatura, em jogada de ataque (Técnicas) à distância com margem de crítico 19-20. <Kongo Kabura> No 6º nível, pode ser usada como Técnica de 3º Grau: 5d10 Contundente, 21 m em Linha, 6 PP e margem de crítico 18-20. Requisito: arma favorita. Ataque combinado: possível.',
+            { margemCritica: 19 },
         ),
         // Nari Kabura aprimorada: no 6º nível entra como Técnica de 3º Grau
         tec(
@@ -1337,6 +1338,7 @@ export const BRUTAMONTES: EstiloDados = {
             '5d10',
             'contundente',
             'Nari Kabura aprimorada (3º Grau): o golpe poderoso e preciso transforma o ar, rochas ou destroços em projétil contra uma criatura, em jogada de ataque (Técnicas) à distância com margem de crítico 18-20. Requisito: arma favorita. Ataque combinado: possível.',
+            { margemCritica: 18 },
         ),
         tec(
             1,
@@ -2237,7 +2239,7 @@ export const HEROI: EstiloDados = {
             nivelMin: 10,
             nivelMax: 14,
             descricao: 'A margem de acerto crítico da lança muda para 18-20.',
-            efeitos: [{ alvo: 'margem.corpo', modo: 'min', valor: 18 }],
+            efeitos: [{ alvo: 'margem.corpo', modo: 'max', valor: 18 }],
             etiquetas: ['Lança: crítico 18-20'],
         },
         {
@@ -2246,7 +2248,7 @@ export const HEROI: EstiloDados = {
             nome: 'Lança (15º): crítico 17-20',
             nivelMin: 15,
             descricao: 'A margem de acerto crítico da lança muda para 17-20.',
-            efeitos: [{ alvo: 'margem.corpo', modo: 'min', valor: 17 }],
+            efeitos: [{ alvo: 'margem.corpo', modo: 'max', valor: 17 }],
             etiquetas: ['Lança: crítico 17-20'],
         },
         {
@@ -2531,8 +2533,9 @@ export const USUARIO_INSITO: EstiloDados = {
             descricao:
                 'Por 1 minuto: a margem de acerto crítico dos seus ataques (comum ou Técnicas) vira 18-20; você pode forçar uma criatura a falhar numa Salvaguarda qualquer, até 3 vezes; Técnicas de 1º grau custam 0 PP e podem substituir um dos ataques do Ataque Extra, sem contar no limite de 1 técnica por turno; num acerto crítico, você faz uma Técnica de Combate de 3º grau ou menor com uma ação bônus, também sem contar nesse limite. Um uso até descanso longo.',
             efeitos: [
-                { alvo: 'margem.corpo', modo: 'min', valor: 18 },
-                { alvo: 'margem.distancia', modo: 'min', valor: 18 },
+                { alvo: 'margem.corpo', modo: 'max', valor: 18 },
+                { alvo: 'margem.distancia', modo: 'max', valor: 18 },
+                { alvo: 'margem.tecnica', modo: 'max', valor: 18 },
             ],
             etiquetas: ['Transformação: crítico 18-20, 3 Salvaguardas forçadas, Técnicas de 1º grau sem PP'],
         },
@@ -2623,6 +2626,7 @@ export function tecnicaDoEstilo(t: TecnicaDoEstilo & { origem: string }): Tecnic
         ...(t.acao ? { acao: t.acao } : {}),
         ...(t.reacao ? { reacao: t.reacao } : {}),
         ...(t.armarBonus ? { armarBonus: t.armarBonus } : {}),
+        ...(t.margemCritica ? { margemCritica: t.margemCritica } : {}),
         ...(t.teste ? { teste: t.teste } : {}),
         ...(t.duracao ? { duracao: t.duracao } : {}),
         builder: 'estilo',

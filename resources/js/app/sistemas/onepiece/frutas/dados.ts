@@ -38,7 +38,7 @@ const t = (
     rolagem: string,
     tipoDano: string | undefined,
     descricao: string,
-    extra: { teste?: TesteDaTecnica; reacao?: ReacaoDeCombate } = {},
+    extra: { teste?: TesteDaTecnica; reacao?: ReacaoDeCombate; margemCritica?: number } = {},
 ): TecnicaDaFruta => ({
     nivel,
     grau,
@@ -98,7 +98,7 @@ export const TO_ITO_NO_MI: FrutaDados = {
             '5d10',
             'perfurante',
             'Fio Bala: aponta o dedo como uma pistola e dispara um único fio comprimido em altíssima velocidade, em jogada de ataque (Técnicas) à distância; o disparo é tão preciso que tem margem de acerto crítico 19-20. Requisito: Ito-Ito no Mi. Ataque combinado: possível.',
-            { teste: { tipo: 'ataque' } },
+            { teste: { tipo: 'ataque' }, margemCritica: 19 },
         ),
         t(
             6,
@@ -214,7 +214,7 @@ export const TO_ITO_NO_MI: FrutaDados = {
             '18d12',
             'perfurante',
             'Dezesseis Balas Sagradas do Assassino: no ápice do despertar, dezesseis feixes colossais de fios condensados são disparados para atravessar um único inimigo, em jogada de ataque (Técnicas) à distância com margem de acerto crítico 19-20. Se acertar, o alvo faz Salvaguarda de Constituição ou recebe "Sangramento" e "Estremecido" até o fim do próximo turno dele. Requisito: Ito-Ito no Mi, Estágio Desperto. Ataque combinado: possível.',
-            { teste: { tipo: 'ataque' } },
+            { teste: { tipo: 'ataque' }, margemCritica: 19 },
         ),
         t(
             20,
@@ -235,15 +235,20 @@ export const TO_ITO_NO_MI: FrutaDados = {
             nome: 'Fios Imperceptíveis',
             descricao:
                 'Manifestação de Poder (passiva): seus fios são tão finos e afiados que são praticamente invisíveis a olho nu. Todas as jogadas de ataque (Técnicas) com a Ito-Ito no Mi recebem +2 para atingir e margem de acerto crítico 19-20, e o alcance de todas as técnicas em Linha aumenta em 6 metros. Criaturas têm desvantagem em Testes de Vontade (Percepção) para notar armadilhas ou fios estendidos no ambiente.',
-            efeitos: [{ alvo: 'ataque', modo: 'soma', valor: 2 }],
-            etiquetas: ['Ataques de Técnicas +2', 'Técnicas em Linha: +6 m de alcance'],
+            efeitos: [
+                { alvo: 'ataque', modo: 'soma', valor: 2 },
+                { alvo: 'margem.tecnica', modo: 'max', valor: 19 },
+                { alvo: 'alcance.linha', modo: 'soma', valor: 60 },
+            ],
+            etiquetas: ['Ataques de Técnicas +2 e crítico 19-20', 'Técnicas em Linha: +6 m de alcance'],
         },
         {
             id: 'costura-interna',
             nome: 'Costura Interna de Emergência',
             descricao:
-                'Manifestação de Poder (reação): ao sofrer dano ou iniciar o turno sob a condição "Sangramento", você pode usar a reação para costurar os órgãos e estancar hemorragias internas com seus fios: encerra o "Sangramento" sobre si e recebe 4d10 Pontos de Vida Temporários, que duram até o início do seu próximo turno.',
-            etiquetas: ['Reação: encerra Sangramento e 4d10 PV temporários'],
+                'Manifestação de Poder (reação): ao sofrer dano você pode usar a reação para costurar os órgãos e estancar hemorragias internas com seus fios: encerra a condição "Sangramento" sobre si, se a tiver, e recebe 4d10 Pontos de Vida Temporários, que duram até o início do seu próximo turno. A reação é oferecida ao ser atacado (não é preciso estar sangrando) e os PV temporários já entram antes do dano.',
+            reacao: { gatilho: 'ataque_declarado', alcance: 'si', pvTemporarios: '4d10' },
+            etiquetas: ['Reação: 4d10 PV temporários e encerra o Sangramento'],
         },
         {
             id: 'mestre-dos-titeres',

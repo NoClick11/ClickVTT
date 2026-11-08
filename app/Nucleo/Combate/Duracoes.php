@@ -32,6 +32,37 @@ final class Duracoes
         if ($personagemId) {
             self::terminarTurno($mesa, (int) $personagemId);
         }
+        // quem entra no turno perde o que durava "até o início do próximo turno" dele
+        $entrou = collect($depois['itens'] ?? [])->firstWhere('id', $depois['atual'] ?? null);
+        if (($entrou['personagem_id'] ?? null) !== null) {
+            self::iniciarTurno($mesa, (int) $entrou['personagem_id']);
+        }
+    }
+
+    /** Início do turno do personagem: os PV temporários dados por uma reação (Costura Interna) acabam. */
+    public static function iniciarTurno(Mesa $mesa, int $personagemId): void
+    {
+        $sistema = app(RegistroSistemas::class)->resolver($mesa->sistema->slug);
+        if (! $sistema) {
+            return;
+        }
+        $campos = DB::transaction(function () use ($mesa, $personagemId, $sistema, &$p) {
+            $p = Personagem::query()->where('mesa_id', $mesa->id)->whereKey($personagemId)->lockForUpdate()->first();
+            $ficha = $p?->fichaCompleta($sistema);
+            $dado = (int) ($ficha['reducao']['pvTemp'] ?? 0);
+            if (! $p || $dado <= 0) {
+                return null;
+            }
+            $ficha['pv']['temp'] = max(0, (int) ($ficha['pv']['temp'] ?? 0) - $dado);
+            $ficha['reducao']['pvTemp'] = 0;
+            $p->ficha = $ficha;
+            $p->save();
+
+            return ['pv.temp' => $ficha['pv']['temp'], 'reducao' => $ficha['reducao']];
+        });
+        if ($campos) {
+            self::transmitir($mesa, $p, $campos, false);
+        }
     }
 
     /** Fim do encontro: sai o que tinha duração em turnos (condições e a redução armada), que sem o combate nunca acabaria. */
@@ -44,11 +75,13 @@ final class Duracoes
         }
         $ficha['condicoes'] = array_values(array_diff($ficha['condicoes'] ?? [], array_keys($duracoes)));
         $ficha['duracoes'] = [];
+        // PV temporários de reação (Costura Interna) não ficam depois do encontro
+        $ficha['pv']['temp'] = max(0, (int) ($ficha['pv']['temp'] ?? 0) - (int) ($ficha['reducao']['pvTemp'] ?? 0));
         $ficha['reducao'] = [];
         $ficha['bonusTecnica'] = [];
         $p->ficha = $ficha;
         $p->save();
-        self::transmitir($mesa, $p, ['condicoes' => $ficha['condicoes'], 'duracoes' => [], 'reducao' => [], 'bonusTecnica' => []], true);
+        self::transmitir($mesa, $p, ['condicoes' => $ficha['condicoes'], 'duracoes' => [], 'reducao' => [], 'bonusTecnica' => [], 'pv.temp' => $ficha['pv']['temp']], true);
     }
 
     /** Um turno a menos nas condições com duração do personagem; as que zeram saem da lista. */
@@ -76,7 +109,7 @@ final class Duracoes
             }
             if (($reducao['turnos'] ?? 0) > 0) {
                 $restam = (int) $reducao['turnos'] - 1;
-                $ficha['reducao'] = $restam > 0 ? [...$reducao, 'turnos' => $restam] : [];
+                $ficha['reducao'] = $restam > 0 ? [...$reducao, 'turnos' => $restam] : array_intersect_key($reducao, ['pvTemp' => 1]); // os PV temporários da reação acabam no início do turno
                 $p->ficha = $ficha;
                 $p->save();
                 self::transmitir($mesa, $p, ['reducao' => $ficha['reducao']], false);

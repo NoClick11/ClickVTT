@@ -154,7 +154,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
             $ofertas[] = [
                 // `categoria`: a reação gasta a categoria `reacao` (a do turno); algumas (Aparar Aprimorado) gastam outra, como `livre`
                 'id' => $id, 'rotulo' => $dados['nome'] ?? 'Reação', 'descricao' => $dados['descricao'] ?? '', 'categoria' => $r['categoria'] ?? 'reacao',
-                'alcance' => $r['alcance'] ?? 'si', 'cura' => $r['cura'] ?? null, 'custo' => $custo, 'reducao' => $r['reducao'] ?? null,
+                'alcance' => $r['alcance'] ?? 'si', 'cura' => $r['cura'] ?? null, 'custo' => $custo, 'reducao' => $r['reducao'] ?? null, 'pvTemporarios' => $r['pvTemporarios'] ?? null,
                 // `defesa` é um número ou uma fórmula da ficha de quem reage (ex.: `@prof-floor(@prof/2)`)
                 'efeitos' => isset($r['defesa']) ? [['alvo' => 'defesa', 'modo' => 'soma', 'valor' => is_numeric($r['defesa']) ? (int) $r['defesa'] : (int) Formula::avaliar((string) $r['defesa'], $variaveis)]] : [],
             ];
@@ -231,7 +231,28 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
             $campos = ($oferta['custo']['pp'] ?? 0) > 0 ? ['pp.atual' => max(0, (int) ($ficha['pp']['atual'] ?? 0) - (int) $oferta['custo']['pp'])] : [];
         }
 
-        return [...$campos, ...$this->armarReducao($ficha, $oferta['reducao'] ?? null)];
+        return [...$campos, ...$this->armarReducao($ficha, $oferta['reducao'] ?? null), ...$this->darPvTemporarios($ficha, $oferta['pvTemporarios'] ?? null)];
+    }
+
+    /**
+     * Reação que dá PV temporários (Costura Interna de Emergência): rola os dados, fica com o maior entre o que já tinha e o novo, anota o valor para o
+     * início do próximo turno do dono tirá-lo e encerra o Sangramento, se houver.
+     *
+     * @return array<string, mixed>
+     */
+    private function darPvTemporarios(array $ficha, ?string $dados): array
+    {
+        if (! $dados) {
+            return [];
+        }
+        $total = (int) app(Rolador::class)->rolar($dados)['total'];
+        $campos = ['pv.temp' => max((int) ($ficha['pv']['temp'] ?? 0), $total), 'reducao.pvTemp' => $total];
+        if (in_array('sangramento', $ficha['condicoes'] ?? [], true)) {
+            $campos['condicoes'] = array_values(array_diff($ficha['condicoes'], ['sangramento']));
+            $campos['duracoes'] = array_diff_key($ficha['duracoes'] ?? [], ['sangramento' => 1]);
+        }
+
+        return $campos;
     }
 
     /** O índice da característica (pelo nome) que ainda tem `$qtd` usos, ou null. */

@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { FRUTAS, TO_ITO_NO_MI, frutaPorId } from '../../resources/js/app/sistemas/onepiece/frutas/dados.ts';
 import { camposDaFruta, camposDaFrutaNoNivel, tecnicasDaFruta } from '../../resources/js/app/sistemas/onepiece/frutas/regras.ts';
+import { readFileSync } from 'node:fs';
+import { calcular } from '../../resources/js/app/sistemas/onepiece/regras.ts';
+
+const casos = JSON.parse(readFileSync(new URL('./onepiece.json', import.meta.url), 'utf8'));
 import { akumaPadrao } from '../../resources/js/app/sistemas/onepiece/akuma/regras.ts';
 
 const ficha = (nivel, extra = {}) => ({
@@ -58,4 +62,37 @@ test('subir de nível libera o que faltava sem apagar o uso já gasto; tirar a f
     assert.ok(!fora['akuma.lista'].some((t) => t.builder === 'fruta'));
     assert.ok(!fora.caracteristicas.some((c) => c.builder === 'fruta'));
     assert.equal(fora['akuma.fruta'], '');
+});
+
+test('Fios Imperceptíveis: margem 19-20 e +6 m nas Linhas valem sozinhos; Tamaito e God Thread já trazem a margem 19', () => {
+    const campos = camposDaFruta(ficha(1), 'ito-ito-no-mi');
+    const com = { ...casos[0].ficha, caracteristicas: campos.caracteristicas };
+    const v = calcular(com, {});
+    assert.equal(v['margem.tecnica'], 19);
+    assert.equal(v['alcance.linha'], 60);
+    const sem = calcular({ ...com, caracteristicas: [] }, {});
+    assert.equal(sem['margem.tecnica'], 20);
+    assert.equal(sem['alcance.linha'], 0);
+    const margem = (nome) => TO_ITO_NO_MI.tecnicas.find((x) => x.tecnica.nome === nome).tecnica.margemCritica;
+    assert.equal(margem('Tamaito'), 19);
+    assert.equal(margem('God Thread'), 19);
+    assert.equal(margem('Overheat'), undefined);
+    // a Costura Interna é uma reação que dá PV temporários
+    const costura = campos.caracteristicas.find((c) => c.nome === 'Costura Interna de Emergência');
+    assert.deepEqual(costura.reacao, { gatilho: 'ataque_declarado', alcance: 'si', pvTemporarios: '4d10' });
+});
+
+test('margens de crítico dos estilos usam o modo que baixa a margem (Lança 18/17, Transformação Diabólica 18)', async () => {
+    const { HEROI, USUARIO_INSITO } = await import('../../resources/js/app/sistemas/onepiece/construtor/dados/estilos.ts');
+    const { caracteristicaDe } = await import('../../resources/js/app/sistemas/onepiece/construtor/regras.ts');
+    const base = casos[0].ficha;
+    const margem = (estilo, id, nivel, chave) => {
+        const c = caracteristicaDe({ traco: estilo.tracos.find((t) => t.id === id), origem: estilo.nome, builder: 'estilo' }, nivel);
+        return calcular({ ...base, nivel, caracteristicas: [{ ...c, ativa: true }] }, {})[chave];
+    };
+    assert.equal(margem(HEROI, 'lanca-margem-18', 10, 'margem.corpo'), 18);
+    assert.equal(margem(HEROI, 'lanca-margem-17', 15, 'margem.corpo'), 17);
+    assert.equal(margem(USUARIO_INSITO, 'transformacao-diabolica', 14, 'margem.corpo'), 18);
+    assert.equal(margem(USUARIO_INSITO, 'transformacao-diabolica', 14, 'margem.distancia'), 18);
+    assert.equal(margem(USUARIO_INSITO, 'transformacao-diabolica', 14, 'margem.tecnica'), 18);
 });

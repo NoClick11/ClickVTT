@@ -115,7 +115,7 @@ class ChatController extends Controller
             \App\Sistemas\OnePiece\Municoes::consumir($mesa, (int) $dados['personagem_id'], $municao['item_id']);
         }
         if (is_array($dados['tecnica'] ?? null) && $this->ehAtaque($resultado['termos'])) {
-            $marcas = [...$marcas, ...$this->marcasDoAtaqueDeTecnica($dados['tecnica'], $resultado['termos'])];
+            $marcas = [...$marcas, ...$this->marcasDoAtaqueDeTecnica($dados['tecnica'], $resultado['termos'], \App\Sistemas\OnePiece\Regras::margemDaTecnica($ficha, $variaveis, trim($dados['tecnica']['nome'])))];
         }
         // Shoot (Black Leg): ataque desarmado que acerta com d20 de 16 a 20 pode causar uma condição (Kick Festival), se o alvo falhar na Salvaguarda de Constituição
         if (str_contains((string) $dados['expressao'], '@ataque.desarmado') && ($kick = \App\Sistemas\OnePiece\Regras::kickFestival($ficha, Pipeline::naturalDoD20($resultado['termos'])))) {
@@ -216,11 +216,11 @@ class ChatController extends Controller
      * @param  list<array>  $termos
      * @return array<string, mixed>
      */
-    private function marcasDoAtaqueDeTecnica(array $tecnica, array $termos): array
+    private function marcasDoAtaqueDeTecnica(array $tecnica, array $termos, int $margem = 20): array
     {
         $natural = Pipeline::naturalDoD20($termos);
-        $destaque = $natural === null ? null : ($natural >= 20 ? 'critico' : ($natural === 1 ? 'falha' : null));
-        $meta = ['margem' => 20, 'tecnica' => ['nome' => trim($tecnica['nome']), ...(isset($tecnica['secundaria']) ? ['secundaria' => $tecnica['secundaria']] : [])]];
+        $destaque = $natural === null ? null : ($natural >= $margem ? 'critico' : ($natural === 1 ? 'falha' : null));
+        $meta = ['margem' => $margem, 'tecnica' => ['nome' => trim($tecnica['nome']), ...(isset($tecnica['secundaria']) ? ['secundaria' => $tecnica['secundaria']] : [])]];
         if ($destaque) {
             $meta['destaque'] = $destaque;
         }

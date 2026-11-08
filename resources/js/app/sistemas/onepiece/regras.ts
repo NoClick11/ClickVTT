@@ -226,6 +226,8 @@ export interface ReacaoDeCombate {
      * Reação defensiva que reduz o dano que quem reage sofrer depois: `reserva` (dados da reserva de redução), `mais` (dados somados por 1 PP, até
      * `maximo` dados no total) ou `zerar` (o próximo dano vira 0). O servidor rola e consome (`OnePiece::absorverDano`).
      */
+    /** Dados de Pontos de Vida Temporários que a reação dá (Costura Interna); duram até o início do próximo turno de quem reage. */
+    pvTemporarios?: string;
     reducao?: {
         reserva?: string;
         mais?: string;
@@ -446,6 +448,8 @@ export interface Tecnica {
     duracao?: DuracaoDaTecnica;
     /** Técnica auxiliar que arma um bônus para a próxima Técnica de Combate (Fire Lash, Strike). */
     armarBonus?: ArmarBonus;
+    /** Margem de acerto crítico da Técnica de ataque (19 = 19-20); vale a menor entre ela e a `margem.tecnica` dos efeitos. */
+    margemCritica?: number;
     /** A Técnica tem uma arma cortante como requisito: as armas Meito equipadas somam dados ao dano dela. */
     armaCortante?: boolean;
     /** Quem criou: o assistente de criação marca `especie`, para refazer o passo sem duplicar. */
@@ -745,6 +749,8 @@ export function analisar(f: FichaOnePiece, itensDaMesa: ItensPorId = {}): Analis
     for (const p of ['corpo', 'distancia', 'desarmado', 'tecnica']) base[`passo.${p}`] = 0;
     base['margem.corpo'] = 20;
     base['margem.distancia'] = 20;
+    base['margem.tecnica'] = 20;
+    base['alcance.linha'] = 0;
     // Ataques da Ação "Atacar": 1 + Ataque Extra e afins; os extras à distância só valem para armas à distância
     base['ataques.acao'] = 1;
     base['ataques.distancia'] = 0;
