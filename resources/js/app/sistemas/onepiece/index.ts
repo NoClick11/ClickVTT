@@ -22,4 +22,6 @@ export const modulo: ModuloSistema = {
     Loja: defineAsyncComponent(() => import('./itens/LojaDoJogador.vue')),
     CatalogoDeItens: defineAsyncComponent(() => import('./itens/CatalogoDeItens.vue')),
     PainelDeFrutas: defineAsyncComponent(() => import('./frutas/PainelDeFrutas.vue')),
+    FichaDeNpc: defineAsyncComponent(() => import('./npcs/FichaDeNpc.vue')),
+    NovoNpcDialog: defineAsyncComponent(() => import('./npcs/NovoNpcDialog.vue')),
 };

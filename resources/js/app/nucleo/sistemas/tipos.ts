@@ -102,6 +102,9 @@ export interface ModuloSistema {
      * e emite `salvar(personagemId, campos)`.
      */
     PainelDeFrutas?: Component;
+    /** Ficha de NPC de uma tela só (usada quando a ficha do personagem traz o bloco `npc`) e o seletor do catálogo de NPCs. */
+    FichaDeNpc?: Component;
+    NovoNpcDialog?: Component;
     /** Loja do jogador (painel flutuante, opcional): catálogo do sistema para comprar e arrastar para a ficha. */
     Loja?: Component;
     /** Categorias, raridades e moeda da loja do sistema (alimenta o editor de itens do catálogo). */

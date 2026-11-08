@@ -104,6 +104,8 @@ export interface UsoDeTecnica {
     secundaria?: EfeitoSecundario;
     /** Vantagem/desvantagem dos efeitos na jogada de ataque. */
     modoAtaque: 'vantagem' | 'desvantagem' | null;
+    /** NPC: o ataque da Técnica usa este bônus (o da ficha dele) em vez de `@ataque`; `margemCritica` é a dele (ex.: 18). */
+    ataqueFixo?: { bonus: number; margemCritica?: number };
     /** A categoria de ação que a Técnica gasta no combate e os campos dos PP gastos (`pp.atual` já descontado). */
     categoria: string | undefined;
     camposDosPP: Record<string, unknown>;
