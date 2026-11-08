@@ -16,10 +16,10 @@ import {
     Settings2,
     Type,
 } from 'lucide-vue-next';
-import type { Component } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, type Component } from 'vue';
 import type { Ferramenta } from '../engine/tipos';
 
-defineProps<{ ferramenta: Ferramenta; mestre: boolean; camadaIluminacao: boolean; dados: boolean; turnos: boolean }>();
+const props = defineProps<{ ferramenta: Ferramenta; mestre: boolean; camadaIluminacao: boolean; dados: boolean; turnos: boolean }>();
 defineEmits<{ ferramenta: [Ferramenta]; configurar: []; dados: []; turnos: [] }>();
 
 interface Item {
@@ -44,6 +44,35 @@ const ferramentas: Item[] = [
     { id: 'porta', rotulo: 'Porta', icone: DoorClosed, mestre: true, iluminacao: true },
     { id: 'janela', rotulo: 'Janela', icone: AppWindow, mestre: true, iluminacao: true },
 ];
+const visiveis = (f: Item) =>
+    (!f.mestre || props.mestre) && (!f.iluminacao || props.camadaIluminacao) && (!f.foraIluminacao || !props.camadaIluminacao);
+/**
+ * Sem altura para tudo, as ferramentas passam para outra coluna. Grade em vez de flex-wrap: assim o fundo do painel cresce junto com as colunas.
+ * (O espaço de baixo fica livre para o seletor de camadas.)
+ */
+const altura = ref(window.innerHeight);
+const medir = () => (altura.value = window.innerHeight);
+onMounted(() => window.addEventListener('resize', medir));
+onBeforeUnmount(() => window.removeEventListener('resize', medir));
+const linhas = computed(() => {
+    const total = ferramentas.filter(visiveis).length + 3 + (props.mestre ? 3 : 0);
+    const cabem = Math.max(4, Math.floor((altura.value - 64 - 208 - 12 + 4) / 44));
+
+    return Math.min(total, cabem);
+});
+const colunas = computed(() => Math.ceil((ferramentas.filter(visiveis).length + 3 + (props.mestre ? 3 : 0)) / linhas.value));
+/** Linha fina entre as colunas (só aparece quando as ferramentas quebram): cada coluna tem 40px e o vão, 9px. */
+const divisorDeColunas = computed(() =>
+    colunas.value > 1
+        ? {
+              backgroundImage: 'linear-gradient(to right, transparent 44px, rgb(212 168 67 / 0.25) 44px 45px, transparent 45px)',
+              backgroundSize: '49px 100%',
+              backgroundRepeat: 'repeat-x',
+              backgroundOrigin: 'content-box',
+              backgroundClip: 'content-box',
+          }
+        : {},
+);
 const botao =
     'flex size-10 items-center justify-center rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400';
 </script>
@@ -51,11 +80,12 @@ const botao =
 <template>
     <TooltipProvider :delay-duration="200">
         <nav
-            class="pointer-events-auto absolute left-3 top-16 z-10 flex flex-col gap-1 rounded-lg border border-ouro-500/20 bg-preto-950/90 p-1.5 backdrop-blur"
+            class="pointer-events-auto absolute left-3 top-16 z-10 grid grid-flow-col gap-x-[9px] gap-y-1 rounded-lg border border-ouro-500/20 bg-preto-950/90 p-1.5 backdrop-blur"
             aria-label="Ferramentas"
+            :style="{ gridTemplateRows: `repeat(${linhas}, auto)`, ...divisorDeColunas }"
         >
             <template v-for="f in ferramentas" :key="f.id">
-                <Tooltip v-if="(!f.mestre || mestre) && (!f.iluminacao || camadaIluminacao) && (!f.foraIluminacao || !camadaIluminacao)">
+                <Tooltip v-if="visiveis(f)">
                     <TooltipTrigger as-child>
                         <button
                             type="button"
