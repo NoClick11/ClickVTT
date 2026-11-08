@@ -57,6 +57,22 @@
           "multiplicador": 1000
         }
       }
+    },
+    {
+      "id": "brutamontes",
+      "nome": "Brutamontes",
+      "equipamentoInicial": {
+        "itens": [
+          {
+            "catalogo": "kanabo",
+            "qtd": 1
+          }
+        ],
+        "dinheiro": {
+          "dados": "6d10",
+          "multiplicador": 1000
+        }
+      }
     }
   ]
 }

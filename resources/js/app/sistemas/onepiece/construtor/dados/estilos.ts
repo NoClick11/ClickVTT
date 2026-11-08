@@ -52,8 +52,10 @@ export interface EstiloDados {
     salvaguardas: AtributoId[];
     /** Proficiência com armas e equipamentos. */
     proficiencias: string[];
-    /** Quantas perícias o jogador escolhe, livres. */
+    /** Quantas perícias o jogador escolhe (livres, ou entre `periciasPermitidas`). */
     pericias: number;
+    /** Se houver, as perícias do estilo só podem ser escolhidas desta lista (ids). */
+    periciasPermitidas?: string[];
     armasFavoritas: string[];
     /** As duas Habilidades Básicas Inatas entre as quais o jogador escolhe (ids do catálogo de Habilidades Básicas). */
     habilidadesInatas: { id: string; nome: string }[];
@@ -1097,7 +1099,325 @@ const TESTES_DO_AVENTUREIRO: Record<string, TesteDaTecnica> = {
 };
 for (const t of AVENTUREIRO.tecnicas) if (TESTES_DO_AVENTUREIRO[t.nome]) t.teste = TESTES_DO_AVENTUREIRO[t.nome];
 
-export const ESTILOS: EstiloDados[] = [ATIRADOR, AVENTUREIRO];
+/**
+ * Brutamontes (kanabo e força bruta). Regra do projeto: só dano, área e PP são automáticos (Técnicas); o resto das características fica como
+ * texto/etiqueta para a mesa conduzir. Exceções numéricas simples: PV máximos, Ataque Extra, deslocamento e usos por descanso.
+ */
+const TODOS_OS_DANOS = [
+    'Contundente',
+    'Cortante',
+    'Perfurante',
+    'Fogo',
+    'Gelo',
+    'Elétrico',
+    'Ácido',
+    'Veneno',
+    'Trovejante',
+    'Psíquico',
+    'Verdadeiro',
+];
+
+export const BRUTAMONTES: EstiloDados = {
+    id: 'brutamontes',
+    nome: 'Brutamontes',
+    descricao:
+        'Combatente desumano que abusa da violência: seus golpes causam impactos aterrorizantes, drenam a força dos inimigos só de estarem perto e ele fica mais forte quanto mais sangue é derramado. Mestre do kanabo, é imparável no campo de batalha.',
+    dado: 'd12',
+    atributosPrimarios: ['for'],
+    salvaguardas: ['for', 'con'],
+    proficiencias: ['Kanabo/Tacape'],
+    pericias: 2,
+    periciasPermitidas: ['atletismo', 'intimidacao', 'provocacao', 'sobrevivencia'],
+    armasFavoritas: ['Kanabo', 'Machado Grande', 'Martelo de Guerra', 'Espada Montante', 'Corporal'],
+    habilidadesInatas: [
+        { id: 'corpo-de-guerreiro', nome: 'Corpo de Guerreiro' },
+        { id: 'superioridade-absoluta', nome: 'Superioridade Absoluta' },
+    ],
+    equipamento: '1 kanabo e 6d10 x 1000 Bellys.',
+    equipamentoInicial: {
+        itens: [{ catalogo: 'kanabo', qtd: 1 }],
+        dinheiro: { dados: '6d10', multiplicador: 1000 },
+    },
+    niveisAva: [4, 8, 12, 16, 20],
+    niveisDeTecnica: [1, 3, 6, 9, 12, 16, 20],
+    tracos: [
+        {
+            id: 'demonio-incarnado',
+            nome: 'Demônio Incarnado',
+            descricao:
+                'Suas jogadas de ataque (comum) com a arma favorita causam +1 de dano extra para cada criatura hostil reduzida a 0 PV que você tenha ferido no encontro (máximo igual à metade do seu nível de Brutamontes, mínimo de +1). O bônus dura até o fim do encontro. Alternativamente, se houver apenas uma criatura hostil no início ou durante o encontro, gaste 2 PP para obter imediatamente até metade do bônus máximo (arredondado para cima).',
+            etiquetas: ['+1 de dano por inimigo abatido (máx. ½ nível)', '1 inimigo: 2 PP dão metade do bônus máximo'],
+        },
+        {
+            id: 'sede-de-sangue',
+            nome: 'Sede de Sangue',
+            nivelMin: 2,
+            descricao:
+                'Você recupera 1d12 PV ao reduzir uma criatura hostil a 0 PV, logo após o cálculo do dano; se um aliado reduzir a 0 PV uma criatura que você feriu no encontro, recupera 1d6. O máximo recuperado é 5 vezes o seu nível de Brutamontes, renovado em descanso longo. Alternativamente, com apenas uma criatura hostil no encontro, gaste 1 PP em cada ataque para recuperar 1d12 PV ao acertar (comum ou Técnicas) com a arma favorita, respeitando o mesmo limite.',
+            etiquetas: ['Abate: recupera 1d12 PV (aliado abate: 1d6); limite 5 × nível'],
+        },
+        {
+            id: '8-trigramas',
+            nome: '8 Trigramas',
+            nivelMin: 3,
+            acao: 'bonus',
+            usos: { porProf: true, max: 2, descanso: 'curto' },
+            descricao:
+                'Com uma ação bônus, você transita entre modos de combate aleatórios por 1 minuto. No início de cada turno seu, jogue 1d8 e receba o bônus da tabela "Movimentos Caóticos" até o início do próximo turno. Usos iguais ao Bônus de Proficiência; todos voltam em descanso curto ou longo. 1 Sedutor: ao receber dano de criatura hostil, recupera 1d10 PV (2d10 no 10º). 2 Chorão: deslocamento normal 15 m e sem provocar reações (18 m e nenhuma reação, nem as que ignoram isso, no 10º). 3 Depressivo: nenhum bônus. 4 Brigão: com a ação Atacar ou ação poderosa de Técnica de Combate, um ataque (comum) corpo a corpo adicional com a arma favorita, mesmo com Ataque Extra, uma vez por rodada (dois ataques no 10º). 5 Sanguinário: ataques (comum) corpo a corpo com a arma favorita com margem de crítico 19-20 e um dado de dano adicional no dano extra do crítico (18-20 e 3 dados no 10º). 6 Risonho: vantagem em todos os ataques (comum) corpo a corpo (no 10º, uma vez por encontro, transforme uma falha com a arma favorita em acerto). 7 Ladrão: com a ação poderosa, reproduza qualquer Técnica de Combate usada a partir da 1ª rodada, por metade dos PP (mín. 1), de grau igual ou menor a uma que você tenha e com o aval do Narrador (no 10º, sem gastar PP). 8 Lúcido: escolha qualquer um dos outros movimentos.',
+            etiquetas: ['Ação bônus: 1d8 por turno entre 8 modos (Sedutor, Chorão, Depressivo, Brigão, Sanguinário, Risonho, Ladrão, Lúcido)'],
+        },
+        {
+            id: 'guerreiro-bruto',
+            nome: 'Guerreiro Bruto',
+            nivelMin: 5,
+            descricao:
+                'Ataque de Oportunidade Brutal: com a reação, ataque (comum) corpo a corpo contra criatura que você veja sair voluntariamente do seu alcance; se acertar, tente empurrá-la (Grande ou menor) até 9 m, com Salvaguarda de Força; se bater em objeto ou estrutura de mais de 1,5 m de raio, sofre 3d8 Contundente adicional. Brutalidade Excessiva: num acerto crítico corpo a corpo, todas as criaturas que vejam o ataque têm desvantagem em ataques (comum ou Técnicas) contra você até o início do seu próximo turno. Arma Brutal: ataques (comum) com a arma favorita causam 2d6. Balanço Sanguinário: ao atacar corpo a corpo com a arma favorita, troque o ataque por um giro que atinge todas as criaturas num raio de 3 m (Salvaguarda de Destreza, dano total na falha): 3d8 mais 1d8 por criatura além da primeira (máx. 6d8), sem outros efeitos de características.',
+            etiquetas: [
+                'Arma favorita: dano 2d6 (ajuste a arma)',
+                'Balanço Sanguinário: giro 3 m, 3d8 (+1d8 por alvo, máx. 6d8)',
+                'Crítico: todos que veem têm desvantagem contra você',
+            ],
+        },
+        {
+            id: 'corpo-de-criatura',
+            nome: 'Corpo de Criatura',
+            nivelMin: 6,
+            usos: { max: 3, descanso: 'curto' },
+            descricao:
+                'Seus PV máximos aumentam permanentemente em 60. Ao sofrer qualquer dano, você pode usar a reação para reduzi-lo a 0. Até 3 usos; todos voltam em descanso curto ou longo.',
+            efeitos: [{ alvo: 'pv.max', modo: 'soma', valor: 60 }],
+            etiquetas: ['PV máx +60', 'Reação: dano sofrido vira 0 (3 usos)'],
+        },
+        {
+            id: 'ataque-extra',
+            nome: 'Ataque Extra',
+            nivelMin: 7,
+            descricao: 'Você pode atacar duas vezes, em vez de uma, ao usar a ação "Atacar" no seu turno.',
+            etiquetas: ['Ação Atacar: 2 ataques'],
+            efeitos: [{ alvo: 'ataques.acao', modo: 'soma', valor: 1 }],
+        },
+        {
+            id: 'besta-imparavel',
+            nome: '3 Caminhos da Besta: Besta Imparável',
+            nivelMin: 10,
+            usos: { porProf: true, max: 4, descanso: 'curto' },
+            descricao:
+                'No início do seu turno, seja tomado pela fúria: dobra o deslocamento e recebe 30 PV temporários até o início do próximo turno. Alternativamente, refaça uma Salvaguarda falha e use o novo resultado. Usos iguais ao Bônus de Proficiência; todos voltam em descanso curto ou longo.',
+            etiquetas: ['Início do turno: deslocamento ×2 e 30 PV temporários, ou refazer uma Salvaguarda'],
+        },
+        {
+            id: 'rugido-furioso',
+            nome: '3 Caminhos da Besta: Rugido Furioso',
+            nivelMin: 10,
+            acao: 'bonus',
+            usos: { max: 3, descanso: 'longo' },
+            descricao:
+                'Com uma ação bônus, emita um brado por 1 minuto: criaturas hostis a até 9 m que o ouviram causam 5 de dano a menos contra você e seus aliados, se o dano for Contundente, Cortante ou Perfurante. Até 3 usos; voltam em descanso longo.',
+            etiquetas: ['Hostis a 9 m: −5 de dano Contundente/Cortante/Perfurante contra você e aliados'],
+        },
+        {
+            id: 'aspecto-bestial',
+            nome: '3 Caminhos da Besta: Aspecto Bestial',
+            nivelMin: 10,
+            descricao:
+                'Ao reduzir uma criatura a 0 PV, o dano excedente vira dano Psíquico e atinge todas as criaturas hostis a até 6 m que vejam o ataque e falhem numa Salvaguarda de Vontade.',
+            etiquetas: ['Abate: dano excedente Psíquico em hostis a 6 m (Salv. VON)'],
+        },
+        {
+            id: 'sede-de-sangue-revigorante',
+            nome: 'Sede de Sangue Revigorante',
+            nivelMin: 11,
+            descricao:
+                'Para cada criatura hostil reduzida a 0 PV por você, recupere 1d6 PP, até 50 PP (limite restaurado em descanso longo). Alternativamente, com apenas uma criatura hostil no encontro, recupere 1 PP ao acertar (comum ou Técnicas) com a arma favorita, respeitando as limitações do uso padrão.',
+            etiquetas: ['Abate: recupera 1d6 PP (máx. 50 PP por descanso longo)'],
+        },
+        {
+            id: '6-caminhos-da-destruicao',
+            nome: '6 Caminhos da Destruição',
+            nivelMin: 14,
+            usos: { max: 3, descanso: 'curto' },
+            descricao:
+                'Num acerto crítico (comum ou Técnicas), você ativa "8 Trigramas" sem gastar usos e escolhe o modo (em vez de rolar o d8), que dura toda a característica. Por modo: Sedutor: dados de recuperação de PV e PP maximizados. Chorão: críticos corpo a corpo com a arma favorita (inclusive o que ativou) impõem "Atordoado" até o fim do próximo turno da criatura. Brigão: ataques (comum ou Técnicas) corpo a corpo com a arma favorita recebem +1d8 de dano. Sanguinário: críticos corpo a corpo com a arma favorita adicionam dano extra igual ao seu nível de Brutamontes. Risonho: todos os seus ataques (comum) recebem +5 para acertar. Ladrão: a Técnica copiada passa a ser sua e, quando usada contra você, o custo dela cai 1 PP permanentemente (mín. 2 PP). Alternativamente, aplique esses aprimoramentos já sob "8 Trigramas" (exceto Depressivo): 3 usos; voltam em descanso curto ou longo.',
+            etiquetas: ['Crítico: ativa 8 Trigramas de graça, modo à escolha, com aprimoramento do modo'],
+        },
+        {
+            id: 'aposta-certa',
+            nome: 'Aposta Certa',
+            nivelMin: 15,
+            descricao:
+                'No início de cada encontro em que só você e uma criatura inimiga estejam na iniciativa, receba Pontos de Duelo (PD) iguais ao seu nível de Brutamontes, até o fim do encontro ou até outra criatura entrar na iniciativa. Escudo Arrogante (3 PD): dano de Técnica de Combate pela metade (para cima). Inabalável (3 PD): sucesso automático numa Salvaguarda. Jogo Sujo (4 PD): um aliado a até 9 m do inimigo age imediatamente, fora da ordem; se ele ficar no combate, isso termina ao fim do turno dele. Olhar do Terror (2 PD): faça uma jogada de ataque (comum) de uma criatura falhar. Peso da Batalha (2 PD): o inimigo tem o deslocamento reduzido em 6 m enquanto os PD durarem.',
+            etiquetas: ['Duelo 1 × 1: Pontos de Duelo = nível (Escudo Arrogante, Inabalável, Jogo Sujo, Olhar do Terror, Peso da Batalha)'],
+        },
+        {
+            id: 'mestre-ogro',
+            nome: 'Mestre Ogro',
+            nivelMin: 18,
+            descricao:
+                'Distribua livremente 6 pontos entre seus atributos, respeitando o máximo de 24 em cada um. Você pode escolher dois atributos para aplicar esses pontos até o máximo de 30.',
+        },
+        {
+            id: 'invencibilidade',
+            nome: 'Invencibilidade',
+            nivelMin: 19,
+            descricao:
+                'Ataques (comum) com a arma favorita causam 4d8; você recebe um ataque (comum) adicional no Ataque Extra; tem resistência a todos os danos, inclusive Verdadeiro; é imune a qualquer condição (exceto "Enfraquecido" e "Inconsciente") e a dano de queda; em todo acerto crítico (comum ou Técnicas) pode jogar 1d12: se sair 12, a criatura tem os PV reduzidos a 0.',
+            efeitos: [{ alvo: 'ataques.acao', modo: 'soma', valor: 1 }],
+            resistencias: TODOS_OS_DANOS,
+            etiquetas: [
+                'Arma favorita: 4d8 (ajuste a arma)',
+                'Ataque Extra: +1 ataque',
+                'Resistência a todos os danos',
+                'Crítico: 1d12, 12 reduz a 0 PV',
+            ],
+        },
+    ],
+    tecnicas: [
+        tec(
+            1,
+            1,
+            '',
+            'Nari Kabura',
+            2,
+            'poderosa',
+            'Até 9 m, Linha',
+            '2d10 Contundente',
+            '2d10',
+            'contundente',
+            'Golpe poderoso e preciso que transforma o ar, rochas ou destroços em projétil contra uma criatura, em jogada de ataque (Técnicas) à distância com margem de crítico 19-20. <Kongo Kabura> No 6º nível, pode ser usada como Técnica de 3º Grau: 5d10 Contundente, 21 m em Linha, 6 PP e margem de crítico 18-20. Requisito: arma favorita. Ataque combinado: possível.',
+        ),
+        tec(
+            1,
+            undefined,
+            '',
+            'Shinsoku Hakujaku',
+            2,
+            'bonus',
+            'Pessoal',
+            'Deslocamento +6 m e não pode ser reduzido',
+            '',
+            undefined,
+            'Você se move rapidamente, com passos firmes: o deslocamento normal aumenta em 6 m e não pode ser reduzido. Duração: até o fim do seu turno.',
+        ),
+        tec(
+            3,
+            2,
+            '',
+            'Kosanze Ragnaraku',
+            4,
+            'poderosa',
+            'Toque',
+            '4d10 Contundente ou Perfurante',
+            '4d10',
+            'contundente',
+            'Salta sobre uma criatura e desce um golpe brutal: se ela falhar numa Salvaguarda de Força, fica "Caída". Alternativamente, golpeie o chão e libere uma onda de choque num cone de 15 m: cada criatura faz Salvaguarda de Destreza, sofrendo 4d6 Trovejante se falhar ou metade se passar; quem falhar faz outra Salvaguarda de Destreza ou fica "Caída". Requisito: arma favorita. Ataque combinado: impossível.',
+        ),
+        tec(
+            6,
+            3,
+            '',
+            'Mahoroba',
+            6,
+            'poderosa',
+            'Toque',
+            '5d10 Contundente ou Perfurante',
+            '5d10',
+            'contundente',
+            'Golpe de grande força contra uma criatura, em jogada de ataque (Técnicas) corpo a corpo. Se ela (Grande ou menor) falhar numa Salvaguarda de Força, é empurrada até 6 m para um espaço desocupado; se bater em objeto ou estrutura de mais de 1,5 m de raio, recebe 2d8 de dano extra. Requisito: arma favorita. Ataque combinado: possível.',
+        ),
+        tec(
+            6,
+            undefined,
+            '',
+            'Yamantaka',
+            4,
+            'reacao',
+            'Pessoal',
+            'Reserva de redução de dano de 10d8 (até 20d8)',
+            '',
+            undefined,
+            'Ao ser alvo de jogada de ataque (comum ou Técnicas), ou de Salvaguarda de Força ou Destreza, use a fúria para criar uma reserva de redução de dano igual a 10d8. Sempre que sofrer dano, reduza-o usando a reserva, que perde o que evitou. Gaste 1 PP para somar 2d8 à reserva, até 20d8. Duração: até o fim do seu próximo turno.',
+        ),
+        tec(
+            9,
+            4,
+            '',
+            'Raimei Hakke',
+            8,
+            'poderosa',
+            'Toque',
+            '8d10 Contundente ou Perfurante',
+            '8d10',
+            'contundente',
+            'Golpe extremamente feroz contra uma criatura, em jogada de ataque (Técnicas) corpo a corpo. Se for acerto crítico, ao determinar o dano extra da Técnica, adicione mais 4 dados de dano. Requisito: arma favorita. Ataque combinado: possível.',
+        ),
+        tec(
+            12,
+            5,
+            '',
+            'Gundari Ryuseigun',
+            10,
+            'poderosa',
+            'Toque',
+            '10d10 Contundente ou Perfurante',
+            '10d10',
+            'contundente',
+            'Série de ataques rápidos contra uma criatura, em jogada de ataque (Técnicas) corpo a corpo. Ao ser acertado, o alvo faz Salvaguarda de Constituição ou não pode realizar reações até o fim do próximo turno dele; no próximo turno dele, ele escolhe entre se mover, realizar uma ação ou realizar uma ação bônus (só uma das três). Requisito: arma favorita. Ataque combinado: possível.',
+        ),
+        tec(
+            12,
+            undefined,
+            '',
+            'Oni no Youna',
+            10,
+            'bonus',
+            'Pessoal',
+            'Todos os modos de 8 Trigramas e 6 Caminhos da Destruição',
+            '',
+            undefined,
+            'Transe de fúria que só a violência sacia: você recebe ao mesmo tempo os bônus dos "Movimentos Caóticos" (exceto Depressivo, Ladrão e Lúcido) e todos os aprimoramentos de "6 Caminhos da Destruição"; fica incapaz de usar Técnicas; ataca aliados e inimigos indiscriminadamente, priorizando os mais próximos (à escolha do Narrador); a Técnica termina se você não fizer jogada de ataque (comum) nem for atacado até o fim do seu turno. Duração: até 1 minuto.',
+        ),
+        tec(
+            16,
+            6,
+            '',
+            'Horai Hakke',
+            12,
+            'poderosa',
+            'Toque',
+            '9d10 Contundente ou Perfurante',
+            '9d10',
+            'contundente',
+            'Golpe extremamente feroz contra uma criatura, em jogada de ataque (Técnicas) corpo a corpo, com impacto que pode desligar a consciência do alvo: ele faz Salvaguarda de Constituição ou fica "Atordoado" até o fim do próximo turno dele. Requisito: arma favorita. Ataque combinado: impossível.',
+        ),
+        tec(
+            20,
+            7,
+            '',
+            'Hakai',
+            14,
+            'poderosa',
+            'Até 30 m, Cone',
+            '14d6 Contundente',
+            '14d6',
+            'contundente',
+            'Com o balançar do ataque, lance uma onda de destruição contra todos os seus inimigos. Cada criatura na área faz Salvaguarda de Destreza: todo o dano se falhar, metade se passar. A área vira terreno difícil e o dano em estruturas é dobrado. Requisito: arma favorita. Ataque combinado: possível.',
+        ),
+    ],
+};
+
+/** Como cada Técnica do Brutamontes causa o dano: ataque (Técnicas) ou Salvaguarda da área. Sem entrada, não há teste automático. */
+const TESTES_DO_BRUTAMONTES: Record<string, TesteDaTecnica> = {
+    'Nari Kabura': { tipo: 'ataque' },
+    'Kosanze Ragnaraku': { tipo: 'ataque' },
+    Mahoroba: { tipo: 'ataque' },
+    'Raimei Hakke': { tipo: 'ataque' },
+    'Gundari Ryuseigun': { tipo: 'ataque' },
+    'Horai Hakke': { tipo: 'ataque' },
+    Hakai: { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'metade' },
+};
+for (const t of BRUTAMONTES.tecnicas) if (TESTES_DO_BRUTAMONTES[t.nome]) t.teste = TESTES_DO_BRUTAMONTES[t.nome];
+
+export const ESTILOS: EstiloDados[] = [ATIRADOR, AVENTUREIRO, BRUTAMONTES];
 export const estiloPorId = (id: string | undefined | null): EstiloDados | undefined => ESTILOS.find((e) => e.id === id);
 
 /** O atributo primário do personagem: o escolhido, ou o único possível. */

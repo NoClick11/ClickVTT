@@ -939,3 +939,47 @@ test('Aventureiro: Dados de Aventura (½ nível, nível no 10º) e PP máx +4+pr
     assert.equal(dados(20).usos.max, 20);
     assert.ok(t.usos.formula);
 });
+
+// --- estilo de luta: Brutamontes --------------------------------------------------------------------------------------
+const brutamontes = (extra = {}) =>
+    feito({
+        estilo: {
+            id: 'brutamontes',
+            nome: 'Brutamontes',
+            dado: 'd12',
+            caminho: null,
+            armaFavorita: 'Kanabo',
+            hbInata: 'corpo-de-guerreiro',
+            pericias: ['atletismo', 'intimidacao'],
+        },
+        especies: ['humano'],
+        variantes: [null],
+        dinheiro: { estilo: 'brutamontes', dados: [5, 5, 5, 5, 5, 5], total: 30, bellys: 30000, expressao: '6d10', multiplicador: 1000 },
+        ...extra,
+    });
+
+test('Brutamontes: d12, FOR primária, salvaguardas FOR e CON, 2 perícias só da lista e as 5 armas favoritas', () => {
+    const e = brutamontes();
+    assert.deepEqual(problemasDaEtapa(e, 'estilo'), []);
+    const fora = brutamontes({ estilo: { ...e.estilo, pericias: ['atletismo', 'acrobacia'] } });
+    assert.ok(problemasDaEtapa(fora, 'estilo').some((m) => m.includes('permitidas')));
+    assert.ok(problemasDaEtapa(brutamontes({ estilo: { ...e.estilo, armaFavorita: 'Corporal' } }), 'estilo').length === 0);
+    const { campos } = camposDaCriacao(e);
+    assert.equal(campos['dadosVida.tipo'], 'd12');
+    assert.equal(campos.atributoPrimario, 'for');
+    assert.equal(campos['tecnicas.atributo'], 'for');
+    assert.ok(['for', 'con'].every((s) => campos.salvaguardas.includes(s)));
+});
+
+test('Brutamontes: 10 Técnicas por nível, Corpo de Criatura +60 PV e Invencibilidade com resistência total', () => {
+    const tecnicas = (n) => camposDaCriacao(brutamontes(), { nivel: n }).campos['tecnicas.lista'].map((t) => t.nome);
+    assert.deepEqual(tecnicas(1), ['Nari Kabura', 'Shinsoku Hakujaku']);
+    assert.equal(tecnicas(20).length, 10);
+    const car = (n) => camposDaCriacao(brutamontes(), { nivel: n }).campos.caracteristicas;
+    assert.ok(!car(5).some((c) => c.nome === 'Corpo de Criatura'));
+    assert.ok(car(6).some((c) => c.nome === 'Corpo de Criatura'));
+    assert.ok(car(19).some((c) => c.nome === 'Invencibilidade'));
+    const res = (n) => camposDaCriacao(brutamontes(), { nivel: n }).campos.resistencias;
+    assert.deepEqual(res(18), []);
+    assert.ok(res(19).includes('Verdadeiro') && res(19).includes('Contundente'));
+});

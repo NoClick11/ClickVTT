@@ -523,6 +523,8 @@ export function problemasDaEtapa(e: Escolhas, etapa: EtapaId): string[] {
             const pericias = e.estilo.pericias ?? [];
             if (pericias.length !== est.pericias || new Set(pericias).size !== pericias.length)
                 p.push(`Escolha ${est.pericias} perícias diferentes do estilo.`);
+            else if (est.periciasPermitidas && !pericias.every((x) => est.periciasPermitidas!.includes(x)))
+                p.push('Escolha as perícias do estilo entre as permitidas.');
         }
     }
     if (etapa === 'habilidades') {
@@ -752,7 +754,12 @@ export function camposDaCriacao(
         for (const id of e.pericias[pedido.traco.id] ?? [])
             if ((pericias[id] ?? 0) >= 1) pericias[id] = Math.max(pericias[id], pedido.traco.escolhaPericias!.nivel) as Proficiencia;
     const salvaguardas = [...new Set([...tracos.flatMap((t) => t.traco.salvaguardas ?? []), ...(estilo?.salvaguardas ?? [])])];
-    const resistencias = [...new Set(tracos.flatMap((t) => t.traco.resistencias ?? []))];
+    const resistencias = [
+        ...new Set([
+            ...tracos.flatMap((t) => t.traco.resistencias ?? []),
+            ...(estilo ? tracosDoEstiloNoNivel(estilo, e.estilo.caminho, nivel).flatMap((t) => t.resistencias ?? []) : []),
+        ]),
+    ];
     const imunidades = [...new Set(tracos.flatMap((t) => t.traco.imunidades ?? []))];
 
     // as da Maestria vêm do "Subir de nível" (Traço de Maestria no 9º, 13º e 17º): refazer a criação as mantém

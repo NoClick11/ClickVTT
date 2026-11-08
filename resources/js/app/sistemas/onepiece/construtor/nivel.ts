@@ -205,9 +205,11 @@ export function camposDoNivel(f: FichaOnePiece, esc: EscolhasDoNivel): Record<st
     }
     // traços do estilo que passam a valer neste nível (os de nível maior não vêm na criação)
     const jaTem = new Set((f.caracteristicas ?? []).filter((c) => c.builder === 'estilo' && !c.hb).map((c) => c.nome));
-    const tracosNovos = tracosDoEstiloNoNivel(estilo, f.estiloCaminho, novo)
-        .filter((t) => !jaTem.has(t.nome))
-        .map((traco) => caracteristicaDe({ traco, origem: estilo.nome, builder: 'estilo' }, novo));
+    const tracosDoNivel = tracosDoEstiloNoNivel(estilo, f.estiloCaminho, novo).filter((t) => !jaTem.has(t.nome));
+    const tracosNovos = tracosDoNivel.map((traco) => caracteristicaDe({ traco, origem: estilo.nome, builder: 'estilo' }, novo));
+    // resistências que o traço do estilo dá (Invencibilidade) entram na lista da ficha, sem repetir
+    const resistenciasNovas = tracosDoNivel.flatMap((t) => t.resistencias ?? []).filter((r) => !(f.resistencias ?? []).includes(r));
+    if (resistenciasNovas.length) campos.resistencias = [...(f.resistencias ?? []), ...resistenciasNovas];
     campos.caracteristicas = [
         ...(f.caracteristicas ?? []).filter((c) => !c.hb && c.builder !== 'maestria').map(ajustar),
         ...tracosNovos,
