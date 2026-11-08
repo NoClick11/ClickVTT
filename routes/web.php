@@ -6,6 +6,9 @@ use App\Http\Controllers\App\ChatController;
 use App\Http\Controllers\App\EventoDeCombateController;
 use App\Http\Controllers\App\CompanheiroController;
 use App\Http\Controllers\App\CombateController;
+use App\Http\Controllers\App\CompanheiroController;
+use App\Http\Controllers\App\EventoDeCombateController;
+use App\Http\Controllers\App\ExploracaoController;
 use App\Http\Controllers\App\FichaController;
 use App\Http\Controllers\App\ForjaController;
 use App\Http\Controllers\App\ItemController;
@@ -96,6 +99,11 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::patch('pastas/{pasta}', [PastaController::class, 'update'])->name('pastas.update');
     Route::delete('pastas/{pasta}', [PastaController::class, 'destroy'])->name('pastas.destroy');
     Route::patch('objetos/{objeto}', [ObjetoController::class, 'update'])->name('objetos.update');
+    // Memória das áreas exploradas (névoa): cada jogador guarda a sua; o mestre apaga.
+    Route::get('paginas/{pagina}/exploracao', [ExploracaoController::class, 'mostrar'])->middleware('throttle:60,1')->name('exploracao.mostrar');
+    Route::put('paginas/{pagina}/exploracao', [ExploracaoController::class, 'guardar'])->middleware('throttle:30,1')->name('exploracao.guardar');
+    Route::delete('paginas/{pagina}/exploracao', [ExploracaoController::class, 'limpar'])->middleware('throttle:20,1')->name('exploracao.limpar');
+    Route::post('objetos/{objeto}/alternar', [ObjetoController::class, 'alternar'])->middleware('throttle:120,1')->name('objetos.alternar');
     Route::delete('objetos/{objeto}', [ObjetoController::class, 'destroy'])->name('objetos.destroy');
     Route::post('mensagens', [ChatController::class, 'texto'])->middleware('throttle:60,1')->name('mensagens.store');
     Route::post('rolagens', [ChatController::class, 'rolar'])->middleware('throttle:60,1')->name('rolagens.store');

@@ -79,6 +79,11 @@ class PaginaController extends Controller
             'grade_quadrada' => ['sometimes', 'boolean'],
             'distancia_quadrado' => ['sometimes', 'numeric', 'gt:0', 'max:10000'],
             'unidade' => ['sometimes', 'string', 'max:8'],
+            'iluminacao_ativa' => ['sometimes', 'boolean'],
+            'luz_ambiente' => ['sometimes', 'integer', 'between:0,100'],
+            'visao_padrao' => ['sometimes', 'integer', 'between:0,200'],
+            'usar_visao' => ['sometimes', 'boolean'],
+            'memoria_ativa' => ['sometimes', 'boolean'],
         ]);
     }
 }

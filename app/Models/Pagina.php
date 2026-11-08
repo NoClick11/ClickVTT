@@ -11,7 +11,7 @@ class Pagina extends Model
 {
     protected $fillable = [
         'nome', 'pasta_id', 'ordem', 'colunas', 'linhas', 'tamanho_quadrado',
-        'grade_quadrada', 'distancia_quadrado', 'unidade',
+        'grade_quadrada', 'distancia_quadrado', 'unidade', 'iluminacao_ativa', 'luz_ambiente', 'visao_padrao', 'usar_visao', 'memoria_ativa',
     ];
 
     protected function casts(): array
@@ -19,6 +19,9 @@ class Pagina extends Model
         return [
             'grade_quadrada' => 'boolean',
             'distancia_quadrado' => 'float',
+            'iluminacao_ativa' => 'boolean',
+            'usar_visao' => 'boolean',
+            'memoria_ativa' => 'boolean',
         ];
     }
 
@@ -59,6 +62,11 @@ class Pagina extends Model
             'grade_quadrada' => $this->grade_quadrada,
             'distancia_quadrado' => $this->distancia_quadrado,
             'unidade' => $this->unidade,
+            'iluminacao_ativa' => (bool) $this->iluminacao_ativa,
+            'luz_ambiente' => (int) ($this->luz_ambiente ?? 0),
+            'visao_padrao' => (int) ($this->visao_padrao ?? 6),
+            'usar_visao' => (bool) ($this->usar_visao ?? true),
+            'memoria_ativa' => (bool) ($this->memoria_ativa ?? true),
         ];
     }
 }

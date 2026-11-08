@@ -52,6 +52,26 @@ export interface ObjetoDto {
         altura_original?: number;
         texto?: string;
         tamanho?: number;
+        /** porta/janela: só o mestre abre uma trancada. */
+        trancada?: boolean;
+        /** token: quantos quadrados enxerga no escuro (vazio = o padrão da página). */
+        visao?: number | null;
+        /** token: false = sem visão (cego): o jogador não enxerga por ele. */
+        visao_ativa?: boolean;
+        /** parede/porta/janela: o que barra (movimento, visão, luz); o que falta segue o padrão do tipo. */
+        bloqueio?: { movimento?: boolean; visao?: boolean; luz?: boolean };
+        /** luz: false = apagada. */
+        ativa?: boolean;
+        /** luz: 0 a 1 (padrão 1). */
+        intensidade?: number;
+        /** luz: raio (px) em que brilha por inteiro, antes de esmaecer até `raio`. */
+        raio_claro?: number;
+        /** luz: abertura do cone em graus (360 = em volta toda). */
+        angulo?: number;
+        /** luz: para onde o cone aponta, em graus (0 = direita). */
+        direcao?: number;
+        /** luz: ignora as paredes. */
+        atravessa?: boolean;
     } | null;
 }
 
@@ -74,6 +94,16 @@ export interface PaginaDto {
     grade_quadrada: boolean;
     distancia_quadrado: number;
     unidade: string;
+    /** Iluminação dinâmica: visão dos tokens, luzes e sombras das paredes (calculadas no navegador de cada jogador). */
+    iluminacao_ativa: boolean;
+    /** 0 = escuridão total, 100 = pleno dia. */
+    luz_ambiente: number;
+    /** Quadrados que um token enxerga no escuro. */
+    visao_padrao: number;
+    /** Falso: sem linha de visão (só luz e escuridão). */
+    usar_visao: boolean;
+    /** O que o jogador já viu fica no mapa, esmaecido. */
+    memoria_ativa: boolean;
 }
 
 export type AlcaRedimensionar = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
@@ -108,4 +138,8 @@ export interface CenaEventos {
     gabarito: (personagemIds: number[] | null) => void;
     /** Ponto marcado no mapa para uma esfera (Vigília): o centro em pixels do mundo, ou null (Esc). */
     ponto: (ponto: { x: number; y: number } | null) => void;
+    /** A memória das áreas vistas mudou: PNG (data URL) para guardar no servidor. */
+    memoria: (imagem: string) => void;
+    /** Entrou numa página com iluminação: busca no servidor a memória deste jogador. */
+    pedirMemoria: (paginaId: number) => void;
 }

@@ -463,7 +463,13 @@ function aoAlterar(id: number, campos: CamposGeometria, final: boolean) {
     const o = objetos.value.find((x) => x.id === id);
     if (!o) return;
     Object.assign(o, campos);
-    if (final) api.atualizarObjeto(id, campos).catch(falhou);
+    if (!final) return;
+    api.atualizarObjeto(id, campos)
+        .then((r) => {
+            // O servidor tem a palavra final (parede no caminho, deslocamento do turno): se mudou a posição, o token vai para onde ele disse.
+            if (r.x !== campos.x || r.y !== campos.y) Object.assign(o, { x: r.x, y: r.y });
+        })
+        .catch(falhou);
 }
 
 function atualizarSelecionado(campos: Partial<ObjetoDto>) {
@@ -719,6 +725,15 @@ function configurar(id: number) {
     configPagina.value = props.paginas.find((p) => p.id === id) ?? props.pagina;
     configErro.value = undefined;
     configAberta.value = true;
+}
+
+async function limparMemoriaDaPagina(id: number) {
+    try {
+        await api.limparExploracao(id);
+        avisar('A memória das áreas exploradas foi apagada para todos os jogadores.');
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
 }
 
 async function salvarConfig(id: number, campos: Partial<PaginaDto>) {
@@ -1700,11 +1715,16 @@ async function criarParede(p: [number, number, number, number], tipo: TipoParede
     }
 }
 
-function alternarPorta(id: number) {
+async function alternarPorta(id: number) {
     const o = objetos.value.find((x) => x.id === id);
-    if (!o || o.dados?.tipo !== 'porta') return;
-    selecionadoId.value = id;
-    atualizarSelecionado({ dados: { aberta: !o.dados.aberta } });
+    if (!o || !['porta', 'janela'].includes(o.dados?.tipo ?? '')) return;
+    // Quem decide é o servidor (trancada, página, simultaneidade): o novo estado vem na resposta, nunca é presumido aqui.
+    try {
+        const novo = await api.alternarObjeto(id);
+        if (novo.dados) o.dados = { ...o.dados, ...novo.dados };
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
 }
 </script>
 
@@ -2052,7 +2072,13 @@ function alternarPorta(id: number) {
                 @renomear-pasta="(id, nome) => acao(() => api.atualizarPasta(id, { nome }), ['pastas'])()"
                 @excluir-pasta="(id) => acao(() => api.removerPasta(id), ['pastas', 'paginas'])()"
             />
-            <ConfigPaginaDialog v-model:open="configAberta" :pagina="configPagina" :erro="configErro" @salvar="salvarConfig" />
+            <ConfigPaginaDialog
+                v-model:open="configAberta"
+                :pagina="configPagina"
+                :erro="configErro"
+                @salvar="salvarConfig"
+                @limpar-memoria="limparMemoriaDaPagina"
+            />
             <NovoPersonagemDialog v-model:open="novoPersonagemAberto" :jogadores="jogadores" :criar="criarPersonagem" @criado="aoCriarPersonagem" />
             <AtribuirJogadoresDialog v-model:open="atribuicaoAberta" :personagem="atribuindo" :jogadores="jogadores" @salvar="salvarAtribuicao" />
             <component

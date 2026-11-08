@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { ArrowDownToLine, ArrowUpToLine, Trash2 } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { CAMADAS, type Camada, type CamposGeometria, type ObjetoDto, type PaginaDto, type TipoParede } from '../engine/tipos';
+import { BLOQUEIO_PADRAO, type CanalDeBloqueio } from '../engine/visao';
 
 const props = defineProps<{ objeto: ObjetoDto; pagina: PaginaDto }>();
 const emit = defineEmits<{ atualizar: [campos: Partial<ObjetoDto>]; remover: [] }>();
@@ -17,6 +18,37 @@ function tamanho(campo: 'largura' | 'altura', e: Event) {
     const q = parseFloat((e.target as HTMLInputElement).value.replace(',', '.'));
     if (!Number.isFinite(q) || q <= 0) return;
     emit('atualizar', { [campo]: q * t.value } as CamposGeometria);
+}
+const numero = (e: Event): number | null => {
+    const v = parseFloat((e.target as HTMLInputElement).value.replace(',', '.'));
+
+    return Number.isFinite(v) ? v : null;
+};
+
+// --- luz ---
+const raioDaLuz = computed(() => props.objeto.dados?.raio ?? Math.min(props.objeto.largura, props.objeto.altura) / 2);
+const raioClaro = computed(() => Math.min(raioDaLuz.value, props.objeto.dados?.raio_claro ?? raioDaLuz.value * 0.4));
+/** Muda o raio mantendo o centro da luz (a caixa do objeto acompanha, e o raio claro não passa do raio). */
+function raioTotal(e: Event) {
+    const q = numero(e);
+    if (q === null || q <= 0) return;
+    const r = q * t.value;
+    const cx = props.objeto.x + props.objeto.largura / 2;
+    const cy = props.objeto.y + props.objeto.altura / 2;
+    emit('atualizar', { x: cx - r, y: cy - r, largura: r * 2, altura: r * 2, dados: { raio: r, raio_claro: Math.min(raioClaro.value, r) } });
+}
+
+// --- parede ---
+const tipoDaParede = computed(() => props.objeto.dados?.tipo ?? 'parede');
+const bloqueios = [
+    { id: 'movimento', rotulo: 'Barra o movimento' },
+    { id: 'visao', rotulo: 'Barra a visão' },
+    { id: 'luz', rotulo: 'Barra a luz' },
+] as const;
+const bloqueiaAgora = (canal: CanalDeBloqueio) => props.objeto.dados?.bloqueio?.[canal] ?? BLOQUEIO_PADRAO[tipoDaParede.value][canal];
+function alternarBloqueio(canal: CanalDeBloqueio, ligado: boolean) {
+    const atual = Object.fromEntries(bloqueios.map((b) => [b.id, bloqueiaAgora(b.id)]));
+    emit('atualizar', { dados: { bloqueio: { ...atual, [canal]: ligado } } });
 }
 const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
 </script>
@@ -42,6 +74,34 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
                     @change="(e: Event) => emit('atualizar', { nome: (e.target as HTMLInputElement).value })"
                 />
             </label>
+            <label
+                v-if="objeto.tipo === 'token' && pagina.iluminacao_ativa"
+                class="flex items-center gap-2"
+                title="Desligado: o jogador deste token não enxerga por ele (cego)."
+            >
+                <input
+                    type="checkbox"
+                    class="size-4 accent-ouro-500"
+                    :checked="objeto.dados?.visao_ativa !== false"
+                    @change="(e) => emit('atualizar', { dados: { visao_ativa: (e.target as HTMLInputElement).checked } })"
+                />
+                <span>Tem visão</span>
+            </label>
+            <label v-if="objeto.tipo === 'token' && pagina.iluminacao_ativa && objeto.dados?.visao_ativa !== false" class="grid gap-1">
+                <span class="text-xs text-preto-300">Visão no escuro (quadrados)</span>
+                <Input
+                    :class="campo"
+                    inputmode="decimal"
+                    :placeholder="`padrão da página: ${pagina.visao_padrao}`"
+                    :model-value="objeto.dados?.visao ?? ''"
+                    @change="
+                        (e: Event) => {
+                            const v = parseFloat((e.target as HTMLInputElement).value.replace(',', '.'));
+                            emit('atualizar', { dados: { visao: Number.isFinite(v) && v >= 0 ? v : null } });
+                        }
+                    "
+                />
+            </label>
             <template v-if="objeto.tipo === 'parede'">
                 <label class="grid gap-1">
                     <span class="text-xs text-preto-300">Tipo</span>
@@ -55,15 +115,41 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
                         <option value="janela">Janela</option>
                     </select>
                 </label>
-                <label v-if="objeto.dados?.tipo === 'porta'" class="flex items-center gap-2">
-                    <input
-                        type="checkbox"
-                        class="size-4 accent-ouro-500"
-                        :checked="!!objeto.dados?.aberta"
-                        @change="(e) => emit('atualizar', { dados: { aberta: (e.target as HTMLInputElement).checked } })"
-                    />
-                    <span>Aberta <span class="text-xs text-preto-400">(duplo clique alterna)</span></span>
-                </label>
+                <template v-if="objeto.dados?.tipo === 'porta' || objeto.dados?.tipo === 'janela'">
+                    <label class="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            class="size-4 accent-ouro-500"
+                            :checked="!!objeto.dados?.aberta"
+                            @change="(e) => emit('atualizar', { dados: { aberta: (e.target as HTMLInputElement).checked } })"
+                        />
+                        <span>Aberta <span class="text-xs text-preto-400">(duplo clique alterna)</span></span>
+                    </label>
+                    <label class="flex items-center gap-2" title="Trancada: os jogadores não conseguem abrir nem fechar.">
+                        <input
+                            type="checkbox"
+                            class="size-4 accent-ouro-500"
+                            :checked="!!objeto.dados?.trancada"
+                            @change="(e) => emit('atualizar', { dados: { trancada: (e.target as HTMLInputElement).checked } })"
+                        />
+                        <span>Trancada</span>
+                    </label>
+                </template>
+                <fieldset class="grid gap-1.5 rounded-md border border-ouro-500/20 p-2">
+                    <legend class="px-1 text-xs text-preto-300">Quando fechada</legend>
+                    <label v-for="b in bloqueios" :key="b.id" class="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            class="size-4 accent-ouro-500"
+                            :checked="bloqueiaAgora(b.id)"
+                            @change="(e) => alternarBloqueio(b.id, (e.target as HTMLInputElement).checked)"
+                        />
+                        <span>{{ b.rotulo }}</span>
+                    </label>
+                    <p class="text-[11px] text-preto-400">
+                        Aberta, porta e janela deixam tudo passar. A janela é vidro: barra o corpo, mas deixa ver e iluminar.
+                    </p>
+                </fieldset>
             </template>
             <template v-else-if="objeto.tipo === 'texto'">
                 <label class="grid gap-1">
@@ -107,6 +193,92 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
                         @change="(e: Event) => emit('atualizar', { dados: { cor: (e.target as HTMLInputElement).value } })"
                     />
                 </label>
+                <template v-if="objeto.tipo === 'luz'">
+                    <label class="flex items-center gap-2" title="Apagada, a luz não ilumina nada.">
+                        <input
+                            type="checkbox"
+                            class="size-4 accent-ouro-500"
+                            :checked="objeto.dados?.ativa !== false"
+                            @change="(e) => emit('atualizar', { dados: { ativa: (e.target as HTMLInputElement).checked } })"
+                        />
+                        <span>Acesa</span>
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="grid gap-1">
+                            <span class="text-xs text-preto-300">Alcance (q)</span>
+                            <Input :class="campo" inputmode="decimal" :model-value="emQuadrados(raioDaLuz)" @change="raioTotal($event)" />
+                        </label>
+                        <label class="grid gap-1" title="Até aqui a luz brilha por inteiro; dali ao alcance ela esmaece.">
+                            <span class="text-xs text-preto-300">Luz plena (q)</span>
+                            <Input
+                                :class="campo"
+                                inputmode="decimal"
+                                :model-value="emQuadrados(raioClaro)"
+                                @change="
+                                    (e: Event) => {
+                                        const q = numero(e);
+                                        if (q !== null && q >= 0) emit('atualizar', { dados: { raio_claro: Math.min(q * t, raioDaLuz) } });
+                                    }
+                                "
+                            />
+                        </label>
+                        <label class="grid gap-1">
+                            <span class="text-xs text-preto-300">Intensidade (%)</span>
+                            <Input
+                                :class="campo"
+                                inputmode="numeric"
+                                :model-value="Math.round((objeto.dados?.intensidade ?? 1) * 100)"
+                                @change="
+                                    (e: Event) => {
+                                        const q = numero(e);
+                                        if (q !== null) emit('atualizar', { dados: { intensidade: Math.max(0, Math.min(100, q)) / 100 } });
+                                    }
+                                "
+                            />
+                        </label>
+                        <label class="grid gap-1" title="360° = em volta toda; menos que isso vira um cone (lanterna).">
+                            <span class="text-xs text-preto-300">Abertura (°)</span>
+                            <Input
+                                :class="campo"
+                                inputmode="numeric"
+                                :model-value="objeto.dados?.angulo ?? 360"
+                                @change="
+                                    (e: Event) => {
+                                        const q = numero(e);
+                                        if (q !== null) emit('atualizar', { dados: { angulo: Math.max(1, Math.min(360, q)) } });
+                                    }
+                                "
+                            />
+                        </label>
+                    </div>
+                    <label
+                        v-if="(objeto.dados?.angulo ?? 360) < 360"
+                        class="grid gap-1"
+                        title="0° = direita, 90° = para baixo, 180° = esquerda, 270° = para cima."
+                    >
+                        <span class="text-xs text-preto-300">Direção do cone (°)</span>
+                        <Input
+                            :class="campo"
+                            inputmode="numeric"
+                            :model-value="objeto.dados?.direcao ?? 0"
+                            @change="
+                                (e: Event) => {
+                                    const q = numero(e);
+                                    if (q !== null) emit('atualizar', { dados: { direcao: q } });
+                                }
+                            "
+                        />
+                    </label>
+                    <label class="flex items-center gap-2" title="A luz atravessa paredes e portas (um brilho mágico, por exemplo).">
+                        <input
+                            type="checkbox"
+                            class="size-4 accent-ouro-500"
+                            :checked="!!objeto.dados?.atravessa"
+                            @change="(e) => emit('atualizar', { dados: { atravessa: (e.target as HTMLInputElement).checked } })"
+                        />
+                        <span>Atravessa paredes</span>
+                    </label>
+                </template>
                 <label v-if="objeto.tipo === 'luz'" class="grid gap-1">
                     <span class="text-xs text-preto-300">Cor da luz</span>
                     <Input
@@ -116,7 +288,7 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
                         @change="(e: Event) => emit('atualizar', { dados: { cor: (e.target as HTMLInputElement).value } })"
                     />
                 </label>
-                <div class="grid grid-cols-2 gap-2">
+                <div v-if="objeto.tipo !== 'luz'" class="grid grid-cols-2 gap-2">
                     <label class="grid gap-1">
                         <span class="text-xs text-preto-300">Largura (q)</span>
                         <Input :class="campo" inputmode="decimal" :model-value="emQuadrados(objeto.largura)" @change="tamanho('largura', $event)" />
@@ -126,7 +298,9 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
                         <Input :class="campo" inputmode="decimal" :model-value="emQuadrados(objeto.altura)" @change="tamanho('altura', $event)" />
                     </label>
                 </div>
-                <p class="-mt-1 text-xs text-preto-400">{{ distancia(objeto.largura) }} × {{ distancia(objeto.altura) }} {{ pagina.unidade }}</p>
+                <p v-if="objeto.tipo !== 'luz'" class="-mt-1 text-xs text-preto-400">
+                    {{ distancia(objeto.largura) }} × {{ distancia(objeto.altura) }} {{ pagina.unidade }}
+                </p>
             </template>
             <label v-if="objeto.tipo !== 'luz' && objeto.tipo !== 'parede'" class="grid gap-1">
                 <span class="text-xs text-preto-300">Camada</span>

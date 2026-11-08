@@ -25,6 +25,8 @@ export class ObjetoVisual {
     private miraLigada = false;
     private destruido = false;
     private enfase = true;
+    /** Iluminação dinâmica ligada: a luz vem do mapa de luz (GPU), não do brilho desenhado aqui. */
+    private luzDinamica = false;
 
     constructor(
         dto: ObjetoDto,
@@ -52,6 +54,12 @@ export class ObjetoVisual {
     /** Paredes ficam esmaecidas quando a camada de iluminação não está ativa. */
     definirEnfase(ativa: boolean): void {
         this.enfase = ativa;
+        this.aplicar();
+    }
+
+    definirLuzDinamica(ligada: boolean): void {
+        if (this.luzDinamica === ligada) return;
+        this.luzDinamica = ligada;
         this.aplicar();
     }
 
@@ -110,7 +118,7 @@ export class ObjetoVisual {
         const { x, y, largura, altura, camada } = this.dto;
         this.container.position.set(x, y);
         // Objetos da camada do mestre aparecem esmaecidos: o jogador não os vê.
-        this.container.alpha = camada === 'mestre' ? 0.6 : this.dto.tipo === 'parede' && !this.enfase ? 0.25 : 1;
+        this.container.alpha = camada === 'mestre' ? 0.6 : this.dto.tipo === 'parede' && this.mestre && !this.enfase ? 0.25 : 1;
         this.desenharFundo();
         this.desenharMarcador();
         this.desenharStatus();
@@ -212,6 +220,7 @@ export class ObjetoVisual {
 
     /** Brilho radial somado ao mapa (visível ao jogador). */
     private desenharLuz(g: Graphics): void {
+        if (this.luzDinamica) return;
         const { largura, altura, dados } = this.dto;
         const r = Math.min(largura, altura) / 2;
         const cor = corHex(dados?.cor ?? '#ffd27a');
@@ -226,6 +235,7 @@ export class ObjetoVisual {
         if (!pts || pts.length !== 4) return;
         const tipo = this.dto.dados?.tipo ?? 'parede';
         const aberta = !!this.dto.dados?.aberta;
+        if (!this.mestre) return this.desenharControle(g, pts, tipo, aberta);
         const cor = tipo === 'porta' ? 0x38bdf8 : tipo === 'janela' ? 0x67e8f9 : 0xf4e0a0;
         const [ox, oy] = [this.dto.x, this.dto.y];
         const a = { x: pts[0] - ox, y: pts[1] - oy };
@@ -237,13 +247,35 @@ export class ObjetoVisual {
         g.circle(b.x, b.y, 7).fill(0x0d0a12).stroke({ color: cor, width: 2 });
     }
 
+    /** Para o jogador a parede não aparece (só a sombra dela); porta e janela viram um controle pequeno em que se clica. */
+    private desenharControle(g: Graphics, pts: number[], tipo: string, aberta: boolean): void {
+        if (tipo !== 'porta' && tipo !== 'janela') return;
+        const trancada = !!this.dto.dados?.trancada;
+        const cor = trancada ? 0xf87171 : tipo === 'porta' ? 0x38bdf8 : 0x67e8f9;
+        const cx = (pts[0] + pts[2]) / 2 - this.dto.x;
+        const cy = (pts[1] + pts[3]) / 2 - this.dto.y;
+        const r = 13;
+        g.circle(cx, cy, r).fill({ color: 0x0d0a12, alpha: 0.88 }).stroke({ color: cor, width: 3 });
+        // fechada: uma barra atravessada; aberta: a barra de pé (a passagem livre)
+        if (aberta)
+            g.moveTo(cx, cy - r * 0.55)
+                .lineTo(cx, cy + r * 0.55)
+                .stroke({ color: cor, width: 3, cap: 'round' });
+        else
+            g.moveTo(cx - r * 0.55, cy)
+                .lineTo(cx + r * 0.55, cy)
+                .stroke({ color: cor, width: 3, cap: 'round' });
+        if (trancada) g.roundRect(cx - 4, cy - 3, 8, 7, 1.5).fill(cor);
+    }
+
     /** Luz: ponto de controle visível só ao mestre (o jogador vê apenas o brilho). */
     private desenharMarcador(): void {
         const g = this.marcador.clear();
         if (this.dto.tipo !== 'luz' || !this.mestre) return;
+        const apagada = this.dto.dados?.ativa === false;
         g.circle(this.dto.largura / 2, this.dto.altura / 2, 9)
             .fill(0x0d0a12)
-            .stroke({ color: corHex(this.dto.dados?.cor ?? '#ffd27a'), width: 3 });
+            .stroke({ color: apagada ? 0x6b6577 : corHex(this.dto.dados?.cor ?? '#ffd27a'), width: 3 });
         g.circle(this.dto.largura / 2, this.dto.altura / 2, 3).fill(0xffffff);
     }
 

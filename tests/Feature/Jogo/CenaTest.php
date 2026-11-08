@@ -71,16 +71,16 @@ class CenaTest extends TestCase
             ->has('objetos', 6)->has('paginas', 1)->has('jogadores', 3)->has('personagens', 2));
     }
 
-    public function test_jogador_nunca_recebe_camada_do_mestre_nem_paredes(): void
+    public function test_jogador_nunca_recebe_a_camada_do_mestre_e_recebe_a_geometria_das_paredes(): void
     {
         $c = $this->cenario();
         $this->como($c->ana)->get(route('jogo', [$c->mesa->slug, $c->ana->id]))->assertInertia(fn (Assert $p) => $p
             ->where('mestre', false)
-            ->has('objetos', 4) // mapa, 2 tokens de jogadores, luz
+            ->has('objetos', 5) // mapa, 2 tokens de jogadores, luz e parede (o navegador calcula visão e antecipa o bloqueio do movimento)
             ->where('objetos', function ($objetos) use ($c) {
                 $ids = collect($objetos)->pluck('id');
 
-                return $ids->doesntContain($c->segredo->id) && $ids->doesntContain($c->parede->id) && $ids->contains($c->luz->id);
+                return $ids->doesntContain($c->segredo->id) && $ids->contains($c->parede->id) && $ids->contains($c->luz->id);
             })
             ->where('paginas', [])->has('jogadores', 3)->has('personagens', 2)
             ->where('jogadores.0', fn ($j) => ! isset($j['pagina_id']) && ! isset($j['tem_senha'])));
@@ -234,7 +234,7 @@ class CenaTest extends TestCase
         $this->withSession($sessao)->get($url($c->mestre))->assertInertia(fn (Assert $p) => $p
             ->where('mestre', true)->where('jogador.nome', 'Mestre')->has('objetos', 6));
         $this->withSession($sessao)->get($url($c->ana))->assertInertia(fn (Assert $p) => $p
-            ->where('mestre', false)->where('jogador.nome', 'Ana')->has('objetos', 4));
+            ->where('mestre', false)->where('jogador.nome', 'Ana')->has('objetos', 5));
 
         // Cada aba age como o seu jogador na API (cabeçalho X-Jogador).
         $this->withSession($sessao)->withHeader('X-Jogador', (string) $c->mestre->id)
@@ -368,10 +368,10 @@ class CenaTest extends TestCase
         ]);
         $mestreId = $antigo('Mestre', 'mestre');
         $anaId = $antigo('Ana', 'jogador');
-        $token = \Illuminate\Support\Facades\DB::table('objetos')->insertGetId(['pagina_id' => $pagina->id, 'camada' => 'jogadores', 'tipo' => 'token', 'personagem_id' => $anaId, 'x' => 1, 'y' => 1, 'largura' => 70, 'altura' => 70, 'created_at' => $agora, 'updated_at' => $agora]);
-        $traco = \Illuminate\Support\Facades\DB::table('objetos')->insertGetId(['pagina_id' => $pagina->id, 'camada' => 'jogadores', 'tipo' => 'traco', 'personagem_id' => $anaId, 'x' => 1, 'y' => 1, 'largura' => 5, 'altura' => 5, 'created_at' => $agora, 'updated_at' => $agora]);
-        $msgAna = \Illuminate\Support\Facades\DB::table('mensagens')->insertGetId(['mesa_id' => $mesa->id, 'personagem_id' => $anaId, 'tipo' => 'texto', 'visibilidade' => 'todos', 'texto' => 'oi', 'created_at' => $agora, 'updated_at' => $agora]);
-        $msgMestre = \Illuminate\Support\Facades\DB::table('mensagens')->insertGetId(['mesa_id' => $mesa->id, 'personagem_id' => $mestreId, 'tipo' => 'texto', 'visibilidade' => 'todos', 'texto' => 'ola', 'created_at' => $agora, 'updated_at' => $agora]);
+        $token = DB::table('objetos')->insertGetId(['pagina_id' => $pagina->id, 'camada' => 'jogadores', 'tipo' => 'token', 'personagem_id' => $anaId, 'x' => 1, 'y' => 1, 'largura' => 70, 'altura' => 70, 'created_at' => $agora, 'updated_at' => $agora]);
+        $traco = DB::table('objetos')->insertGetId(['pagina_id' => $pagina->id, 'camada' => 'jogadores', 'tipo' => 'traco', 'personagem_id' => $anaId, 'x' => 1, 'y' => 1, 'largura' => 5, 'altura' => 5, 'created_at' => $agora, 'updated_at' => $agora]);
+        $msgAna = DB::table('mensagens')->insertGetId(['mesa_id' => $mesa->id, 'personagem_id' => $anaId, 'tipo' => 'texto', 'visibilidade' => 'todos', 'texto' => 'oi', 'created_at' => $agora, 'updated_at' => $agora]);
+        $msgMestre = DB::table('mensagens')->insertGetId(['mesa_id' => $mesa->id, 'personagem_id' => $mestreId, 'tipo' => 'texto', 'visibilidade' => 'todos', 'texto' => 'ola', 'created_at' => $agora, 'updated_at' => $agora]);
 
         $this->artisan('migrate')->assertExitCode(0);
 
@@ -382,11 +382,11 @@ class CenaTest extends TestCase
         $this->assertSame($pagina->id, $ana->pagina_id);
         $this->assertSame([$anaId], $ana->personagens()->pluck('personagens.id')->all());      // mesmo id: o token continua válido
         $this->assertNull(Personagem::find($mestreId));                                         // o "personagem" do mestre era só o login
-        $this->assertSame($anaId, \Illuminate\Support\Facades\DB::table('objetos')->where('id', $token)->value('personagem_id'));
-        $this->assertNull(\Illuminate\Support\Facades\DB::table('objetos')->where('id', $traco)->value('personagem_id'));
-        $this->assertSame($ana->id, \Illuminate\Support\Facades\DB::table('objetos')->where('id', $traco)->value('jogador_id'));
-        $this->assertSame($ana->id, \Illuminate\Support\Facades\DB::table('mensagens')->where('id', $msgAna)->value('jogador_id'));
-        $this->assertSame($mestre->id, \Illuminate\Support\Facades\DB::table('mensagens')->where('id', $msgMestre)->value('jogador_id'));
-        $this->assertNull(\Illuminate\Support\Facades\DB::table('mensagens')->where('id', $msgMestre)->value('personagem_id'));
+        $this->assertSame($anaId, DB::table('objetos')->where('id', $token)->value('personagem_id'));
+        $this->assertNull(DB::table('objetos')->where('id', $traco)->value('personagem_id'));
+        $this->assertSame($ana->id, DB::table('objetos')->where('id', $traco)->value('jogador_id'));
+        $this->assertSame($ana->id, DB::table('mensagens')->where('id', $msgAna)->value('jogador_id'));
+        $this->assertSame($mestre->id, DB::table('mensagens')->where('id', $msgMestre)->value('jogador_id'));
+        $this->assertNull(DB::table('mensagens')->where('id', $msgMestre)->value('personagem_id'));
     }
 }

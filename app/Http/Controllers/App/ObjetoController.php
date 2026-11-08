@@ -7,10 +7,14 @@ use App\Models\Mesa;
 use App\Nucleo\Combate\CombateService;
 use App\Models\Objeto;
 use App\Models\Pagina;
+use App\Nucleo\Cena\Paredes;
+use App\Nucleo\Combate\CombateService;
+use App\Nucleo\Combate\TecnicasAtivas;
 use App\Support\AcessoMesa;
 use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ObjetoController extends Controller
@@ -46,12 +50,25 @@ class ObjetoController extends Controller
             'dados.altura_original' => ['nullable', 'numeric', 'min:1'],
             'dados.texto' => ['required_if:tipo,texto', 'nullable', 'string', 'max:500'],
             'dados.tamanho' => ['nullable', 'numeric', 'min:6', 'max:400'],
+            'dados.trancada' => ['nullable', 'boolean'],
+            'dados.visao' => ['nullable', 'numeric', 'min:0', 'max:200'],
+            'dados.visao_ativa' => ['nullable', 'boolean'],
+            'dados.bloqueio' => ['nullable', 'array'],
+            'dados.bloqueio.movimento' => ['nullable', 'boolean'],
+            'dados.bloqueio.visao' => ['nullable', 'boolean'],
+            'dados.bloqueio.luz' => ['nullable', 'boolean'],
+            'dados.ativa' => ['nullable', 'boolean'],
+            'dados.intensidade' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'dados.raio_claro' => ['nullable', 'numeric', 'min:0', 'max:20000'],
+            'dados.angulo' => ['nullable', 'numeric', 'min:1', 'max:360'],
+            'dados.direcao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
+            'dados.atravessa' => ['nullable', 'boolean'],
         ]);
         $this->validarCamada($dados['camada'], $dados['tipo']);
         $this->validarPares($dados);
 
         if ($acesso->ehMestre()) {
-            $somenteMestre = $dados['camada'] === 'mestre' || $dados['tipo'] === 'parede';
+            $somenteMestre = $dados['camada'] === 'mestre';
         } else {
             // Jogador: só traço e texto, na camada Jogadores, na própria página, em seu nome (jogador).
             abort_unless(in_array($dados['tipo'], self::TIPOS_DO_JOGADOR, true) && $dados['camada'] === 'jogadores', 403);
@@ -96,6 +113,19 @@ class ObjetoController extends Controller
                 'dados.texto' => ['nullable', 'string', 'max:500'],
                 'dados.tamanho' => ['nullable', 'numeric', 'min:6', 'max:400'],
                 'dados.espessura' => ['nullable', 'numeric', 'min:1', 'max:80'],
+                'dados.trancada' => ['nullable', 'boolean'],
+                'dados.visao' => ['nullable', 'numeric', 'min:0', 'max:200'],
+                'dados.visao_ativa' => ['nullable', 'boolean'],
+                'dados.bloqueio' => ['nullable', 'array'],
+                'dados.bloqueio.movimento' => ['nullable', 'boolean'],
+                'dados.bloqueio.visao' => ['nullable', 'boolean'],
+                'dados.bloqueio.luz' => ['nullable', 'boolean'],
+                'dados.ativa' => ['nullable', 'boolean'],
+                'dados.intensidade' => ['nullable', 'numeric', 'min:0', 'max:1'],
+                'dados.raio_claro' => ['nullable', 'numeric', 'min:0', 'max:20000'],
+                'dados.angulo' => ['nullable', 'numeric', 'min:1', 'max:360'],
+                'dados.direcao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
+                'dados.atravessa' => ['nullable', 'boolean'],
             ]);
             if (isset($dados['camada'])) {
                 $this->validarCamada($dados['camada'], $objeto->tipo);
@@ -121,6 +151,16 @@ class ObjetoController extends Controller
         }
 
         $de = ['x' => (float) $objeto->x, 'y' => (float) $objeto->y];
+        // Paredes barram o movimento (o mestre atravessa): se o caminho reto até o ponto novo cruza uma parede (ou porta/janela fechada),
+        // o token fica onde estava. O cliente já trava antes; aqui é a palavra final.
+        if ($objeto->tipo === 'token' && isset($dados['x'], $dados['y']) && ! $acesso->ehMestre()) {
+            $mx = (float) $objeto->largura / 2;
+            $my = (float) $objeto->altura / 2;
+            if (! Paredes::caminhoLivre($objeto->pagina, $de['x'] + $mx, $de['y'] + $my, (float) $dados['x'] + $mx, (float) $dados['y'] + $my)) {
+                $dados['x'] = $de['x'];
+                $dados['y'] = $de['y'];
+            }
+        }
         // Token em combate: o que andou entra no deslocamento do turno; quem não é o mestre trava no limite (como a régua).
         if ($objeto->tipo === 'token' && isset($dados['x'], $dados['y']) && CombateService::emCurso($mesa)) {
             $r = app(CombateService::class)->registrarMovimento($mesa, $objeto, (float) $dados['x'], (float) $dados['y'], ! $acesso->ehMestre());
@@ -132,10 +172,50 @@ class ObjetoController extends Controller
         Transmitir::cena($mesa, $objeto->pagina_id, $acesso->jogador->id, $this->soMestre($objeto));
         // Vigília (Overwatch): o atirador que anda a encerra
         if ($objeto->tipo === 'token' && isset($dados['x'], $dados['y']) && ($de['x'] !== (float) $dados['x'] || $de['y'] !== (float) $dados['y'])) {
-            \App\Nucleo\Combate\TecnicasAtivas::aoMover($mesa, $acesso, $objeto);
+            TecnicasAtivas::aoMover($mesa, $acesso, $objeto);
         }
 
         return response()->json($objeto->paraFront());
+    }
+
+    /**
+     * Abrir ou fechar uma porta ou janela. Qualquer jogador da página pode, desde que não esteja trancada; só o mestre tranca e
+     * destranca (pelo `update`) e só ele mexe numa trancada. O servidor é quem decide: o cliente nunca manda o novo estado.
+     */
+    public function alternar(Request $request, Mesa $mesa, Objeto $objeto): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+        $this->pertence($mesa, $objeto);
+        abort_unless($objeto->tipo === 'parede' && in_array($objeto->dados['tipo'] ?? 'parede', ['porta', 'janela'], true), 422, 'Só portas e janelas abrem.');
+        if (! $acesso->ehMestre()) {
+            abort_unless($objeto->pagina_id === $this->paginaDe($mesa, $acesso), 403);
+            abort_if((bool) ($objeto->dados['trancada'] ?? false), 422, 'Está trancada.');
+            abort_unless($this->estaPerto($objeto, $acesso), 422, 'Chegue mais perto para abrir ou fechar.');
+        }
+        // Trava a linha: dois cliques simultâneos não se anulam (cada um vê o estado que o outro deixou).
+        $objeto = DB::transaction(function () use ($objeto) {
+            $o = Objeto::query()->whereKey($objeto->id)->lockForUpdate()->firstOrFail();
+            $o->update(['dados' => array_merge($o->dados ?? [], ['aberta' => ! ($o->dados['aberta'] ?? false)])]);
+
+            return $o;
+        });
+        Transmitir::cena($mesa, $objeto->pagina_id, $acesso->jogador->id, $this->soMestre($objeto));
+
+        return response()->json($objeto->paraFront());
+    }
+
+    /** Algum token do jogador está encostado na porta (a até um quadrado da borda do token)? Só de perto se abre. */
+    private function estaPerto(Objeto $porta, AcessoMesa $acesso): bool
+    {
+        $p = Paredes::pontos($porta);
+        if (! $p) {
+            return false;
+        }
+        $alcance = (float) $porta->pagina->tamanho_quadrado;
+
+        return $porta->pagina->objetos()->where('tipo', 'token')->where('camada', 'jogadores')
+            ->whereIn('personagem_id', $acesso->personagensPermitidos() ?: [0])->get()
+            ->contains(fn (Objeto $t) => Paredes::distanciaAoSegmento($t->x + $t->largura / 2, $t->y + $t->altura / 2, ...$p) - max($t->largura, $t->altura) / 2 <= $alcance);
     }
 
     public function destroy(Request $request, Mesa $mesa, Objeto $objeto): JsonResponse
@@ -170,7 +250,7 @@ class ObjetoController extends Controller
 
     private function soMestre(Objeto $objeto): bool
     {
-        return $objeto->camada === 'mestre' || $objeto->tipo === 'parede';
+        return $objeto->camada === 'mestre';
     }
 
     private function pertence(Mesa $mesa, Objeto $objeto): void

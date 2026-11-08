@@ -168,6 +168,10 @@ defineExpose({
     selecionar: (id: number | null) => cena?.selecionar(id),
     selecionarTodos: () => cena?.selecionarTodos(),
     focar: (id: number, selecionar = false) => cena?.focar(id, selecionar),
+    /** A memória das áreas vistas, guardada no servidor, chegou. */
+    carregarMemoria: (imagem: string | null) => cena?.carregarMemoria(imagem),
+    /** O mestre apagou a memória das áreas vistas. */
+    limparMemoria: () => cena?.limparMemoria(),
 });
 </script>
 

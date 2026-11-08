@@ -1,6 +1,7 @@
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import { areaMedida, desenhoDaArea, tokensNaArea, type AreaDeEfeito } from '../nucleo/combate/area';
 import { fatorParaMetros, limitar as limitarPasso, metros as metrosDe } from '../nucleo/combate/movimento';
+import { Iluminacao } from './Iluminacao';
 import { ObjetoVisual } from './ObjetoVisual';
 import {
     CAMADAS,
@@ -13,6 +14,7 @@ import {
     type ObjetoDto,
     type PaginaDto,
 } from './tipos';
+import { pontoAlcancavel, pontoNoPoligono, segmentosQueBloqueiam } from './visao';
 
 const ESCALA_MIN = 0.05;
 const ESCALA_MAX = 8;
@@ -42,6 +44,10 @@ export class Cena {
     private grade = new Graphics();
     private camadas = new Map<Camada, Container>();
     private overlay = new Container();
+    private iluminacao!: Iluminacao;
+    private temporizadorIluminacao: ReturnType<typeof setTimeout> | undefined;
+    private temporizadorMemoria: ReturnType<typeof setTimeout> | undefined;
+    private ultimaMemoria = '';
     private selecaoG = new Graphics();
     private reguaG = new Graphics();
     private gabaritoG = new Graphics();
@@ -114,6 +120,7 @@ export class Cena {
         this.app.canvas.style.touchAction = 'none';
         this.app.canvas.style.display = 'block';
 
+        this.iluminacao = new Iluminacao(this.app.renderer, () => this.agendarMemoria());
         this.app.stage.addChild(this.mundo);
         this.mundo.addChild(this.fundoPagina);
         // Ordem de desenho: mapa < grade < mestre < jogadores < iluminação < overlay.
@@ -121,6 +128,7 @@ export class Cena {
             const c = new Container();
             c.label = id;
             this.camadas.set(id, c);
+            if (id === 'iluminacao') this.mundo.addChild(this.iluminacao.container); // a escuridão cobre o jogo, não os controles do mestre
             this.mundo.addChild(c);
             if (id === 'mapa') this.mundo.addChild(this.grade);
         }
@@ -135,6 +143,9 @@ export class Cena {
     }
 
     destruir(): void {
+        clearTimeout(this.temporizadorIluminacao);
+        clearTimeout(this.temporizadorMemoria);
+        this.iluminacao.destruir();
         this.removerListeners.forEach((f) => f());
         this.removerListeners = [];
         this.visuais.forEach((v) => v.destruir());
@@ -151,6 +162,12 @@ export class Cena {
         this.redesenharPagina();
         this.desenharZonas();
         if (trocou || ajustar) this.ajustarVista();
+        if (trocou) {
+            this.iluminacao.reiniciarMemoria();
+            this.ultimaMemoria = '';
+            if (!this.opcoes.mestre && pagina.iluminacao_ativa) this.opcoes.eventos.pedirMemoria(pagina.id);
+        }
+        this.agendarIluminacao(30);
     }
 
     setObjetos(lista: ObjetoDto[]): void {
@@ -179,6 +196,7 @@ export class Cena {
         }
         this.ordenarCamadas();
         this.desenharSelecao();
+        this.agendarIluminacao(60);
     }
 
     setCamadaAtiva(camada: Camada): void {
@@ -1093,7 +1111,7 @@ export class Cena {
         const encaixado = { x: this.snap(livre.x), y: this.snap(livre.y) };
         const m = this.movimento;
         const pagina = this.pagina;
-        if (!m || !pagina || m.objetoId !== v.dto.id) return encaixado;
+        if (!m || !pagina || m.objetoId !== v.dto.id) return this.restringirPorParedes(v, ox, oy, encaixado);
         const restante = Math.max(0, m.total - m.usado);
         let final = encaixado;
         let travou = false;
@@ -1106,9 +1124,31 @@ export class Cena {
                 travou = livreLimitado.travou;
             }
         }
+        final = this.restringirPorParedes(v, ox, oy, final);
         this.desenharMovimento(v, { x: ox, y: oy }, final, m.usado, m.total, travou, !m.limitar);
 
         return final;
+    }
+
+    /**
+     * Paredes (e portas e janelas fechadas) barram o movimento do jogador: o token para colado na parede, do lado de cá. O mestre atravessa.
+     * Só antecipa o que o servidor vai decidir (ele recusa o que cruzar parede). O caminho é a reta do ponto de partida do arrasto.
+     */
+    private restringirPorParedes(v: ObjetoVisual, ox: number, oy: number, alvo: { x: number; y: number }): { x: number; y: number } {
+        if (this.opcoes.mestre || v.dto.tipo !== 'token') return alvo;
+        const paredes = segmentosQueBloqueiam(
+            [...this.visuais.values()].map((o) => o.dto).filter((o) => o.tipo === 'parede'),
+            'movimento',
+        );
+        if (!paredes.length) return alvo;
+        const mx = v.dto.largura / 2;
+        const my = v.dto.altura / 2;
+        const livre = pontoAlcancavel(paredes, { x: ox + mx, y: oy + my }, { x: alvo.x + mx, y: alvo.y + my }, (p) => ({
+            x: this.snap(p.x - mx) + mx,
+            y: this.snap(p.y - my) + my,
+        }));
+
+        return { x: livre.x - mx, y: livre.y - my };
     }
 
     /** Régua do arrasto do token do turno: linha do ponto de partida até o token, com o gasto do turno. */
@@ -1148,7 +1188,13 @@ export class Cena {
         this.reguaTexto.visible = true;
     }
 
+    /** A visão só se atualiza ao SOLTAR o token (nunca durante o arrasto): espera o encaixe terminar e recalcula. */
     private aoSoltar(e: PointerEvent): void {
+        this.aoSoltarBase(e);
+        this.agendarIluminacao(350);
+    }
+
+    private aoSoltarBase(e: PointerEvent): void {
         if (this.app.canvas.hasPointerCapture(e.pointerId)) this.app.canvas.releasePointerCapture(e.pointerId);
         // Botão direito sem arrastar sobre um objeto: menu (mover entre camadas). Arrastar continua movendo a vista.
         if (e.type === 'pointerup' && e.button === 2 && this.modo === 'pan' && this.opcoes.mestre) {

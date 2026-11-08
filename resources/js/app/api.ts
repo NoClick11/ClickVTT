@@ -83,6 +83,14 @@ export function apiMesa(mesaId: number, atorId: number) {
     return {
         criarObjeto: (paginaId: number, dados: object | FormData) => requisitar<ObjetoDto>(atorId, 'POST', r('jogo.objetos.store', paginaId), dados),
         atualizarObjeto: (id: number, campos: object) => requisitar<ObjetoDto>(atorId, 'PATCH', r('jogo.objetos.update', id), campos),
+        /** Abre/fecha uma porta ou janela (o servidor recusa se estiver trancada, salvo para o mestre). */
+        alternarObjeto: (id: number) => requisitar<ObjetoDto>(atorId, 'POST', r('jogo.objetos.alternar', id)),
+        /** A memória das áreas que ESTE jogador já viu na página (PNG em data URL) ou null. */
+        exploracao: (paginaId: number) => requisitar<{ imagem: string | null }>(atorId, 'GET', r('jogo.exploracao.mostrar', paginaId)),
+        guardarExploracao: (paginaId: number, imagem: string) =>
+            requisitar<{ ok: true }>(atorId, 'PUT', r('jogo.exploracao.guardar', paginaId), { imagem }),
+        /** Só o mestre: apaga a memória de todos os jogadores nesta página. */
+        limparExploracao: (paginaId: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.exploracao.limpar', paginaId)),
         removerObjeto: (id: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.objetos.destroy', id)),
         // Loot no mapa: o mestre monta; o jogador abre e pega (409 = alguém levou antes; `ErroApi.dados.loot` traz o conteúdo de agora).
         criarLoot: (paginaId: number, dados: { nome?: string; camada: 'mestre' | 'jogadores'; x: number; y: number }) =>

@@ -53,14 +53,16 @@ class Objeto extends Model
     }
 
     /**
-     * O que um JOGADOR pode receber: mapa, jogadores e apenas o brilho das luzes.
-     * A camada do mestre e as paredes nunca saem do servidor para jogadores.
+     * O que um JOGADOR pode receber: mapa, jogadores, as luzes e a geometria das paredes. A camada do mestre nunca sai do servidor
+     * para jogadores.
      */
     public function scopeVisivelAoJogador(Builder $query): Builder
     {
         return $query->where(function (Builder $q) {
             $q->whereIn('camada', ['mapa', 'jogadores'])
-                ->orWhere(fn (Builder $l) => $l->where('camada', 'iluminacao')->where('tipo', 'luz'));
+                // As paredes vão ao navegador do jogador porque ele calcula a visão e as sombras (e antecipa o bloqueio do movimento);
+                // elas não são desenhadas para ele, só as portas e janelas viram um controle.
+                ->orWhere(fn (Builder $l) => $l->where('camada', 'iluminacao')->whereIn('tipo', ['luz', 'parede']));
         });
     }
 
