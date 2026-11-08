@@ -5,11 +5,11 @@ namespace App\Http\Controllers\App;
 use App\Http\Controllers\Controller;
 use App\Models\Item;
 use App\Models\Mesa;
-use App\Sistemas\OnePiece\EstilosDeLuta;
 use App\Models\Personagem;
 use App\Nucleo\Rolagem\Rolador;
 use App\Nucleo\Sistemas\FichaCampos;
 use App\Nucleo\Sistemas\RegistroSistemas;
+use App\Sistemas\OnePiece\EstilosDeLuta;
 use App\Support\AcessoMesa;
 use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
@@ -60,6 +60,10 @@ class FichaController extends Controller
                 $p->ficha = $nova;
             }
             if ($criacao !== false) {
+                // O construtor só se usa uma vez: depois de concluído, o jogador não o refaz (o mestre pode, para corrigir).
+                if (is_array($criacao) && ! $acesso->ehMestre() && ($p->criacao['concluida'] ?? false)) {
+                    throw ValidationException::withMessages(['criacao' => 'O construtor já foi usado nesta ficha.']);
+                }
                 $p->criacao = $criacao === null ? null : $this->criacaoNova($p->criacao, $criacao);
                 // Concluiu a criação: os itens iniciais da profissão entram no inventário (o sistema decide quais)
                 if (is_array($criacao) && ($criacao['concluida'] ?? false) && method_exists($sistema, 'entregarItensIniciais')) {

@@ -25,7 +25,14 @@ import FichaLateral from './FichaLateral.vue';
  * `rolar(expressao, rotulo)`. Os valores derivados (CA, bônus, CD...) são calculados aqui (`calcular`) e
  * os ajustes manuais ficam em `ficha.ajustes`.
  */
-const props = defineProps<{ personagem: PersonagemFicha; ficha: FichaOnePiece; itens: ItemDto[]; mestre: boolean; servicos?: ServicosDaFicha }>();
+const props = defineProps<{
+    personagem: PersonagemFicha;
+    ficha: FichaOnePiece;
+    itens: ItemDto[];
+    mestre: boolean;
+    servicos?: ServicosDaFicha;
+    construtorConcluido?: boolean;
+}>();
 const emit = defineEmits<{
     salvar: [campos: Record<string, unknown>];
     rolar: [
@@ -180,7 +187,13 @@ const conteudo: Record<AbaId, Component> = {
 
 <template>
     <div class="flex h-full min-h-0 flex-col text-preto-100">
-        <FichaCabecalho :ficha="ficha" :personagem="personagem" @update:editar="editar = $event" @construtor="emit('construtor')" />
+        <FichaCabecalho
+            :ficha="ficha"
+            :personagem="personagem"
+            :construtor-concluido="construtorConcluido"
+            @update:editar="editar = $event"
+            @construtor="emit('construtor')"
+        />
         <div class="flex min-h-0 flex-1">
             <FichaLateral :ficha="ficha" :personagem="personagem" />
             <div class="flex min-w-0 flex-1 flex-col">

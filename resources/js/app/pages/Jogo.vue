@@ -1854,7 +1854,7 @@ function alternarPorta(id: number) {
                 :ficha="fichas[f.id]"
                 :itens="itensDaMesa"
                 :mestre="mestre"
-                v-bind="moduloSistema.slug === 'one-piece' ? { servicos: servicosDaFicha } : {}"
+                v-bind="moduloSistema.slug === 'one-piece' ? { servicos: servicosDaFicha, construtorConcluido: !!criacoes[f.id]?.concluida } : {}"
                 @editor-item="abrirEditorItem"
                 @construtor="construtorId = f.id"
                 @acao="(a: AcaoCaracteristica) => executarAcao(f.id, a)"

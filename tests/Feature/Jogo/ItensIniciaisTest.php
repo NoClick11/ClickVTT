@@ -5,6 +5,7 @@ namespace Tests\Feature\Jogo;
 use App\Models\Jogador;
 use App\Models\Sistema;
 use App\Models\User;
+use App\Sistemas\OnePiece\FichaOnePiece;
 use App\Sistemas\OnePiece\ItensIniciais;
 use App\Sistemas\OnePiece\Profissoes;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -105,7 +106,7 @@ class ItensIniciaisTest extends TestCase
     {
         $c = $this->cenario();
         $this->concluir($c, 'medico');
-        $this->concluir($c, 'medico'); // de novo: mesma coisa
+        $this->concluir($c, 'medico', quem: $c->mestre); // de novo (só o mestre refaz): mesma coisa
         $inv = $this->inventario($c);
         $this->assertSame(1, $inv['Kit Médico']);
         $this->assertSame(3, $inv['Kit de Primeiros Socorros']);
@@ -123,7 +124,7 @@ class ItensIniciaisTest extends TestCase
     {
         $c = $this->cenario();
         $corda = $c->mesa->itens()->create(['nome' => 'Corda de seda', 'peso' => 1, 'equipavel' => false]);
-        $f = $c->aria->ficha ?? \App\Sistemas\OnePiece\FichaOnePiece::padrao();
+        $f = $c->aria->ficha ?? FichaOnePiece::padrao();
         $f['inventario'] = [['secao' => 'Equipamento', 'itens' => [['item_id' => $corda->id, 'qtd' => 1, 'equipado' => false, 'sintonizado' => false]]]];
         $c->aria->ficha = $f;
         $c->aria->save();
@@ -185,14 +186,14 @@ class ItensIniciaisTest extends TestCase
         $c = $this->cenario();
         $bellys = $this->rolarDinheiro($c)->assertOk()->json('bellys');
         $this->concluirComEstilo($c, 'Pistola');
-        $this->concluirComEstilo($c, 'Mosquete'); // mudou de ideia: sai a pistola, entra o mosquete
+        $this->concluirComEstilo($c, 'Mosquete', $c->mestre); // mudou de ideia (só o mestre refaz): sai a pistola, entra o mosquete
         $inv = $this->inventario($c);
         $this->assertArrayNotHasKey('Pistola', $inv);
         $this->assertSame(1, $inv['Mosquete']);
         $this->assertSame(80, $inv['Munição Esférica']); // continua 80, não 160
         $this->assertSame($bellys, $c->aria->fresh()->ficha['belly']); // o dinheiro também não soma duas vezes
 
-        $this->concluirComEstilo($c, 'Mosquete'); // de novo: igual
+        $this->concluirComEstilo($c, 'Mosquete', $c->mestre); // de novo: igual
         $this->assertSame(1, $this->inventario($c)['Mosquete']);
         $this->assertSame($bellys, $c->aria->fresh()->ficha['belly']);
     }
@@ -205,7 +206,7 @@ class ItensIniciaisTest extends TestCase
         $this->assertSame(0, $c->aria->fresh()->ficha['dinheiroInicial']);
         $this->rolarDinheiro($c)->assertOk();
         $bellys = $c->aria->fresh()->criacao['dados']['dinheiro']['bellys'];
-        $this->concluirComEstilo($c, 'Pistola');
+        $this->concluirComEstilo($c, 'Pistola', $c->mestre);
         $this->assertSame(5000 + $bellys, $c->aria->fresh()->ficha['belly']); // o que já tinha somou com o rolado
     }
 

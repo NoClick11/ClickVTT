@@ -122,6 +122,16 @@ class FichaTest extends TestCase
         $this->assertSame(1, $c->aria->fresh()->ficha['inventario'][0]['itens'][0]['qtd']); // não foi trocada
     }
 
+    public function test_construtor_concluido_nao_se_refaz_mas_o_mestre_pode(): void
+    {
+        $c = $this->cenario();
+        $this->salvar($c, $c->ana, ['nivel' => 1], ['criacao' => ['etapa' => 'fim', 'concluida' => true]])->assertOk();
+        $this->salvar($c, $c->ana, ['nivel' => 1], ['criacao' => ['etapa' => 'atributos', 'concluida' => false]])->assertStatus(422);
+        $this->assertTrue($c->aria->fresh()->criacao['concluida']);
+        $this->salvar($c, $c->ana, ['nivel' => 2])->assertOk(); // edição comum da ficha continua livre
+        $this->salvar($c, $c->mestre, ['nivel' => 1], ['criacao' => ['etapa' => 'atributos', 'concluida' => false]])->assertOk();
+    }
+
     public function test_lote_da_criacao_e_atomico_e_a_etapa_fica_salva(): void
     {
         $c = $this->cenario();

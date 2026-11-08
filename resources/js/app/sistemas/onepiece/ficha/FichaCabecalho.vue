@@ -9,10 +9,12 @@ import { estilos, useFicha } from '../contexto';
 import { camposDoDescanso, type FichaOnePiece, type TipoDescanso } from '../regras';
 import SubirDeNivel from './SubirDeNivel.vue';
 
-const props = defineProps<{ ficha: FichaOnePiece; personagem: PersonagemFicha }>();
+const props = defineProps<{ ficha: FichaOnePiece; personagem: PersonagemFicha; construtorConcluido?: boolean }>();
 const emit = defineEmits<{ 'update:editar': [boolean]; construtor: [] }>();
 const { editar, calc, salvar, mestre } = useFicha();
 /** O mestre marca um NPC como aliado dos jogadores: eles não o atingem (sem fogo amigo). */
+/** O construtor só se usa uma vez: depois de concluído o jogador não o abre de novo (o mestre pode, para corrigir). */
+const construtorBloqueado = computed(() => !!props.construtorConcluido && !mestre);
 const podeMarcarAliado = computed(() => mestre && !(props.personagem.jogadores?.length ?? 0));
 
 const subindo = ref(false);
@@ -126,7 +128,12 @@ function descansar(tipo: TipoDescanso) {
                     size="icon"
                     variant="outline"
                     class="size-9 border-preto-700 text-preto-300 hover:text-ouro-200"
-                    title="Construtor: escolha espécie, variante e atributos e a ficha é preenchida"
+                    :disabled="construtorBloqueado"
+                    :title="
+                        construtorBloqueado
+                            ? 'O construtor já foi usado nesta ficha'
+                            : 'Construtor: escolha espécie, variante e atributos e a ficha é preenchida'
+                    "
                     aria-label="Construtor de personagem"
                     @click="emit('construtor')"
                     ><WandSparkles class="size-4"
