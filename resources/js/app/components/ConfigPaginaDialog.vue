@@ -10,7 +10,20 @@ import type { PaginaDto } from '../engine/tipos';
 const props = defineProps<{ open: boolean; pagina: PaginaDto | null; erro?: string }>();
 const emit = defineEmits<{ 'update:open': [boolean]; salvar: [id: number, campos: Partial<PaginaDto>] }>();
 
-const f = ref({ nome: '', colunas: 25, linhas: 25, tamanho_quadrado: 70, grade_quadrada: true, distancia_quadrado: 1.5, unidade: 'm' });
+const f = ref({
+    nome: '',
+    colunas: 25,
+    linhas: 25,
+    tamanho_quadrado: 100,
+    grade_quadrada: true,
+    distancia_quadrado: 1.5,
+    unidade: 'm',
+    iluminacao_ativa: false,
+    luz_ambiente: 0,
+    visao_padrao: 6,
+    usar_visao: true,
+    memoria_ativa: true,
+});
 const campo =
     'flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 

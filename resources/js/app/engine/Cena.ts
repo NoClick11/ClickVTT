@@ -270,7 +270,7 @@ export class Cena {
     private metrosPorPixel(): number {
         const p = this.pagina;
 
-        return ((p?.distancia_quadrado ?? 1.5) * fatorParaMetros(p?.unidade)) / Math.max(1, p?.tamanho_quadrado ?? 70);
+        return ((p?.distancia_quadrado ?? 1.5) * fatorParaMetros(p?.unidade)) / Math.max(1, p?.tamanho_quadrado ?? 100);
     }
 
     private origemDoGabarito(): { x: number; y: number } | null {
@@ -495,12 +495,12 @@ export class Cena {
     }
 
     private snap(v: number): number {
-        const t = this.pagina?.tamanho_quadrado ?? 70;
+        const t = this.pagina?.tamanho_quadrado ?? 100;
         return this.snapAtivo ? Math.round(v / t) * t : v;
     }
 
     private snapCentro(v: number): number {
-        const t = this.pagina?.tamanho_quadrado ?? 70;
+        const t = this.pagina?.tamanho_quadrado ?? 100;
         return this.snapAtivo ? Math.floor(v / t) * t + t / 2 : v;
     }
 
@@ -633,7 +633,7 @@ export class Cena {
     private redimensionar(p: { x: number; y: number }, manterProporcao: boolean, encaixar: boolean): CamposGeometria {
         const { x, y, largura: w0, altura: h0 } = this.inicioObjeto as Required<CamposGeometria>;
         const a = this.alca!;
-        const minimo = this.snapAtivo ? (this.pagina?.tamanho_quadrado ?? 70) : 10;
+        const minimo = this.snapAtivo ? (this.pagina?.tamanho_quadrado ?? 100) : 10;
         const ajustar = (v: number) => (encaixar ? this.snap(v) : v);
         let esq = x;
         let dir = x + w0;
@@ -664,7 +664,7 @@ export class Cena {
         g.moveTo(ini.x, ini.y).lineTo(fim.x, fim.y).stroke({ color: 0xf4e0a0, width: 2, alpha: 0.95, pixelLine: true });
         g.circle(ini.x, ini.y, 4 / this.mundo.scale.x).fill(0xd4a843);
         g.circle(fim.x, fim.y, 4 / this.mundo.scale.x).fill(0xd4a843);
-        const quadrados = Math.hypot(fim.x - ini.x, fim.y - ini.y) / (p?.tamanho_quadrado ?? 70);
+        const quadrados = Math.hypot(fim.x - ini.x, fim.y - ini.y) / (p?.tamanho_quadrado ?? 100);
         const valor = quadrados * (p?.distancia_quadrado ?? 1.5);
         this.reguaTexto.text = `${formatar(valor)} ${p?.unidade ?? 'm'}  ·  ${formatar(quadrados)} q`;
         this.reguaTexto.scale.set(1 / this.mundo.scale.x);

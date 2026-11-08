@@ -19,6 +19,7 @@ class PaginaController extends Controller
         $acesso = AcessoMesa::exigirMestre($request, $mesa);
         $dados = $this->validar($request, $mesa);
         $dados['ordem'] ??= ($mesa->paginas()->max('ordem') ?? 0) + 1;
+        $dados['tamanho_quadrado'] ??= 100;
 
         $pagina = $mesa->paginas()->create($dados)->refresh(); // traz os defaults do banco
         Transmitir::cena($mesa, null, $acesso->jogador->id, true);
