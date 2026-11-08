@@ -4,6 +4,8 @@ import type { ResumoEvento } from './nucleo/combate/reacoes';
 import type {
     ArmaParaForja,
     Combate,
+    DiarioPastaDto,
+    FolhetoDto,
     ItemDeCatalogoDto,
     ItemDto,
     LojaAbertaDto,
@@ -128,6 +130,24 @@ export function apiMesa(mesaId: number, atorId: number) {
             requisitar<Personagem>(atorId, 'POST', r('jogo.personagens.store'), dados),
         /** Só o mestre: exclui o personagem (ficha, tokens e lugar no combate). */
         excluirPersonagem: (personagemId: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.personagens.excluir', personagemId)),
+        // Diário (só o mestre): pastas, folhetos e a pasta de cada personagem.
+        criarPastaDoDiario: (nome: string, paiId: number | null = null) =>
+            requisitar<DiarioPastaDto>(atorId, 'POST', r('jogo.diario.pastas.store'), { nome, pai_id: paiId }),
+        atualizarPastaDoDiario: (id: number, campos: { nome?: string; pai_id?: number | null }) =>
+            requisitar<DiarioPastaDto>(atorId, 'PATCH', r('jogo.diario.pastas.update', id), campos),
+        excluirPastaDoDiario: (id: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.diario.pastas.destroy', id)),
+        criarFolheto: (dados: FormData) => requisitar<FolhetoDto>(atorId, 'POST', r('jogo.diario.folhetos.store'), dados),
+        atualizarFolheto: (id: number, campos: { nome?: string; texto?: string | null; visivel?: boolean; pasta_id?: number | null }) =>
+            requisitar<FolhetoDto>(atorId, 'PATCH', r('jogo.diario.folhetos.update', id), campos),
+        excluirFolheto: (id: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.diario.folhetos.destroy', id)),
+        /** Libera o folheto e o abre na tela de todos. */
+        mostrarFolheto: (id: number) => requisitar<FolhetoDto>(atorId, 'POST', r('jogo.diario.folhetos.mostrar', id)),
+        moverPersonagem: (id: number, pastaId: number | null) =>
+            requisitar<{ ok: true }>(atorId, 'PATCH', r('jogo.personagens.pasta', id), { pasta_id: pastaId }),
+        /** Só o mestre: guarda um NPC (do catálogo ou em branco) com a ficha já montada pelo módulo do sistema. */
+        criarNpc: (nome: string, campos: Record<string, unknown>) => requisitar<Personagem>(atorId, 'POST', r('jogo.npcs.store'), { nome, campos }),
+        /** Só o mestre: a cópia do NPC que vira o token no mapa (PV, PP e usos próprios, nome numerado). */
+        instanciarNpc: (personagemId: number) => requisitar<Personagem>(atorId, 'POST', r('jogo.personagens.instanciar', personagemId)),
         atribuirJogadores: (personagemId: number, jogadores: number[]) =>
             requisitar<object>(atorId, 'PUT', r('jogo.personagens.atribuir', personagemId), { jogadores }),
         enviarTexto: (texto: string, personagemId: number | null) =>
@@ -144,6 +164,11 @@ export function apiMesa(mesaId: number, atorId: number) {
                 nome: string;
                 dano?: { expressao: string; tipo: string | null; extras?: { expressao: string; tipo: string | null }[] } | null;
                 secundaria?: object | null;
+                /** Só o mestre (ataque de arma de NPC): não conta como Técnica e traz a margem de crítico própria. */
+                semTecnica?: boolean;
+                margem?: number;
+                /** Só o mestre: a rolagem (de bônus próprio, sem `@ataque`) é um ataque: rola contra a defesa do alvo. */
+                ataque?: boolean;
             },
             municaoItemId?: number,
         ) =>
@@ -155,6 +180,9 @@ export function apiMesa(mesaId: number, atorId: number) {
                               nome: tecnica.nome,
                               ...(tecnica.dano ? { dano: tecnica.dano } : {}),
                               ...(tecnica.secundaria ? { secundaria: tecnica.secundaria } : {}),
+                              ...(tecnica.semTecnica ? { semTecnica: true } : {}),
+                              ...(tecnica.margem ? { margem: tecnica.margem } : {}),
+                              ...(tecnica.ataque ? { ataque: true } : {}),
                           },
                       }
                     : {}),
@@ -240,6 +268,12 @@ export function apiMesa(mesaId: number, atorId: number) {
             requisitar<Mensagem>(atorId, 'POST', r('jogo.gatilhos.escolher', mensagemId), { opcao }),
         gatilhoIgnorar: (mensagemId: number) => requisitar<Mensagem>(atorId, 'POST', r('jogo.gatilhos.ignorar', mensagemId), {}),
         /** Só o mestre: liga ou desliga o fogo amigo da mesa. */
+        /** Só o mestre: libera (ou trava) descansos e subir de nível para os jogadores. */
+        liberacoes: (campos: { descanso_curto?: boolean; descanso_longo?: boolean; subir_nivel?: boolean }) =>
+            requisitar<{ descanso_curto: boolean; descanso_longo: boolean; subir_nivel: boolean }>(atorId, 'PATCH', r('jogo.liberacoes'), campos),
+        /** Só o mestre: divide o XP em partes iguais entre os personagens (o que sobra da divisão não é distribuído). */
+        distribuirXp: (personagens: number[], total: number) =>
+            requisitar<{ por_cabeca: number; sobra: number; personagens: string[] }>(atorId, 'POST', r('jogo.xp.distribuir'), { personagens, total }),
         fogoAmigo: (ligado: boolean) => requisitar<{ fogo_amigo: boolean }>(atorId, 'PATCH', r('jogo.fogo-amigo'), { ligado }),
         /** Ataques extras do turno (Tempestade de Balas, Alvo Travado...): soma `n` (pode ser negativo) ao limite de ataques do personagem. */
         ataquesExtras: (personagemId: number, n: number) =>

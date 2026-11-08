@@ -16,6 +16,10 @@ import PainelDoTurno from '../components/combate/PainelDoTurno.vue';
 import ConfigPaginaDialog from '../components/ConfigPaginaDialog.vue';
 import ControlesZoom from '../components/ControlesZoom.vue';
 import DadosAnimacao from '../components/DadosAnimacao.vue';
+import FolhetoDialog from '../components/diario/FolhetoDialog.vue';
+import NomeDialog from '../components/diario/NomeDialog.vue';
+import NovoFolhetoDialog from '../components/diario/NovoFolhetoDialog.vue';
+import DistribuirXpDialog from '../components/DistribuirXpDialog.vue';
 import ExcluirPersonagemDialog from '../components/ExcluirPersonagemDialog.vue';
 import Inspetor from '../components/Inspetor.vue';
 import LootDialog from '../components/LootDialog.vue';
@@ -26,6 +30,7 @@ import NovoPersonagemDialog from '../components/NovoPersonagemDialog.vue';
 import OpcoesFerramenta from '../components/OpcoesFerramenta.vue';
 import PainelAlvo from '../components/PainelAlvo.vue';
 import PainelChat from '../components/PainelChat.vue';
+import PainelConfiguracoes from '../components/PainelConfiguracoes.vue';
 import PainelDados from '../components/PainelDados.vue';
 import PainelPersonagens from '../components/PainelPersonagens.vue';
 import PainelTurnos from '../components/PainelTurnos.vue';
@@ -62,6 +67,8 @@ import type { UsoDeTecnica } from '../sistemas/onepiece/contexto';
 import type { AcaoCaracteristica } from '../sistemas/onepiece/regras';
 import type {
     Combate,
+    DiarioDto,
+    FolhetoDto,
     ItemDeCatalogoDto,
     ItemDto,
     LojaAbertaDto,
@@ -78,7 +85,16 @@ interface Pasta {
     ordem: number;
 }
 const props = defineProps<{
-    mesa: { id: number; slug: string; nome: string; capa: string | null; fogo_amigo?: boolean };
+    mesa: {
+        id: number;
+        slug: string;
+        nome: string;
+        capa: string | null;
+        fogo_amigo?: boolean;
+        descanso_curto?: boolean;
+        descanso_longo?: boolean;
+        subir_nivel?: boolean;
+    };
     /** Sistema da mesa: o módulo (ficha, regras) é resolvido pelo slug. */
     sistema: { slug: string; nome: string; modulo: boolean };
     jogador: Jogador;
@@ -89,6 +105,8 @@ const props = defineProps<{
     pastas: Pasta[];
     jogadores: Jogador[];
     personagens: Personagem[];
+    /** Pastas e folhetos do diário (o jogador só recebe o que foi liberado). */
+    diario: DiarioDto;
     /** ids dos personagens que ESTE jogador controla (o mestre controla todos) */
     meusPersonagens: number[];
     /** Itens da mesa: o mestre recebe todos; o jogador, só os das fichas que controla. */
@@ -172,11 +190,11 @@ function gravarLocal(chave: string, valor: string) {
 const abaLateral = ref<AbaLateral>(abaSalva());
 const lateralAberta = ref(lerLocal('clickvtt.lateralAberta', '1') !== '0');
 const naoLidas = ref(0);
-// A aba Itens é só do mestre: a de um jogador nunca cai nela.
+// As abas Itens, Frutas e Configurações são só do mestre: a de um jogador nunca cai nela.
 function abaSalva(): AbaLateral {
     const salva = lerLocal('clickvtt.abaLateral', 'chat');
 
-    return salva === 'personagens' || ((salva === 'itens' || salva === 'frutas') && props.mestre) ? salva : 'chat';
+    return salva === 'personagens' || ((salva === 'itens' || salva === 'frutas' || salva === 'configuracoes') && props.mestre) ? salva : 'chat';
 }
 watch(abaLateral, (v) => gravarLocal('clickvtt.abaLateral', v));
 watch(lateralAberta, (v) => gravarLocal('clickvtt.lateralAberta', v ? '1' : '0'));
@@ -301,7 +319,8 @@ async function encerrarJanela(eventoId: number) {
     }
 }
 /** O alvo do ataque que a ficha manda junto da rolagem: só com o combate em curso e um alvo mirado. */
-const alvoDoAtaque = computed(() => (emCurso(combate.value) ? (alvoPersonagem.value?.id ?? null) : null));
+// Com um alvo travado na mira, todo ataque vai contra ele (rola contra a defesa; no acerto o chat libera o dano), dentro ou fora do combate.
+const alvoDoAtaque = computed(() => alvoPersonagem.value?.id ?? null);
 provide('alvoDoAtaque', alvoDoAtaque);
 
 // --- alvo (mira) -----------------------------------------------------------------------------------------------
@@ -433,6 +452,12 @@ watch(
 );
 
 const selecionado = computed(() => objetos.value.find((o) => o.id === selecionadoId.value) ?? null);
+// Selecionar o token de um NPC o torna o personagem ativo (chat e rolagens saem como ele) e abre a ficha dele: cada cópia no mapa tem a sua.
+watch(selecionado, (o) => {
+    if (!props.mestre || o?.tipo !== 'token' || !o.personagem_id) return;
+    const p = props.personagens.find((x) => x.id === o.personagem_id);
+    if (p?.ficha?.npc) abrirPersonagem(p.id);
+});
 
 // --- utilidades ----------------------------------------------------------------
 
@@ -687,12 +712,25 @@ async function soltarNoMapa(e: DragEvent) {
     e.preventDefault();
     const p = props.personagens.find((x) => x.id === personagemSolto(e));
     if (!p) return;
+    const ponto = canvas.value?.pontoDoMundo(e.clientX, e.clientY);
+    if (ehModeloDeNpc(p)) {
+        // o NPC modelo gera uma cópia nova a cada vez (cada token tem a sua vida)
+        try {
+            const copia = await api.instanciarNpc(p.id);
+            await criarToken({ nome: copia.nome, personagem_id: copia.id, cor: copia.cor, tamanho: 1, arquivo: null }, ponto);
+            recarregar(['personagens', 'meusPersonagens', 'diario']);
+        } catch (err) {
+            avisar(mensagemDe(err));
+        }
+
+        return;
+    }
     if (comToken.value.includes(p.id)) {
         focarPersonagem(p.id);
 
         return avisar(`${p.nome} já tem token nesta página.`);
     }
-    await criarToken({ nome: p.nome, personagem_id: p.id, cor: p.cor, tamanho: 1, arquivo: null }, canvas.value?.pontoDoMundo(e.clientX, e.clientY));
+    await criarToken({ nome: p.nome, personagem_id: p.id, cor: p.cor, tamanho: 1, arquivo: null }, ponto);
 }
 
 // --- páginas e menu ----------------------------------------------------------------
@@ -812,7 +850,12 @@ const fichasAbertas = ref<FichaAberta[]>([]);
 const personagensAbertos = computed(() =>
     fichasAbertas.value.map((f, i) => ({ ...f, z: 30 + i, personagem: props.personagens.find((p) => p.id === f.id) })).filter((f) => f.personagem),
 );
-const tamanhoFicha = () => ({ largura: Math.min(940, window.innerWidth - 32), altura: Math.min(700, window.innerHeight - 76) });
+const tamanhoFicha = (npc = false) =>
+    npc
+        ? { largura: Math.min(620, window.innerWidth - 32), altura: Math.min(720, window.innerHeight - 76) }
+        : { largura: Math.min(940, window.innerWidth - 32), altura: Math.min(700, window.innerHeight - 76) };
+/** A ficha é de um NPC (tem o bloco `npc`) e o sistema tem a tela de uma tela só dele. */
+const ehNpc = (id: number) => !!moduloSistema?.FichaDeNpc && !!fichas.value[id]?.npc;
 function focarFicha(id: number) {
     const i = fichasAbertas.value.findIndex((f) => f.id === id);
     if (i >= 0 && i < fichasAbertas.value.length - 1) fichasAbertas.value.push(...fichasAbertas.value.splice(i, 1));
@@ -918,7 +961,13 @@ type RolagemDaFicha = [
     dano?: { tipo: string | null; fator?: number; fonte?: string },
     acao?: { categoria: string; tecnica?: boolean },
     alvoPersonagemId?: number | null,
-    tecnica?: { nome: string; dano?: { expressao: string; tipo: string | null } | null; secundaria?: object | null },
+    tecnica?: {
+        nome: string;
+        dano?: { expressao: string; tipo: string | null } | null;
+        secundaria?: object | null;
+        semTecnica?: boolean;
+        margem?: number;
+    },
     municaoItemId?: number,
 ];
 
@@ -1001,6 +1050,29 @@ async function moverVigia(personagemId: number, id: string) {
 }
 
 /** Fogo amigo da mesa (o mestre liga): sem ele, jogador só acerta NPC não aliado e NPC só acerta jogador. */
+// --- liberações do mestre (descansos e subir de nível) e distribuição de XP ----------------------------------------------------
+const liberacoes = computed(() => ({
+    descanso_curto: !!props.mesa.descanso_curto,
+    descanso_longo: !!props.mesa.descanso_longo,
+    subir_nivel: !!props.mesa.subir_nivel,
+}));
+/** O que a ficha do jogador precisa saber: o mestre não é barrado, então o front só usa isto para os jogadores. */
+const permissoesDaMesa = computed(() => ({
+    descansoCurto: liberacoes.value.descanso_curto,
+    descansoLongo: liberacoes.value.descanso_longo,
+    subirNivel: liberacoes.value.subir_nivel,
+}));
+const alterarLiberacao = (chave: 'descanso_curto' | 'descanso_longo' | 'subir_nivel', ligado: boolean) =>
+    acao(() => api.liberacoes({ [chave]: ligado }), ['mesa'])();
+const xpAberto = ref(false);
+const personagensDosJogadores = computed(() => props.personagens.filter((p) => p.jogadores.length > 0));
+const distribuirXp = async (ids: number[], total: number) => {
+    const r = await api.distribuirXp(ids, total);
+    recarregar(['personagens']);
+
+    return r;
+};
+
 const fogoAmigo = ref(props.mesa.fogo_amigo ?? false);
 watch(
     () => props.mesa.fogo_amigo,
@@ -1144,13 +1216,18 @@ async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
             const dados = uso.modoAtaque === 'vantagem' ? '2d20kh1' : uso.modoAtaque === 'desvantagem' ? '2d20kl1' : '1d20';
             await rolarDaFicha(
                 personagemId,
-                `${dados}+@ataque`,
+                uso.ataqueFixo ? `${dados}${uso.ataqueFixo.bonus >= 0 ? '+' : ''}${uso.ataqueFixo.bonus}` : `${dados}+@ataque`,
                 uso.modoAtaque ? `${uso.nome} (${uso.modoAtaque})` : uso.nome,
                 undefined,
                 undefined,
                 undefined,
                 alvoDoAtaque.value,
-                { nome: uso.nomeBase ?? uso.nome, dano: uso.dano, ...(uso.secundaria ? { secundaria: uso.secundaria } : {}) },
+                {
+                    nome: uso.nomeBase ?? uso.nome,
+                    dano: uso.dano,
+                    ...(uso.secundaria ? { secundaria: uso.secundaria } : {}),
+                    ...(uso.ataqueFixo ? { ataque: true, ...(uso.ataqueFixo.margemCritica ? { margem: uso.ataqueFixo.margemCritica } : {}) } : {}),
+                },
             );
         } else if (uso.dano) {
             await rolarDaFicha(personagemId, uso.dano.expressao, uso.nome, undefined, uso.dano.tipo ? { tipo: uso.dano.tipo } : undefined);
@@ -1386,6 +1463,52 @@ async function soltarItemNaFicha(e: DragEvent, personagemId: number) {
     avisar(`${item.nome} entregue a ${props.personagens.find((p) => p.id === personagemId)?.nome ?? 'personagem'}.`);
 }
 
+// --- diário: pastas e folhetos -------------------------------------------------
+const pastaDialog = ref<{ id: number | null } | null>(null);
+const nomeDaPasta = computed(() => props.diario.pastas.find((p) => p.id === pastaDialog.value?.id)?.nome ?? '');
+const salvarPasta = (nome: string) => {
+    const id = pastaDialog.value?.id ?? null;
+    acao(() => (id === null ? api.criarPastaDoDiario(nome) : api.atualizarPastaDoDiario(id, { nome })), ['diario'])();
+};
+const novoFolhetoAberto = ref(false);
+const criarFolheto = async (dados: FormData) => {
+    const f = await api.criarFolheto(dados);
+    recarregar(['diario']);
+
+    return f;
+};
+const folhetoAberto = ref<FolhetoDto | null>(null);
+// o folheto aberto acompanha o que o mestre mudar (nome, texto) e fecha se ele o esconder ou excluir
+watch(
+    () => props.diario.folhetos,
+    (lista) => {
+        if (!folhetoAberto.value) return;
+        const atual = lista.find((f) => f.id === folhetoAberto.value!.id);
+        folhetoAberto.value = atual ?? null;
+    },
+);
+const salvarFolheto = (id: number, campos: { nome?: string; texto?: string | null; visivel?: boolean }) =>
+    acao(() => api.atualizarFolheto(id, campos), ['diario'])();
+const excluirFolheto = (id: number) => {
+    folhetoAberto.value = null;
+    acao(() => api.excluirFolheto(id), ['diario'])();
+};
+
+// --- NPCs (mestre) --------------------------------------------------------------------------------------------------------
+// O NPC do catálogo (ou em branco) vira um personagem da mesa com a ficha de uma tela só. Arrastá-lo para o mapa cria uma CÓPIA
+// com PV, PP e usos próprios (nome numerado); a cópia some com o último token.
+const novoNpcAberto = ref(false);
+async function criarNpc(nome: string, campos: Record<string, unknown>) {
+    try {
+        const p = await api.criarNpc(nome, campos);
+        recarregar(['personagens', 'meusPersonagens', 'diario'], { onSuccess: () => abrirPersonagem(p.id) });
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+/** O NPC que serve de modelo (as cópias do mapa têm `instancia_de`). */
+const ehModeloDeNpc = (p: Personagem) => !!(p.ficha?.npc && !(p.ficha.npc as { instancia_de?: number }).instancia_de);
+
 // --- criar personagem (mestre) ------------------------------------------------
 const novoPersonagemAberto = ref(false);
 const criarPersonagem = (dados: { nome: string; cor: string; jogadores: number[] }) => api.criarPersonagem(dados);
@@ -1607,7 +1730,7 @@ function aoMudarCena(payload: { ator: number | null }) {
     if (payload.ator === meuId) return;
     clearTimeout(temporizadorCena);
     temporizadorCena = setTimeout(
-        () => recarregar(['objetos', 'pagina', 'paginas', 'pastas', 'jogadores', 'personagens', 'meusPersonagens', 'itens', 'mesa']),
+        () => recarregar(['objetos', 'pagina', 'paginas', 'pastas', 'diario', 'jogadores', 'personagens', 'meusPersonagens', 'itens', 'mesa']),
         120,
     );
 }
@@ -1621,6 +1744,11 @@ onMounted(() => {
                 .listen('.mensagem', (e: { mensagem: Mensagem; substitui?: boolean }) => aoNovaMensagem(e.mensagem, !!e.substitui))
                 .listen('.cena', (e: { ator: number | null }) => aoMudarCena(e))
                 .listen('.ficha', aoMudarFicha)
+                .listen('.folheto', (e: { folheto: FolhetoDto; ator: number | null }) => {
+                    if (e.ator === meuId) return; // quem mostrou já está com ele aberto
+                    folhetoAberto.value = e.folheto;
+                    recarregar(['diario']);
+                })
                 .listen('.loja', (e: { aberta: boolean; catalogo?: boolean }) => {
                     if (props.mestre) return recarregar(['catalogoDoMestre', 'lojasAbertas']);
                     if (e.aberta) lojaVisivel.value = true;
@@ -1822,13 +1950,7 @@ async function alternarPorta(id: number) {
                         v-if="alvoPersonagem && !miraDaTecnica"
                         :nome="alvoPersonagem.nome"
                         :cor="alvoPersonagem.cor"
-                        :condicoes="moduloSistema?.condicoes ?? []"
-                        :ativas="statusPorPersonagem[alvoPersonagem.id] ?? []"
-                        :ocupado="alvoOcupado"
-                        :atributos="moduloSistema?.atributos"
                         @limpar="alvoObjetoId = null"
-                        @aplicar="(d) => condicaoDoAlvo({ ...d, acao: 'aplicar' })"
-                        @remover="(id) => condicaoDoAlvo({ condicao: id, acao: 'remover' })"
                     />
                     <BarraTurnos
                         :combate="combate"
@@ -1898,9 +2020,19 @@ async function alternarPorta(id: number) {
                             @menu="(id, tela) => (menuPersonagem = { id, ...tela })"
                             @focar="focarPersonagem"
                             @atribuir="pedirAtribuicao"
-                            :fogo-amigo="fogoAmigo"
-                            @fogo-amigo="alternarFogoAmigo"
                             @criar="novoPersonagemAberto = true"
+                            @novo-npc="novoNpcAberto = true"
+                            :diario="diario"
+                            @nova-pasta="pastaDialog = { id: null }"
+                            @novo-folheto="novoFolhetoAberto = true"
+                            @renomear-pasta="(id) => (pastaDialog = { id })"
+                            @excluir-pasta="(id) => acao(() => api.excluirPastaDoDiario(id), ['diario', 'personagens'])()"
+                            @mover-pasta="(id, pai) => acao(() => api.atualizarPastaDoDiario(id, { pai_id: pai }), ['diario'])()"
+                            @mover-folheto="(id, pasta) => acao(() => api.atualizarFolheto(id, { pasta_id: pasta }), ['diario'])()"
+                            @mover-personagem="(id, pasta) => acao(() => api.moverPersonagem(id, pasta), ['personagens'])()"
+                            @abrir-folheto="(id) => (folhetoAberto = diario.folhetos.find((f) => f.id === id) ?? null)"
+                            @alternar-folheto="(id, v) => acao(() => api.atualizarFolheto(id, { visivel: v }), ['diario'])()"
+                            @mostrar-folheto="(id) => acao(() => api.mostrarFolheto(id), ['diario'])()"
                         />
                     </template>
                     <template v-if="mestre && moduloSistema?.PainelDeFrutas" #frutas>
@@ -1909,6 +2041,15 @@ async function alternarPorta(id: number) {
                             :personagens="personagens"
                             :fichas="fichas"
                             @salvar="(id: number, campos: Record<string, unknown>) => salvarFicha(id, campos)"
+                        />
+                    </template>
+                    <template v-if="mestre" #configuracoes>
+                        <PainelConfiguracoes
+                            :fogo-amigo="fogoAmigo"
+                            :liberacoes="liberacoes"
+                            @fogo-amigo="alternarFogoAmigo"
+                            @liberacao="alterarLiberacao"
+                            @distribuir-xp="xpAberto = true"
                         />
                     </template>
                     <template v-if="mestre" #itens>
@@ -1958,8 +2099,8 @@ async function alternarPorta(id: number) {
             :cor="f.personagem!.cor"
             :x="f.x"
             :y="f.y"
-            :largura="tamanhoFicha().largura"
-            :altura="tamanhoFicha().altura"
+            :largura="tamanhoFicha(ehNpc(f.id)).largura"
+            :altura="tamanhoFicha(ehNpc(f.id)).altura"
             :z="f.z"
             :class="fichaSobre === f.id ? 'ring-2 ring-ouro-300' : ''"
             @focar="focarFicha(f.id)"
@@ -1978,13 +2119,27 @@ async function alternarPorta(id: number) {
             </div>
             <FichaNaoImplementada v-if="!moduloSistema" :personagem="f.personagem!" :sistema="sistema.nome" />
             <component
+                :is="moduloSistema.FichaDeNpc"
+                v-else-if="ehNpc(f.id)"
+                :personagem="f.personagem!"
+                :ficha="fichas[f.id]"
+                :mestre="mestre"
+                @salvar="(campos: Record<string, unknown>) => salvarFicha(f.id, campos)"
+                @rolar="(...a: RolagemDaFicha) => rolarDaFicha(f.id, ...a)"
+                @usar-tecnica="(uso: UsoDeTecnica) => usarTecnicaDaFicha(f.id, uso)"
+            />
+            <component
                 :is="moduloSistema.Ficha"
                 v-else-if="fichas[f.id]"
                 :personagem="f.personagem!"
                 :ficha="fichas[f.id]"
                 :itens="itensDaMesa"
                 :mestre="mestre"
-                v-bind="moduloSistema.slug === 'one-piece' ? { servicos: servicosDaFicha, construtorConcluido: !!criacoes[f.id]?.concluida } : {}"
+                v-bind="
+                    moduloSistema.slug === 'one-piece'
+                        ? { servicos: servicosDaFicha, construtorConcluido: !!criacoes[f.id]?.concluida, permissoes: permissoesDaMesa }
+                        : {}
+                "
                 @editor-item="abrirEditorItem"
                 @construtor="construtorId = f.id"
                 @acao="(a: AcaoCaracteristica) => executarAcao(f.id, a)"
@@ -2078,6 +2233,29 @@ async function alternarPorta(id: number) {
                 :erro="configErro"
                 @salvar="salvarConfig"
                 @limpar-memoria="limparMemoriaDaPagina"
+            />
+            <DistribuirXpDialog v-model:open="xpAberto" :personagens="personagensDosJogadores" :distribuir="distribuirXp" />
+            <NomeDialog
+                :open="pastaDialog !== null"
+                :titulo="pastaDialog?.id == null ? 'Nova pasta' : 'Renomear pasta'"
+                :inicial="nomeDaPasta"
+                @update:open="(v: boolean) => !v && (pastaDialog = null)"
+                @salvar="salvarPasta"
+            />
+            <NovoFolhetoDialog v-model:open="novoFolhetoAberto" :criar="criarFolheto" />
+            <FolhetoDialog
+                :folheto="folhetoAberto"
+                :mestre="mestre"
+                @fechar="folhetoAberto = null"
+                @salvar="salvarFolheto"
+                @mostrar="(id) => acao(() => api.mostrarFolheto(id), ['diario'])()"
+                @excluir="excluirFolheto"
+            />
+            <component
+                :is="moduloSistema.NovoNpcDialog"
+                v-if="mestre && moduloSistema?.NovoNpcDialog"
+                v-model:open="novoNpcAberto"
+                @escolher="criarNpc"
             />
             <NovoPersonagemDialog v-model:open="novoPersonagemAberto" :jogadores="jogadores" :criar="criarPersonagem" @criado="aoCriarPersonagem" />
             <AtribuirJogadoresDialog v-model:open="atribuicaoAberta" :personagem="atribuindo" :jogadores="jogadores" @salvar="salvarAtribuicao" />
