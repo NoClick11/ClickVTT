@@ -87,7 +87,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
 
     public function metadadosDaRolagem(array $termos, array $variaveis, array $itens = [], array $ficha = [], array $contexto = []): array
     {
-        return Regras::metadadosDaRolagem($termos, $variaveis, $itens, $ficha, $contexto['municao'] ?? null);
+        return Regras::metadadosDaRolagem($termos, $variaveis, $itens, $ficha, $contexto['municao'] ?? null, (int) ($contexto['rodada'] ?? 1));
     }
 
     public function itensReferenciados(array $ficha): array
@@ -259,7 +259,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         $avisos = [];
         $marcar = [];
         $nivel = (int) ($ficha['nivel'] ?? 1);
-        $tem = fn (string $nome): bool => collect($ficha['caracteristicas'] ?? [])->contains(fn ($c) => str_contains((string) ($c['nome'] ?? ''), $nome) && Regras::ativaNoNivel($c, $nivel));
+        $tem = fn (string $nome): bool => Regras::temCaracteristica($ficha, $nome);
         $origem = $contexto['origem'] ?? null;
         $atributo = $contexto['atributo'] ?? null;
         // Características passivas do estilo que mudam o dano que o personagem sofre

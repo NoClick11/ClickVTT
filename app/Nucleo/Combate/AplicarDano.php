@@ -163,6 +163,7 @@ final class AplicarDano
 
         return match ($calculo['modo']) {
             'imune' => "{$nome} é imune a dano{$tipoTexto}: nenhum dano.",
+            'imune_metade' => "{$nome} recebeu {$calculo['final']} de dano{$tipoTexto} (invulnerável, mas o golpe causa metade: {$total} pela metade).",
             'resistido' => "{$nome} recebeu {$calculo['final']} de dano{$tipoTexto} (resistência: {$total} pela metade).",
             'vulneravel' => "{$nome} recebeu {$calculo['final']} de dano{$tipoTexto} (vulnerável: {$total} em dobro).",
             default => "{$nome} recebeu {$calculo['final']} de dano{$tipoTexto}.",

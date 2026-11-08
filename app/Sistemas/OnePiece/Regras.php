@@ -2,6 +2,7 @@
 
 namespace App\Sistemas\OnePiece;
 
+use App\Nucleo\Combate\Dano;
 use App\Nucleo\Efeitos\Efeitos;
 use App\Nucleo\Rolagem\Rolador;
 
@@ -61,6 +62,50 @@ final class Regras
         }
 
         return $itens;
+    }
+
+    /**
+     * A ficha tem a característica (pelo nome, que pode vir com prefixo: "Whip and Gun: Pistola") valendo agora: no nível certo e, se for ativa, ligada.
+     *
+     * @param  array<string, mixed>  $f
+     */
+    public static function temCaracteristica(array $f, string $nome): bool
+    {
+        $nivel = (int) ($f['nivel'] ?? 1);
+        foreach ($f['caracteristicas'] ?? [] as $c) {
+            if (str_contains((string) ($c['nome'] ?? ''), $nome) && self::ativaNoNivel($c, $nivel) && (($c['tipo'] ?? 'passiva') !== 'ativa' || ($c['ativa'] ?? false) === true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Golpe Moral (Aventureiro): ataques com chicote ignoram resistência a dano Cortante e causam metade do dano em invulnerabilidades (de qualquer tipo).
+     *
+     * @param  array<string, mixed>  $f
+     * @return list<string> o que passa por cima no cálculo do dano (`Dano::calcular`)
+     */
+    public static function golpeMoral(array $f, ?string $tipoDano): array
+    {
+        if (! self::temCaracteristica($f, 'Whip and Gun: Chicote')) {
+            return [];
+        }
+
+        return str_contains(Dano::normalizar((string) $tipoDano), 'cortante') ? ['resistencia', 'imunidade_metade'] : ['imunidade_metade'];
+    }
+
+    /** `golpeMoral` para uma Técnica com chicote como requisito (a Técnica tem de estar na ficha). */
+    public static function golpeMoralDaTecnica(array $f, string $nomeTecnica, ?string $tipoDano): array
+    {
+        foreach ($f['tecnicas']['lista'] ?? [] as $t) {
+            if (($t['nome'] ?? null) === $nomeTecnica && stripos((string) ($t['descricao'] ?? ''), 'Requisito: chicote') !== false) {
+                return self::golpeMoral($f, $tipoDano);
+            }
+        }
+
+        return [];
     }
 
     /** O item conta? Em inventário (qtd > 0), equipado se for equipável, sintonizado se exigir. */
@@ -374,7 +419,7 @@ final class Regras
      * @param  array<string, mixed>  $ficha  a ficha do personagem (para os dados extras dos buffs)
      * @return array<string, mixed>
      */
-    public static function metadadosDaRolagem(array $termos, array $variaveis, array $itens = [], array $ficha = [], ?array $municao = null): array
+    public static function metadadosDaRolagem(array $termos, array $variaveis, array $itens = [], array $ficha = [], ?array $municao = null, int $rodada = 1): array
     {
         $itens = self::comAjustes($ficha, $itens);
         $arma = null;
@@ -412,6 +457,16 @@ final class Regras
         }
 
         $dados = self::dadosDeDano($ficha, $itens, $arma, $variaveis, $municao);
+        // Tiro Sem Paciência (ligado): +1 dado de munição por rodada do encontro, até 2 × nível (máx. 30)
+        if ($municao && $dados !== [] && self::temCaracteristica($ficha, 'Tiro Sem Paciência')) {
+            $extra = max(0, min($rodada, 2 * (int) ($ficha['nivel'] ?? 1), 30));
+            if ($extra > 0 && preg_match('/^\d+d\d+$/', (string) $municao['dano'])) {
+                $meta['tiroSemPaciencia'] = $extra;
+                array_push($dados, ...array_fill(0, $extra, $municao['dano']));
+            }
+        }
+        // Tiro Oportunista (pistola): no crítico os dados rolam 3 vezes, não 2
+        $multiplicador = (($itens[$arma]['dados']['catalogo']['id'] ?? null) === 'pistola' && self::temCaracteristica($ficha, 'Whip and Gun: Pistola')) ? 3 : 2;
         // A munição gasta e o revestimento aparecem no card mesmo no 1 natural (a munição foi gasta); o botão do efeito só vale no acerto
         if ($municao) {
             $meta['municao'] = ['id' => $municao['id'], 'nome' => $municao['nome'], 'nota' => $municao['nota'],
@@ -443,7 +498,7 @@ final class Regras
             $normal = $acao('dano', 'Dano', $dados, $nome);
             $meta['acoes'] = ($meta['destaque'] ?? null) === 'critico'
                 ? [
-                    [...$acao('dano-critico', 'Dano crítico', array_map(self::dobrarDados(...), $dados), $nome), 'destaque' => 'critico'],
+                    [...$acao('dano-critico', 'Dano crítico', array_map(fn ($d) => self::multiplicarDados($d, $multiplicador), $dados), $nome), 'destaque' => 'critico'],
                     [...$normal, 'rotulo' => 'Dano normal'],
                 ]
                 : [$normal];
@@ -550,6 +605,12 @@ final class Regras
 
     private static function dobrarDados(string $dano): string
     {
-        return preg_match('/^(\d+)d(\d+)$/', $dano, $m) ? ($m[1] * 2).'d'.$m[2] : $dano;
+        return self::multiplicarDados($dano, 2);
+    }
+
+    /** `n` vezes a quantidade de dados (`1d8` × 3 = `3d8`); formato inesperado volta como está. */
+    private static function multiplicarDados(string $dano, int $n): string
+    {
+        return preg_match('/^(\d+)d(\d+)$/', $dano, $m) ? ((int) $m[1] * $n).'d'.$m[2] : $dano;
     }
 }

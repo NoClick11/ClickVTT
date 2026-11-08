@@ -105,7 +105,8 @@ class ChatController extends Controller
             \App\Sistemas\OnePiece\ConsumoDaSaijo::consumir($mesa, $dados['personagem_id'] ?? null, $sistema, $itens, $ficha);
         }
         // O sistema pode marcar a rolagem (ex.: ataque crítico); o núcleo só guarda e repassa.
-        $marcas = $sistema?->metadadosDaRolagem($resultado['termos'], $variaveis, $itens, $ficha, ['municao' => $municao]) ?? [];
+        $combateAtual = \App\Nucleo\Combate\CombateService::normalizar($mesa->fresh()->combate);
+        $marcas = $sistema?->metadadosDaRolagem($resultado['termos'], $variaveis, $itens, $ficha, ['municao' => $municao, 'rodada' => $combateAtual['fase'] === 'em_curso' ? $combateAtual['rodada'] : 1]) ?? [];
         if ($municao) {
             \App\Sistemas\OnePiece\Municoes::consumir($mesa, (int) $dados['personagem_id'], $municao['item_id']);
         }
@@ -117,9 +118,20 @@ class ChatController extends Controller
                 'tipo' => filled($dados['dano']['tipo'] ?? null) ? trim($dados['dano']['tipo']) : null,
                 ...(isset($dados['dano']['fator']) && (float) $dados['dano']['fator'] !== 1.0 ? ['fator' => (float) $dados['dano']['fator']] : []),
             ];
+            // Dano de Técnica com chicote (o botão leva o nome da Técnica no rótulo): Golpe Moral confere a Técnica na ficha de quem rola
+            if (filled($dados['rotulo'] ?? null) && ! preg_match('/@arma\.\d+\.dano/', (string) $dados['expressao'])) {
+                $ignoraTecnica = \App\Sistemas\OnePiece\Regras::golpeMoralDaTecnica($ficha, trim($dados['rotulo']), $marcas['dano']['tipo'] ?? null);
+                if ($ignoraTecnica) {
+                    $marcas['dano']['ignora'] = $ignoraTecnica;
+                }
+            }
             // Densidade e Balanço da arma (forja): o servidor deduz da arma da rolagem, nunca do que o cliente manda.
             if (preg_match('/@arma\.(\d+)\.dano/', (string) $dados['expressao'], $m)) {
                 $ignora = \App\Sistemas\OnePiece\Forja::ignoraDoDano($itens[(int) $m[1]]['dados']['arma'] ?? null);
+                // Golpe Moral (Aventureiro): o chicote ignora resistência a Cortante e causa metade em invulnerabilidade a ele
+                if (($itens[(int) $m[1]]['dados']['catalogo']['id'] ?? null) === 'chicote') {
+                    $ignora = [...$ignora, ...\App\Sistemas\OnePiece\Regras::golpeMoral($ficha, $marcas['dano']['tipo'] ?? null)];
+                }
                 if ($ignora) {
                     $marcas['dano']['ignora'] = $ignora;
                 }
@@ -144,6 +156,7 @@ class ChatController extends Controller
         ]);
 
         $resposta = $this->entregar($mesa, $mensagem, $acesso);
+        $this->errarComVontade($mesa, $acesso, $sistema, $ficha, $itens, (string) $dados['expressao'], $marcas, $dados['personagem_id'] ?? null, $rolador);
 
         // Ataque contra um alvo mirado: a janela de reação abre (ou o ataque resolve na hora) e a rolagem ganha o resultado.
         if (! empty($dados['alvo_personagem_id']) && ! empty($dados['personagem_id']) && $this->ehAtaque($resultado['termos'])) {
@@ -153,6 +166,24 @@ class ChatController extends Controller
         }
 
         return $resposta;
+    }
+
+    /**
+     * Errar com Vontade (Aventureiro): falha crítica num ataque (comum) com chicote acerta o próprio personagem com 2d12 de dano Verdadeiro.
+     *
+     * @param  array<string, mixed>  $marcas
+     */
+    private function errarComVontade(Mesa $mesa, AcessoMesa $acesso, mixed $sistema, array $ficha, array $itens, string $expressao, array $marcas, mixed $personagemId, Rolador $rolador): void
+    {
+        if (! $sistema || ! $personagemId || ($marcas['destaque'] ?? null) !== 'falha' || ! preg_match('/@arma\.(\d+)\.ataque/', $expressao, $m)
+            || ($itens[(int) $m[1]]['dados']['catalogo']['id'] ?? null) !== 'chicote' || ! \App\Sistemas\OnePiece\Regras::temCaracteristica($ficha, 'Errar com Vontade')) {
+            return;
+        }
+        $aplicar = app(\App\Nucleo\Combate\AplicarDano::class);
+        $dano = (int) $rolador->rolar('2d12')['total'];
+        $r = \Illuminate\Support\Facades\DB::transaction(fn () => $aplicar->aplicar($mesa, (int) $personagemId, $sistema, $dano, 'Verdadeiro'));
+        $aplicar->avisar($mesa, $acesso, 'todos', $r);
+        \App\Nucleo\Combate\AplicarDano::postar($mesa, $acesso, 'todos', "{$r['p']->nome} errou com vontade: o chicote volta e acerta o próprio personagem ({$dano} de dano Verdadeiro).");
     }
 
     /**

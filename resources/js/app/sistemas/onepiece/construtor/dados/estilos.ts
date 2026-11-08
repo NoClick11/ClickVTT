@@ -834,9 +834,11 @@ export const AVENTUREIRO: EstiloDados = {
             id: 'tiro-sem-paciencia',
             nome: 'Estilo Arriscado: Tiro Sem Paciência',
             nivelMin: 3,
+            tipo: 'ativa',
+            acao: 'poderosa',
             usos: { max: 1, descanso: 'longo' },
             descricao:
-                'Com a ação poderosa, faça um disparo com arma de fogo: a jogada de ataque (comum) à distância recebe 1 dado de dano adicional (munição) por rodada em que você participou do encontro, limitado a 2 vezes o seu nível de Aventureiro (máximo 30 dados).',
+                'Com a ação poderosa, faça um disparo com arma de fogo: a jogada de ataque (comum) à distância recebe 1 dado de dano adicional (munição) por rodada em que você participou do encontro, limitado a 2 vezes o seu nível de Aventureiro (máximo 30 dados). Ligue antes de disparar e desligue depois.',
             etiquetas: ['Ação poderosa: +1 dado de munição por rodada do encontro (máx. 2 × nível)'],
         },
         {

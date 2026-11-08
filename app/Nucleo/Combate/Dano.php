@@ -26,7 +26,7 @@ final class Dano
     /**
      * Dano final depois das defesas: imunidade zera, resistência divide por 2 (para baixo), vulnerabilidade dobra
      * (resistência e vulnerabilidade juntas se anulam). Tipo desconhecido ou vazio não sofre ajuste. `$ignora` ('resistencia',
-     * 'imunidade'): defesas que a arma passa por cima (Densidade e Balanço da forja).
+     * 'imunidade', 'imunidade_metade'): defesas que a arma passa por cima (Densidade e Balanço da forja).
      *
      * @param  array<string, mixed>  $ficha
      * @return array{final: int, modo: 'normal'|'imune'|'resistido'|'vulneravel'}
@@ -35,7 +35,8 @@ final class Dano
     {
         $total = max(0, $total);
         if (! in_array('imunidade', $ignora, true) && self::contem($ficha['imunidades'] ?? [], $tipo)) {
-            return ['final' => 0, 'modo' => 'imune'];
+            // `imunidade_metade` (Golpe Moral): a invulnerabilidade só corta o dano pela metade
+            return in_array('imunidade_metade', $ignora, true) ? ['final' => intdiv($total, 2), 'modo' => 'imune_metade'] : ['final' => 0, 'modo' => 'imune'];
         }
         $resiste = ! in_array('resistencia', $ignora, true) && self::contem($ficha['resistencias'] ?? [], $tipo);
         $vulneravel = self::contem($ficha['vulnerabilidades'] ?? [], $tipo);
