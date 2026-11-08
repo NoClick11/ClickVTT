@@ -451,10 +451,24 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
      * Haki e o Haki do Rei, o despertar prematuro e os PA dados (gerais e restritos) são do mestre; o jogador só compra
      * talentos (sem devolver) e escolhe Haki Principal e afinidade, e a compra tem de caber no saldo e nos requisitos.
      */
-    public function conferirFicha(array $antes, array $depois, bool $mestre): void
+    /** @param  array{subir_nivel?: bool}  $liberacoes  o que o mestre liberou na mesa */
+    public function conferirFicha(array $antes, array $depois, bool $mestre, array $liberacoes = []): void
     {
         if ($mestre) {
             return;
+        }
+        // XP: o jogador só o vê; quem dá é o mestre (distribuição de XP).
+        if ((int) ($antes['xp']['atual'] ?? 0) !== (int) ($depois['xp']['atual'] ?? 0)) {
+            abort(403, 'O XP só muda pela distribuição do mestre.');
+        }
+        // Subir de nível: um nível por vez, com o XP no máximo do nível atual e o mestre tendo liberado.
+        $nivelAntes = (int) ($antes['nivel'] ?? 1);
+        $nivelDepois = (int) ($depois['nivel'] ?? $nivelAntes);
+        if ($nivelDepois !== $nivelAntes) {
+            $proximo = Regras::XP_PROXIMO[min(max($nivelAntes, 1), 20)];
+            if ($nivelDepois !== $nivelAntes + 1 || empty($liberacoes['subir_nivel']) || (int) ($antes['xp']['atual'] ?? 0) < $proximo) {
+                abort(403, 'Subir de nível exige o XP do nível e a liberação do mestre.');
+            }
         }
         if (($antes['itensIniciais'] ?? []) !== ($depois['itensIniciais'] ?? []) || (int) ($antes['dinheiroInicial'] ?? 0) !== (int) ($depois['dinheiroInicial'] ?? 0)) {
             abort(403, 'Os itens iniciais são entregues pela criação da ficha.');

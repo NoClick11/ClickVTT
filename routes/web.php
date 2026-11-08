@@ -16,6 +16,7 @@ use App\Http\Controllers\App\LojaController;
 use App\Http\Controllers\App\LootController;
 use App\Http\Controllers\App\NpcController;
 use App\Http\Controllers\App\ObjetoController;
+use App\Http\Controllers\App\ProgressaoController;
 use App\Http\Controllers\App\PaginaController;
 use App\Http\Controllers\App\PastaController;
 use App\Http\Controllers\App\PersonagemController as PersonagemDoJogoController;
@@ -135,6 +136,9 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::post('gatilhos/{mensagem}/escolher', [TecnicaAtivaController::class, 'escolher'])->middleware('throttle:60,1')->name('gatilhos.escolher');
     Route::post('gatilhos/{mensagem}/ignorar', [TecnicaAtivaController::class, 'ignorar'])->middleware('throttle:60,1')->name('gatilhos.ignorar');
     Route::patch('fogo-amigo', [CombateController::class, 'fogoAmigo'])->name('fogo-amigo');
+    // Progressão (só o mestre): libera descansos e subir de nível; divide XP entre os personagens dos jogadores.
+    Route::patch('liberacoes', [ProgressaoController::class, 'liberacoes'])->name('liberacoes');
+    Route::post('xp', [ProgressaoController::class, 'distribuirXp'])->middleware('throttle:30,1')->name('xp.distribuir');
     Route::post('combate/ataques-extras', [CombateController::class, 'ataquesExtras'])->middleware('throttle:60,1')->name('combate.ataques-extras');
     Route::post('combate/acao', [CombateController::class, 'acao'])->middleware('throttle:240,1')->name('combate.acao');
     Route::post('broadcasting/auth', BroadcastAuthController::class)->name('broadcasting.auth');

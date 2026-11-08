@@ -54,7 +54,7 @@ class FichaController extends Controller
                 $nova = $fichas->aplicar($sistema, $p->ficha, $campos);
                 // O sistema pode ter campos só do mestre (Haki: liberar, dar PA) e compras a conferir
                 if (method_exists($sistema, 'conferirFicha')) {
-                    $sistema->conferirFicha($p->ficha ?? $sistema->fichaPadrao(), $nova, $acesso->ehMestre());
+                    $sistema->conferirFicha($p->ficha ?? $sistema->fichaPadrao(), $nova, $acesso->ehMestre(), ['subir_nivel' => (bool) $mesa->subir_nivel]);
                 }
                 $this->conferirItensNovos($mesa, $sistema->itensReferenciados($p->ficha ?? $sistema->fichaPadrao()), $sistema->itensReferenciados($nova), $acesso->ehMestre());
                 $p->ficha = $nova;

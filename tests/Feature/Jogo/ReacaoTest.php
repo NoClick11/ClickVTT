@@ -50,7 +50,9 @@ class ReacaoTest extends TestCase
 
     private function ficha($c, Jogador $dono, $personagem, array $campos): void
     {
-        $this->como($dono)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $personagem->id]), ['campos' => $campos])->assertOk();
+        // o nível não é do jogador mudar (sobe com XP e a liberação do mestre): quem prepara a ficha com nível é o mestre
+        $autor = array_key_exists('nivel', $campos) ? $c->mestre : $dono;
+        $this->como($autor)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $personagem->id]), ['campos' => $campos])->assertOk();
     }
 
     /** Combate em curso: Bruno (20), Aria (10), Orc (1); Aria com defesa 11 (CA 10 + ajuste 1). */
