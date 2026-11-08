@@ -76,6 +76,11 @@ class ChatController extends Controller
             'tecnica.dano.extras' => ['nullable', 'array', 'max:4'],
             'tecnica.dano.extras.*.expressao' => ['required', 'string', 'max:'.Rolador::MAX_EXPRESSAO],
             'tecnica.dano.extras.*.tipo' => ['nullable', 'string', 'max:30'],
+            // Só o mestre (ataque de um NPC, que não tem arma na ficha): não conta como Técnica, traz a margem de crítico própria e
+            // marca a rolagem (de bônus próprio, sem `@ataque`) como ataque, para rolar contra a defesa do alvo.
+            'tecnica.semTecnica' => ['nullable', 'boolean'],
+            'tecnica.ataque' => ['nullable', 'boolean'],
+            'tecnica.margem' => ['nullable', 'integer', 'between:2,20'],
             'tecnica.secundaria' => ['nullable', 'array'],
             'tecnica.secundaria.atributo' => ['required_with:tecnica.secundaria', 'string', 'max:3'],
             'tecnica.secundaria.desvantagem' => ['nullable', 'boolean'],
@@ -110,12 +115,21 @@ class ChatController extends Controller
         }
         // O sistema pode marcar a rolagem (ex.: ataque crítico); o núcleo só guarda e repassa.
         $combateAtual = \App\Nucleo\Combate\CombateService::normalizar($mesa->fresh()->combate);
+        $ehAtaque = $this->ehAtaque($resultado['termos']) || ($acesso->ehMestre() && ! empty($dados['tecnica']['ataque']));
         $marcas = $sistema?->metadadosDaRolagem($resultado['termos'], $variaveis, $itens, $ficha, ['municao' => $municao, 'rodada' => $combateAtual['fase'] === 'em_curso' ? $combateAtual['rodada'] : 1]) ?? [];
         if ($municao) {
             \App\Sistemas\OnePiece\Municoes::consumir($mesa, (int) $dados['personagem_id'], $municao['item_id']);
         }
-        if (is_array($dados['tecnica'] ?? null) && $this->ehAtaque($resultado['termos'])) {
-            $marcas = [...$marcas, ...$this->marcasDoAtaqueDeTecnica($dados['tecnica'], $resultado['termos'], \App\Sistemas\OnePiece\Regras::margemDaTecnica($ficha, $variaveis, trim($dados['tecnica']['nome'])))];
+        if (is_array($dados['tecnica'] ?? null) && $ehAtaque) {
+            $margem = \App\Sistemas\OnePiece\Regras::margemDaTecnica($ficha, $variaveis, trim($dados['tecnica']['nome']));
+            $mestreDoNpc = $acesso->ehMestre();
+            if ($mestreDoNpc && isset($dados['tecnica']['margem'])) {
+                $margem = min($margem, (int) $dados['tecnica']['margem']);
+            }
+            $marcas = [...$marcas, ...$this->marcasDoAtaqueDeTecnica($dados['tecnica'], $resultado['termos'], $margem)];
+            if ($mestreDoNpc && ! empty($dados['tecnica']['semTecnica'])) {
+                $marcas['tecnica']['semTecnica'] = true; // o dano conta como ataque (comum), não como Técnica
+            }
         }
         // Shoot (Black Leg): ataque desarmado que acerta com d20 de 16 a 20 pode causar uma condição (Kick Festival), se o alvo falhar na Salvaguarda de Constituição
         if (str_contains((string) $dados['expressao'], '@ataque.desarmado') && ($kick = \App\Sistemas\OnePiece\Regras::kickFestival($ficha, Pipeline::naturalDoD20($resultado['termos'])))) {
@@ -181,7 +195,7 @@ class ChatController extends Controller
         $this->errarComVontade($mesa, $acesso, $sistema, $ficha, $itens, (string) $dados['expressao'], $marcas, $dados['personagem_id'] ?? null, $rolador);
 
         // Ataque contra um alvo mirado: a janela de reação abre (ou o ataque resolve na hora) e a rolagem ganha o resultado.
-        if (! empty($dados['alvo_personagem_id']) && ! empty($dados['personagem_id']) && $this->ehAtaque($resultado['termos'])) {
+        if (! empty($dados['alvo_personagem_id']) && ! empty($dados['personagem_id']) && $ehAtaque) {
             $pipeline->ataqueDeclarado($mesa, $acesso, $mensagem, $dados['personagem_id'], $dados['alvo_personagem_id']);
 
             return response()->json($mensagem->fresh()->para($acesso->jogador), 201);

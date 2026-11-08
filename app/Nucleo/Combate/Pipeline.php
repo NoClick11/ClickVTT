@@ -39,8 +39,9 @@ final class Pipeline
     }
 
     /**
-     * Um ataque foi rolado contra um alvo. Abre a janela de reação (se alguém pode reagir) ou resolve na hora. Devolve o
-     * evento, ou null se não vale a pena (sem combate em curso, alvo igual ao atacante, sistema sem combate).
+     * Um ataque foi rolado contra um alvo. Rola contra a defesa: com o combate em curso abre a janela de reação (se alguém pode
+     * reagir); fora do combate resolve na hora (não há quem reaja). Devolve o evento, ou null se não vale a pena (alvo igual ao
+     * atacante, sistema sem combate).
      */
     public function ataqueDeclarado(Mesa $mesa, AcessoMesa $acesso, Mensagem $mensagem, int $atacanteId, int $alvoId): ?EventoDeCombate
     {
@@ -48,7 +49,7 @@ final class Pipeline
         $estado = CombateService::normalizar($mesa->combate);
         $alvo = Personagem::query()->where('mesa_id', $mesa->id)->find($alvoId);
         $atacante = Personagem::query()->where('mesa_id', $mesa->id)->find($atacanteId);
-        if (! $sistema instanceof SistemaDeCombate || $estado['fase'] !== 'em_curso' || ! $alvo || ! $atacante || $alvo->id === $atacante->id) {
+        if (! $sistema instanceof SistemaDeCombate || ! $alvo || ! $atacante || $alvo->id === $atacante->id) {
             return null;
         }
 
@@ -60,7 +61,8 @@ final class Pipeline
             'total' => (int) $mensagem->dados['total'], 'natural' => self::naturalDoD20($mensagem->dados['termos'] ?? []),
             'margem' => (int) ($mensagem->dados['sistema']['margem'] ?? 20), 'defesa' => $defesa,
         ];
-        $ofertas = $this->ofertas($mesa, $sistema, $estado, $contexto);
+        // reação é do combate: fora dele ninguém reage e o ataque resolve na hora
+        $ofertas = $estado['fase'] === 'em_curso' ? $this->ofertas($mesa, $sistema, $estado, $contexto) : [];
 
         $evento = $mesa->eventosDeCombate()->create(['tipo' => 'ataque', 'estado' => 'aguardando', 'contexto' => $contexto, 'ofertas' => $ofertas, 'respostas' => []]);
         $this->marcarMensagem($mesa, $acesso, $mensagem, ['estado' => 'aguardando', 'evento_id' => $evento->id, 'defesa' => $defesa, 'alvo' => $alvo->nome, 'alvo_id' => $alvo->id]);

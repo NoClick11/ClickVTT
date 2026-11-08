@@ -14,6 +14,7 @@ use App\Http\Controllers\App\ItemController;
 use App\Http\Controllers\App\JogoController;
 use App\Http\Controllers\App\LojaController;
 use App\Http\Controllers\App\LootController;
+use App\Http\Controllers\App\NpcController;
 use App\Http\Controllers\App\ObjetoController;
 use App\Http\Controllers\App\PaginaController;
 use App\Http\Controllers\App\PastaController;
@@ -66,6 +67,8 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
         ->middleware('throttle:20,1')->name('personagens.dinheiro-rolado');
     Route::post('personagens/{personagem}/criacao/atributos-rolados', [FichaController::class, 'rolarAtributos'])
         ->middleware('throttle:20,1')->name('personagens.atributos-rolados');
+    Route::post('npcs', [NpcController::class, 'criar'])->middleware('throttle:60,1')->name('npcs.store');
+    Route::post('personagens/{personagem}/instanciar', [NpcController::class, 'instanciar'])->middleware('throttle:120,1')->name('personagens.instanciar');
     Route::post('personagens', [PersonagemDoJogoController::class, 'criar'])->middleware('throttle:30,1')->name('personagens.store');
     Route::put('personagens/{personagem}/jogadores', [PersonagemDoJogoController::class, 'atribuir'])->name('personagens.atribuir');
     // Loja: o mestre abre/fecha (jogadores e categorias) e cria itens do catálogo; o jogador compra com a loja aberta.

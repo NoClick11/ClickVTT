@@ -58,7 +58,14 @@ class PersonagemController extends Controller
     {
         $acesso = AcessoMesa::exigirMestre($request, $mesa);
         abort_unless($personagem->mesa_id === $mesa->id, 404);
+        $this->apagar($mesa, $personagem, $acesso->jogador->id);
 
+        return response()->json(['ok' => true]);
+    }
+
+    /** Apaga o personagem e tudo que depende dele (tokens, vez no combate) e avisa a mesa. Usado também ao sumir a última cópia de um NPC. */
+    public function apagar(Mesa $mesa, Personagem $personagem, int $atorId): void
+    {
         $combate = DB::transaction(function () use ($mesa, $personagem) {
             $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
             $c = CombateService::normalizar($m->combate);
@@ -79,10 +86,8 @@ class PersonagemController extends Controller
         });
 
         if ($combate) {
-            Transmitir::enviar($mesa, 'combate', ['combate' => $combate, 'ator' => $acesso->jogador->id], ['mesa']);
+            Transmitir::enviar($mesa, 'combate', ['combate' => $combate, 'ator' => $atorId], ['mesa']);
         }
-        Transmitir::cena($mesa, null, $acesso->jogador->id);
-
-        return response()->json(['ok' => true]);
+        Transmitir::cena($mesa, null, $atorId);
     }
 }

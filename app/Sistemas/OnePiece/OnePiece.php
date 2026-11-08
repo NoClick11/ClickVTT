@@ -462,6 +462,9 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         if ((bool) ($antes['aliado'] ?? false) !== (bool) ($depois['aliado'] ?? false)) {
             abort(403, 'Só o mestre marca um NPC como aliado.');
         }
+        if (($antes['npc'] ?? null) != ($depois['npc'] ?? null)) {
+            abort(403, 'Só o mestre edita a ficha de um NPC.');
+        }
         $this->conferirTreinamentos($antes, $depois);
         Profissoes::conferir($antes, $depois);
         if (empty($antes['akuma']['despertada']) && ! empty($depois['akuma']['despertada'])) {

@@ -233,10 +233,27 @@ class ObjetoController extends Controller
         }
         $paginaId = $objeto->pagina_id;
         $somenteMestre = $this->soMestre($objeto);
+        $personagemId = $objeto->tipo === 'token' ? $objeto->personagem_id : null;
         $objeto->delete();
         Transmitir::cena($mesa, $paginaId, $acesso->jogador->id, $somenteMestre);
+        $this->apagarCopiaSemToken($mesa, $personagemId, $acesso->jogador->id);
 
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * A cópia de um NPC (criada ao arrastá-lo para o mapa) só existe enquanto tem token: sumiu o último, a cópia é apagada
+     * (com a vez dela no combate). O NPC modelo e os personagens comuns nunca são apagados por aqui.
+     */
+    private function apagarCopiaSemToken(Mesa $mesa, ?int $personagemId, int $atorId): void
+    {
+        if (! $personagemId || Objeto::query()->where('personagem_id', $personagemId)->exists()) {
+            return;
+        }
+        $p = $mesa->personagens()->find($personagemId);
+        if ($p && isset($p->ficha['npc']['instancia_de'])) {
+            app(PersonagemController::class)->apagar($mesa, $p, $atorId);
+        }
     }
 
     /** Token: o personagem é de um dos personagens do jogador. Desenho/texto: foi ele que fez. */

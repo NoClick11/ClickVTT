@@ -81,6 +81,8 @@ final class FichaOnePiece
             // Anão com Hóspede Feérico: id do personagem em cujo espaço ele está (null = em lugar nenhum).
             'hospedado' => null,
             'aliado' => false,
+            // NPC: os dados da ficha de uma tela só (ataques, técnicas, características e usos). null = personagem comum.
+            'npc' => null,
             'itensIniciais' => [],
             'dinheiroInicial' => 0,
             // Primeiros Socorros: esta criatura já recebeu o tratamento (volta no descanso longo)
@@ -163,6 +165,7 @@ final class FichaOnePiece
         $r['hospedado'] = ['nullable', 'integer:strict', 'min:1'];
         // NPC aliado dos jogadores (só o mestre muda): os jogadores não o atingem
         $r['aliado'] = ['boolean:strict'];
+        $r['npc'] = ['nullable', 'array'];
         // O que a criação entregou do inventário inicial (só o servidor mexe: refazer a criação não duplica os itens)
         $r['dinheiroInicial'] = ['integer:strict', 'between:0,1000000000000'];
         $r['itensIniciais'] = ['array', 'max:60'];

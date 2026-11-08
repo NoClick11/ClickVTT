@@ -207,11 +207,13 @@ class ReacaoTest extends TestCase
         $this->assertSame(15, $c->aria->fresh()->ficha['pv']['atual']); // 10 + 5
     }
 
-    public function test_fora_do_combate_em_curso_nao_abre_janela_e_a_pagina_traz_as_ofertas_pendentes(): void
+    public function test_fora_do_combate_em_curso_resolve_na_hora_sem_janela_e_a_pagina_traz_as_ofertas_pendentes(): void
     {
         $c = $this->cenario();
-        $this->ataque($c); // sem combate: rolagem comum
-        $this->assertSame(0, EventoDeCombate::count());
+        $this->ataque($c); // sem combate: o ataque contra o alvo travado rola contra a defesa na hora, sem janela de reação
+        $this->assertSame(1, EventoDeCombate::count());
+        $this->assertSame('resolvido', EventoDeCombate::first()->estado);
+        $this->assertSame([], EventoDeCombate::first()->ofertas);
 
         $this->combate($c);
         $this->protetor($c);
