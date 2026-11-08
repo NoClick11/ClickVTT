@@ -53,7 +53,7 @@ const dica = (c: { nome: string; porRodada: number | null }) =>
 <template>
     <section
         v-if="atual && categorias.length"
-        class="bg-preto-950/92 pointer-events-auto absolute bottom-3 left-1/2 z-10 flex max-w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center gap-x-3 gap-y-1 rounded-full border border-ouro-500/30 px-3 py-1.5 text-xs shadow-lg backdrop-blur"
+        class="bg-preto-950/92 pointer-events-auto absolute bottom-[5.75rem] left-1/2 z-10 flex max-w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center gap-x-3 gap-y-1 rounded-full border border-ouro-500/30 px-3 py-1.5 text-xs shadow-lg backdrop-blur"
         aria-label="Ações do turno"
     >
         <span class="flex items-center gap-1.5 font-semibold text-ouro-200">

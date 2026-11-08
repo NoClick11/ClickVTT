@@ -4,6 +4,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import { apiMesa, ErroApi, medirArquivo } from '../api';
 import AtribuirJogadoresDialog from '../components/AtribuirJogadoresDialog.vue';
+import BarraAtalhos from '../components/BarraAtalhos.vue';
 import BarraFerramentas from '../components/BarraFerramentas.vue';
 import BarraLateral, { type AbaLateral } from '../components/BarraLateral.vue';
 import BarraSuperior from '../components/BarraSuperior.vue';
@@ -443,7 +444,10 @@ const objetosDaCena = computed(() =>
         const ficha = fichas.value[o.personagem_id];
         const barras = ficha ? (moduloSistema?.resumoDoToken?.(ficha, itensPorIdDaMesa.value) ?? []) : [];
 
-        return { ...o, status: statusPorPersonagem.value[o.personagem_id] ?? [], barras };
+        // NPC com 0 de vida: o token mostra o indicador de morte (só quem recebe a ficha do NPC, ou seja, o mestre, o vê)
+        const npcMorto = !!ficha?.npc && Number((ficha.pv as { atual?: number } | undefined)?.atual ?? 1) <= 0;
+
+        return { ...o, status: statusPorPersonagem.value[o.personagem_id] ?? [], barras, morto: npcMorto };
     }),
 );
 watch(
@@ -452,12 +456,16 @@ watch(
 );
 
 const selecionado = computed(() => objetos.value.find((o) => o.id === selecionadoId.value) ?? null);
-// Selecionar o token de um NPC o torna o personagem ativo (chat e rolagens saem como ele) e abre a ficha dele: cada cópia no mapa tem a sua.
+// Um clique num token o torna o personagem ativo (chat, rolagens e a barra de atalhos passam a ser dele); a ficha só abre com duplo clique.
 watch(selecionado, (o) => {
-    if (!props.mestre || o?.tipo !== 'token' || !o.personagem_id) return;
+    if (o?.tipo !== 'token' || !o.personagem_id) return;
     const p = props.personagens.find((x) => x.id === o.personagem_id);
-    if (p?.ficha?.npc) abrirPersonagem(p.id);
+    if (p && (props.meusPersonagens.includes(p.id) || (props.mestre && p.ficha?.npc))) ativoId.value = p.id;
 });
+function abrirDoToken(objetoId: number) {
+    const o = objetos.value.find((x) => x.id === objetoId);
+    if (o?.personagem_id) abrirPersonagem(o.personagem_id);
+}
 
 // --- utilidades ----------------------------------------------------------------
 
@@ -1247,6 +1255,58 @@ async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
     }
 }
 
+// --- Barra de atalhos (macros) --------------------------------------------------------------------------------------------
+// NPC: tudo da ficha (ataques, técnicas, salvaguardas, perícias, testes). Jogador: os ataques com arma e as técnicas que ele fixou na ficha.
+const chaveFixados = (id: number) => `clickvtt.atalhos.${props.mesa.id}.${id}`;
+const fixadosSalvos = ref<Record<number, string[]>>({});
+function fixadosDe(id: number): string[] {
+    if (id in fixadosSalvos.value) return fixadosSalvos.value[id];
+    try {
+        const v = JSON.parse(lerLocal(chaveFixados(id), '[]'));
+
+        return Array.isArray(v) ? v.filter((n): n is string => typeof n === 'string') : [];
+    } catch {
+        return [];
+    }
+}
+provide('atalhosFixados', {
+    tem: (id: number, nome: string) => fixadosDe(id).includes(nome),
+    alternar: (id: number, nome: string) => {
+        const atuais = fixadosDe(id);
+        const novos = atuais.includes(nome) ? atuais.filter((n) => n !== nome) : [...atuais, nome].slice(0, 20);
+        fixadosSalvos.value = { ...fixadosSalvos.value, [id]: novos };
+        gravarLocal(chaveFixados(id), JSON.stringify(novos));
+    },
+});
+/** A ficha invisível do personagem ativo: é por ela que a barra usa as técnicas (a lógica de custo, área e munição é da ficha). */
+const executorDeTecnicas = ref<{ usarTecnicaPorNome?: (nome: string) => string | null } | null>(null);
+const executorPersonagem = computed(() => {
+    const a = ativo.value;
+    if (!a || !moduloSistema?.atalhos || !fichas.value[a.id] || fichas.value[a.id].npc) return null;
+
+    return a;
+});
+const atalhosDoAtivo = computed(() => {
+    const a = ativo.value;
+    const ficha = a ? fichas.value[a.id] : null;
+    if (!a || !ficha || !moduloSistema?.atalhos) return [];
+
+    return moduloSistema.atalhos({
+        personagemId: a.id,
+        ficha,
+        itens: itensPorIdDaMesa.value,
+        mestre: props.mestre,
+        alvo: alvoDoAtaque.value,
+        rolar: (...argumentos) => void rolarDaFicha(a.id, ...(argumentos as RolagemDaFicha)),
+        salvar: (campos) => salvarFicha(a.id, campos),
+        usarTecnica: (uso) => void usarTecnicaDaFicha(a.id, uso as UsoDeTecnica),
+        usarTecnicaPorNome: (nome) => executorDeTecnicas.value?.usarTecnicaPorNome?.(nome) ?? 'A ficha ainda está carregando.',
+        fixados: fixadosDe(a.id),
+        abrirFicha: () => abrirPersonagem(a.id),
+        avisar,
+    });
+});
+
 /** Card de uma Técnica ativa (Quick Draw): atacar, escolher o efeito do acerto ou ignorar. O servidor decide e devolve o card novo. */
 async function agirNoGatilho(mensagem: Mensagem, chamada: () => Promise<Mensagem>) {
     const chave = `g${mensagem.id}`;
@@ -1889,6 +1949,7 @@ async function alternarPorta(id: number) {
                     @criar-luz="criarLuz"
                     @criar-loot="criarLoot"
                     @abrir-loot="abrirLoot"
+                    @abrir-token="abrirDoToken"
                     @memoria="guardarMemoria"
                     @pedir-memoria="pedirMemoria"
                     @criar-parede="criarParede"
@@ -1938,6 +1999,7 @@ async function alternarPorta(id: number) {
                         @remover="removerSelecionado"
                     />
                     <ControlesZoom :escala="escala" @mais="canvas?.zoomPor(1.25)" @menos="canvas?.zoomPor(1 / 1.25)" @ajustar="canvas?.ajustar()" />
+                    <BarraAtalhos v-if="ativo && atalhosDoAtivo.length" :atalhos="atalhosDoAtivo" :nome="ativo.nome" :cor="ativo.cor" />
                     <PainelDoTurno
                         :combate="combate"
                         :categorias="categoriasAcao"
@@ -2089,6 +2151,21 @@ async function alternarPorta(id: number) {
             >
                 {{ erro }}
             </div>
+        </div>
+
+        <!-- Ficha invisível do personagem ativo: a barra de atalhos usa as técnicas por ela -->
+        <div v-if="executorPersonagem && moduloSistema" class="hidden" aria-hidden="true">
+            <component
+                :is="moduloSistema.Ficha"
+                :key="executorPersonagem.id"
+                :ref="(el: unknown) => (executorDeTecnicas = el as typeof executorDeTecnicas.value)"
+                :personagem="executorPersonagem"
+                :ficha="fichas[executorPersonagem.id]"
+                :itens="itensDaMesa"
+                :mestre="mestre"
+                executor
+                @usar-tecnica="(uso: UsoDeTecnica) => usarTecnicaDaFicha(executorPersonagem!.id, uso)"
+            />
         </div>
 
         <!-- Fichas: janelas flutuantes por cima do mapa (arrastar, redimensionar, várias abertas) -->

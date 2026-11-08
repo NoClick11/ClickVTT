@@ -11,8 +11,7 @@ import IndicadorD20 from '../../../nucleo/ui/IndicadorD20.vue';
 import { condicaoPorId } from '../condicoes';
 import { estilos, useFicha } from '../contexto';
 import EfeitosDialog from '../EfeitosDialog.vue';
-import { itemDoCatalogo } from '../itens';
-import { municoesDaArma } from '../itens/municoes';
+import { pilhasDeMunicao, type PilhaDeMunicao } from '../itens/pilhas';
 import { camposDoDadoDeVida, comSinal, DADOS_DE_VIDA, textoDeMovimento, type FichaOnePiece } from '../regras';
 
 const props = defineProps<{ ficha: FichaOnePiece; personagem: PersonagemFicha }>();
@@ -28,47 +27,7 @@ const contador = computed(() => acoes.ataque(Math.max(...armas.value.map((a) => 
  * dado e o tipo do dano e gasta 1 unidade. O servidor confere tudo de novo.
  */
 const escolhendoMunicao = ref<number | null>(null);
-interface PilhaDeMunicao {
-    itemId: number;
-    nome: string;
-    qtd: number;
-    dano: string | null;
-    tipoDano: string | null;
-}
-const municoesDa = (a: { catalogoId: string | null }): PilhaDeMunicao[] => {
-    const aceitas = municoesDaArma(a.catalogoId);
-    const pilhas: PilhaDeMunicao[] = [];
-    for (const secao of props.ficha.inventario ?? []) {
-        for (const ref of secao.itens ?? []) {
-            const item = itens.value[ref.item_id];
-            if (!item || ref.qtd <= 0) continue;
-            const dados = item.dados as { catalogo?: { id?: string }; municao?: { dano: string; tipoDano?: string | null } } | null | undefined;
-            if (dados?.municao) {
-                // munição criada à mão: serve a qualquer arma por munição
-                pilhas.push({
-                    itemId: ref.item_id,
-                    nome: item.nome,
-                    qtd: ref.qtd,
-                    dano: dados.municao.dano,
-                    tipoDano: dados.municao.tipoDano ?? null,
-                });
-                continue;
-            }
-            const idDoCatalogo = dados?.catalogo?.id;
-            if (!idDoCatalogo || !aceitas.includes(idDoCatalogo)) continue;
-            const entrada = itemDoCatalogo(idDoCatalogo);
-            pilhas.push({
-                itemId: ref.item_id,
-                nome: entrada?.nome ?? 'Munição',
-                qtd: ref.qtd,
-                dano: entrada?.arma?.dano ?? null,
-                tipoDano: entrada?.arma?.tipoDano ?? null,
-            });
-        }
-    }
-
-    return pilhas;
-};
+const municoesDa = (a: { catalogoId: string | null }): PilhaDeMunicao[] => pilhasDeMunicao(props.ficha.inventario, itens.value, a.catalogoId);
 function atacarComArma(evento: MouseEvent, a: { itemId: number; nome: string; municao: boolean }) {
     if (!a.municao) return d20(evento, `arma.${a.itemId}.ataque`, a.nome, { categoria: 'padrao' });
     escolhendoMunicao.value = escolhendoMunicao.value === a.itemId ? null : a.itemId;

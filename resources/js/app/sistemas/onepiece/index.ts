@@ -1,6 +1,7 @@
 import { defineAsyncComponent } from 'vue';
 import type { ModuloSistema } from '../../nucleo/sistemas/tipos';
 import { ALVOS_DE_EFEITO, formatoDeResumo, variaveisParaAlvo } from './alvos';
+import { atalhos } from './atalhos';
 import { CONDICOES } from './condicoes';
 import { CATEGORIAS, RARIDADES } from './itens/tipos';
 import { ATRIBUTOS, comItemEntregue, resumoDoToken, type FichaOnePiece, type ItensPorId } from './regras';
@@ -22,6 +23,7 @@ export const modulo: ModuloSistema = {
     Loja: defineAsyncComponent(() => import('./itens/LojaDoJogador.vue')),
     CatalogoDeItens: defineAsyncComponent(() => import('./itens/CatalogoDeItens.vue')),
     PainelDeFrutas: defineAsyncComponent(() => import('./frutas/PainelDeFrutas.vue')),
+    atalhos,
     FichaDeNpc: defineAsyncComponent(() => import('./npcs/FichaDeNpc.vue')),
     NovoNpcDialog: defineAsyncComponent(() => import('./npcs/NovoNpcDialog.vue')),
 };

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ChevronDown } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { ChevronDown, Pin } from 'lucide-vue-next';
+import { computed, inject, ref } from 'vue';
 import { clonar } from '../../../../nucleo/ficha/caminho';
 import CampoNumero from '../../../../nucleo/ui/CampoNumero.vue';
 import CampoTexto from '../../../../nucleo/ui/CampoTexto.vue';
@@ -39,7 +39,12 @@ const props = defineProps<{
     vazio: string;
     tom: 'sky' | 'violet';
 }>();
-const { editar, salvar, acoes, calc, itens, modoDe, usarTecnica } = useFicha();
+const { editar, salvar, acoes, calc, itens, modoDe, usarTecnica, personagemId } = useFicha();
+/** A barra de atalhos da mesa: o jogador fixa aqui as técnicas que quer ter a um clique (a mesa guarda a escolha). */
+const fixados = inject<{ tem: (personagemId: number, nome: string) => boolean; alternar: (personagemId: number, nome: string) => void } | null>(
+    'atalhosFixados',
+    null,
+);
 /** A categoria que usar a técnica gasta no combate: a dela ou a poderosa (que só serve para técnicas). */
 const CATEGORIAS = computed(() => acoes.todas());
 const categoria = (t: Tecnica) => t.acao ?? 'poderosa';
@@ -182,6 +187,24 @@ function usar(t: Tecnica) {
         ...(custoDeMunicaoDaTecnica(t.descricao ?? '') ? { municao: { tecnica: t.nome } } : {}),
     });
 }
+
+/**
+ * Usar pelo nome, a partir da barra de atalhos (a ficha invisível): confere o que o botão "Usar" confere e devolve o motivo de não ter
+ * dado (`null` = usou, `undefined` = esta lista não tem a técnica).
+ */
+function usarPorNome(nome: string): string | null | undefined {
+    const t = props.lista.find((x) => x.nome === nome);
+    if (!t) return undefined;
+    const b = bloqueio(t);
+    if (b) return b;
+    if (!podeUsar(t)) return `Pontos de poder insuficientes (${props.ficha.pp.atual} de ${custoDeUsar(t)}).`;
+    const p = permitida(t);
+    if (!p.ok) return p.motivo ?? 'Esta ação não está disponível agora.';
+    usar(t);
+
+    return null;
+}
+defineExpose({ usarPorNome });
 
 /**
  * O grau da Técnica, para separar a lista: o do Criador, ou lido da origem ("1º Grau", "Auxiliar"). 0 = Auxiliar; null = sem grau
@@ -414,6 +437,25 @@ function adicionar() {
                                         @click="alternarPrincipal(t)"
                                     >
                                         ★ {{ ePrincipal(t) ? 'Principal' : 'Definir principal' }}
+                                    </button>
+                                    <button
+                                        v-if="fixados"
+                                        type="button"
+                                        class="mt-1 rounded-md border px-2 py-1 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                                        :class="
+                                            fixados.tem(personagemId, t.nome)
+                                                ? 'border-ouro-400 bg-ouro-500/20 text-ouro-100'
+                                                : 'border-preto-700 text-preto-300 hover:border-ouro-400'
+                                        "
+                                        :aria-pressed="fixados.tem(personagemId, t.nome)"
+                                        :title="
+                                            fixados.tem(personagemId, t.nome)
+                                                ? 'Tirar da barra de atalhos'
+                                                : 'Fixar na barra de atalhos (embaixo do mapa)'
+                                        "
+                                        @click="fixados.alternar(personagemId, t.nome)"
+                                    >
+                                        <Pin class="size-3.5" />
                                     </button>
                                     <button
                                         type="button"

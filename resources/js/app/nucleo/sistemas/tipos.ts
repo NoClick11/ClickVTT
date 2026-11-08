@@ -63,7 +63,47 @@ export interface BarraDoToken {
     valor?: number;
 }
 
+/** Um atalho da barra de baixo (como as macros do Foundry): um clique rola o teste, ataque ou técnica. */
+export interface Atalho {
+    id: string;
+    /** Aba da barra em que aparece (Ataques, Técnicas, Salvaguardas...). */
+    grupo: string;
+    rotulo: string;
+    /** Linha pequena sob o nome (bônus, dano, custo). */
+    detalhe?: string;
+    /** Ícone do botão (monocromático). */
+    icone: 'espada' | 'arco' | 'arma-de-fogo' | 'tecnica' | 'salvaguarda' | 'pericia' | 'teste';
+    /** Motivo de não poder usar agora (PP, usos...); o botão fica apagado. */
+    bloqueio?: string | null;
+    /** Shift = vantagem, Ctrl/Alt = desvantagem (o `MouseEvent` chega a quem rola). */
+    executar: (evento: MouseEvent) => void;
+    /** Com opções, o clique abre uma janelinha para escolher (ex.: a munição) e quem rola é a opção. */
+    opcoes?: { titulo: string; vazio: string; lista: { id: string; rotulo: string; detalhe?: string; executar: (evento: MouseEvent) => void }[] };
+}
+
+/** O que a mesa entrega ao sistema para montar os atalhos de um personagem. */
+export interface ContextoDeAtalhos {
+    personagemId: number;
+    ficha: Record<string, unknown>;
+    itens: Record<number, ItemDto>;
+    mestre: boolean;
+    /** Alvo mirado (ataques e técnicas o usam). */
+    alvo: number | null;
+    /** Mesmo contrato do evento `rolar` da ficha. */
+    rolar: (...argumentos: unknown[]) => void;
+    salvar: (campos: Record<string, unknown>) => void;
+    usarTecnica: (uso: never) => void;
+    /** Técnica de jogador pelo nome (a mesa a executa pela ficha invisível); devolve o motivo se não deu. */
+    usarTecnicaPorNome: (nome: string) => string | null;
+    /** Nomes das técnicas que o jogador fixou na barra. */
+    fixados: string[];
+    abrirFicha: () => void;
+    avisar: (mensagem: string) => void;
+}
+
 export interface ModuloSistema {
+    /** Atalhos do personagem para a barra de baixo (opcional). */
+    atalhos?: (ctx: ContextoDeAtalhos) => Atalho[];
     /** Igual ao `slug` do sistema no servidor (ex.: `dnd-5e`). */
     slug: string;
     Ficha: Component;

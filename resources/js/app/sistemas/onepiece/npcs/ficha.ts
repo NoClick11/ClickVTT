@@ -16,7 +16,7 @@ export interface NpcDados extends Omit<NpcModelo, 'id' | 'faccao'> {
     lendarias_usadas?: number;
 }
 
-const COM_ACENTO: Record<string, AtributoNpc> = {
+export const COM_ACENTO: Record<string, AtributoNpc> = {
     forca: 'for',
     destreza: 'des',
     constituicao: 'con',
@@ -24,7 +24,7 @@ const COM_ACENTO: Record<string, AtributoNpc> = {
     presenca: 'pre',
     vontade: 'von',
 };
-const PERICIA_ATRIBUTO: Record<string, AtributoNpc> = {
+export const PERICIA_ATRIBUTO: Record<string, AtributoNpc> = {
     atletismo: 'for',
     acrobacia: 'des',
     furtividade: 'des',

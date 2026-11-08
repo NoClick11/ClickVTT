@@ -16,6 +16,7 @@ import AbaProfissoes from './abas/AbaProfissoes.vue';
 import AbaRecompensa from './abas/AbaRecompensa.vue';
 import AbaTecnicas from './abas/AbaTecnicas.vue';
 import AbaTreinamentos from './abas/AbaTreinamentos.vue';
+import ListaTecnicas from './abas/ListaTecnicas.vue';
 import FichaAtributos from './FichaAtributos.vue';
 import FichaCabecalho from './FichaCabecalho.vue';
 import FichaLateral from './FichaLateral.vue';
@@ -33,6 +34,8 @@ const props = defineProps<{
     servicos?: ServicosDaFicha;
     permissoes?: PermissoesDaMesa;
     construtorConcluido?: boolean;
+    /** Ficha invisível da barra de atalhos: só monta as listas de técnicas, para a mesa usá-las por `usarTecnicaPorNome`. */
+    executor?: boolean;
 }>();
 const emit = defineEmits<{
     salvar: [campos: Record<string, unknown>];
@@ -185,18 +188,55 @@ const conteudo: Record<AbaId, Component> = {
     individualidades: AbaIndividualidades,
     recompensa: AbaRecompensa,
 };
+const listaTecnicas = ref<{ usarPorNome: (nome: string) => string | null | undefined } | null>(null);
+const listaAkuma = ref<{ usarPorNome: (nome: string) => string | null | undefined } | null>(null);
+/** Usa a técnica pelo nome (a barra de atalhos); devolve o motivo de não ter dado, ou `null` se usou. */
+defineExpose({
+    usarTecnicaPorNome: (nome: string): string | null => {
+        // `null` = usou; `undefined` = a lista não tem a técnica (tenta a outra)
+        for (const lista of [listaTecnicas.value, listaAkuma.value]) {
+            const r = lista?.usarPorNome(nome);
+            if (r !== undefined) return r;
+        }
+
+        return `A técnica ${nome} não está mais na ficha.`;
+    },
+});
 </script>
 
 <template>
     <div class="flex h-full min-h-0 flex-col text-preto-100">
+        <div v-if="executor" class="hidden" aria-hidden="true">
+            <ListaTecnicas
+                ref="listaTecnicas"
+                :ficha="ficha"
+                caminho="tecnicas.lista"
+                :lista="ficha.tecnicas.lista"
+                titulo="Técnicas"
+                nova=""
+                vazio=""
+                tom="sky"
+            />
+            <ListaTecnicas
+                ref="listaAkuma"
+                :ficha="ficha"
+                caminho="akuma.lista"
+                :lista="ficha.akuma.lista"
+                titulo="Poderes da Fruta"
+                nova=""
+                vazio=""
+                tom="violet"
+            />
+        </div>
         <FichaCabecalho
+            v-if="!executor"
             :ficha="ficha"
             :personagem="personagem"
             :construtor-concluido="construtorConcluido"
             @update:editar="editar = $event"
             @construtor="emit('construtor')"
         />
-        <div class="flex min-h-0 flex-1">
+        <div v-if="!executor" class="flex min-h-0 flex-1">
             <FichaLateral :ficha="ficha" :personagem="personagem" />
             <div class="flex min-w-0 flex-1 flex-col">
                 <FichaAtributos :ficha="ficha" />
