@@ -136,6 +136,8 @@ class ChatController extends Controller
             // Dano de Técnica com chicote (o botão leva o nome da Técnica no rótulo): Golpe Moral confere a Técnica na ficha de quem rola
             if (filled($dados['rotulo'] ?? null) && ! preg_match('/@arma\.\d+\.dano/', (string) $dados['expressao'])) {
                 $ignoraTecnica = \App\Sistemas\OnePiece\Regras::golpeMoralDaTecnica($ficha, trim($dados['rotulo']), $marcas['dano']['tipo'] ?? null);
+                // Técnica Principal (Usuário Ínsito): ignora resistências e invulnerabilidades
+                $ignoraTecnica = [...$ignoraTecnica, ...\App\Sistemas\OnePiece\Regras::ignoraDaPrincipal($ficha, trim($dados['rotulo']))];
                 if ($ignoraTecnica) {
                     $marcas['dano']['ignora'] = $ignoraTecnica;
                 }

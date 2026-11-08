@@ -142,6 +142,28 @@ final class Regras
         return ['atributo' => 'con', 'efeito' => "{$nome} até o fim do próximo turno dela (golpe na {$parte}: Kick Festival)", 'aplica' => ['condicao' => $condicao, 'turnos' => 1]];
     }
 
+    /**
+     * Técnica Principal do Usuário Ínsito: a Técnica escolhida ignora resistências e invulnerabilidades. Vale para a Técnica que está na ficha como
+     * `tecnicaPrincipal`, enquanto a característica (com `principal.ignora`) vale.
+     *
+     * @param  array<string, mixed>  $f
+     * @return list<string>
+     */
+    public static function ignoraDaPrincipal(array $f, string $nomeTecnica): array
+    {
+        if (($f['tecnicaPrincipal'] ?? null) !== $nomeTecnica) {
+            return [];
+        }
+        $nivel = (int) ($f['nivel'] ?? 1);
+        foreach ($f['caracteristicas'] ?? [] as $c) {
+            if (! empty($c['principal']['ignora']) && self::ativaNoNivel($c, $nivel)) {
+                return ['resistencia', 'imunidade'];
+            }
+        }
+
+        return [];
+    }
+
     /** `golpeMoral` para uma Técnica com chicote como requisito (a Técnica tem de estar na ficha). */
     public static function golpeMoralDaTecnica(array $f, string $nomeTecnica, ?string $tipoDano): array
     {

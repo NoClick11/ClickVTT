@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BLACK_LEG, AVENTUREIRO } from '../../resources/js/app/sistemas/onepiece/construtor/dados/estilos.ts';
 import { caracteristicaDe } from '../../resources/js/app/sistemas/onepiece/construtor/regras.ts';
-import { extrasDeDano, maximizar, montarDanoDaTecnica } from '../../resources/js/app/sistemas/onepiece/tecnicaBonus.ts';
+import { extrasDeDano, maximizar, montarDanoDaTecnica, usoDaPrincipal } from '../../resources/js/app/sistemas/onepiece/tecnicaBonus.ts';
 
 const car = (estilo, id, nivel, extra = {}) => ({ ...caracteristicaDe({ traco: estilo.tracos.find((t) => t.id === id), origem: estilo.nome, builder: 'estilo' }, nivel), ...extra });
 const ficha = (nivel, caracteristicas = [], extra = {}) => ({ nivel, caracteristicas, haki: { ativo: false }, ...extra });
@@ -64,4 +64,30 @@ test('Domínio Fatal: Técnica instantânea de chicote ou pistola dá sempre o d
     assert.equal(montarDanoDaTecnica(ficha(18, []), chicote, 4, '8d10').expressao, '8d10'); // sem a característica
     const duradoura = tecnica({ descricao: 'Requisito: chicote. Duração: até 1 minuto.' });
     assert.equal(montarDanoDaTecnica(f, duradoura, 5, '3d8').expressao, '3d8');
+});
+
+test('Técnica Principal/Assinatura: metade dos PP enquanto há usos, +2 dados e o uso é gasto; fora do grau ou sem usos não muda', () => {
+    const principal = { nome: 'Técnica Principal', origem: 'Estilo', tipo: 'passiva', usos: { atual: 3, max: 3 }, principal: { pp: 'cima', dados: 2, ignora: true, grauMax: 4 } };
+    const f = (usos = 3, nome = 'Golpe') => ({ nivel: 3, caracteristicas: [{ ...principal, usos: { atual: usos, max: 3 } }], tecnicaPrincipal: nome });
+    const t = tecnica({ nome: 'Golpe', custo: 5, rolagem: '4d8' });
+    const r = montarDanoDaTecnica(f(), t, 2, '4d8');
+    assert.equal(r.custo, 3); // metade de 5, para cima
+    assert.equal(r.expressao, '4d8+2d8');
+    assert.equal(r.usoDaPrincipal.gastouUso, true);
+    assert.equal(r.usoDaPrincipal.ignora, true);
+    // sem usos: custo cheio, mas os dados a mais continuam ("sempre que executada")
+    const sem = montarDanoDaTecnica(f(0), t, 2, '4d8');
+    assert.equal(sem.custo, 5);
+    assert.equal(sem.expressao, '4d8+2d8');
+    assert.equal(sem.usoDaPrincipal.gastouUso, false);
+    // outra Técnica, grau acima do limite ou característica desligada: nada muda
+    assert.equal(montarDanoDaTecnica(f(3, 'Outra'), t, 2, '4d8').expressao, '4d8');
+    assert.equal(montarDanoDaTecnica(f(), t, 5, '4d8').expressao, '4d8');
+    assert.equal(usoDaPrincipal({ nivel: 3, caracteristicas: [], tecnicaPrincipal: 'Golpe' }, t, 2), null);
+    // Herói (Assinatura): metade para baixo, no mínimo 1 PP, sem ignorar defesas
+    const assinatura = { ...principal, nome: 'Técnica Assinatura', principal: { pp: 'baixo', dados: 2, grauMax: 4 } };
+    const h = { nivel: 10, caracteristicas: [assinatura], tecnicaPrincipal: 'Golpe' };
+    assert.equal(usoDaPrincipal(h, { nome: 'Golpe', custo: 5 }, 2).custo, 2);
+    assert.equal(usoDaPrincipal(h, { nome: 'Golpe', custo: 1 }, 1).custo, 1);
+    assert.equal(usoDaPrincipal(h, { nome: 'Golpe', custo: 5 }, 2).ignora, false);
 });

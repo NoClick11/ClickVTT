@@ -23,7 +23,7 @@ import {
     type FichaOnePiece,
     type Tecnica,
 } from '../../regras';
-import { montarDanoDaTecnica } from '../../tecnicaBonus';
+import { caracteristicaDaPrincipal, montarDanoDaTecnica, usoDaPrincipal } from '../../tecnicaBonus';
 import CriadorDeTecnicas from '../criador/CriadorDeTecnicas.vue';
 
 /**
@@ -60,7 +60,18 @@ function mudar(fn: (lista: Tecnica[]) => void) {
     salvar({ [props.caminho]: copia });
 }
 
-const podeUsar = (t: Tecnica) => props.ficha.pp.atual >= t.custo;
+/** O custo de usar agora (a Técnica Principal/Assinatura custa metade enquanto a característica tem usos). */
+const custoDeUsar = (t: Tecnica) => usoDaPrincipal(props.ficha, t, grauDa(t) ?? 0)?.custo ?? t.custo;
+const podeUsar = (t: Tecnica) => props.ficha.pp.atual >= custoDeUsar(t);
+/** A característica que dá a Técnica Principal/Assinatura (se a ficha a tem) e se esta Técnica pode ser a escolhida (grau até o limite). */
+const principalDaFicha = computed(() => caracteristicaDaPrincipal(props.ficha));
+const podeSerPrincipal = (t: Tecnica) => {
+    const g = grauDa(t) ?? 0;
+
+    return !!principalDaFicha.value && g >= 1 && g <= principalDaFicha.value.c.principal!.grauMax && !!t.rolagem.trim();
+};
+const ePrincipal = (t: Tecnica) => !!principalDaFicha.value && props.ficha.tecnicaPrincipal === t.nome;
+const alternarPrincipal = (t: Tecnica) => salvar({ tecnicaPrincipal: ePrincipal(t) ? null : t.nome });
 
 /** Quantas unidades de munição do inventário a arma de fogo equipada gasta neste tipo (esférica, perfurante ou qualquer). */
 function municaoQueTem(tipo: 'qualquer' | 'esferica' | 'perfurante'): number {
@@ -128,8 +139,16 @@ function usar(t: Tecnica) {
     // Dano base + bônus armado (Fire Lash, Strike), dano extra das características (Diable Jambe...) e dano máximo (Domínio Fatal)
     const base = t.rolagem.trim() ? comDadosDaMeito(expandirRolagem(t.rolagem.trim(), calc.value, 'tecnica'), t) : '';
     const montado = base ? montarDanoDaTecnica(props.ficha, t, grauDa(t) ?? 0, base) : null;
-    const campos = camposDoGastoDePP(props.ficha, montado?.custo ?? t.custo);
+    // Técnica Principal/Assinatura sem dano (criada sem rolagem): só o desconto de PP
+    const principal = montado ? montado.usoDaPrincipal : usoDaPrincipal(props.ficha, t, grauDa(t) ?? 0);
+    const campos = camposDoGastoDePP(props.ficha, montado?.custo ?? principal?.custo ?? t.custo);
     if (!campos) return;
+    if (principal?.gastouUso) {
+        // o desconto gasta 1 uso da característica da Técnica Principal/Assinatura
+        const lista = clonar(props.ficha.caracteristicas);
+        lista[principal.indice].usos!.atual -= 1;
+        campos.caracteristicas = lista;
+    }
     if (montado?.consumiuBonus) campos['bonusTecnica.dados'] = 0; // o bônus armado foi usado
     if (t.armarBonus) {
         const b = t.armarBonus;
@@ -380,6 +399,21 @@ function adicionar() {
                                         Dano 2× ({{ usosDaSaijo }}/{{ USOS_DA_SAIJO }})
                                     </label>
                                     <button
+                                        v-if="podeSerPrincipal(t)"
+                                        type="button"
+                                        class="mt-1 rounded-md border px-2 py-1 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                                        :class="
+                                            ePrincipal(t)
+                                                ? 'border-ouro-400 bg-ouro-500/20 text-ouro-100'
+                                                : 'border-preto-700 text-preto-300 hover:border-ouro-400'
+                                        "
+                                        :aria-pressed="ePrincipal(t)"
+                                        :title="`${principalDaFicha!.c.nome}: esta Técnica custa metade dos PP (enquanto houver usos), causa ${principalDaFicha!.c.principal!.dados} dados a mais${principalDaFicha!.c.principal!.ignora ? ' e ignora resistências e invulnerabilidades' : ''}`"
+                                        @click="alternarPrincipal(t)"
+                                    >
+                                        ★ {{ ePrincipal(t) ? 'Principal' : 'Definir principal' }}
+                                    </button>
+                                    <button
                                         type="button"
                                         :disabled="!podeUsar(t) || !permitida(t).ok || !!bloqueio(t)"
                                         class="mt-1 rounded-md border px-3 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 disabled:cursor-not-allowed disabled:opacity-40"
@@ -390,7 +424,7 @@ function adicionar() {
                                                 : bloqueio(t)
                                                   ? bloqueio(t)
                                                   : podeUsar(t)
-                                                    ? `Gasta ${t.custo} PP e a ${acoes.rotulo(categoria(t)).toLowerCase()}${t.rolagem ? ' e rola ' + t.rolagem : ''}`
+                                                    ? `Gasta ${custoDeUsar(t)} PP e a ${acoes.rotulo(categoria(t)).toLowerCase()}${t.rolagem ? ' e rola ' + t.rolagem : ''}`
                                                     : `Pontos de poder insuficientes (${ficha.pp.atual} de ${t.custo})`
                                         "
                                         :aria-label="`Usar ${t.nome}, custo ${t.custo} pontos de poder`"

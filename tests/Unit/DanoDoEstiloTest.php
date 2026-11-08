@@ -106,4 +106,20 @@ class DanoDoEstiloTest extends TestCase
             $this->assertSame(['condicao' => $condicao, 'turnos' => 1], $k['aplica']);
         }
     }
+
+    public function test_tecnica_principal_ignora_resistencias_e_invulnerabilidades_so_na_tecnica_escolhida(): void
+    {
+        $principal = $this->car('Técnica Principal', ['principal' => ['pp' => 'cima', 'dados' => 2, 'ignora' => true, 'grauMax' => 4]]);
+        $f = [...$this->ficha([$principal], 5), 'tecnicaPrincipal' => 'Golpe'];
+        $this->assertSame(['resistencia', 'imunidade'], Regras::ignoraDaPrincipal($f, 'Golpe'));
+        $this->assertSame([], Regras::ignoraDaPrincipal($f, 'Outra'));
+        $this->assertSame([], Regras::ignoraDaPrincipal([...$f, 'tecnicaPrincipal' => null], 'Golpe'));
+        // Técnica Assinatura do Herói não ignora defesas
+        $assinatura = $this->car('Técnica Assinatura', ['principal' => ['pp' => 'baixo', 'dados' => 2, 'grauMax' => 4]]);
+        $this->assertSame([], Regras::ignoraDaPrincipal([...$this->ficha([$assinatura], 10), 'tecnicaPrincipal' => 'Golpe'], 'Golpe'));
+        // o dano vem sem resistência nem invulnerabilidade
+        $alvo = ['resistencias' => ['Fogo'], 'imunidades' => ['Gelo']];
+        $this->assertSame(20, Dano::calcular($alvo, 20, 'Fogo', Regras::ignoraDaPrincipal($f, 'Golpe'))['final']);
+        $this->assertSame(20, Dano::calcular($alvo, 20, 'Gelo', Regras::ignoraDaPrincipal($f, 'Golpe'))['final']);
+    }
 }

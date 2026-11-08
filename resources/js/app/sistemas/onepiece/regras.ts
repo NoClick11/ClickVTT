@@ -288,6 +288,17 @@ export interface BonusDeDano {
     /** Só vale com este tipo de Akuma no Mi na ficha (e, em Zoan, este subtipo): Logia e Zoan Mítica do Usuário Ínsito. */
     requerAkuma?: { tipo: string[]; zoan?: string[] };
 }
+/**
+ * Característica que dá uma "Técnica Principal" (Usuário Ínsito) ou "Técnica Assinatura" (Herói): a Técnica de Combate escolhida (até `grauMax`) custa
+ * metade dos PP (`cima`/`baixo`) enquanto a característica tem usos, causa `dados` dados de dano a mais e, com `ignora`, passa por resistências e
+ * invulnerabilidades. A escolha fica em `tecnicaPrincipal` da ficha.
+ */
+export interface TecnicaPrincipalConfig {
+    pp: 'cima' | 'baixo';
+    dados: number;
+    ignora?: boolean;
+    grauMax: number;
+}
 /** Técnica auxiliar que arma um bônus para a PRÓXIMA Técnica de Combate (Fire Lash, Strike): dados extras e custo menor. */
 export interface ArmarBonus {
     dados: number;
@@ -307,6 +318,8 @@ export interface Caracteristica {
     interruptor?: boolean;
     /** Dano extra que dá enquanto vale (Diable Jambe...). */
     bonusDano?: BonusDeDano[];
+    /** Dá uma Técnica Principal/Assinatura (ver `TecnicaPrincipalConfig`). */
+    principal?: TecnicaPrincipalConfig;
     origem: string;
     tipo: 'ativa' | 'passiva';
     /** `porProf`: o máximo acompanha o bônus de proficiência (ver `usosMax`); `max` guarda o último valor calculado. */
@@ -488,6 +501,10 @@ export interface FichaOnePiece {
     tracosDeMaestria: { id: string; nivel: number }[];
     estiloId: string;
     estiloCaminho: string;
+    /** As opções escolhidas na `escolhaDeTracos` do estilo (Escolha Diabólica): ids, na ordem em que foram escolhidas. */
+    estiloEscolhas?: string[];
+    /** O nome da Técnica Principal/Assinatura escolhida (a característica `principal` dá o benefício). */
+    tecnicaPrincipal?: string | null;
     /** NPC aliado dos jogadores: os jogadores não o atingem (só o mestre marca). */
     aliado?: boolean;
     /** Habilidades Básicas escolhidas (id, nível em que vieram e a opção, no Quebrador de Regras). */

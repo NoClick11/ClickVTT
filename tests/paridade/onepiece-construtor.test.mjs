@@ -474,7 +474,7 @@ test('Atirador: Corpo Treinado soma 1 PV por nível e Corrida Contínua dá 15 m
 import { aumentosDoAprimoramento, HABILIDADES_BASICAS, OPCOES_APRIMORAMENTO } from '../../resources/js/app/sistemas/onepiece/construtor/dados/habilidades-basicas.ts';
 import { ptCulturais } from '../../resources/js/app/sistemas/onepiece/treinamentos/regras.ts';
 import { extrasDeDano, montarDanoDaTecnica } from '../../resources/js/app/sistemas/onepiece/tecnicaBonus.ts';
-import { camposDoNivel, problemasDoNivel, pvPelaMedia } from '../../resources/js/app/sistemas/onepiece/construtor/nivel.ts';
+import { camposDoNivel, pendenciasDoNivel, problemasDoNivel, pvPelaMedia } from '../../resources/js/app/sistemas/onepiece/construtor/nivel.ts';
 import { caracteristicasDasHB, dadoDeVidaFinal } from '../../resources/js/app/sistemas/onepiece/construtor/regras.ts';
 
 const comHB = (hb, hbOpcoes = {}, extra = {}) => atirador('sniper', { hb, hbOpcoes, ...extra });
@@ -1109,7 +1109,7 @@ test('Herói: o Aprimoramento de Atributo inato exige a escolha e soma nos atrib
 });
 
 // --- estilo de luta: Usuário Ínsito -----------------------------------------------------------------------------------
-const insito = (caminho = 'objeto-infundido', extra = {}) =>
+const insito = (caminho = null, extra = {}) =>
     feito({
         estilo: { id: 'usuario-insito', nome: 'Usuário Ínsito', dado: 'd10', primario: 'von', caminho, armaFavorita: 'Corporal', hbInata: 'perito-em-tecnicas', pericias: ['atletismo', 'sobrenatural'] },
         especies: ['humano'],
@@ -1129,12 +1129,8 @@ test('Usuário Ínsito: d10, perícias da lista, sem Técnicas prontas, PP máx 
     assert.deepEqual([pp.alvo, pp.valor], ['pp.max', '@nivel']);
     assert.ok(!c(6).caracteristicas.some((x) => x.nome === 'Ataque Extra'));
     assert.ok(c(7).caracteristicas.some((x) => x.nome === 'Ataque Extra'));
-    // Escolha Diabólica: o traço do caminho vem no 2º nível e, no 11º (Escolha Aprimorada), os dos outros
-    const nomes = (n, cam) => camposDaCriacao(insito(cam), { nivel: n }).campos.caracteristicas.map((x) => x.nome);
-    assert.ok(!nomes(1, 'defesa-infundida').some((x) => x.includes('Defesa Infundida')));
-    assert.ok(nomes(2, 'defesa-infundida').some((x) => x.includes('Defesa Infundida')));
-    assert.ok(!nomes(10, 'defesa-infundida').some((x) => x.includes('Objeto Infundido')));
-    assert.ok(nomes(11, 'defesa-infundida').some((x) => x.includes('Objeto Infundido')));
+    // Escolha Diabólica: o traço só entra depois de escolhido ao subir de nível (2º) e a segunda escolha vem no 11º
+    assert.ok(!camposDaCriacao(insito(null), { nivel: 5 }).campos.caracteristicas.some((x) => x.nome.includes('Defesa Infundida')));
 });
 
 test('Usuário Ínsito: PT da Akuma no Chikara (2 por nível par + categoria) e dano extra só de Logia ou Zoan Mítica', () => {
@@ -1153,4 +1149,23 @@ test('Usuário Ínsito: PT da Akuma no Chikara (2 por nível par + categoria) e 
     // o dano do fruto soma na rolagem principal (sem tipo próprio)
     const f = { nivel: 3, caracteristicas: car(3), akuma: { tipo: 'logia' }, bonusTecnica: {} };
     assert.equal(montarDanoDaTecnica(f, { nome: 'T', origem: '', custo: 2, alcance: '', efeito: '', descricao: '', rolagem: '2d8' }, 1, '2d8').expressao, '2d8+1d4');
+});
+
+test('Usuário Ínsito: a Escolha Diabólica é feita ao subir de nível (2º e 11º), sem repetir, e o traço escolhido entra', () => {
+    const base = { ...fichaCompleta(insito(null), 1), estiloEscolhas: [] };
+    // 2º nível
+    assert.ok(pendenciasDoNivel(base, 2).escolhaDeTraco);
+    assert.ok(!pendenciasDoNivel(base, 3).escolhaDeTraco);
+    assert.ok(pendenciasDoNivel({ ...base, nivel: 10, estiloEscolhas: ['defesa-infundida'] }, 11).escolhaDeTraco);
+    const esc = (traco) => ({ hb: { id: 'robusto' }, tracoEscolhido: traco, pvGanho: 6 });
+    assert.ok(problemasDoNivel(base, esc(null)).some((m) => m.includes('Escolha Diabólica')));
+    assert.ok(problemasDoNivel(base, esc('inexistente')).length > 0);
+    assert.ok(!problemasDoNivel(base, esc('defesa-infundida')).some((m) => m.includes('Escolha Diabólica')));
+    const campos = camposDoNivel(base, esc('defesa-infundida'));
+    assert.deepEqual(campos.estiloEscolhas, ['defesa-infundida']);
+    assert.ok(campos.caracteristicas.some((c) => c.nome.includes('Defesa Infundida')));
+    assert.ok(!campos.caracteristicas.some((c) => c.nome.includes('Objeto Infundido')));
+    // 11º nível: não repete a que já tem
+    const onze = { ...base, nivel: 10, estiloEscolhas: ['defesa-infundida'] };
+    assert.ok(problemasDoNivel(onze, esc('defesa-infundida')).some((m) => m.includes('Escolha Diabólica')));
 });

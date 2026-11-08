@@ -120,6 +120,10 @@ final class FichaOnePiece
             'condicoes' => [],
             // Condições com duração: id da condição => {turnos que faltam, acaba ao receber dano}. Quem mexe é o servidor (turnos, dano).
             'duracoes' => [],
+            // As opções escolhidas na escolha de traços do estilo (Escolha Diabólica do Usuário Ínsito)
+            'estiloEscolhas' => [],
+            // O nome da Técnica Principal/Assinatura escolhida (Usuário Ínsito, Herói)
+            'tecnicaPrincipal' => null,
             // Reduções de dano armadas por reações defensivas (Yamantaka: reserva em pontos; Corpo de Criatura: zera o próximo dano).
             // Quem mexe é o servidor: o dano aplicado as consome (`OnePiece::absorverDano`) e o fim do turno do dono as vence.
             'reducao' => [],
@@ -294,6 +298,9 @@ final class FichaOnePiece
         $r['inventario.*.itens.*.arma.danoExtra.*.dados'] = ['required', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/'];
         $r['inventario.*.itens.*.arma.danoExtra.*.tipo'] = ['nullable', 'string', 'max:40'];
 
+        $r['tecnicaPrincipal'] = ['nullable', 'string', 'max:120'];
+        $r['estiloEscolhas'] = ['array', 'max:6'];
+        $r['estiloEscolhas.*'] = ['string', 'max:40'];
         $r['bonusTecnica'] = ['array'];
         $r['bonusTecnica.dados'] = $inteiro(0, 20);
         $r['bonusTecnica.tipo'] = ['nullable', 'string', 'max:20'];
@@ -338,6 +345,12 @@ final class FichaOnePiece
         $r['caracteristicas.*.nivelMin'] = ['nullable', 'integer:strict', 'between:1,20'];
         $r['caracteristicas.*.nivelMax'] = ['nullable', 'integer:strict', 'between:1,20'];
         $r['caracteristicas.*.interruptor'] = ['nullable', 'boolean:strict'];
+        // Dá uma Técnica Principal/Assinatura: ver `TecnicaPrincipalConfig` (TS)
+        $r['caracteristicas.*.principal'] = ['nullable', 'array'];
+        $r['caracteristicas.*.principal.pp'] = ['required_with:caracteristicas.*.principal', 'string', 'in:cima,baixo'];
+        $r['caracteristicas.*.principal.dados'] = ['required_with:caracteristicas.*.principal', 'integer:strict', 'between:0,10'];
+        $r['caracteristicas.*.principal.ignora'] = ['nullable', 'boolean:strict'];
+        $r['caracteristicas.*.principal.grauMax'] = ['required_with:caracteristicas.*.principal', 'integer:strict', 'between:1,7'];
         // Dano extra que a característica dá enquanto vale (Diable Jambe...): ver `BonusDeDano` (TS)
         $r['caracteristicas.*.bonusDano'] = ['nullable', 'array', 'max:12'];
         $r['caracteristicas.*.bonusDano.*.alvo'] = ['required', 'string', Rule::in(['desarmado', 'tecnica'])];

@@ -37,6 +37,8 @@ export interface EscolhasDoNivel {
     maestria?: { id: string; traco: string; confirmou?: boolean } | null;
     /** Haki Principal, escolhido ao despertar no 8º nível. */
     hakiPrincipal?: 'armamento' | 'observacao' | null;
+    /** A opção escolhida na escolha de traços do estilo (Escolha Diabólica, no 2º e no 11º nível). */
+    tracoEscolhido?: string | null;
     /** PV ganhos no nível (dado + CON); os efeitos de PV da ficha ficam à parte. */
     pvGanho: number;
 }
@@ -54,6 +56,8 @@ export interface Pendencias {
     maestria: boolean;
     /** O Haki desperta neste nível e o Haki Principal ainda não foi escolhido. */
     hakiPrincipal: boolean;
+    /** Este nível pede uma escolha de traço do estilo (Escolha Diabólica). */
+    escolhaDeTraco: boolean;
 }
 
 export const limiteDeAtributo = (nivel: number): number => (nivel >= 16 ? 24 : nivel >= 12 ? 22 : 20);
@@ -81,6 +85,7 @@ export function pendenciasDoNivel(f: FichaOnePiece, novo: number): Pendencias {
         podeTrocar: ava && trocasFeitas(f) < TROCAS_DE_AVA,
         hakiPrincipal: novo === 8 && !f.haki?.principal,
         maestria: !!estilo && NIVEIS_DE_MAESTRIA.includes(novo) && (f.tracosDeMaestria ?? []).length < 3,
+        escolhaDeTraco: !!estilo?.escolhaDeTracos?.niveis.includes(novo),
     };
 }
 
@@ -142,6 +147,12 @@ export function problemasDoNivel(f: FichaOnePiece, esc: EscolhasDoNivel): string
     } else if (esc.maestria) p.push('Este nível não dá Traço de Maestria.');
     if (pend.hakiPrincipal && !['armamento', 'observacao'].includes(esc.hakiPrincipal ?? ''))
         p.push('O Haki desperta agora: escolha o Haki Principal (Armamento ou Observação).');
+    if (pend.escolhaDeTraco) {
+        const ja = f.estiloEscolhas ?? [];
+        const opcoes = estiloPorId(f.estiloId)?.escolhaDeTracos?.opcoes ?? [];
+        if (!esc.tracoEscolhido || !opcoes.some((o) => o.id === esc.tracoEscolhido) || ja.includes(esc.tracoEscolhido))
+            p.push(`${estiloPorId(f.estiloId)?.escolhaDeTracos?.nome ?? 'Escolha'}: escolha um traço que você ainda não tem.`);
+    } else if (esc.tracoEscolhido) p.push('Este nível não pede escolha de traço do estilo.');
     if (!Number.isInteger(esc.pvGanho) || esc.pvGanho < 1) p.push('Informe os PV ganhos (mínimo 1).');
 
     return p;
@@ -209,7 +220,9 @@ export function camposDoNivel(f: FichaOnePiece, esc: EscolhasDoNivel): Record<st
     }
     // traços do estilo que passam a valer neste nível (os de nível maior não vêm na criação)
     const jaTem = new Set((f.caracteristicas ?? []).filter((c) => c.builder === 'estilo' && !c.hb).map((c) => c.nome));
-    const tracosDoNivel = tracosDoEstiloNoNivel(estilo, f.estiloCaminho, novo).filter((t) => !jaTem.has(t.nome));
+    const escolhas = pend.escolhaDeTraco && esc.tracoEscolhido ? [...(f.estiloEscolhas ?? []), esc.tracoEscolhido] : (f.estiloEscolhas ?? []);
+    if (pend.escolhaDeTraco) campos.estiloEscolhas = escolhas;
+    const tracosDoNivel = tracosDoEstiloNoNivel(estilo, f.estiloCaminho, novo, escolhas).filter((t) => !jaTem.has(t.nome));
     const tracosNovos = tracosDoNivel.map((traco) => caracteristicaDe({ traco, origem: estilo.nome, builder: 'estilo' }, novo));
     // resistências que o traço do estilo dá (Invencibilidade) entram na lista da ficha, sem repetir
     const resistenciasNovas = tracosDoNivel.flatMap((t) => t.resistencias ?? []).filter((r) => !(f.resistencias ?? []).includes(r));

@@ -18,7 +18,19 @@ export type TecnicaDoEstilo = Omit<Tecnica, 'builder' | 'origem'> & {
 };
 
 /** Característica do estilo; `caminho` limita a um caminho (o outro caminho só vale a partir do nível `herdaTudoEm`). */
-export type TracoDoEstilo = TracoDados & { caminho?: string };
+export type TracoDoEstilo = TracoDados & {
+    caminho?: string;
+    /** O traço só vale se o personagem escolheu esta opção da `escolhaDeTracos` do estilo (Escolha Diabólica). */
+    escolha?: string;
+};
+
+/** Uma escolha entre traços feita ao subir de nível (Usuário Ínsito: a Escolha Diabólica no 2º nível e mais uma no 11º). */
+export interface EscolhaDeTracos {
+    nome: string;
+    /** Os níveis em que se escolhe (uma opção por vez, sem repetir). */
+    niveis: number[];
+    opcoes: { id: string; nome: string; descricao: string }[];
+}
 
 export interface CaminhoDoEstilo {
     id: string;
@@ -69,6 +81,7 @@ export interface EstiloDados {
     /** O mesmo equipamento em dados, para o servidor entregar no inventário (o texto acima é o do livro). */
     equipamentoInicial?: EquipamentoInicial;
     caminhos?: CaminhoDoEstilo[];
+    escolhaDeTracos?: EscolhaDeTracos;
     /** Nível em que o personagem recebe também o que não escolheu dos caminhos (Rei Atirador). */
     herdaTudoEm?: number;
     /** Níveis do Aumento no Valor de Atributo. */
@@ -2104,8 +2117,9 @@ export const HEROI: EstiloDados = {
             nome: 'Guerreiro do Poder Oculto (10º): Técnica Assinatura e Despertar Heroico',
             nivelMin: 10,
             usos: { porProf: true, max: 2, descanso: 'longo' },
+            principal: { pp: 'baixo', dados: 2, grauMax: 4 },
             descricao:
-                'Técnica Assinatura: escolha uma Técnica de 4º grau ou menor como principal: ela custa metade dos PP uma quantidade de vezes igual ao Bônus de Proficiência (voltam em descanso longo) e, sempre que executada, causa 2 dados de dano adicionais. Despertar Heroico: +5 no máximo de Dados Heroicos (já somado ao contador).',
+                'Técnica Assinatura: escolha uma Técnica de 4º grau ou menor como principal: ela custa metade dos PP uma quantidade de vezes igual ao Bônus de Proficiência (voltam em descanso longo) e, sempre que executada, causa 2 dados de dano adicionais. Despertar Heroico: +5 no máximo de Dados Heroicos (já somado ao contador). Na aba Técnicas, marque "★ Definir principal" na Técnica escolhida: o desconto de PP (metade, arredondada para baixo, mín. 1) e os 2 dados a mais valem sozinhos.',
             etiquetas: ['Técnica Assinatura: metade dos PP (usos = prof.) e +2 dados de dano'],
         },
         {
@@ -2357,25 +2371,28 @@ export const USUARIO_INSITO: EstiloDados = {
     ],
     equipamento: '12d10 x 1000 Bellys.',
     equipamentoInicial: { itens: [], dinheiro: { dados: '12d10', multiplicador: 1000 } },
-    caminhos: [
-        {
-            id: I_OBJETO,
-            nome: 'Escolha Diabólica: Objeto Infundido',
-            descricao: 'Incorpora o poder do fruto num objeto (espada, pincel, chicote...) para liberar ou ajudar a usar esses poderes.',
-        },
-        {
-            id: I_DEFESA,
-            nome: 'Escolha Diabólica: Defesa Infundida',
-            descricao: 'Foca parte dos poderes na proteção, com Pontos de Defesa para CR, cura e PV máximos.',
-        },
-        {
-            id: I_SELVAGERIA,
-            nome: 'Escolha Diabólica: Selvageria Infundida',
-            descricao: 'Usa os poderes de forma explosiva e inconsequente: ignora resistências a um tipo de dano e executa técnicas sem PP.',
-        },
-    ],
-    // Escolha Aprimorada (11º): usufrui das duas escolhas (aqui, de todas)
-    herdaTudoEm: 11,
+    // Escolha Diabólica (2º nível) e Escolha Aprimorada (11º): o personagem escolhe um traço em cada, sem repetir
+    escolhaDeTracos: {
+        nome: 'Escolha Diabólica',
+        niveis: [2, 11],
+        opcoes: [
+            {
+                id: I_OBJETO,
+                nome: 'Objeto Infundido',
+                descricao: 'Incorpora o poder do fruto num objeto (espada, pincel, chicote...) para liberar ou ajudar a usar esses poderes.',
+            },
+            {
+                id: I_DEFESA,
+                nome: 'Defesa Infundida',
+                descricao: 'Foca parte dos poderes na proteção, com Pontos de Defesa para CR, cura e PV máximos.',
+            },
+            {
+                id: I_SELVAGERIA,
+                nome: 'Selvageria Infundida',
+                descricao: 'Usa os poderes de forma explosiva e inconsequente: ignora resistências a um tipo de dano e executa técnicas sem PP.',
+            },
+        ],
+    },
     niveisAva: [4, 8, 12, 16, 20],
     niveisDeTecnica: [],
     tracos: [
@@ -2419,7 +2436,7 @@ export const USUARIO_INSITO: EstiloDados = {
         // --- Escolha Diabólica ---
         {
             id: 'objeto-infundido',
-            caminho: I_OBJETO,
+            escolha: I_OBJETO,
             nome: 'Escolha Diabólica: Objeto Infundido',
             nivelMin: 2,
             descricao:
@@ -2431,7 +2448,7 @@ export const USUARIO_INSITO: EstiloDados = {
         },
         {
             id: 'defesa-infundida',
-            caminho: I_DEFESA,
+            escolha: I_DEFESA,
             nome: 'Escolha Diabólica: Defesa Infundida',
             nivelMin: 2,
             usos: { max: 1, formula: '@nivel', descanso: 'longo' },
@@ -2446,7 +2463,7 @@ export const USUARIO_INSITO: EstiloDados = {
         },
         {
             id: 'selvageria-infundida',
-            caminho: I_SELVAGERIA,
+            escolha: I_SELVAGERIA,
             nome: 'Escolha Diabólica: Selvageria Infundida',
             nivelMin: 2,
             usos: { max: 3, descanso: 'longo' },
@@ -2459,8 +2476,9 @@ export const USUARIO_INSITO: EstiloDados = {
             nome: 'Técnica Principal',
             nivelMin: 3,
             usos: { max: 3, descanso: 'longo' },
+            principal: { pp: 'cima', dados: 2, ignora: true, grauMax: 4 },
             descricao:
-                'Você escolhe uma Técnica de Combate de 4º grau ou menor como técnica principal: ela pode ser executada pela metade dos PP (arredondada para cima) até 3 vezes (voltam em descanso longo) e, sempre que executada, causa 2 dados de dano adicionais, ignora resistências e invulnerabilidades e não é descontada de PV temporários. Troque a técnica a cada novo nível de Usuário Ínsito.',
+                'Você escolhe uma Técnica de Combate de 4º grau ou menor como técnica principal: ela pode ser executada pela metade dos PP (arredondada para cima) até 3 vezes (voltam em descanso longo) e, sempre que executada, causa 2 dados de dano adicionais, ignora resistências e invulnerabilidades e não é descontada de PV temporários. Troque a técnica a cada novo nível de Usuário Ínsito. Na aba Técnicas, marque "★ Definir principal" na Técnica escolhida: o desconto, os dados a mais e o ignorar defesas valem sozinhos (o texto de não ser descontada de PV temporários fica por conta da mesa).',
             etiquetas: ['Técnica Principal: metade dos PP (3 usos), +2 dados e ignora resistências'],
         },
         {
@@ -2501,7 +2519,7 @@ export const USUARIO_INSITO: EstiloDados = {
             nome: 'Escolha Aprimorada',
             nivelMin: 11,
             descricao:
-                'Você escolhe mais um traço da "Escolha Diabólica" e usufrui das duas escolhas ao mesmo tempo (aqui, os traços das outras escolhas aparecem todos; use os dois que escolheu).',
+                'Você escolhe mais um traço da "Escolha Diabólica" e usufrui dos benefícios das duas escolhas ao mesmo tempo (a escolha é feita ao subir para o 11º nível).',
         },
         {
             id: 'transformacao-diabolica',
@@ -2562,8 +2580,9 @@ export const atributoPrimarioDe = (estilo: EstiloDados, escolhido: string | null
     estilo.atributosPrimarios.length === 1 ? estilo.atributosPrimarios[0] : (estilo.atributosPrimarios.find((a) => a === escolhido) ?? null);
 
 /** As características do estilo para o caminho escolhido (o outro caminho vale a partir de `herdaTudoEm`). */
-export function tracosDoEstiloEscolhido(estilo: EstiloDados, caminho: string | null | undefined): TracoDados[] {
+export function tracosDoEstiloEscolhido(estilo: EstiloDados, caminho: string | null | undefined, escolhas: string[] = []): TracoDados[] {
     return estilo.tracos.flatMap((t) => {
+        if (t.escolha && !escolhas.includes(t.escolha)) return [];
         if (!t.caminho || t.caminho === caminho) return [t];
         if (!estilo.herdaTudoEm) return [];
 
@@ -2572,8 +2591,8 @@ export function tracosDoEstiloEscolhido(estilo: EstiloDados, caminho: string | n
 }
 
 /** Os traços do estilo que o personagem já tem neste nível (os de nível maior entram ao subir de nível). */
-export function tracosDoEstiloNoNivel(estilo: EstiloDados, caminho: string | null | undefined, nivel: number): TracoDados[] {
-    return tracosDoEstiloEscolhido(estilo, caminho).filter((t) => (t.nivelMin ?? 1) <= nivel);
+export function tracosDoEstiloNoNivel(estilo: EstiloDados, caminho: string | null | undefined, nivel: number, escolhas: string[] = []): TracoDados[] {
+    return tracosDoEstiloEscolhido(estilo, caminho, escolhas).filter((t) => (t.nivelMin ?? 1) <= nivel);
 }
 
 /** As técnicas do estilo que o personagem já tem neste nível (as do outro caminho só depois de `herdaTudoEm`). */

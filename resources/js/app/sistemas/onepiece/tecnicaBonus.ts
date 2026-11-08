@@ -83,6 +83,38 @@ export const danoMaximoDaTecnica = (f: FichaOnePiece, t: Pick<Tecnica, 'descrica
     !t.duracao &&
     !/Dura[çc][ãa]o:\s*at[ée]/i.test(t.descricao ?? '');
 
+/** A característica que dá a Técnica Principal/Assinatura (valendo agora) e o índice dela na lista. */
+export function caracteristicaDaPrincipal(f: FichaOnePiece): { c: Caracteristica; i: number } | null {
+    const i = (f.caracteristicas ?? []).findIndex((c) => c.principal && valendo(c, f));
+
+    return i >= 0 ? { c: f.caracteristicas[i], i } : null;
+}
+
+export interface UsoDaPrincipal {
+    /** O custo em PP já com o desconto (metade, enquanto a característica tem usos). */
+    custo: number;
+    /** O desconto gastou 1 uso da característica. */
+    gastouUso: boolean;
+    /** Os dados de dano a mais. */
+    dados: number;
+    ignora: boolean;
+    indice: number;
+}
+
+/**
+ * A Técnica é a Principal/Assinatura da ficha? Devolve o custo com desconto (metade, enquanto a característica tem usos), os dados a mais e se
+ * ignora defesas; null se não for ela, se o grau passa do limite ou se a característica não está valendo.
+ */
+export function usoDaPrincipal(f: FichaOnePiece, t: Pick<Tecnica, 'nome' | 'custo'>, grau: number): UsoDaPrincipal | null {
+    const achada = caracteristicaDaPrincipal(f);
+    if (!achada || !f.tecnicaPrincipal || t.nome !== f.tecnicaPrincipal || grau < 1 || grau > achada.c.principal!.grauMax) return null;
+    const cfg = achada.c.principal!;
+    const temUso = (achada.c.usos?.atual ?? 0) > 0;
+    const metade = cfg.pp === 'cima' ? Math.ceil(t.custo / 2) : Math.max(1, Math.floor(t.custo / 2));
+
+    return { custo: temUso ? metade : t.custo, gastouUso: temUso, dados: cfg.dados, ignora: !!cfg.ignora, indice: achada.i };
+}
+
 export interface DanoMontado {
     /** O dano principal (já com os dados somados do mesmo tipo e o máximo, se for o caso). */
     expressao: string;
@@ -92,6 +124,8 @@ export interface DanoMontado {
     custo: number;
     /** O bônus armado foi usado: tem de ser limpo da ficha. */
     consumiuBonus: boolean;
+    /** A Técnica era a Principal/Assinatura: o desconto gastou 1 uso da característica (índice dela). */
+    usoDaPrincipal: UsoDaPrincipal | null;
 }
 
 /** O bônus armado vale para esta Técnica? (Combate com dano; instantânea e tipo, se a Técnica auxiliar exigir.) */
@@ -110,9 +144,12 @@ function serve(b: NonNullable<FichaOnePiece['bonusTecnica']>, t: Tecnica, grau: 
 export function montarDanoDaTecnica(f: FichaOnePiece, t: Tecnica, grau: number, expressao: string): DanoMontado {
     let principal = expressao;
     const extras: ExtraDeDano[] = [];
-    let custo = t.custo;
+    // Técnica Principal/Assinatura: metade dos PP (enquanto tem usos) e dados de dano a mais
+    const uso = usoDaPrincipal(f, t, grau);
+    let custo = uso?.custo ?? t.custo;
     let consumiuBonus = false;
     const faces = facesDaExpressao(expressao);
+    if (uso && faces) principal = `${principal}+${uso.dados}d${faces}`;
     const b = f.bonusTecnica;
     if (b && b.dados > 0 && faces && serve(b, t, grau)) {
         const n = b.limitarAoGrau ? Math.min(b.dados, grau) : b.dados;
@@ -129,7 +166,13 @@ export function montarDanoDaTecnica(f: FichaOnePiece, t: Tecnica, grau: number, 
         }
     }
     if (danoMaximoDaTecnica(f, t))
-        return { expressao: maximizar(principal), extras: extras.map((e) => ({ ...e, expressao: maximizar(e.expressao) })), custo, consumiuBonus };
+        return {
+            expressao: maximizar(principal),
+            extras: extras.map((e) => ({ ...e, expressao: maximizar(e.expressao) })),
+            custo,
+            consumiuBonus,
+            usoDaPrincipal: uso,
+        };
 
-    return { expressao: principal, extras, custo, consumiuBonus };
+    return { expressao: principal, extras, custo, consumiuBonus, usoDaPrincipal: uso };
 }
