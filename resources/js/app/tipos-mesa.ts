@@ -91,3 +91,23 @@ export interface MunicaoParaForja {
     nome: string;
     qtd: number;
 }
+
+/** Diário da mesa: pastas (aninháveis) e folhetos (imagem + texto que o mestre libera aos jogadores). */
+export interface DiarioPastaDto {
+    id: number;
+    nome: string;
+    pai_id: number | null;
+}
+export interface FolhetoDto {
+    id: number;
+    nome: string;
+    pasta_id: number | null;
+    imagem: string;
+    texto: string | null;
+    /** Os jogadores o veem na lista. */
+    visivel: boolean;
+}
+export interface DiarioDto {
+    pastas: DiarioPastaDto[];
+    folhetos: FolhetoDto[];
+}

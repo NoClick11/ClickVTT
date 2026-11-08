@@ -45,6 +45,8 @@ export interface Criacao {
 
 export interface Personagem {
     id: number;
+    /** Pasta do diário em que o mestre guardou o personagem (null = raiz). */
+    pasta_id?: number | null;
     nome: string;
     cor: string;
     /** Ids dos efeitos (condições) ativos: públicos, viram ícones no token. */
