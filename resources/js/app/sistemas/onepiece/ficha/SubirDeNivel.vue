@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { computed, reactive, ref, watch } from 'vue';
 import { estiloPorId } from '../construtor/dados/estilos';
-import { HABILIDADES_BASICAS, hbPorId, OPCOES_QUEBRADOR } from '../construtor/dados/habilidades-basicas';
+import { HABILIDADES_BASICAS, hbPorId, OPCOES_APRIMORAMENTO, OPCOES_QUEBRADOR } from '../construtor/dados/habilidades-basicas';
 import { maestriaPorId, MAESTRIAS, problemasDaMaestria } from '../construtor/dados/maestrias';
 import {
     camposDoNivel,
@@ -83,6 +83,7 @@ const opcoesDaHB = computed(() => {
             { id: 'corpo', nome: 'Corpo a corpo', descricao: '' },
             { id: 'distancia', nome: 'À distância', descricao: '' },
         ];
+    if (escolhaDaHB.value === 'aprimoramento') return OPCOES_APRIMORAMENTO;
     if (escolhaDaHB.value === 'quebrador') {
         const ja = props.ficha.habilidadesBasicas.filter((h) => h.id === 'quebrador-de-regras').map((h) => h.opcao);
         return OPCOES_QUEBRADOR.filter((o) => !ja.includes(o.id));
@@ -267,7 +268,12 @@ const inativo = 'border-preto-700 bg-preto-950 text-preto-200 hover:border-ouro-
                             <span class="block text-xs text-preto-400">{{ h.resumo }}</span>
                         </button>
                     </div>
-                    <div v-if="opcoesDaHB.length" class="grid gap-2 sm:grid-cols-2" role="group" aria-label="Opção da habilidade">
+                    <div
+                        v-if="opcoesDaHB.length"
+                        class="grid max-h-56 gap-2 overflow-y-auto sm:grid-cols-2"
+                        role="group"
+                        aria-label="Opção da habilidade"
+                    >
                         <button
                             v-for="o in opcoesDaHB"
                             :key="o.id"

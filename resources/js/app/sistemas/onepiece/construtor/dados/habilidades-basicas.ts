@@ -21,9 +21,32 @@ export interface HabilidadeBasica {
     nome: string;
     resumo: string;
     /** Pede uma escolha ao jogador (Prodígio do Combate, Quebrador de Regras). */
-    escolha?: 'prodigio' | 'quebrador';
+    escolha?: 'prodigio' | 'quebrador' | 'aprimoramento';
     /** As características que a HB dá neste contexto (cada uma com seus degraus de nível). */
     tracos: (ctx: ContextoHB) => TracoDados[];
+}
+
+const ATRIBUTOS_DO_APRIMORAMENTO: { id: AtributoId; nome: string }[] = [
+    { id: 'for', nome: 'Força' },
+    { id: 'des', nome: 'Destreza' },
+    { id: 'con', nome: 'Constituição' },
+    { id: 'sab', nome: 'Sabedoria' },
+    { id: 'pre', nome: 'Presença' },
+    { id: 'von', nome: 'Vontade' },
+];
+/** Aprimoramento de Atributo: +2 em um atributo (`ava:for`) ou +1 em dois (`ava:for+des`). */
+export const OPCOES_APRIMORAMENTO: { id: string; nome: string; descricao: string }[] = [
+    ...ATRIBUTOS_DO_APRIMORAMENTO.map((a) => ({ id: `ava:${a.id}`, nome: `+2 em ${a.nome}`, descricao: '' })),
+    ...ATRIBUTOS_DO_APRIMORAMENTO.flatMap((a, i) =>
+        ATRIBUTOS_DO_APRIMORAMENTO.slice(i + 1).map((b) => ({ id: `ava:${a.id}+${b.id}`, nome: `+1 em ${a.nome} e ${b.nome}`, descricao: '' })),
+    ),
+];
+/** Os aumentos de uma opção do Aprimoramento de Atributo (`ava:for` = +2; `ava:for+des` = +1 em cada); null se não for válida. */
+export function aumentosDoAprimoramento(opcao: string | null | undefined): { atributo: AtributoId; valor: number }[] | null {
+    if (!opcao || !OPCOES_APRIMORAMENTO.some((o) => o.id === opcao)) return null;
+    const ids = opcao.slice(4).split('+') as AtributoId[];
+
+    return ids.map((atributo) => ({ atributo, valor: ids.length === 1 ? 2 : 1 }));
 }
 
 /** Opções do Quebrador de Regras (a segunda escolha vem no 6º nível). */
@@ -47,6 +70,26 @@ const desde = (n: number) => ({ nivelMin: n });
 const hb = (id: string, t: Omit<TracoDados, 'hb'>): TracoDados => ({ ...t, hb: id });
 
 const BASICAS: HabilidadeBasica[] = [
+    {
+        id: 'aprimoramento-de-atributo',
+        nome: 'Aprimoramento de Atributo',
+        escolha: 'aprimoramento',
+        resumo: '+2 em um atributo ou +1 em dois (nunca acima de 20 por ela).',
+        tracos: ({ opcoes }) =>
+            opcoes.flatMap((op, i): TracoDados[] => {
+                const aumentos = aumentosDoAprimoramento(op);
+                if (!aumentos) return [];
+                const nomes = aumentos.map((a) => `${a.valor > 1 ? '+' + a.valor : '+1'} ${a.atributo.toUpperCase()}`).join(' e ');
+
+                return [
+                    hb('aprimoramento-de-atributo', {
+                        id: `aprimoramento-${i}-${op}`,
+                        nome: `Aprimoramento de Atributo: ${nomes}`,
+                        descricao: `Você aumenta permanentemente ${nomes} (os valores já foram somados aos atributos; nunca acima de 20 por esta habilidade).`,
+                    }),
+                ];
+            }),
+    },
     {
         id: 'concentracao-inabalavel',
         nome: 'Concentração Inabalável',

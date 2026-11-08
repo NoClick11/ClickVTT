@@ -11,7 +11,7 @@ import { ATRIBUTOS, comSinal, modificador, PERICIAS, PERICIAS_ESCOLHIVEIS, type 
 import { antecedentePorId, ANTECEDENTES } from './dados/antecedentes';
 import { ESPECIES } from './dados/especies';
 import { armasFavoritasDoCaminho, dadoDoEstilo, estiloPorId, ESTILOS } from './dados/estilos';
-import { HABILIDADES_BASICAS, hbPorId, OPCOES_QUEBRADOR } from './dados/habilidades-basicas';
+import { HABILIDADES_BASICAS, hbPorId, OPCOES_APRIMORAMENTO, OPCOES_QUEBRADOR } from './dados/habilidades-basicas';
 import { AVISO_VARIACAO_RARA, VARIACOES_RARAS } from './dados/variacoes';
 import {
     atributosFinais,
@@ -1047,6 +1047,21 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1.5 text-sm 
                                 </button>
                             </div>
                         </div>
+                        <div v-if="e.estilo.hbInata === 'aprimoramento-de-atributo'" class="grid gap-1">
+                            <span :class="rotulo">Aprimoramento de Atributo (Habilidade Básica Inata)</span>
+                            <div class="grid max-h-56 gap-2 overflow-y-auto sm:grid-cols-2" role="group" aria-label="Aprimoramento de Atributo inato">
+                                <button
+                                    v-for="o in OPCOES_APRIMORAMENTO"
+                                    :key="o.id"
+                                    type="button"
+                                    :class="[cartao, e.estilo.hbInataOpcao === o.id ? ativo : inativo]"
+                                    :aria-pressed="e.estilo.hbInataOpcao === o.id"
+                                    @click="e.estilo.hbInataOpcao = o.id"
+                                >
+                                    {{ o.nome }}
+                                </button>
+                            </div>
+                        </div>
                         <div v-if="estiloEscolhido.equipamentoInicial" class="grid gap-1.5 rounded-lg border border-ouro-500/30 bg-ouro-500/5 p-3">
                             <span :class="rotulo">Equipamento inicial (entra no inventário ao concluir)</span>
                             <p class="text-xs text-preto-300">{{ estiloEscolhido.equipamento }}</p>
@@ -1169,6 +1184,21 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1.5 text-sm 
                                     :key="o.id"
                                     type="button"
                                     :class="[cartao, e.hbOpcoes?.[e.hb]?.[0] === o.id ? ativo : inativo]"
+                                    @click="escolherOpcaoDaHB(o.id)"
+                                >
+                                    {{ o.nome }}
+                                </button>
+                            </div>
+                        </div>
+                        <div v-if="e.hb && hbPorId(e.hb)?.escolha === 'aprimoramento'" class="grid gap-1">
+                            <span :class="rotulo">Aprimoramento de Atributo</span>
+                            <div class="grid max-h-56 gap-2 overflow-y-auto sm:grid-cols-2" role="group" aria-label="Aprimoramento de Atributo">
+                                <button
+                                    v-for="o in OPCOES_APRIMORAMENTO"
+                                    :key="o.id"
+                                    type="button"
+                                    :class="[cartao, e.hbOpcoes?.[e.hb]?.[0] === o.id ? ativo : inativo]"
+                                    :aria-pressed="e.hbOpcoes?.[e.hb]?.[0] === o.id"
                                     @click="escolherOpcaoDaHB(o.id)"
                                 >
                                     {{ o.nome }}

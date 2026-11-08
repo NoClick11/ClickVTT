@@ -9,7 +9,7 @@
 import { camposDaAkuma } from '../akuma/regras.ts';
 import { ATRIBUTOS, bonusProficiencia, usosMax, type AtributoId, type Caracteristica, type FichaOnePiece } from '../regras.ts';
 import { dadoDoEstilo, estiloPorId, tecnicaDoEstilo, tecnicasDoEstiloNoNivel, tracosDoEstiloNoNivel } from './dados/estilos.ts';
-import { hbPorId, OPCOES_QUEBRADOR } from './dados/habilidades-basicas.ts';
+import { aumentosDoAprimoramento, hbPorId, OPCOES_QUEBRADOR } from './dados/habilidades-basicas.ts';
 import { maestriaPorId, NIVEIS_DE_MAESTRIA, problemasDaMaestria } from './dados/maestrias.ts';
 import {
     atributosComAprimoramentoInato,
@@ -114,6 +114,8 @@ export function problemasDoNivel(f: FichaOnePiece, esc: EscolhasDoNivel): string
                 p.push('Prodígio do Combate: escolha corpo a corpo ou à distância.');
             if (hb.escolha === 'quebrador' && !OPCOES_QUEBRADOR.some((o) => o.id === esc.hb!.opcao))
                 p.push('Quebrador de Regras: escolha uma característica.');
+            if (hb.escolha === 'aprimoramento' && !aumentosDoAprimoramento(esc.hb.opcao))
+                p.push('Aprimoramento de Atributo: escolha +2 em um atributo ou +1 em dois.');
         }
     }
 
@@ -161,7 +163,8 @@ export function camposDoNivel(f: FichaOnePiece, esc: EscolhasDoNivel): Record<st
     let atrs = { ...f.atributos };
     if (pend.ava && !esc.trocarAva && esc.ava)
         for (const id of esc.ava.atributos) if (ATRIBUTOS.some((a) => a.id === id)) atrs[id] = (atrs[id] ?? 10) + (esc.ava.tipo === 'dois' ? 2 : 1);
-    if (esc.hb?.opcao?.startsWith('inato-')) atrs = atributosComAprimoramentoInato(atrs, [{ id: esc.hb.id, nivel: novo, opcao: esc.hb.opcao }]);
+    if (esc.hb?.opcao?.startsWith('inato-') || esc.hb?.opcao?.startsWith('ava:'))
+        atrs = atributosComAprimoramentoInato(atrs, [{ id: esc.hb.id, nivel: novo, opcao: esc.hb.opcao }]);
     for (const a of ATRIBUTOS) if (atrs[a.id] !== f.atributos[a.id]) campos[`atributos.${a.id}`] = atrs[a.id];
 
     // Habilidades Básicas

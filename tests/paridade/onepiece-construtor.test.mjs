@@ -471,7 +471,7 @@ test('Atirador: Corpo Treinado soma 1 PV por nível e Corrida Contínua dá 15 m
 });
 
 // --- Habilidades Básicas e subir de nível ------------------------------------------------------------------------------
-import { HABILIDADES_BASICAS } from '../../resources/js/app/sistemas/onepiece/construtor/dados/habilidades-basicas.ts';
+import { aumentosDoAprimoramento, HABILIDADES_BASICAS, OPCOES_APRIMORAMENTO } from '../../resources/js/app/sistemas/onepiece/construtor/dados/habilidades-basicas.ts';
 import { camposDoNivel, problemasDoNivel, pvPelaMedia } from '../../resources/js/app/sistemas/onepiece/construtor/nivel.ts';
 import { caracteristicasDasHB, dadoDeVidaFinal } from '../../resources/js/app/sistemas/onepiece/construtor/regras.ts';
 
@@ -491,11 +491,11 @@ const fichaCompleta = (e, nivel = 1) => {
     };
 };
 
-test('Habilidades Básicas: as 19 existem, com id único e características marcadas', () => {
-    assert.equal(HABILIDADES_BASICAS.length, 19);
-    assert.equal(new Set(HABILIDADES_BASICAS.map((h) => h.id)).size, 19);
+test('Habilidades Básicas: as 20 existem, com id único e características marcadas', () => {
+    assert.equal(HABILIDADES_BASICAS.length, 20);
+    assert.equal(new Set(HABILIDADES_BASICAS.map((h) => h.id)).size, 20);
     for (const h of HABILIDADES_BASICAS) {
-        const tracos = h.tracos({ primario: 'des', opcoes: h.escolha === 'prodigio' ? ['corpo'] : h.escolha === 'quebrador' ? ['forca-arma'] : [] });
+        const tracos = h.tracos({ primario: 'des', opcoes: h.escolha === 'prodigio' ? ['corpo'] : h.escolha === 'quebrador' ? ['forca-arma'] : h.escolha === 'aprimoramento' ? ['ava:for'] : [] });
         assert.ok(tracos.length > 0 && tracos.every((t) => t.hb === h.id), h.id);
     }
 });
@@ -1076,4 +1076,32 @@ test('Herói: a Virada Heroica e o Escudo são reações defensivas que gastam D
     assert.deepEqual(car(5, 'arma-escudo', 'Escudo', 'Escudo (5º)').reacao.reducao, { reserva: '3d10', unica: true, gasta: { de: 'Dados Heroicos', qtd: 3 } });
     assert.equal(car(1, 'arma-lanca', 'Lança', 'Lança (1º)').efeitos[0].valor, 1); // +1 na CR
     assert.equal(car(11, 'arma-escudo', 'Escudo', 'Escudo (1º)').efeitos[0].valor, 3); // +3 na CR
+});
+
+// --- Habilidade Básica: Aprimoramento de Atributo (+2 em um atributo ou +1 em dois) --------------------------------------
+test('Aprimoramento de Atributo: opções válidas, +2 ou +1/+1 e nunca acima de 20', () => {
+    assert.equal(OPCOES_APRIMORAMENTO.length, 6 + 15);
+    assert.deepEqual(aumentosDoAprimoramento('ava:for'), [{ atributo: 'for', valor: 2 }]);
+    assert.deepEqual(aumentosDoAprimoramento('ava:des+von'), [
+        { atributo: 'des', valor: 1 },
+        { atributo: 'von', valor: 1 },
+    ]);
+    assert.equal(aumentosDoAprimoramento('ava:for+for'), null);
+    assert.equal(aumentosDoAprimoramento('ava:xx'), null);
+    assert.equal(aumentosDoAprimoramento(null), null);
+    const base = { for: 10, des: 19, con: 10, sab: 10, pre: 10, von: 10 };
+    assert.equal(atributosComAprimoramentoInato(base, [{ id: 'aprimoramento-de-atributo', nivel: 1, opcao: 'ava:for' }]).for, 12);
+    const dois = atributosComAprimoramentoInato(base, [{ id: 'aprimoramento-de-atributo', nivel: 1, opcao: 'ava:des+von' }]);
+    assert.deepEqual([dois.des, dois.von], [20, 11]);
+    assert.equal(atributosComAprimoramentoInato({ ...base, des: 20 }, [{ id: 'x', nivel: 1, opcao: 'ava:des' }]).des, 20); // teto de 20
+});
+
+test('Herói: o Aprimoramento de Atributo inato exige a escolha e soma nos atributos da ficha', () => {
+    const e = heroi('poder-oculto', 'Corporal', { estilo: { id: 'heroi', nome: 'Herói', dado: 'd8', primario: 'for', caminho: 'poder-oculto', armaFavorita: 'Corporal', hbInata: 'aprimoramento-de-atributo', pericias: ['atletismo', 'sorte'] } });
+    assert.ok(problemasDaEtapa(e, 'estilo').some((m) => m.includes('Aprimoramento de Atributo')));
+    const ok = heroi('poder-oculto', 'Corporal', { estilo: { ...e.estilo, hbInataOpcao: 'ava:for' } });
+    assert.deepEqual(problemasDaEtapa(ok, 'estilo'), []);
+    const sem = camposDaCriacao(heroi()).campos['atributos.for'];
+    assert.equal(camposDaCriacao(ok).campos['atributos.for'], Math.min(20, sem + 2));
+    assert.ok(camposDaCriacao(ok).campos.caracteristicas.some((c) => c.nome.startsWith('Aprimoramento de Atributo: +2 FOR')));
 });

@@ -39,7 +39,7 @@ import {
     type EquipamentoInicial,
     type ItemInicial,
 } from './dados/estilos.ts';
-import { hbPorId, OPCOES_QUEBRADOR } from './dados/habilidades-basicas.ts';
+import { aumentosDoAprimoramento, hbPorId, OPCOES_QUEBRADOR } from './dados/habilidades-basicas.ts';
 import { maestriaPorId } from './dados/maestrias.ts';
 import { NIVEIS_PRECONCEITO, type EspecieDados, type Movimento, type TracoDados, type VarianteDados } from './dados/tipos.ts';
 import { VARIACOES_RARAS } from './dados/variacoes.ts';
@@ -110,6 +110,8 @@ export interface Escolhas {
         armaFavorita?: string | null;
         /** Habilidade Básica Inata escolhida (id). */
         hbInata?: string | null;
+        /** A escolha da Habilidade Básica Inata quando ela pede uma (Aprimoramento de Atributo). */
+        hbInataOpcao?: string | null;
         /** Perícias livres do estilo (ids). */
         pericias?: string[];
     };
@@ -524,6 +526,8 @@ export function problemasDaEtapa(e: Escolhas, etapa: EtapaId): string[] {
             if (est.caminhos?.length && !est.caminhos.some((c) => c.id === e.estilo.caminho)) p.push('Escolha o caminho do estilo.');
             if (!armasFavoritasDoCaminho(est, e.estilo.caminho).includes(e.estilo.armaFavorita ?? '')) p.push('Escolha a arma favorita.');
             if (!est.habilidadesInatas.some((h) => h.id === e.estilo.hbInata)) p.push('Escolha a Habilidade Básica Inata.');
+            else if (e.estilo.hbInata === 'aprimoramento-de-atributo' && !aumentosDoAprimoramento(e.estilo.hbInataOpcao))
+                p.push('Aprimoramento de Atributo: escolha +2 em um atributo ou +1 em dois.');
             if (dinheiroRoladoDoEstilo(est) && e.dinheiro?.estilo !== est.id) p.push('Role os Bellys iniciais do estilo.');
             const pericias = e.estilo.pericias ?? [];
             if (pericias.length !== est.pericias || new Set(pericias).size !== pericias.length)
@@ -544,6 +548,8 @@ export function problemasDaEtapa(e: Escolhas, etapa: EtapaId): string[] {
                 p.push('Prodígio do Combate: escolha corpo a corpo ou à distância no Crítico Marcial.');
             if (hb.escolha === 'quebrador' && !OPCOES_QUEBRADOR.some((o) => o.id === op[0]))
                 p.push('Quebrador de Regras: escolha uma característica.');
+            if (hb.escolha === 'aprimoramento' && !aumentosDoAprimoramento(op[0]))
+                p.push('Aprimoramento de Atributo: escolha +2 em um atributo ou +1 em dois.');
         }
     }
     if (etapa === 'haki' && !['armamento', 'observacao'].includes(e.hakiAfinidade ?? ''))
@@ -593,7 +599,12 @@ export function dadoDeVidaFinal(base: DadoDeVida, hbs: HBDaFicha[], nivel: numbe
 /** As Habilidades Básicas que o assistente define no 1º nível: a Inata do estilo e a escolhida. */
 export function hbsDoAssistente(e: Escolhas): HBDaFicha[] {
     const lista: HBDaFicha[] = [];
-    if (e.estilo.hbInata) lista.push({ id: e.estilo.hbInata, nivel: 1, opcao: 'inata' });
+    if (e.estilo.hbInata)
+        lista.push({
+            id: e.estilo.hbInata,
+            nivel: 1,
+            opcao: e.estilo.hbInata === 'aprimoramento-de-atributo' && e.estilo.hbInataOpcao ? e.estilo.hbInataOpcao : 'inata',
+        });
     if (e.hb) {
         const op = e.hbOpcoes?.[e.hb]?.[0];
         lista.push({ id: e.hb, nivel: 1, ...(op ? { opcao: op } : {}) });
@@ -636,6 +647,9 @@ export function atributosComAprimoramentoInato(atributos: Record<AtributoId, num
     for (const h of hbs) {
         const id = h.opcao?.startsWith('inato-') ? (h.opcao.slice(6) as AtributoId) : null;
         if (id && id in r) r[id] = Math.max(r[id], Math.min(20, r[id] + 1));
+        // Aprimoramento de Atributo: +2 em um atributo ou +1 em dois, nunca acima de 20 por ele
+        for (const a of aumentosDoAprimoramento(h.opcao) ?? [])
+            if (a.atributo in r) r[a.atributo] = Math.max(r[a.atributo], Math.min(20, r[a.atributo] + a.valor));
     }
 
     return r;
