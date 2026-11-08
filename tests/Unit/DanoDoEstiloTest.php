@@ -92,4 +92,18 @@ class DanoDoEstiloTest extends TestCase
         $imune = ['imunidades' => ['Fogo']];
         $this->assertSame(20, Dano::calcular($imune, 20, 'Fogo', ['imunidade', 'vulneravel_se_nao_resiste'])['final']); // Hell: ignora a invulnerabilidade
     }
+
+    public function test_kick_festival_so_vale_com_shoot_e_d20_de_16_a_20(): void
+    {
+        $f = $this->ficha([$this->car('Shoot')], 6);
+        $this->assertNull(Regras::kickFestival($f, 15));
+        $this->assertNull(Regras::kickFestival($f, null));
+        $this->assertNull(Regras::kickFestival($this->ficha([], 6), 20)); // sem o Shoot
+        $esperado = [16 => 'letargico', 17 => 'caido', 18 => 'contido', 19 => 'cego', 20 => 'atordoado'];
+        foreach ($esperado as $d20 => $condicao) {
+            $k = Regras::kickFestival($f, $d20);
+            $this->assertSame('con', $k['atributo']);
+            $this->assertSame(['condicao' => $condicao, 'turnos' => 1], $k['aplica']);
+        }
+    }
 }

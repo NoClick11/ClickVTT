@@ -15,6 +15,7 @@ import {
     type Caracteristica,
     type FichaOnePiece,
 } from '../../regras';
+import { extrasDeDano, juntarPorTipo } from '../../tecnicaBonus';
 
 const props = defineProps<{ ficha: FichaOnePiece }>();
 const { editar, salvar, calc, rolar, rodada, acao: executarAcao, acoes, modoDe, mestre } = useFicha();
@@ -94,7 +95,13 @@ async function agirComAcao(a: AcaoCaracteristica, i: number) {
         const modo = a.vantagemAlvo ? modoDe(a.vantagemAlvo) : null;
         const expr =
             modo === 'vantagem' ? a.rolagem.replace(/^1d20/, '2d20kh1') : modo === 'desvantagem' ? a.rolagem.replace(/^1d20/, '2d20kl1') : a.rolagem;
-        rolar(expr, c.nome);
+        if (a.passo === 'desarmado' && !a.vantagemAlvo) {
+            // Dano do ataque desarmado: leva o tipo (aplicável ao alvo) e os passos de dado; os danos extras de outro tipo (Fogo do Diable Jambe) rolam à parte
+            rolar(expandirRolagem(expr, calc.value, a.passo), c.nome, undefined, { tipo: 'Contundente' });
+            for (const extra of juntarPorTipo(extrasDeDano(f, 'desarmado'))) {
+                rolar(extra.expressao, `${c.nome} (${extra.tipo ?? 'extra'})`, undefined, { tipo: extra.tipo, fonte: 'black-leg' });
+            }
+        } else rolar(expr, c.nome);
     } else if (a.tipo === 'deslocar' || a.tipo === 'socorrer' || a.tipo === 'condicao' || a.tipo === 'hospedar') {
         executarAcao(a);
     }

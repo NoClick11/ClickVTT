@@ -801,7 +801,7 @@ type RolagemDaFicha = [
     expressao: string,
     rotulo: string,
     aoRolar?: (total: number) => void,
-    dano?: { tipo: string | null; fator?: number },
+    dano?: { tipo: string | null; fator?: number; fonte?: string },
     acao?: { categoria: string; tecnica?: boolean },
     alvoPersonagemId?: number | null,
     tecnica?: { nome: string; dano?: { expressao: string; tipo: string | null } | null; secundaria?: object | null },

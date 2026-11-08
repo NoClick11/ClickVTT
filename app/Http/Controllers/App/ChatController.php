@@ -117,6 +117,10 @@ class ChatController extends Controller
         if (is_array($dados['tecnica'] ?? null) && $this->ehAtaque($resultado['termos'])) {
             $marcas = [...$marcas, ...$this->marcasDoAtaqueDeTecnica($dados['tecnica'], $resultado['termos'])];
         }
+        // Shoot (Black Leg): ataque desarmado que acerta com d20 de 16 a 20 pode causar uma condição (Kick Festival), se o alvo falhar na Salvaguarda de Constituição
+        if (str_contains((string) $dados['expressao'], '@ataque.desarmado') && ($kick = \App\Sistemas\OnePiece\Regras::kickFestival($ficha, Pipeline::naturalDoD20($resultado['termos'])))) {
+            $marcas['tecnica'] = ['nome' => 'Shoot (Kick Festival)', 'semTecnica' => true, 'secundaria' => $kick];
+        }
         if (is_array($dados['dano'] ?? null)) {
             $marcas['dano'] = [
                 'tipo' => filled($dados['dano']['tipo'] ?? null) ? trim($dados['dano']['tipo']) : null,

@@ -21,7 +21,7 @@ export interface ContextoFicha {
         expressao: string,
         rotulo: string,
         aoRolar?: (total: number) => void,
-        dano?: { tipo: string | null; fator?: number },
+        dano?: { tipo: string | null; fator?: number; fonte?: string },
         acao?: { categoria: string; tecnica?: boolean },
     ) => void;
     /** Economia de ações do combate: se a categoria pode ser usada agora, gastá-la no servidor e o nome dela. */

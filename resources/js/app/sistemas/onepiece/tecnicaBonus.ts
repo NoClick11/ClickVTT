@@ -58,6 +58,18 @@ export function extrasDeDano(f: FichaOnePiece, alvo: BonusDeDano['alvo'], grau =
     return saida;
 }
 
+/** Junta os danos extras do mesmo tipo numa rolagem só (`1d12` + `5` de Fogo → `1d12+5`). */
+export function juntarPorTipo(extras: ExtraDeDano[]): ExtraDeDano[] {
+    const porTipo = new Map<string, ExtraDeDano>();
+    for (const e of extras) {
+        const chave = e.tipo ?? '';
+        const atual = porTipo.get(chave);
+        porTipo.set(chave, atual ? { ...atual, expressao: `${atual.expressao}+${e.expressao}` } : { ...e });
+    }
+
+    return [...porTipo.values()];
+}
+
 /** Dano máximo: cada `NdM` vira `N*M` (Domínio Fatal). O bônus fixo continua. */
 export const maximizar = (expressao: string): string =>
     expressao.replace(/(\d*)d(\d+)/gi, (_, n: string, m: string) => String((n === '' ? 1 : Number(n)) * Number(m)));

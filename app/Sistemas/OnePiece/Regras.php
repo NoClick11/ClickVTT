@@ -119,6 +119,29 @@ final class Regras
         return $ignora;
     }
 
+    /** Kick Festival (Shoot, Black Leg): a condição de cada d20 de 16 a 20 e a parte do corpo atingida. */
+    public const KICK_FESTIVAL = [
+        16 => ['letargico', 'Letárgico', 'barriga'], 17 => ['caido', 'Caído', 'perna'], 18 => ['contido', 'Impedido', 'nuca'],
+        19 => ['cego', 'Cego', 'olhos'], 20 => ['atordoado', 'Atordoado', 'cabeça'],
+    ];
+
+    /**
+     * A Salvaguarda secundária do Kick Festival para o ataque desarmado com este d20 (16 a 20) de quem tem o Shoot; null se não vale.
+     * (O ajuste pelo número de acertos no turno e a desvantagem alternativa ficam por conta da mesa.)
+     *
+     * @param  array<string, mixed>  $f
+     * @return array{atributo: string, efeito: string, aplica: array{condicao: string, turnos: int}}|null
+     */
+    public static function kickFestival(array $f, ?int $natural): ?array
+    {
+        if ($natural === null || $natural < 16 || ! self::temCaracteristica($f, 'Shoot') || ! isset(self::KICK_FESTIVAL[min(20, $natural)])) {
+            return null;
+        }
+        [$condicao, $nome, $parte] = self::KICK_FESTIVAL[min(20, $natural)];
+
+        return ['atributo' => 'con', 'efeito' => "{$nome} até o fim do próximo turno dela (golpe na {$parte}: Kick Festival)", 'aplica' => ['condicao' => $condicao, 'turnos' => 1]];
+    }
+
     /** `golpeMoral` para uma Técnica com chicote como requisito (a Técnica tem de estar na ficha). */
     public static function golpeMoralDaTecnica(array $f, string $nomeTecnica, ?string $tipoDano): array
     {
