@@ -58,7 +58,9 @@ class AlvoController extends Controller
             $tipo = $dano['tipo'] ?? null;
             // Fração do dano que vale (arma à distância do anão: metade), antes das defesas do alvo.
             $total = (int) floor(((int) ($mensagem->dados['total'] ?? 0)) * (float) ($dano['fator'] ?? 1));
-            $r = $aplicar->aplicar($mesa, $personagem->id, $sistema, $total, $tipo, (array) ($dano['ignora'] ?? []), $mensagem->personagem_id);
+            // De onde vem o dano: ataque (comum) com arma, ou Técnica (a marca `tecnica` está no card do ataque da Técnica)
+            $origem = isset($mensagem->dados['sistema']['tecnica']) ? 'tecnica' : 'ataque';
+            $r = $aplicar->aplicar($mesa, $personagem->id, $sistema, $total, $tipo, (array) ($dano['ignora'] ?? []), $mensagem->personagem_id, ['origem' => $origem]);
 
             $mensagem->dados = [...$mensagem->dados, 'aplicado' => [...$jaAplicado, $personagem->id]];
             $mensagem->save();

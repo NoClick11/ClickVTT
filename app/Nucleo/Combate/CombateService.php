@@ -340,7 +340,7 @@ final class CombateService
     {
         if ($rodada !== $c['rodada']) {
             $c['itens'] = array_map(function (array $it) {
-                unset($it['acoes']['reacao']);
+                unset($it['acoes']['reacao'], $it['acoes']['rompante']);
 
                 return $it;
             }, $c['itens']);
@@ -516,7 +516,7 @@ final class CombateService
         if ($rodada > $c['rodada']) {
             // Nova rodada: a reação de todos volta (a categoria por rodada zera)
             $itens = array_map(function (array $it) {
-                unset($it['acoes']['reacao']);
+                unset($it['acoes']['reacao'], $it['acoes']['rompante']);
 
                 return $it;
             }, $itens);
@@ -528,7 +528,7 @@ final class CombateService
     /** Quem entra no turno começa sem ações gastas e sem movimento usado, com o deslocamento do turno calculado agora. */
     private function novoTurno(Mesa $mesa, array $itens, string $id): array
     {
-        return array_map(fn (array $i) => $i['id'] === $id ? [...$i, 'acoes' => array_intersect_key($i['acoes'], ['reacao' => 1]), 'movimento' => ['usado' => 0.0, 'bonus' => 0.0, 'base' => $this->baseDoTurno($mesa, $i)]] : $i, $itens);
+        return array_map(fn (array $i) => $i['id'] === $id ? [...$i, 'acoes' => array_intersect_key($i['acoes'], ['reacao' => 1, 'rompante' => 1]), 'movimento' => ['usado' => 0.0, 'bonus' => 0.0, 'base' => $this->baseDoTurno($mesa, $i)]] : $i, $itens);
     }
 
     /** O deslocamento do turno em metros (pelo sistema e a ficha), ou null se o sistema não mede ou o participante não tem personagem. */

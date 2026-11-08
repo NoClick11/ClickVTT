@@ -287,7 +287,7 @@ class TecnicaController extends Controller
                 $dados['alvos'][$i]['base'] = $base;
                 $dados['alvos'][$i]['final'] = 0;
                 if ($base > 0) {
-                    $res = $aplicar->aplicar($mesa, $a['personagem_id'], $sistema, $base, $t['dano']['tipo'], [], $t['atacante_id']);
+                    $res = $aplicar->aplicar($mesa, $a['personagem_id'], $sistema, $base, $t['dano']['tipo'], [], $t['atacante_id'], ['origem' => 'salvaguarda', 'atributo' => $t['atributo'] ?? null, 'passou' => (bool) $a['passou']]);
                     $dados['alvos'][$i]['final'] = $res['calculo']['final'];
                     $dados['alvos'][$i]['modo'] = $res['calculo']['modo'];
                     $aplicados[] = $res;

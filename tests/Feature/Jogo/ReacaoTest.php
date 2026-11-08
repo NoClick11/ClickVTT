@@ -228,11 +228,18 @@ class ReacaoTest extends TestCase
         $this->assertNull(Pipeline::naturalDoD20([['tipo' => 'numero', 'valor' => 5]]));
     }
 
-    private function aplicarDano($c, int $personagemId, int $dano): array
+    private function aplicarDano($c, int $personagemId, int $dano, array $contexto = []): array
     {
         $sistema = app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece');
 
-        return \Illuminate\Support\Facades\DB::transaction(fn () => app(\App\Nucleo\Combate\AplicarDano::class)->aplicar($c->mesa, $personagemId, $sistema, $dano, 'Contundente'));
+        return \Illuminate\Support\Facades\DB::transaction(fn () => app(\App\Nucleo\Combate\AplicarDano::class)->aplicar($c->mesa, $personagemId, $sistema, $dano, 'Contundente', [], null, $contexto));
+    }
+
+    private function traco($c, string $nome, int $nivelMin): void
+    {
+        $this->ficha($c, $c->ana, $c->aria, ['nivel' => 12, 'caracteristicas' => [[
+            'nome' => $nome, 'origem' => 'Estilo', 'tipo' => 'passiva', 'descricao' => '', 'nivelMin' => $nivelMin,
+        ]]]);
     }
 
     private function reagir($c, Jogador $dono, $personagem, string $opcao): void
@@ -331,5 +338,35 @@ class ReacaoTest extends TestCase
         $f = $c->aria->fresh()->fichaCompleta($sis);
         $this->assertSame(0, $f['reducao']['reserva']); // uso único: não sobra reserva
         $this->assertSame(7, $this->aplicarDano($c, $c->aria->id, 7)['calculo']['final']);
+    }
+
+    public function test_rompante_defensivo_corta_pela_metade_so_a_primeira_vez_da_rodada_e_volta_na_rodada_nova(): void
+    {
+        $c = $this->cenario();
+        $this->combate($c);
+        $this->traco($c, 'Guarda Astuta: Rompante Defensivo', 2);
+        $this->assertSame(10, $this->aplicarDano($c, $c->aria->id, 20, ['origem' => 'ataque'])['calculo']['final']);
+        $this->assertSame(20, $this->aplicarDano($c, $c->aria->id, 20, ['origem' => 'ataque'])['calculo']['final']); // já usou nesta rodada
+        $this->assertSame(20, $this->aplicarDano($c, $c->aria->id, 20, ['origem' => 'tecnica'])['calculo']['final']); // só ataque (comum)
+        foreach (range(1, 3) as $_) {
+            $this->cmd($c, 'turno');
+        }
+        $this->assertSame(10, $this->aplicarDano($c, $c->aria->id, 20, ['origem' => 'ataque'])['calculo']['final']); // rodada 2
+    }
+
+    public function test_esquiva_fugaz_e_controle_do_ambiente_mudam_o_dano_das_salvaguardas(): void
+    {
+        $c = $this->cenario();
+        $this->combate($c);
+        $this->traco($c, 'Guarda Astuta: Esquiva Fugaz', 8);
+        $des = fn (bool $passou, int $dano) => $this->aplicarDano($c, $c->aria->id, $dano, ['origem' => 'salvaguarda', 'atributo' => 'des', 'passou' => $passou])['calculo']['final'];
+        $this->assertSame(0, $des(true, 10)); // passou: nada (o dano chega já pela metade)
+        $this->assertSame(10, $des(false, 20)); // falhou: metade
+        $this->assertSame(20, $this->aplicarDano($c, $c->aria->id, 20, ['origem' => 'salvaguarda', 'atributo' => 'con', 'passou' => false])['calculo']['final']);
+
+        $this->traco($c, 'Controle do Ambiente', 11);
+        $this->assertSame(0, $des(false, 20));
+        $this->assertSame(0, $this->aplicarDano($c, $c->aria->id, 20, ['origem' => 'salvaguarda', 'atributo' => 'for', 'passou' => false])['calculo']['final']);
+        $this->assertSame(20, $this->aplicarDano($c, $c->aria->id, 20, ['origem' => 'salvaguarda', 'atributo' => 'con', 'passou' => false])['calculo']['final']);
     }
 }

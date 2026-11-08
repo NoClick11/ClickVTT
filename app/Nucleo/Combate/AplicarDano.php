@@ -21,9 +21,11 @@ final class AplicarDano
 
     /**
      * @param  list<string>  $ignora  defesas que o dano ignora (densidade e balanço da arma forjada)
+     * @param  array<string, mixed>  $contexto  de onde vem o dano, para as reduções do sistema: `origem` (`ataque` comum, `tecnica`, `salvaguarda`),
+     *                                          e na salvaguarda `atributo` e `passou`
      * @return array{p: Personagem, calculo: array, total: int, tipo: ?string, campos: array, acabaram: list<string>, hospedes: list<array>, execucao: ?array, aviso: ?string}
      */
-    public function aplicar(Mesa $mesa, int $personagemId, Sistema $sistema, int $total, ?string $tipo, array $ignora = [], ?int $atacanteId = null): array
+    public function aplicar(Mesa $mesa, int $personagemId, Sistema $sistema, int $total, ?string $tipo, array $ignora = [], ?int $atacanteId = null, array $contexto = []): array
     {
         $p = Personagem::query()->whereKey($personagemId)->lockForUpdate()->firstOrFail();
         $ficha = $p->fichaCompleta($sistema);
@@ -34,8 +36,12 @@ final class AplicarDano
         // Reações defensivas armadas (reserva de redução, Corpo de Criatura): o sistema reduz o dano já calculado
         $absorcao = null;
         if (method_exists($sistema, 'absorverDano') && $calculo['final'] > 0) {
-            $absorcao = $sistema->absorverDano($ficha, $calculo['final']);
+            $contexto['usados'] = $this->usadosNaRodada($mesa, $personagemId);
+            $absorcao = $sistema->absorverDano($ficha, $calculo['final'], $contexto);
             $calculo['final'] = $absorcao['final'];
+            foreach ($absorcao['marcar'] ?? [] as $chave) {
+                $this->marcarNaRodada($mesa, $personagemId, $chave);
+            }
         }
         // Pontos de Escudo (Haki do Armamento) absorvem antes dos PV temporários, com a resistência do sistema
         if (method_exists($sistema, 'escudoResiste') && (int) ($ficha['pv']['escudo'] ?? 0) > 0) {
@@ -97,6 +103,33 @@ final class AplicarDano
         $aviso = $absorcao['aviso'] ?? null;
 
         return compact('p', 'calculo', 'total', 'tipo', 'campos', 'acabaram', 'hospedes', 'execucao', 'aviso');
+    }
+
+    /** As chaves de "1 vez por rodada" que o personagem já gastou nesta rodada (ex.: `rompante`), guardadas no item dele no combate. */
+    private function usadosNaRodada(Mesa $mesa, int $personagemId): array
+    {
+        $c = \App\Nucleo\Combate\CombateService::normalizar(Mesa::query()->whereKey($mesa->id)->first()?->combate);
+        $item = collect($c['itens'])->firstWhere('personagem_id', $personagemId);
+
+        return $c['fase'] === 'em_curso' && $item ? array_keys(array_filter($item['acoes'] ?? [], fn ($v) => (int) $v > 0)) : [];
+    }
+
+    private function marcarNaRodada(Mesa $mesa, int $personagemId, string $chave): void
+    {
+        $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
+        $c = \App\Nucleo\Combate\CombateService::normalizar($m->combate);
+        if ($c['fase'] !== 'em_curso') {
+            return;
+        }
+        foreach ($c['itens'] as $i => $item) {
+            if ($item['personagem_id'] === $personagemId) {
+                $c['itens'][$i]['acoes'][$chave] = 1;
+                $m->forceFill(['combate' => $c])->save();
+                \App\Support\Transmitir::enviar($m, 'combate', ['combate' => $c, 'ator' => 0], ['mesa']);
+
+                return;
+            }
+        }
     }
 
     /** Depois da transação: avisa as fichas (PV novos) e posta no chat o que aconteceu. Devolve o texto do dano do alvo. */

@@ -248,13 +248,34 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
      * O dano que o personagem vai sofrer (já depois de imunidade/resistência) passa pelas reduções armadas: `zerar` (Corpo de Criatura, gasta 1 uso da
      * característica) e a reserva de dano (Yamantaka). Devolve o dano final, os campos da ficha a salvar e um aviso para o chat.
      *
-     * @return array{final: int, campos: array<string, mixed>, aviso: ?string}
+     * `contexto`: `origem` (`ataque` comum, `tecnica`, `salvaguarda`), `atributo` e `passou` da salvaguarda, `usados` (chaves de 1 vez por rodada já gastas).
+     *
+     * @return array{final: int, campos: array<string, mixed>, aviso: ?string, marcar: list<string>}
      */
-    public function absorverDano(array $ficha, int $dano): array
+    public function absorverDano(array $ficha, int $dano, array $contexto = []): array
     {
         $r = $ficha['reducao'] ?? [];
         $campos = [];
         $avisos = [];
+        $marcar = [];
+        $nivel = (int) ($ficha['nivel'] ?? 1);
+        $tem = fn (string $nome): bool => collect($ficha['caracteristicas'] ?? [])->contains(fn ($c) => str_contains((string) ($c['nome'] ?? ''), $nome) && Regras::ativaNoNivel($c, $nivel));
+        $origem = $contexto['origem'] ?? null;
+        $atributo = $contexto['atributo'] ?? null;
+        // Características passivas do estilo que mudam o dano que o personagem sofre
+        if ($dano > 0 && $origem === 'salvaguarda' && in_array($atributo, ['for', 'des'], true) && $tem('Controle do Ambiente')) {
+            $avisos[] = 'Controle do Ambiente: nenhum dano de Salvaguarda de Força ou Destreza';
+            $dano = 0;
+        }
+        if ($dano > 0 && $origem === 'salvaguarda' && $atributo === 'des' && $tem('Esquiva Fugaz')) {
+            $dano = ! empty($contexto['passou']) ? 0 : intdiv($dano, 2);
+            $avisos[] = 'Esquiva Fugaz: '.(! empty($contexto['passou']) ? 'passou na Salvaguarda de Destreza, sem dano' : 'falhou, só metade do dano');
+        }
+        if ($dano > 0 && $origem === 'ataque' && $tem('Rompante Defensivo') && ! in_array('rompante', $contexto['usados'] ?? [], true)) {
+            $dano = intdiv($dano, 2);
+            $marcar[] = 'rompante';
+            $avisos[] = 'Rompante Defensivo: o dano do ataque cai pela metade (1ª vez nesta rodada)';
+        }
         if ($dano > 0 && ! empty($r['zerar'])) {
             $lista = $ficha['caracteristicas'] ?? [];
             foreach ($lista as $i => $c) {
@@ -281,7 +302,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
             $avisos[] = "a reserva de redução absorve {$abs}".($unica ? '' : ' (restam '.($reserva - $abs).')');
         }
 
-        return ['final' => $dano, 'campos' => $campos, 'aviso' => $avisos ? ucfirst(implode('; ', $avisos)).'.' : null];
+        return ['final' => $dano, 'campos' => $campos, 'aviso' => $avisos ? ucfirst(implode('; ', $avisos)).'.' : null, 'marcar' => $marcar];
     }
 
     /**
