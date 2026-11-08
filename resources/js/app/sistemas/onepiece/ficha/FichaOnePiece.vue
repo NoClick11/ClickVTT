@@ -3,7 +3,7 @@ import { Apple, Backpack, Flame, GraduationCap, Hammer, ListChecks, Settings, Sk
 import { computed, inject, provide, ref, type Component, type ComputedRef } from 'vue';
 import type { AbrirEditorItem, PersonagemFicha } from '../../../nucleo/sistemas/tipos';
 import type { ItemDto } from '../../../tipos-mesa';
-import { CHAVE_FICHA, type DanoDaTecnica, type EfeitoSecundario, type ServicosDaFicha, type UsoDeTecnica } from '../contexto';
+import { CHAVE_FICHA, type DanoDaTecnica, type EfeitoSecundario, type PermissoesDaMesa, type ServicosDaFicha, type UsoDeTecnica } from '../contexto';
 import { abaDoHakiVisivel } from '../haki/regras';
 import { analisar, armasAtivas, modoDaRolagem, type AcaoCaracteristica, type FichaOnePiece } from '../regras';
 import AbaAkuma from './abas/AbaAkuma.vue';
@@ -31,6 +31,7 @@ const props = defineProps<{
     itens: ItemDto[];
     mestre: boolean;
     servicos?: ServicosDaFicha;
+    permissoes?: PermissoesDaMesa;
     construtorConcluido?: boolean;
 }>();
 const emit = defineEmits<{
@@ -106,6 +107,7 @@ provide(CHAVE_FICHA, {
     itens: itensPorId,
     mestre: props.mestre,
     servicos: props.servicos ?? null,
+    permissoes: computed(() => props.permissoes ?? { descansoCurto: true, descansoLongo: true, subirNivel: true }),
     personagemId: props.personagem.id,
     abrirEditorItem: (itemId, aoSalvar) => emit('editorItem', itemId, aoSalvar),
     salvar: (campos) => emit('salvar', campos),

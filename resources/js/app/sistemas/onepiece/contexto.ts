@@ -55,6 +55,8 @@ export interface ContextoFicha {
     mestre: boolean;
     /** Serviços da mesa (forja do Ferreiro); null quando a mesa não os oferece. */
     servicos: ServicosDaFicha | null;
+    /** O que o mestre liberou: descansar e subir de nível (fora do jogo, tudo liberado). */
+    permissoes: ComputedRef<PermissoesDaMesa>;
     /** O personagem desta ficha. */
     personagemId: number;
     /** O mestre abre o editor de itens (`null` = novo); `aoSalvar` recebe o item salvo. */
@@ -131,6 +133,13 @@ export interface ServicosDaFicha {
     }) => Promise<{ resultado: 'sucesso' | 'falhou' | 'quebrou'; texto: string }>;
     forjar: (dados: { ferreiro_id: number; item: string; atributo: 'for' | 'des' | 'sab' }) => Promise<{ sucesso: boolean; texto: string }>;
     aprimorar: (dados: { ferreiro_id: number; alvo_id: number; item_id: number; melhorias: Record<string, unknown> }) => Promise<{ texto: string }>;
+}
+
+/** O que o mestre liberou aos jogadores (o mestre em si nunca é barrado). */
+export interface PermissoesDaMesa {
+    descansoCurto: boolean;
+    descansoLongo: boolean;
+    subirNivel: boolean;
 }
 
 export const CHAVE_FICHA: InjectionKey<ContextoFicha> = Symbol('ficha-onepiece');

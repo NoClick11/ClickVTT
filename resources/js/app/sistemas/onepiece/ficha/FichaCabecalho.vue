@@ -11,13 +11,20 @@ import SubirDeNivel from './SubirDeNivel.vue';
 
 const props = defineProps<{ ficha: FichaOnePiece; personagem: PersonagemFicha; construtorConcluido?: boolean }>();
 const emit = defineEmits<{ 'update:editar': [boolean]; construtor: [] }>();
-const { editar, calc, salvar, mestre } = useFicha();
+const { editar, calc, salvar, mestre, permissoes } = useFicha();
 /** O mestre marca um NPC como aliado dos jogadores: eles não o atingem (sem fogo amigo). */
 /** O construtor só se usa uma vez: depois de concluído o jogador não o abre de novo (o mestre pode, para corrigir). */
 const construtorBloqueado = computed(() => !!props.construtorConcluido && !mestre);
 const podeMarcarAliado = computed(() => mestre && !(props.personagem.jogadores?.length ?? 0));
 
 const subindo = ref(false);
+/** O jogador só sobe com o XP do nível completo e a liberação do mestre; o mestre nunca é barrado. */
+const xpCompleto = computed(() => props.ficha.xp.atual >= calc.value['xp.proximo']);
+const podeSubir = computed(() => mestre || (permissoes.value.subirNivel && xpCompleto.value));
+const motivoSemSubir = computed(() =>
+    !xpCompleto.value ? 'Falta XP para o próximo nível.' : !permissoes.value.subirNivel ? 'O mestre ainda não liberou subir de nível.' : '',
+);
+const podeDescansar = (tipo: TipoDescanso) => mestre || (tipo === 'curto' ? permissoes.value.descansoCurto : permissoes.value.descansoLongo);
 const xpPct = computed(() => Math.min(100, Math.round((props.ficha.xp.atual / calc.value['xp.proximo']) * 100)));
 
 /**
@@ -25,6 +32,7 @@ const xpPct = computed(() => Math.min(100, Math.round((props.ficha.xp.atual / ca
  * as de descanso curto); o longo também restaura PV e pontos de poder (até o máximo efetivo), dados de vida e exaustão.
  */
 function descansar(tipo: TipoDescanso) {
+    if (!podeDescansar(tipo)) return;
     const campos = camposDoDescanso(props.ficha, tipo, calc.value['pv.max'], calc.value['pp.max']);
     if (Object.keys(campos).length) salvar(campos);
 }
@@ -143,7 +151,8 @@ function descansar(tipo: TipoDescanso) {
                     size="icon"
                     variant="outline"
                     class="size-9 border-preto-700 text-preto-300 hover:text-ouro-200"
-                    title="Subir de nível: Habilidade Básica, AVA, PV, PP e técnicas do estilo"
+                    :disabled="!podeSubir"
+                    :title="podeSubir ? 'Subir de nível: Habilidade Básica, AVA, PV, PP e técnicas do estilo' : motivoSemSubir"
                     aria-label="Subir de nível"
                     @click="subindo = true"
                     ><ArrowUpCircle class="size-4"
@@ -152,7 +161,12 @@ function descansar(tipo: TipoDescanso) {
                     size="icon"
                     variant="outline"
                     class="size-9 border-preto-700 text-preto-300 hover:text-ouro-200"
-                    title="Descanso curto: desliga os buffs ativos e restaura os usos das características de descanso curto"
+                    :disabled="!podeDescansar('curto')"
+                    :title="
+                        podeDescansar('curto')
+                            ? 'Descanso curto: desliga os buffs ativos e restaura os usos das características de descanso curto'
+                            : 'O mestre ainda não liberou o descanso curto.'
+                    "
                     aria-label="Descanso curto"
                     @click="descansar('curto')"
                     ><Coffee class="size-4"
@@ -161,7 +175,12 @@ function descansar(tipo: TipoDescanso) {
                     size="icon"
                     variant="outline"
                     class="size-9 border-preto-700 text-preto-300 hover:text-ouro-200"
-                    title="Descanso longo: PV e pontos de poder ao máximo, dados de vida, -1 de exaustão, usos das características; desliga os buffs ativos"
+                    :disabled="!podeDescansar('longo')"
+                    :title="
+                        podeDescansar('longo')
+                            ? 'Descanso longo: PV e pontos de poder ao máximo, dados de vida, -1 de exaustão, usos das características; desliga os buffs ativos'
+                            : 'O mestre ainda não liberou o descanso longo.'
+                    "
                     aria-label="Descanso longo"
                     @click="descansar('longo')"
                     ><Moon class="size-4"
@@ -215,6 +234,7 @@ function descansar(tipo: TipoDescanso) {
                         :model-value="ficha.xp.atual"
                         :min="0"
                         :max="10000000"
+                        :somente-leitura="!mestre"
                         aria-label="XP atual"
                         class="w-16 border-b border-transparent bg-transparent text-right text-preto-300 focus-visible:border-ouro-400 focus-visible:outline-none"
                         @salvar="salvar({ 'xp.atual': $event })"

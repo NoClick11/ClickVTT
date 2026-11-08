@@ -13,7 +13,7 @@ import { estilos, useFicha } from '../contexto';
 import EfeitosDialog from '../EfeitosDialog.vue';
 import { itemDoCatalogo } from '../itens';
 import { municoesDaArma } from '../itens/municoes';
-import { camposDoDadoDeVida, comSinal, DADOS_DE_VIDA, hakiDesligado, textoDeMovimento, type FichaOnePiece } from '../regras';
+import { camposDoDadoDeVida, comSinal, DADOS_DE_VIDA, textoDeMovimento, type FichaOnePiece } from '../regras';
 
 const props = defineProps<{ ficha: FichaOnePiece; personagem: PersonagemFicha }>();
 const { editar, calc, salvar, rolar, d20, modoDe, armas, origens, acoes, rodada, itens } = useFicha();
@@ -100,14 +100,6 @@ const deslocamentoTexto = computed(() => {
     return textoDeMovimento({ normal: m('normal'), nado: m('nado'), escalada: m('escalada'), voo: m('voo') });
 });
 const alcanceCorpo = computed(() => String((calc.value['alcance.corpo'] ?? 15) / 10).replace('.', ',') + ' m');
-/** Etiquetas de combate das características que valem agora (passivas e ativas ligadas). */
-const etiquetas = computed(() => [
-    ...new Set(
-        props.ficha.caracteristicas
-            .filter((c) => !hakiDesligado(c, props.ficha) && (c.tipo === 'passiva' || c.ativa === true))
-            .flatMap((c) => c.etiquetas ?? []),
-    ),
-]);
 const efeitosAberto = ref(false);
 const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) => condicaoPorId(id)).filter((c) => c !== undefined));
 </script>
@@ -243,10 +235,16 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                 class="mt-1.5 flex flex-wrap gap-1 text-[10px] font-semibold text-ouro-100"
                 aria-label="Reduções de dano armadas"
             >
-                <span v-if="(ficha.reducao?.reserva ?? 0) > 0" class="rounded-full border border-ouro-400/60 bg-ouro-500/15 px-2 py-0.5" title="Reserva de redução de dano (Yamantaka)"
+                <span
+                    v-if="(ficha.reducao?.reserva ?? 0) > 0"
+                    class="rounded-full border border-ouro-400/60 bg-ouro-500/15 px-2 py-0.5"
+                    title="Reserva de redução de dano (Yamantaka)"
                     >🛡 Reserva {{ ficha.reducao?.reserva }}</span
                 >
-                <span v-if="ficha.reducao?.zerar" class="rounded-full border border-ouro-400/60 bg-ouro-500/15 px-2 py-0.5" title="O próximo dano vira 0 (Corpo de Criatura)"
+                <span
+                    v-if="ficha.reducao?.zerar"
+                    class="rounded-full border border-ouro-400/60 bg-ouro-500/15 px-2 py-0.5"
+                    title="O próximo dano vira 0 (Corpo de Criatura)"
                     >🛡 Próximo dano = 0</span
                 >
             </p>
@@ -413,11 +411,6 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                     </button>
                 </span>
             </div>
-            <ul v-if="etiquetas.length" class="mb-1.5 flex flex-wrap gap-1" aria-label="Traços de combate">
-                <li v-for="t in etiquetas" :key="t" class="rounded border border-sky-400/40 bg-sky-500/10 px-1.5 py-0.5 text-[10px] text-sky-200">
-                    {{ t }}
-                </li>
-            </ul>
             <!-- coluna flexível (não grade): o nome comprido da arma é cortado com "…" em vez de esticar a barra -->
             <ul v-if="armas.length" class="flex flex-col gap-1.5">
                 <li v-for="a in armas" :key="a.itemId" class="min-w-0">

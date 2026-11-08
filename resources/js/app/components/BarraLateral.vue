@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { Cherry, ChevronsRight, MessageSquare, Package, Users } from 'lucide-vue-next';
+import { Cherry, ChevronsRight, MessageSquare, Package, Settings, Users } from 'lucide-vue-next';
 import { computed, type Component } from 'vue';
 
-export type AbaLateral = 'chat' | 'personagens' | 'itens' | 'frutas';
+export type AbaLateral = 'chat' | 'personagens' | 'itens' | 'frutas' | 'configuracoes';
 
 const props = defineProps<{ aba: AbaLateral; aberta: boolean; naoLidas: number; mestre?: boolean; temFrutas?: boolean }>();
 const emit = defineEmits<{ 'update:aba': [AbaLateral]; 'update:aberta': [boolean] }>();
@@ -14,6 +14,8 @@ const abas = computed<{ id: AbaLateral; rotulo: string; icone: Component }[]>(()
     ...(props.mestre ? [{ id: 'itens' as const, rotulo: 'Itens', icone: Package }] : []),
     // As frutas prontas (e a entrega delas) também são do mestre, nos sistemas que as têm.
     ...(props.mestre && props.temFrutas ? [{ id: 'frutas' as const, rotulo: 'Frutas', icone: Cherry }] : []),
+    // As regras da mesa (fogo amigo, liberações e XP) são do mestre.
+    ...(props.mestre ? [{ id: 'configuracoes' as const, rotulo: 'Configurações', icone: Settings }] : []),
 ]);
 </script>
 
@@ -95,6 +97,16 @@ const abas = computed<{ id: AbaLateral; rotulo: string; icone: Component }[]>(()
                 aria-labelledby="aba-frutas"
             >
                 <slot name="frutas" />
+            </section>
+            <section
+                v-if="mestre"
+                v-show="aba === 'configuracoes'"
+                class="flex min-h-0 flex-1 flex-col"
+                role="tabpanel"
+                id="painel-configuracoes"
+                aria-labelledby="aba-configuracoes"
+            >
+                <slot name="configuracoes" />
             </section>
         </div>
     </aside>
