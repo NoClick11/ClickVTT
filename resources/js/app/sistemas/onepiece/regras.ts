@@ -110,6 +110,55 @@ export interface ItemInventario {
     qtd: number;
     equipado: boolean;
     sintonizado: boolean;
+    /** Ajustes da arma SÓ nesta ficha (dano, tipo, bônus...): o item da mesa não muda. Campos ausentes/nulos valem o original. */
+    arma?: AjusteDeArma;
+}
+/** O que o jogador pode mudar numa arma só na própria ficha. Espelha `Regras::AJUSTES_DA_ARMA` (PHP). */
+export interface AjusteDeArma {
+    dano?: string | null;
+    tipoDano?: string | null;
+    atributo?: AtributoId | 'acuidade' | null;
+    atributoDano?: AtributoId | 'acuidade' | 'nenhum' | null;
+    bonusAtaque?: number | null;
+    bonusDano?: number | null;
+    margemCritica?: number | null;
+    danoExtra?: { dados: string; tipo?: string | null }[] | null;
+}
+export const CAMPOS_DO_AJUSTE_DA_ARMA = [
+    'dano',
+    'tipoDano',
+    'atributo',
+    'atributoDano',
+    'bonusAtaque',
+    'bonusDano',
+    'margemCritica',
+    'danoExtra',
+] as const;
+
+/**
+ * Os itens da mesa com os ajustes de arma DESTA ficha aplicados (cópia: o item original nunca é alterado). `dano` não vale em arma por
+ * munição (o dado vem da munição). Espelha `Regras::comAjustes`.
+ */
+export function itensComAjustes(f: { inventario?: { itens?: ItemInventario[] }[] }, itens: ItensPorId): ItensPorId {
+    let r: ItensPorId | null = null;
+    for (const secao of f.inventario ?? []) {
+        for (const ref of secao.itens ?? []) {
+            const aj = ref.arma;
+            const original = itens[ref.item_id];
+            const arma = (original?.dados as DadosItemOnePiece | null | undefined)?.arma;
+            if (!aj || !original || !arma) continue;
+            const nova = { ...arma } as Record<string, unknown>;
+            for (const campo of CAMPOS_DO_AJUSTE_DA_ARMA) {
+                const v = aj[campo];
+                if (v === undefined || v === null || (campo === 'dano' && arma.municao)) continue;
+                nova[campo] = v;
+            }
+            r ??= { ...itens };
+            r[ref.item_id] = { ...original, dados: { ...(original.dados as object), arma: nova } };
+        }
+    }
+
+    return r ?? itens;
 }
 /** Dados do sistema num item: armadura (CA base ou bônus de escudo) e/ou arma. */
 export interface DadosItemOnePiece {
@@ -556,7 +605,8 @@ export interface Analise {
  * carga.max, pp.max, xp.proximo, dv.max, treinamento.pontos e, por arma ativa, arma.<item_id>.ataque / .dano / .margem.
  * Tolerante a chaves ausentes (ficha salva antes de um campo existir): usa 0.
  */
-export function analisar(f: FichaOnePiece, itens: ItensPorId = {}): Analise {
+export function analisar(f: FichaOnePiece, itensDaMesa: ItensPorId = {}): Analise {
+    const itens = itensComAjustes(f, itensDaMesa);
     const efeitos = efeitosAtivos(f, itens);
     const origens: Record<string, Origem[]> = {};
     const aplicarEm = (alvo: string, base: number, variaveis: Record<string, number>): number => {
@@ -698,7 +748,8 @@ export function modoDaRolagem(efeitos: Efeito[], variavel: string): Rolagem {
  * (efeitos de modo `dados` em `dano.arma`: Ataque Furtivo, itens, características). Espelha `Regras::dadosDeDano`.
  * Vazio se o item não é arma.
  */
-export function dadosDeDano(f: FichaOnePiece, itens: ItensPorId, itemId: number, valores: Record<string, number> = {}): string[] {
+export function dadosDeDano(f: FichaOnePiece, itensDaMesa: ItensPorId, itemId: number, valores: Record<string, number> = {}): string[] {
+    const itens = itensComAjustes(f, itensDaMesa);
     const arma = (itens[itemId]?.dados as DadosItemOnePiece | null | undefined)?.arma;
     if (!arma || arma.municao || typeof arma.dano !== 'string') return [];
 
@@ -789,7 +840,8 @@ export function dadosExtrasDeMeito(f: FichaOnePiece, itens: ItensPorId): number 
 }
 
 /** Armas equipadas (e sintonizadas, se exigir), com os bônus já calculados por `analisar`. */
-export function armasAtivas(f: FichaOnePiece, itens: ItensPorId, valores: Record<string, number>): ArmaAtiva[] {
+export function armasAtivas(f: FichaOnePiece, itensDaMesa: ItensPorId, valores: Record<string, number>): ArmaAtiva[] {
+    const itens = itensComAjustes(f, itensDaMesa);
     const armas: ArmaAtiva[] = [];
     for (const secao of f.inventario ?? []) {
         for (const ref of secao.itens ?? []) {

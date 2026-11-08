@@ -152,3 +152,25 @@ test('forja: Saijo Ô e Kokuto equipadas são detectadas; descanso longo devolve
     assert.equal(longo['meito.usados'], 0);
     assert.equal(camposDoDescanso({ ...ficha(), pv: { atual: 1, max: 10, temp: 0 }, dadosVida: { restantes: 1, tipo: 'd8' }, exaustao: 0, meito: { usados: 2 } }, 'curto')['meito.usados'], undefined);
 });
+
+test('ajuste da arma só na ficha: dado, bônus, crítico e dados extras mudam sem alterar o item', () => {
+    const arma = { dano: '1d8', atributo: 'for', tipoDano: 'Cortante', proficiente: true };
+    const i = itens(arma);
+    const base = analisar(ficha(), i).valores;
+    const f2 = ficha();
+    f2.inventario[0].itens[0].arma = { dano: '2d6', bonusAtaque: 2, bonusDano: 3, margemCritica: 19, tipoDano: 'Fogo', danoExtra: [{ dados: '1d4', tipo: 'Gelo' }] };
+    const v = analisar(f2, i).valores;
+    assert.equal(v['arma.1.ataque'], base['arma.1.ataque'] + 2);
+    assert.equal(v['arma.1.dano'], base['arma.1.dano'] + 3);
+    assert.equal(v['arma.1.margem'], 19);
+    assert.deepEqual(dadosDeDano(f2, i, 1, v), ['2d6', '1d4']);
+    const a = armasAtivas(f2, i, v)[0];
+    assert.equal(a.tipoDano, 'Fogo');
+    // o item da mesa continua igual e a ficha sem ajuste também
+    assert.equal(i[1].dados.arma.dano, '1d8');
+    assert.deepEqual(dadosDeDano(ficha(), i, 1, base), ['1d8']);
+    // arma por munição: o dado do ajuste é ignorado (vem da munição)
+    const porMunicao = { atributo: 'des', municao: true, distancia: true, tipoDano: 'Perfurante' };
+    f2.inventario[0].itens[0].arma = { dano: '9d12', bonusDano: 1 };
+    assert.deepEqual(dadosDeDano(f2, itens(porMunicao), 1, v), []);
+});

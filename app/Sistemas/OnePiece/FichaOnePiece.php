@@ -276,6 +276,18 @@ final class FichaOnePiece
         $r['inventario.*.itens.*.qtd'] = ['required', 'integer:strict', 'between:0,100000'];
         $r['inventario.*.itens.*.equipado'] = ['required', 'boolean:strict'];
         $r['inventario.*.itens.*.sintonizado'] = ['required', 'boolean:strict'];
+        // Ajustes da arma só nesta ficha (o item da mesa não muda)
+        $r['inventario.*.itens.*.arma'] = ['nullable', 'array'];
+        $r['inventario.*.itens.*.arma.dano'] = ['nullable', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/'];
+        $r['inventario.*.itens.*.arma.tipoDano'] = ['nullable', 'string', 'max:40'];
+        $r['inventario.*.itens.*.arma.atributo'] = ['nullable', 'string', Rule::in([...self::ATRIBUTOS, 'acuidade'])];
+        $r['inventario.*.itens.*.arma.atributoDano'] = ['nullable', 'string', Rule::in([...self::ATRIBUTOS, 'acuidade', 'nenhum'])];
+        $r['inventario.*.itens.*.arma.bonusAtaque'] = ['nullable', 'integer:strict', 'between:-20,20'];
+        $r['inventario.*.itens.*.arma.bonusDano'] = ['nullable', 'integer:strict', 'between:-50,50'];
+        $r['inventario.*.itens.*.arma.margemCritica'] = ['nullable', 'integer:strict', 'between:2,20'];
+        $r['inventario.*.itens.*.arma.danoExtra'] = ['nullable', 'array', 'max:3'];
+        $r['inventario.*.itens.*.arma.danoExtra.*.dados'] = ['required', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/'];
+        $r['inventario.*.itens.*.arma.danoExtra.*.tipo'] = ['nullable', 'string', 'max:40'];
 
         $r['condicoes'] = ['array', 'max:'.count(Condicoes::ids())];
         $r['condicoes.*'] = ['string', Rule::in(Condicoes::ids()), 'distinct'];

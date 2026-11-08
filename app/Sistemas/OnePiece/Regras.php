@@ -29,6 +29,40 @@ final class Regras
         return (int) floor(($valor - 10) / 2);
     }
 
+    /** O que o jogador ajusta numa arma só na própria ficha (`inventario.*.itens.*.arma`). Espelha `AjusteDeArma` (TS). */
+    public const AJUSTES_DA_ARMA = ['dano', 'tipoDano', 'atributo', 'atributoDano', 'bonusAtaque', 'bonusDano', 'margemCritica', 'danoExtra'];
+
+    /**
+     * Os itens da mesa com os ajustes de arma DESTA ficha aplicados (o item original nunca muda). `dano` não vale em arma por munição.
+     * Espelha `itensComAjustes` (TS).
+     *
+     * @param  array<string, mixed>  $f
+     * @param  array<int, array>  $itens
+     * @return array<int, array>
+     */
+    public static function comAjustes(array $f, array $itens): array
+    {
+        foreach ($f['inventario'] ?? [] as $secao) {
+            foreach (is_array($secao) ? ($secao['itens'] ?? []) : [] as $ref) {
+                $aj = is_array($ref) ? ($ref['arma'] ?? null) : null;
+                $id = (int) ($ref['item_id'] ?? 0);
+                $arma = $itens[$id]['dados']['arma'] ?? null;
+                if (! is_array($aj) || ! is_array($arma)) {
+                    continue;
+                }
+                foreach (self::AJUSTES_DA_ARMA as $campo) {
+                    if (($aj[$campo] ?? null) === null || ($campo === 'dano' && ! empty($arma['municao']))) {
+                        continue;
+                    }
+                    $arma[$campo] = $aj[$campo];
+                }
+                $itens[$id]['dados']['arma'] = $arma;
+            }
+        }
+
+        return $itens;
+    }
+
     /** O item conta? Em inventário (qtd > 0), equipado se for equipável, sintonizado se exigir. */
     public static function ativo(array $ref, array $item): bool
     {
@@ -161,6 +195,7 @@ final class Regras
      */
     public static function calcular(array $f, array $itens = []): array
     {
+        $itens = self::comAjustes($f, $itens);
         $efeitos = self::efeitosAtivos($f, $itens);
         $nivel = (int) $f['nivel'];
         $prof = 2 + intdiv($nivel - 1, 4) + ($f['ajustes']['proficiencia'] ?? 0);
@@ -341,6 +376,7 @@ final class Regras
      */
     public static function metadadosDaRolagem(array $termos, array $variaveis, array $itens = [], array $ficha = [], ?array $municao = null): array
     {
+        $itens = self::comAjustes($ficha, $itens);
         $arma = null;
         foreach ($termos as $t) {
             if (($t['tipo'] ?? null) === 'variavel' && preg_match('/^arma\.(\d+)\.ataque$/', $t['nome'], $m)) {
