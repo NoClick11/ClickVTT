@@ -222,13 +222,20 @@ class CombateTest extends TestCase
         $this->agir($c, $c->ana, $c->bruno, 'livre')->assertForbidden(); // personagem de outro jogador
     }
 
-    public function test_reacao_sem_limite_por_rodada(): void
+    public function test_reacao_serve_fora_do_turno_uma_vez_por_rodada_volta_na_rodada_nova_e_na_rodada_manual(): void
     {
         $c = $this->cenario();
         $this->emCurso($c);
 
         $this->agir($c, $c->ana, $c->aria, 'reacao')->assertOk(); // Aria reage no turno do Bruno
-        $this->agir($c, $c->ana, $c->aria, 'reacao')->assertOk(); // sem limite por rodada
+        $this->agir($c, $c->ana, $c->aria, 'reacao')->assertStatus(422); // 1 por rodada
+        foreach (range(1, 3) as $_) {
+            $this->cmd($c, $c->mestre, 'turno')->assertOk();
+        }
+        $this->agir($c, $c->ana, $c->aria, 'reacao')->assertOk(); // rodada 2: a reação voltou
+        $this->agir($c, $c->ana, $c->aria, 'reacao')->assertStatus(422);
+        $this->cmd($c, $c->mestre, 'rodada', ['rodada' => 5])->assertOk(); // o mestre fixa a rodada: a reação volta
+        $this->agir($c, $c->ana, $c->aria, 'reacao')->assertOk();
     }
 
     public function test_acoes_voltam_ao_entrar_no_proprio_turno_e_o_mestre_devolve(): void
@@ -276,7 +283,7 @@ class CombateTest extends TestCase
     {
         $c = $this->cenario();
         $r = $this->como($c->ana)->get(route('jogo', [$c->mesa->slug, $c->ana->id]));
-        $r->assertInertia(fn ($p) => $p->where('categoriasDeAcao.0.id', 'padrao')->where('categoriasDeAcao.1.id', 'poderosa')->where('categoriasDeAcao.4.porRodada', null));
+        $r->assertInertia(fn ($p) => $p->where('categoriasDeAcao.0.id', 'padrao')->where('categoriasDeAcao.1.id', 'poderosa')->where('categoriasDeAcao.4.porRodada', 1));
     }
 
     /** A página do cenário: quadrado de 100 px = 1,5 m. Bruno (turno): ficha padrão do One Piece = 9 m de deslocamento. */

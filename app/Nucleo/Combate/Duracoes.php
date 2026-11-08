@@ -34,6 +34,22 @@ final class Duracoes
         }
     }
 
+    /** Fim do encontro: sai o que tinha duração em turnos (condições e a redução armada), que sem o combate nunca acabaria. */
+    public static function aoEncerrarCombate(Mesa $mesa, Personagem $p): void
+    {
+        $ficha = $p->ficha ?? [];
+        $duracoes = $ficha['duracoes'] ?? [];
+        if (! $duracoes && ! ($ficha['reducao'] ?? [])) {
+            return;
+        }
+        $ficha['condicoes'] = array_values(array_diff($ficha['condicoes'] ?? [], array_keys($duracoes)));
+        $ficha['duracoes'] = [];
+        $ficha['reducao'] = [];
+        $p->ficha = $ficha;
+        $p->save();
+        self::transmitir($mesa, $p, ['condicoes' => $ficha['condicoes'], 'duracoes' => [], 'reducao' => []], true);
+    }
+
     /** Um turno a menos nas condições com duração do personagem; as que zeram saem da lista. */
     public static function terminarTurno(Mesa $mesa, int $personagemId): void
     {

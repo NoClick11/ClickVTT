@@ -132,6 +132,12 @@ function adicionarVarios(ids: number[]) {
                 >
                     {{ i.nome }}
                 </button>
+                <span
+                    v-if="(i.acoes.reacao ?? 0) > 0"
+                    class="shrink-0 rounded-full border border-ouro-400/50 px-1.5 text-[10px] text-ouro-200"
+                    title="Já usou a reação nesta rodada"
+                    >reação usada</span
+                >
                 <button
                     type="button"
                     class="rounded-full border px-1.5 text-[10px] font-semibold"

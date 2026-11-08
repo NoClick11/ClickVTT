@@ -323,7 +323,7 @@ final class CombateService
             'definir_disposicao' => $this->alterarItem($c, (string) $d['item_id'], fn (array $i) => [...$i, 'disposicao' => $d['disposicao']]),
             'comecar' => $this->comecar($mesa, $c),
             'turno' => $this->turno($mesa, $c, (string) ($d['sentido'] ?? 'proximo'), $d['item_id'] ?? null),
-            'rodada' => [...$c, 'rodada' => max(1, (int) $d['rodada'])],
+            'rodada' => $this->definirRodada($c, max(1, (int) $d['rodada'])),
             'ordem' => $this->reordenar($c, array_map('strval', $d['ids'])),
             'adicionar' => $this->adicionar($mesa, $c, $d),
             'adicionar_varios' => $this->adicionarVarios($mesa, $c, $d),
@@ -333,6 +333,20 @@ final class CombateService
             'encerrar' => $this->encerrar($mesa),
             default => throw ValidationException::withMessages(['comando' => 'Comando de combate desconhecido.']),
         };
+    }
+
+    /** O mestre fixa a rodada: ao mudar de rodada, a reação de todos volta (como na virada normal). */
+    private function definirRodada(array $c, int $rodada): array
+    {
+        if ($rodada !== $c['rodada']) {
+            $c['itens'] = array_map(function (array $it) {
+                unset($it['acoes']['reacao']);
+
+                return $it;
+            }, $c['itens']);
+        }
+
+        return [...$c, 'rodada' => $rodada];
     }
 
     /** Fim do encontro: o combate zera e os bônus que duram "até o fim do encontro" (`bonusExecucao`) voltam a 0. */
@@ -346,6 +360,8 @@ final class CombateService
                 $p->save();
                 Duracoes::transmitir($mesa, $p, $renovar);
             }
+            // Condições com duração em turnos e reduções armadas só contam em combate: ao encerrar, não ficam presas na ficha
+            Duracoes::aoEncerrarCombate($mesa, $p);
             if ((int) ($p->ficha['bonusExecucao'] ?? 0) > 0) {
                 $ficha = $p->ficha;
                 $ficha['bonusExecucao'] = 0;

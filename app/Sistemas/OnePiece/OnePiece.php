@@ -114,8 +114,8 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
     }
 
     /**
-     * Ação padrão, poderosa, bônus, livre e reação: só rótulos/contadores informativos. Sem travas (nem por turno, nem por rodada, nem
-     * "só no turno"): a mesa gere as ações. A única trava real do combate é mover o token fora do turno (ObjetoController).
+     * Ação padrão, poderosa, bônus e livre: só rótulos/contadores informativos, sem travas (a mesa gere as ações). A REAÇÃO é a exceção: 1 por
+     * rodada (anotada no combate; volta na rodada nova), para o jogo não oferecer reação a quem já reagiu. A outra trava real é mover o token fora do turno.
      */
     public function categoriasDeAcao(): array
     {
@@ -124,7 +124,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
             ['id' => 'poderosa', 'nome' => 'Ação poderosa', 'porTurno' => null, 'porRodada' => null, 'soNoTurno' => false],
             ['id' => 'bonus', 'nome' => 'Ação bônus', 'porTurno' => null, 'porRodada' => null, 'soNoTurno' => false],
             ['id' => 'livre', 'nome' => 'Ação livre', 'porTurno' => null, 'porRodada' => null, 'soNoTurno' => false],
-            ['id' => 'reacao', 'nome' => 'Reação', 'porTurno' => null, 'porRodada' => null, 'soNoTurno' => false],
+            ['id' => 'reacao', 'nome' => 'Reação', 'porTurno' => null, 'porRodada' => 1, 'soNoTurno' => false],
         ];
     }
 

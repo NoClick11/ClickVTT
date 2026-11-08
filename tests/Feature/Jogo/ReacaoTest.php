@@ -155,7 +155,7 @@ class ReacaoTest extends TestCase
         $this->assertSame('resolvido', $this->resolucao($c, $m['id'])['estado']);
     }
 
-    public function test_a_reacao_nao_tem_limite_por_rodada_e_sem_pp_nao_e_oferecida(): void
+    public function test_a_reacao_e_uma_por_rodada_e_sem_pp_nao_e_oferecida(): void
     {
         $c = $this->cenario();
         $this->combate($c);
@@ -163,8 +163,11 @@ class ReacaoTest extends TestCase
         $this->ataque($c);
         $this->como($c->bia)->postJson(route('jogo.combate.eventos.reagir', [$c->mesa->id, EventoDeCombate::first()->id]), ['personagem_id' => $c->bruno->id, 'opcao' => 't:0'])->assertOk();
 
-        $this->ataque($c); // mesma rodada: sem limite por rodada, a reação do Bruno continua oferecida
-        $this->assertNotSame([], EventoDeCombate::latest('id')->first()->ofertas);
+        $this->ataque($c); // mesma rodada: a reação do Bruno já foi, nada é oferecido de novo
+        $this->assertSame('resolvido', EventoDeCombate::latest('id')->first()->estado);
+        $this->assertSame([], EventoDeCombate::latest('id')->first()->ofertas);
+
+        $this->cmd($c, 'turno'); $this->cmd($c, 'turno'); $this->cmd($c, 'turno'); // rodada 2: a reação volta
         $this->ficha($c, $c->bia, $c->bruno, ['pp.atual' => 1]); // mas sem PP (custa 2)
         $this->ataque($c);
         $this->assertSame([], EventoDeCombate::latest('id')->first()->ofertas);
@@ -286,5 +289,25 @@ class ReacaoTest extends TestCase
         $this->assertFalse($f['reducao']['zerar']);
         // o dano seguinte volta ao normal
         $this->assertSame(5, $this->aplicarDano($c, $c->aria->id, 5)['calculo']['final']);
+    }
+
+    public function test_a_reducao_vence_no_fim_do_turno_do_dono_e_ao_encerrar_o_combate(): void
+    {
+        $c = $this->cenario();
+        $this->combate($c); // vez do Bruno (20); a Aria é a seguinte
+        $sis = app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece');
+        $this->ficha($c, $c->ana, $c->aria, ['reducao' => ['reserva' => 30, 'dados' => 10, 'turnos' => 1]]);
+        $this->cmd($c, 'turno'); // entra a Aria: ainda não acabou o turno dela
+        $this->assertSame(30, $c->aria->fresh()->fichaCompleta($sis)['reducao']['reserva']);
+        $this->cmd($c, 'turno'); // acaba o turno da Aria: a reserva vence
+        $this->assertEmpty($c->aria->fresh()->fichaCompleta($sis)['reducao']);
+
+        // ao encerrar o combate, condições com duração e reduções não ficam presas
+        $this->ficha($c, $c->ana, $c->aria, ['reducao' => ['zerar' => true, 'turnos' => 2], 'condicoes' => ['atordoado'], 'duracoes' => ['atordoado' => ['turnos' => 3, 'aoDano' => false]]]);
+        $this->cmd($c, 'encerrar');
+        $f = $c->aria->fresh()->fichaCompleta($sis);
+        $this->assertEmpty($f['reducao']);
+        $this->assertSame([], $f['duracoes']);
+        $this->assertNotContains('atordoado', $f['condicoes']);
     }
 }

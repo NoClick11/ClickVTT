@@ -101,11 +101,15 @@ test('ataques com arma: o 1º gasta a Ação, os seguintes valem até o limite (
 });
 
 test('sistema sem travas (One Piece): age e ataca livremente, em qualquer turno e sem limite de ataques', () => {
-    const LIVRES = CATEGORIAS.map((c) => ({ ...c, porTurno: null, porRodada: null, soNoTurno: false, soTecnicas: undefined }));
+    const LIVRES = CATEGORIAS.map((c) => ({ ...c, porTurno: null, porRodada: c.id === 'reacao' ? 1 : null, soNoTurno: false, soTecnicas: undefined }));
     const c = combate('a', [item('a', 1, { padrao: 3, ataques: 9 }), item('b', 2, { padrao: 1, ataques: 1 })]);
-    for (const cat of ['padrao', 'poderosa', 'bonus', 'livre', 'reacao']) {
+    for (const cat of ['padrao', 'poderosa', 'bonus', 'livre']) {
         assert.equal(avaliarAcao(c, LIVRES, 2, cat, false, false).ok, true); // fora do turno, repetida, até a poderosa sem técnica
     }
+    // só a reação tem limite: 1 por rodada
+    assert.equal(avaliarAcao(c, LIVRES, 2, 'reacao', false, false).ok, true);
+    const reagiu = combate('a', [item('a', 1), item('b', 2, { reacao: 1 })]);
+    assert.match(avaliarAcao(reagiu, LIVRES, 2, 'reacao', false, false).motivo, /nesta rodada/);
     assert.equal(avaliarAtaque(c, LIVRES, 2, false, 1).ok, true); // não é o turno do 2 e já atacou além do limite
     assert.equal(avaliarAtaque(c, LIVRES, 1, false, 1).ok, true);
 });
