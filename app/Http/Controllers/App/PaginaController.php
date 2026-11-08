@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\App;
 
 use App\Http\Controllers\Controller;
+use App\Models\Jogador;
 use App\Models\Mesa;
 use App\Models\Pagina;
-use App\Models\Jogador;
 use App\Support\AcessoMesa;
 use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\App;
 
 use App\Http\Controllers\Controller;
 use App\Models\Mesa;
-use App\Nucleo\Combate\CombateService;
 use App\Models\Objeto;
 use App\Models\Pagina;
 use App\Nucleo\Cena\Paredes;

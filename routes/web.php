@@ -1,10 +1,8 @@
 <?php
 
-use App\Http\Controllers\App\BroadcastAuthController;
 use App\Http\Controllers\App\AlvoController;
+use App\Http\Controllers\App\BroadcastAuthController;
 use App\Http\Controllers\App\ChatController;
-use App\Http\Controllers\App\EventoDeCombateController;
-use App\Http\Controllers\App\CompanheiroController;
 use App\Http\Controllers\App\CombateController;
 use App\Http\Controllers\App\CompanheiroController;
 use App\Http\Controllers\App\EventoDeCombateController;
@@ -12,16 +10,15 @@ use App\Http\Controllers\App\ExploracaoController;
 use App\Http\Controllers\App\FichaController;
 use App\Http\Controllers\App\ForjaController;
 use App\Http\Controllers\App\ItemController;
-use App\Http\Controllers\App\LojaController;
 use App\Http\Controllers\App\JogoController;
 use App\Http\Controllers\App\LojaController;
 use App\Http\Controllers\App\LootController;
 use App\Http\Controllers\App\ObjetoController;
 use App\Http\Controllers\App\PaginaController;
 use App\Http\Controllers\App\PastaController;
+use App\Http\Controllers\App\PersonagemController as PersonagemDoJogoController;
 use App\Http\Controllers\App\TecnicaAtivaController;
 use App\Http\Controllers\App\TecnicaController;
-use App\Http\Controllers\App\PersonagemController as PersonagemDoJogoController;
 use App\Http\Controllers\Site\ConviteController;
 use App\Http\Controllers\Site\JogadorController;
 use App\Http\Controllers\Site\MesaController;

@@ -4,12 +4,15 @@ namespace Tests\Feature\Jogo;
 
 use App\Events\EventoMesa;
 use App\Models\Jogador;
+use App\Models\Objeto;
 use App\Models\Personagem;
 use App\Models\Sistema;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -349,7 +352,7 @@ class CenaTest extends TestCase
         $traco = ['camada' => 'jogadores', 'tipo' => 'traco', 'x' => 0, 'y' => 0, 'largura' => 5, 'altura' => 5, 'dados' => ['pontos' => [0, 0, 5, 5]]];
         $id = $this->como($c->ana)->postJson(route('jogo.objetos.store', [$c->mesa->id, $c->pagina->id]), $traco)->assertCreated()->json('id');
 
-        $this->assertSame($c->ana->id, \App\Models\Objeto::find($id)->jogador_id);
+        $this->assertSame($c->ana->id, Objeto::find($id)->jogador_id);
         $this->como($c->bia)->deleteJson(route('jogo.objetos.destroy', [$c->mesa->id, $id]))->assertForbidden();
         $this->como($c->ana)->patchJson(route('jogo.objetos.update', [$c->mesa->id, $id]), ['x' => 10, 'y' => 10])->assertOk();
         $this->como($c->ana)->deleteJson(route('jogo.objetos.destroy', [$c->mesa->id, $id]))->assertOk();
@@ -363,7 +366,7 @@ class CenaTest extends TestCase
         $mesa = $dono->mesas()->create(['nome' => 'Velha', 'slug' => 'velha', 'sistema_id' => Sistema::value('id'), 'tema_entrada' => 'padrao']);
         $pagina = $mesa->paginas()->create(['nome' => 'P', 'ordem' => 1]);
         $agora = now();
-        $antigo = fn (string $nome, string $papel) => \Illuminate\Support\Facades\DB::table('personagens')->insertGetId([
+        $antigo = fn (string $nome, string $papel) => DB::table('personagens')->insertGetId([
             'mesa_id' => $mesa->id, 'nome' => $nome, 'papel' => $papel, 'cor' => '#112233', 'senha' => bcrypt('x-'.$nome), 'pagina_id' => $pagina->id, 'created_at' => $agora, 'updated_at' => $agora,
         ]);
         $mestreId = $antigo('Mestre', 'mestre');
@@ -378,7 +381,7 @@ class CenaTest extends TestCase
         $ana = Jogador::where('mesa_id', $mesa->id)->where('nome', 'Ana')->first();
         $mestre = Jogador::where('mesa_id', $mesa->id)->where('nome', 'Mestre')->first();
         $this->assertSame('mestre', $mestre->papel);
-        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('x-Ana', $ana->senha));      // senha (já com hash) preservada
+        $this->assertTrue(Hash::check('x-Ana', $ana->senha));      // senha (já com hash) preservada
         $this->assertSame($pagina->id, $ana->pagina_id);
         $this->assertSame([$anaId], $ana->personagens()->pluck('personagens.id')->all());      // mesmo id: o token continua válido
         $this->assertNull(Personagem::find($mestreId));                                         // o "personagem" do mestre era só o login

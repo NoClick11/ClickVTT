@@ -3,18 +3,19 @@
 namespace App\Http\Controllers\App;
 
 use App\Http\Controllers\Controller;
-use App\Nucleo\Combate\CombateService;
-use App\Nucleo\Loja\LojaService;
-use App\Nucleo\Combate\Pipeline;
-use App\Nucleo\Combate\SistemaDeCombate;
 use App\Models\Jogador;
 use App\Models\Mesa;
 use App\Models\Objeto;
 use App\Models\Pagina;
+use App\Nucleo\Combate\CombateService;
+use App\Nucleo\Combate\Pipeline;
+use App\Nucleo\Combate\SistemaDeCombate;
+use App\Nucleo\Loja\LojaService;
 use App\Nucleo\Sistemas\RegistroSistemas;
 use App\Support\AcessoMesa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -98,7 +99,7 @@ class JogoController extends Controller
         return $aberta->paraFront() + ['itens' => app(LojaService::class)->itensProprios($mesa, $aberta->categorias, $aberta->raridades ?? [])->map->paraFront()->values()->all()];
     }
 
-    /** @return \Illuminate\Support\Collection<int, array> */
+    /** @return Collection<int, array> */
     private function itensVisiveis(Mesa $mesa, AcessoMesa $acesso, $personagens, RegistroSistemas $sistemas)
     {
         if ($acesso->ehMestre()) {
