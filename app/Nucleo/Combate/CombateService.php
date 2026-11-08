@@ -37,7 +37,7 @@ final class CombateService
         $c ??= [];
         $itens = array_map(fn (array $i) => [
             'id' => (string) $i['id'], 'nome' => (string) ($i['nome'] ?? '?'), 'cor' => $i['cor'] ?? null,
-            'personagem_id' => $i['personagem_id'] ?? null, 'objeto_id' => $i['objeto_id'] ?? null,
+            'personagem_id' => isset($i['personagem_id']) && $i['personagem_id'] !== null ? (int) $i['personagem_id'] : null, 'objeto_id' => $i['objeto_id'] ?? null,
             'disposicao' => $i['disposicao'] ?? (($i['personagem_id'] ?? null) ? 'jogadores' : 'inimigo'),
             'iniciativa' => $i['iniciativa'] ?? null,
             'acoes' => $i['acoes'] ?? [],
@@ -77,14 +77,14 @@ final class CombateService
     /**
      * Executa um comando sobre o encontro, com a mesa travada, e transmite o novo estado a todos.
      * Comandos do mestre: iniciar, rolar_npcs, definir_iniciativa, definir_disposicao, comecar, turno, rodada, ordem,
-     * adicionar, remover, encerrar. Do jogador: iniciativa (só dos personagens dele).
+     * adicionar, remover, encerrar. Do jogador: iniciativa (só dos personagens dele) e turno (finalizar o próprio turno).
      *
      * @param  array<string, mixed>  $d
      * @return array<string, mixed> o estado novo
      */
     public function executar(Mesa $mesa, AcessoMesa $acesso, string $comando, array $d): array
     {
-        $mestreApenas = $comando !== 'iniciativa';
+        $mestreApenas = ! in_array($comando, ['iniciativa', 'turno'], true);
         abort_if($mestreApenas && ! $acesso->ehMestre(), 403, 'Só o mestre controla o combate.');
 
         $antes = null;
@@ -125,7 +125,7 @@ final class CombateService
         $depois = DB::transaction(function () use ($mesa, $acesso, $personagemId, $categoria, $tecnica, $ataquesPorAcao, $cats, &$mudou) {
             $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
             $c = self::normalizar($m->combate);
-            $k = collect($c['itens'])->search(fn ($i) => $i['personagem_id'] === $personagemId);
+            $k = collect($c['itens'])->search(fn ($i) => (int) ($i['personagem_id'] ?? 0) === (int) $personagemId);
             if ($c['fase'] !== 'em_curso' || $k === false || ! $cats->has($categoria)) {
                 return $c;
             }
@@ -193,7 +193,7 @@ final class CombateService
         $depois = DB::transaction(function () use ($mesa, $acesso, $personagemId, $n) {
             $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
             $c = self::normalizar($m->combate);
-            $k = collect($c['itens'])->search(fn ($i) => $i['personagem_id'] === $personagemId);
+            $k = collect($c['itens'])->search(fn ($i) => (int) ($i['personagem_id'] ?? 0) === (int) $personagemId);
             if ($c['fase'] !== 'em_curso' || $k === false) {
                 throw ValidationException::withMessages(['acao' => 'Só dá para ganhar ataques extras com o combate em curso.']);
             }
@@ -265,7 +265,7 @@ final class CombateService
         $depois = DB::transaction(function () use ($mesa, $acesso, $personagemId, $fator) {
             $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
             $c = self::normalizar($m->combate);
-            $k = collect($c['itens'])->search(fn ($i) => $i['personagem_id'] === $personagemId);
+            $k = collect($c['itens'])->search(fn ($i) => (int) ($i['personagem_id'] ?? 0) === (int) $personagemId);
             abort_if($k === false, 422, 'O personagem não está no combate.');
             abort_if(! $acesso->ehMestre() && $c['atual'] !== $c['itens'][$k]['id'], 422, 'Não é o seu turno.');
             $base = $this->baseDoTurno($m, $c['itens'][$k]) ?? $c['itens'][$k]['movimento']['base'] ?? 0.0;
@@ -295,7 +295,7 @@ final class CombateService
         $depois = DB::transaction(function () use ($mesa, $acesso, $personagemId) {
             $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
             $c = self::normalizar($m->combate);
-            $k = collect($c['itens'])->search(fn ($i) => $i['personagem_id'] === $personagemId);
+            $k = collect($c['itens'])->search(fn ($i) => (int) ($i['personagem_id'] ?? 0) === (int) $personagemId);
             // o deslocamento é movimento: só no turno do personagem (a única trava real do combate); o mestre sempre
             abort_if($k !== false && ! $acesso->ehMestre() && $c['atual'] !== $c['itens'][$k]['id'], 422, 'Não é o seu turno.');
             if ($k !== false) {
@@ -322,7 +322,7 @@ final class CombateService
             'definir_iniciativa' => $this->alterarItem($c, (string) $d['item_id'], fn (array $i) => [...$i, 'iniciativa' => $d['iniciativa'] ?? null], reordenar: true),
             'definir_disposicao' => $this->alterarItem($c, (string) $d['item_id'], fn (array $i) => [...$i, 'disposicao' => $d['disposicao']]),
             'comecar' => $this->comecar($mesa, $c),
-            'turno' => $this->turno($mesa, $c, (string) ($d['sentido'] ?? 'proximo'), $d['item_id'] ?? null),
+            'turno' => $this->turno($mesa, $acesso, $c, (string) ($d['sentido'] ?? 'proximo'), $d['item_id'] ?? null),
             'rodada' => $this->definirRodada($c, max(1, (int) $d['rodada'])),
             'ordem' => $this->reordenar($c, array_map('strval', $d['ids'])),
             'adicionar' => $this->adicionar($mesa, $c, $d),
@@ -492,12 +492,18 @@ final class CombateService
     }
 
     /** `proximo`, `anterior` ou `escolher` (um item: o mestre passa a vez para quem quiser). A rodada muda ao dar a volta. */
-    private function turno(Mesa $mesa, array $c, string $sentido, ?string $itemId): array
+    private function turno(Mesa $mesa, AcessoMesa $acesso, array $c, string $sentido, ?string $itemId): array
     {
         abort_unless($c['fase'] === 'em_curso', 422, 'O combate não está em curso.');
         $n = count($c['itens']);
         abort_if($n === 0, 422, 'Não há participantes.');
         $i = array_search($c['atual'], array_column($c['itens'], 'id'), true);
+        if (! $acesso->ehMestre()) {
+            // O jogador só pode avançar o turno (sentido 'proximo') se o turno atual for de um personagem dele
+            abort_unless($sentido === 'proximo', 403, 'Apenas o mestre pode alterar o sentido do turno.');
+            $itemAtual = $i !== false ? $c['itens'][$i] : null;
+            abort_unless($itemAtual && $itemAtual['personagem_id'] !== null && $acesso->podeControlar($itemAtual['personagem_id']), 403, 'Não é o seu turno.');
+        }
         $rodada = $c['rodada'];
         if ($sentido === 'escolher') {
             $novo = array_search((string) $itemId, array_column($c['itens'], 'id'), true);

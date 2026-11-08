@@ -65,11 +65,13 @@ final class Pipeline
         $ofertas = $estado['fase'] === 'em_curso' ? $this->ofertas($mesa, $sistema, $estado, $contexto) : [];
 
         $evento = $mesa->eventosDeCombate()->create(['tipo' => 'ataque', 'estado' => 'aguardando', 'contexto' => $contexto, 'ofertas' => $ofertas, 'respostas' => []]);
-        $this->marcarMensagem($mesa, $acesso, $mensagem, ['estado' => 'aguardando', 'evento_id' => $evento->id, 'defesa' => $defesa, 'alvo' => $alvo->nome, 'alvo_id' => $alvo->id]);
 
         if ($ofertas === []) {
             return $this->resolver($mesa, $acesso, $evento);
         }
+
+        $this->marcarMensagem($mesa, $acesso, $mensagem, ['estado' => 'aguardando', 'evento_id' => $evento->id, 'defesa' => $defesa, 'alvo' => $alvo->nome, 'alvo_id' => $alvo->id]);
+
         foreach ($ofertas as $personagemId => $lista) {
             $this->enviarOferta($mesa, $evento, (int) $personagemId, $lista);
         }

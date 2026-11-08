@@ -191,15 +191,18 @@ class ChatController extends Controller
             ],
         ]);
 
+        // Ataque contra um alvo mirado: a janela de reação abre (ou o ataque resolve na hora) e a rolagem já ganha o resultado direto.
+        if (! empty($dados['alvo_personagem_id']) && ! empty($dados['personagem_id']) && $ehAtaque) {
+            $evento = $pipeline->ataqueDeclarado($mesa, $acesso, $mensagem, $dados['personagem_id'], $dados['alvo_personagem_id']);
+            if ($evento) {
+                $this->errarComVontade($mesa, $acesso, $sistema, $ficha, $itens, (string) $dados['expressao'], $marcas, $dados['personagem_id'] ?? null, $rolador);
+
+                return response()->json($mensagem->fresh()->para($acesso->jogador), 201);
+            }
+        }
+
         $resposta = $this->entregar($mesa, $mensagem, $acesso);
         $this->errarComVontade($mesa, $acesso, $sistema, $ficha, $itens, (string) $dados['expressao'], $marcas, $dados['personagem_id'] ?? null, $rolador);
-
-        // Ataque contra um alvo mirado: a janela de reação abre (ou o ataque resolve na hora) e a rolagem ganha o resultado.
-        if (! empty($dados['alvo_personagem_id']) && ! empty($dados['personagem_id']) && $ehAtaque) {
-            $pipeline->ataqueDeclarado($mesa, $acesso, $mensagem, $dados['personagem_id'], $dados['alvo_personagem_id']);
-
-            return response()->json($mensagem->fresh()->para($acesso->jogador), 201);
-        }
 
         return $resposta;
     }
@@ -283,7 +286,7 @@ class ChatController extends Controller
     private function ehAtaque(array $termos): bool
     {
         foreach ($termos as $t) {
-            if (($t['tipo'] ?? null) === 'variavel' && ($t['nome'] === 'ataque' || preg_match('/^arma\.\d+\.ataque$/', $t['nome']))) {
+            if (($t['tipo'] ?? null) === 'variavel' && ($t['nome'] === 'ataque' || $t['nome'] === 'ataque.desarmado' || preg_match('/^arma\.\d+\.ataque$/', $t['nome']))) {
                 return true;
             }
         }

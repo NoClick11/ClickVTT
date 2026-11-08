@@ -114,8 +114,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', aoTeclar));
                         side="top"
                         align="center"
                         :side-offset="6"
-                        class="w-[min(30rem,calc(100vw-2rem))] max-w-none overflow-y-auto border-black bg-black/85 p-1.5 text-preto-100 backdrop-blur"
-                        :style="{ maxHeight: 'min(60dvh, 28rem)' }"
+                        class="max-h-[min(60dvh,28rem)] w-[min(30rem,calc(100vw-2rem))] max-w-none overflow-y-auto border-black bg-black/85 p-1.5 text-preto-100 backdrop-blur"
                     >
                         <p class="mb-1 px-0.5 text-[10px] font-semibold uppercase tracking-wider text-preto-400">{{ m.grupo }}</p>
                         <div class="grid grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-1">

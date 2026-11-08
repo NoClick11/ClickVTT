@@ -55,6 +55,28 @@ export function atalhos(ctx: ContextoDeAtalhos): Atalho[] {
             : {}),
     }));
 
+    // Ataque Desarmado: sempre presente para jogadores nos atalhos diretos
+    saida.unshift({
+        id: 'arma:desarmado',
+        grupo: 'Ataques',
+        rotulo: 'Desarmado',
+        detalhe: comSinal(analise.valores['ataque.desarmado'] ?? 0),
+        icone: 'espada',
+        executar: (e) => {
+            const variavel = 'ataque.desarmado';
+            const modo = e.shiftKey ? 'vantagem' : e.ctrlKey || e.altKey ? 'desvantagem' : modoDaRolagem(analise.efeitos, variavel);
+            const dados = modo === 'vantagem' ? '2d20kh1' : modo === 'desvantagem' ? '2d20kl1' : '1d20';
+            ctx.rolar(
+                `${dados}+@${variavel}`,
+                modo ? `Ataque Desarmado (${modo})` : 'Ataque Desarmado',
+                undefined,
+                undefined,
+                { categoria: 'padrao' },
+                ctx.alvo,
+            );
+        },
+    });
+
     const tecnicas = [...(f.tecnicas?.lista ?? []), ...(f.akuma?.lista ?? [])];
     for (const nome of ctx.fixados) {
         const t = tecnicas.find((x) => x.nome === nome);

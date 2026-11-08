@@ -52,6 +52,11 @@ final class AplicarDano
             $campos = ['pv.atual' => $pv['atual'], 'pv.temp' => $pv['temp']];
         }
 
+        $tempAntes = (int) ($ficha['pv']['temp'] ?? 0);
+        $tempDepois = (int) ($pv['temp'] ?? 0);
+        $tempAbsorvido = max(0, $tempAntes - $tempDepois);
+        $danoNoPv = max(0, $calculo['final'] - $tempAbsorvido);
+
         if ($absorcao && $absorcao['campos']) {
             $campos = [...$campos, ...$absorcao['campos']];
         }
@@ -102,7 +107,7 @@ final class AplicarDano
 
         $aviso = $absorcao['aviso'] ?? null;
 
-        return compact('p', 'calculo', 'total', 'tipo', 'campos', 'acabaram', 'hospedes', 'execucao', 'aviso');
+        return compact('p', 'calculo', 'total', 'tipo', 'campos', 'acabaram', 'hospedes', 'execucao', 'aviso', 'danoNoPv');
     }
 
     /** As chaves de "1 vez por rodada" que o personagem já gastou nesta rodada (ex.: `rompante`), guardadas no item dele no combate. */
@@ -138,12 +143,27 @@ final class AplicarDano
         /** @var Personagem $alvo */
         $alvo = $r['p'];
         Duracoes::transmitir($mesa, $alvo, $r['campos'], $r['acabaram'] !== []);
+        $danoFinal = (int) ($r['calculo']['final'] ?? 0);
+        if ($danoFinal > 0) {
+            \App\Support\Transmitir::enviar($mesa, 'combate-efeito', [
+                'personagem_id' => $alvo->id,
+                'delta' => -$danoFinal,
+                'tipo' => 'dano',
+            ], ['mesa']);
+        }
         if ($r['execucao']) {
             Duracoes::transmitir($mesa, $r['execucao'][0], $r['execucao'][1]);
             self::postar($mesa, $acesso, $visibilidade, "{$alvo->nome} é derrotado por Superioridade Absoluta de {$r['execucao'][0]->nome}.");
         }
         foreach ($r['hospedes'] as [$hospede, $camposHospede, $parte]) {
             Duracoes::transmitir($mesa, $hospede, $camposHospede);
+            if ($parte > 0) {
+                \App\Support\Transmitir::enviar($mesa, 'combate-efeito', [
+                    'personagem_id' => $hospede->id,
+                    'delta' => -$parte,
+                    'tipo' => 'dano',
+                ], ['mesa']);
+            }
             self::postar($mesa, $acesso, $visibilidade, "{$hospede->nome} sofreu {$parte} de dano como hóspede de {$alvo->nome}.");
         }
         $texto = self::texto($alvo->nome, $r['total'], $r['tipo'], $r['calculo']);
@@ -154,7 +174,69 @@ final class AplicarDano
             self::postar($mesa, $acesso, $visibilidade, $texto);
         }
 
+        if (($mesa->sistema->slug ?? '') === 'one-piece') {
+            $this->verificarDanoBrutal($mesa, $acesso, $r);
+        }
+
         return $texto;
+    }
+
+    /** Regra do Dano Brutal (One Piece): destaque exclusivo para o mestre quando um jogador sofre dano massivo. */
+    private function verificarDanoBrutal(Mesa $mesa, AcessoMesa $acesso, array $r): void
+    {
+        /** @var Personagem $alvo */
+        $alvo = $r['p'];
+        if (! empty($alvo->ficha['npc'])) {
+            return;
+        }
+
+        $danoNoPv = (int) ($r['danoNoPv'] ?? $r['calculo']['final'] ?? 0);
+        if ($danoNoPv <= 0) {
+            return;
+        }
+
+        $maxHp = (int) ($alvo->ficha['pv']['max'] ?? 0);
+        if ($maxHp <= 0) {
+            return;
+        }
+
+        if ($danoNoPv > ($maxHp * 2.0 / 3.0)) {
+            $severidade = 'mortal';
+        } elseif ($danoNoPv > ($maxHp / 2.0)) {
+            $severidade = 'critico';
+        } elseif ($danoNoPv > ($maxHp / 3.0)) {
+            $severidade = 'grave';
+        } else {
+            return;
+        }
+
+        $mestreJogador = $mesa->jogadores()->where('papel', 'mestre')->first();
+        $jogadorId = $mestreJogador?->id ?? $acesso->jogador->id;
+
+        $msg = $mesa->mensagens()->create([
+            'jogador_id' => $jogadorId,
+            'personagem_id' => $alvo->id,
+            'tipo' => 'dano_brutal',
+            'visibilidade' => 'mestre',
+            'texto' => "⚠️ Limiar de Dano Brutal ({$severidade}) atingido por {$alvo->nome}: {$danoNoPv} de dano.",
+            'dados' => [
+                'personagem_id' => $alvo->id,
+                'personagem_nome' => $alvo->nome,
+                'dano' => $danoNoPv,
+                'severidade' => $severidade,
+                'cd' => 16,
+                'estado' => 'pendente',
+                'resultado' => null,
+            ],
+        ]);
+
+        $paraMestre = $mestreJogador ? $msg->para($mestreJogador) : $msg->para($acesso->jogador);
+        if ($paraMestre) {
+            \App\Support\Transmitir::enviar($mesa, 'mensagem', [
+                'mensagem' => $paraMestre,
+                'ator' => 0,
+            ], ['mestre']);
+        }
     }
 
     public static function texto(string $nome, int $total, ?string $tipo, array $calculo): string

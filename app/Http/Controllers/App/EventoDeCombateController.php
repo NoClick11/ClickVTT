@@ -5,6 +5,7 @@ namespace App\Http\Controllers\App;
 use App\Http\Controllers\Controller;
 use App\Models\EventoDeCombate;
 use App\Models\Mesa;
+use App\Nucleo\Combate\CombateService;
 use App\Nucleo\Combate\Pipeline;
 use App\Support\AcessoMesa;
 use Illuminate\Http\JsonResponse;
@@ -26,7 +27,10 @@ class EventoDeCombateController extends Controller
 
         $e = $pipeline->reagir($mesa, $acesso, $evento, $dados['personagem_id'], $dados['opcao'] ?? null);
 
-        return response()->json(Pipeline::resumo($e));
+        return response()->json([
+            'evento' => Pipeline::resumo($e),
+            'combate' => CombateService::normalizar($mesa->fresh()->combate),
+        ]);
     }
 
     /** O mestre fecha a janela: quem não respondeu conta como "passou" e o ataque é resolvido. */
@@ -35,6 +39,11 @@ class EventoDeCombateController extends Controller
         $acesso = AcessoMesa::exigir($request, $mesa);
         abort_unless($evento->mesa_id === $mesa->id, 404);
 
-        return response()->json(Pipeline::resumo($pipeline->encerrar($mesa, $acesso, $evento)));
+        $e = $pipeline->encerrar($mesa, $acesso, $evento);
+
+        return response()->json([
+            'evento' => Pipeline::resumo($e),
+            'combate' => CombateService::normalizar($mesa->fresh()->combate),
+        ]);
     }
 }

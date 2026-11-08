@@ -3,7 +3,7 @@
 namespace App\Sistemas\OnePiece;
 
 /**
- * Catálogo de condições do D&D 5e. ESPELHA `resources/js/app/sistemas/onepiece/condicoes.ts`; os dois são conferidos
+ * Catálogo de condições do One Piece. ESPELHA `resources/js/app/sistemas/onepiece/condicoes.ts`; os dois são conferidos
  * contra `tests/paridade/condicoes-onepiece.json`. Quando a regra é expressável vira efeito de vantagem/desvantagem
  * nos alvos de rolagem; as demais (falha automática, deslocamento 0...) ficam só na descrição.
  */
@@ -16,13 +16,13 @@ final class Condicoes
             [
                 'id' => 'agarrado',
                 'nome' => 'Agarrado',
-                'descricao' => 'Deslocamento 0 e sem bônus de deslocamento. Termina se quem agarra ficar incapacitado ou o alvo for afastado.',
+                'descricao' => 'O deslocamento da criatura agarrada torna-se 0, e ela não pode se beneficiar de bônus em deslocamento. A condição termina caso a criatura que a agarrou fique incapacitada ou solte a criatura agarrada.',
                 'efeitos' => [],
             ],
             [
                 'id' => 'amedrontado',
                 'nome' => 'Amedrontado',
-                'descricao' => 'Desvantagem em testes de atributo e jogadas de ataque enquanto a fonte do medo estiver à vista; não pode se aproximar dela por vontade própria.',
+                'descricao' => 'A criatura amedrontada sofre desvantagem em Testes de Atributo e jogadas de ataque (comum) enquanto a fonte do medo estiver em sua linha de visão; não pode se mover voluntariamente para uma posição que a aproxime mais da fonte do medo.',
                 'efeitos' => [
                     [
                         'alvo' => 'ataque.arma',
@@ -53,13 +53,40 @@ final class Condicoes
             [
                 'id' => 'atordoado',
                 'nome' => 'Atordoado',
-                'descricao' => 'Incapacitado, sem se mover e só fala de forma truncada. Falha automática em salvaguardas de Força e Destreza; ataques contra a criatura têm vantagem.',
+                'descricao' => 'Incapacitada, não pode se mover e só consegue falar de forma hesitante. Ao final do cálculo de dano de um acerto crítico, recebe 2 dados de dano adicionais. Falha automaticamente em Salvaguardas de Força e Destreza. Ataques contra ela têm vantagem.',
                 'efeitos' => [],
+            ],
+            [
+                'id' => 'bebado',
+                'nome' => 'Bêbado',
+                'descricao' => 'Comporta-se visivelmente diferente do normal. Sofre desvantagem em Salvaguardas e Testes de Atributo de Destreza. Termina após um descanso curto ou longo, ou por decisão do Narrador.',
+                'efeitos' => [
+                    [
+                        'alvo' => 'salv.*',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'teste.des',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'pericia.acrobacia',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'pericia.furtividade',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'pericia.prestidigitacao',
+                        'modo' => 'desvantagem',
+                    ],
+                ],
             ],
             [
                 'id' => 'caido',
                 'nome' => 'Caído',
-                'descricao' => 'Só rasteja (ou se levanta, gastando metade do deslocamento). Desvantagem nas jogadas de ataque; ataques corpo a corpo contra a criatura têm vantagem e os à distância, desvantagem.',
+                'descricao' => 'A única forma de deslocamento é rastejar, a menos que se levante. Sofre desvantagem em jogadas de ataque (comum ou Técnicas). Ataques contra ela têm vantagem se o atacante estiver a 1,5 m; caso contrário, sofrem desvantagem.',
                 'efeitos' => [
                     [
                         'alvo' => 'ataque.arma',
@@ -74,7 +101,7 @@ final class Condicoes
             [
                 'id' => 'cego',
                 'nome' => 'Cego',
-                'descricao' => 'Falha automática em testes que dependam da visão. Ataques contra a criatura têm vantagem; os dela têm desvantagem.',
+                'descricao' => 'Falha automaticamente em Testes de Atributo que exijam visão. Ataques contra a criatura possuem vantagem, e os ataques (comum ou Técnicas) dela sofrem desvantagem.',
                 'efeitos' => [
                     [
                         'alvo' => 'ataque.arma',
@@ -87,34 +114,59 @@ final class Condicoes
                 ],
             ],
             [
-                'id' => 'contido',
-                'nome' => 'Contido',
-                'descricao' => 'Deslocamento 0. Ataques contra a criatura têm vantagem; os dela têm desvantagem. Desvantagem em salvaguardas de Destreza.',
-                'efeitos' => [
-                    [
-                        'alvo' => 'ataque.arma',
-                        'modo' => 'desvantagem',
-                    ],
-                    [
-                        'alvo' => 'ataque',
-                        'modo' => 'desvantagem',
-                    ],
-                    [
-                        'alvo' => 'salv.des',
-                        'modo' => 'desvantagem',
-                    ],
-                ],
+                'id' => 'empoderado',
+                'nome' => 'Empoderado',
+                'descricao' => 'Dano de ataques corpo a corpo torna-se 1d12 + modificadores. Os PP de Técnicas que errem não são descontados. Deslocamento não pode ser reduzido por terreno difícil.',
+                'efeitos' => [],
             ],
             [
                 'id' => 'enfeiticado',
                 'nome' => 'Enfeitiçado',
-                'descricao' => 'Não pode atacar quem o enfeitiçou nem tê-lo como alvo de efeitos nocivos; quem enfeitiçou tem vantagem em interações sociais com a criatura.',
+                'descricao' => 'Não pode atacar quem a enfeitiçou nem tê-lo como alvo de habilidades ou efeitos nocivos. Quem enfeitiçou tem vantagem em Testes de Atributo para interagir socialmente com ela.',
                 'efeitos' => [],
+            ],
+            [
+                'id' => 'enfraquecido',
+                'nome' => 'Enfraquecido',
+                'descricao' => 'Deslocamento reduzido à metade sem bônus; incapaz de nadar. Bloqueia Técnicas, MPs e traços de Akuma no Mi. Está incapacitada. Desvantagem em Testes de Atributo. Ataques contra têm vantagem; falha automática em Salvaguardas.',
+                'efeitos' => [
+                    [
+                        'alvo' => 'teste.*',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'pericia.*',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'ferramenta.*',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'iniciativa',
+                        'modo' => 'desvantagem',
+                    ],
+                ],
+            ],
+            [
+                'id' => 'enfurecido',
+                'nome' => 'Enfurecido',
+                'descricao' => 'Ataca a todo custo a fonte de fúria e sofre desvantagem em suas jogadas de ataque. Não pode manter concentração. Ataques corpo a corpo causam 1d4 de dano adicional. Dura 1 minuto.',
+                'efeitos' => [
+                    [
+                        'alvo' => 'ataque.arma',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'ataque',
+                        'modo' => 'desvantagem',
+                    ],
+                ],
             ],
             [
                 'id' => 'envenenado',
                 'nome' => 'Envenenado',
-                'descricao' => 'Desvantagem em jogadas de ataque e em testes de atributo.',
+                'descricao' => 'Sofre desvantagem em jogadas de ataque (comum ou Técnicas) e Testes de Atributo.',
                 'efeitos' => [
                     [
                         'alvo' => 'ataque.arma',
@@ -143,21 +195,55 @@ final class Condicoes
                 ],
             ],
             [
+                'id' => 'estremecido',
+                'nome' => 'Estremecido',
+                'descricao' => 'Sofre desvantagem em jogadas de ataque (comum ou Técnicas); não pode usar Técnicas. Falha automática em manter concentração. Cada 1,5 m de deslocamento custa 1,5 m adicional.',
+                'efeitos' => [
+                    [
+                        'alvo' => 'ataque.arma',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'ataque',
+                        'modo' => 'desvantagem',
+                    ],
+                ],
+            ],
+            [
+                'id' => 'impedido',
+                'nome' => 'Impedido',
+                'descricao' => 'Deslocamento torna-se 0 e sem bônus. Ataques contra têm vantagem, e os da criatura sofrem desvantagem. Desvantagem em Salvaguardas de Destreza.',
+                'efeitos' => [
+                    [
+                        'alvo' => 'ataque.arma',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'ataque',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'salv.des',
+                        'modo' => 'desvantagem',
+                    ],
+                ],
+            ],
+            [
                 'id' => 'incapacitado',
                 'nome' => 'Incapacitado',
-                'descricao' => 'Não pode realizar ações nem reações.',
+                'descricao' => 'Não pode realizar ações, ações poderosas, ações bônus ou reações.',
                 'efeitos' => [],
             ],
             [
                 'id' => 'inconsciente',
                 'nome' => 'Inconsciente',
-                'descricao' => 'Incapacitado, caído, solta o que segura e não percebe o entorno. Falha automática em salvaguardas de Força e Destreza; ataques contra a criatura têm vantagem e, a 1,5 m, são críticos.',
+                'descricao' => 'Incapacitada, não pode se mover ou falar, larga tudo e fica caída. Falha automática em Salvaguardas de Força e Destreza. Ataques contra têm vantagem e a 1,5 m são críticos.',
                 'efeitos' => [],
             ],
             [
                 'id' => 'invisivel',
                 'nome' => 'Invisível',
-                'descricao' => 'Vantagem nas jogadas de ataque; ataques contra a criatura têm desvantagem.',
+                'descricao' => 'Impossível de ser vista sem ajuda de Técnicas ou sentidos especiais. Ataques contra sofrem desvantagem, e os ataques da criatura têm vantagem.',
                 'efeitos' => [
                     [
                         'alvo' => 'ataque.arma',
@@ -170,45 +256,91 @@ final class Condicoes
                 ],
             ],
             [
-                'id' => 'paralisado',
-                'nome' => 'Paralisado',
-                'descricao' => 'Incapacitado, sem se mover nem falar. Falha automática em salvaguardas de Força e Destreza; ataques contra a criatura têm vantagem e, a 1,5 m, são críticos.',
-                'efeitos' => [],
-            ],
-            [
-                'id' => 'petrificado',
-                'nome' => 'Petrificado',
-                'descricao' => 'Transformado em pedra: incapacitado, sem se mover nem falar, resistência a todo dano e imunidade a veneno e doença. Falha automática em salvaguardas de Força e Destreza.',
-                'efeitos' => [],
-            ],
-            [
-                'id' => 'surdo',
-                'nome' => 'Surdo',
-                'descricao' => 'Não pode ouvir e falha automaticamente em testes que dependam da audição.',
-                'efeitos' => [],
-            ],
-            [
                 'id' => 'letargico',
                 'nome' => 'Letárgico',
-                'descricao' => 'Condição do One Piece: o corpo e a mente ficam lentos. As regras completas estão no livro; encerrada por Primeiros Socorros.',
+                'descricao' => 'Não pode usar Técnicas. A cada turno, escolhe realizar apenas uma ação, ação poderosa ou ação bônus. Dano causado é reduzido pela metade (exceto armas de fogo).',
+                'efeitos' => [],
+            ],
+            [
+                'id' => 'paralisado',
+                'nome' => 'Paralisado',
+                'descricao' => 'Incapacitada, não pode se mover ou falar. Falha automática em Salvaguardas de Força e Destreza. Ataques contra têm vantagem, a 1,5 m são acertos críticos e causam 2 dados adicionais.',
                 'efeitos' => [],
             ],
             [
                 'id' => 'queimado',
                 'nome' => 'Queimado',
-                'descricao' => 'Condição do One Piece: a criatura está em chamas ou com queimaduras. As regras completas estão no livro; encerrada por Primeiros Socorros.',
-                'efeitos' => [],
-            ],
-            [
-                'id' => 'enfraquecido',
-                'nome' => 'Enfraquecido',
-                'descricao' => 'Condição do One Piece: o usuário de Akuma no Mi não consegue usar os poderes da fruta (as Técnicas de Akuma no Mi ficam bloqueadas). Vem do Kairoseki; sai quando a duração acaba.',
-                'efeitos' => [],
+                'descricao' => 'Sofre 1d6 de dano de Fogo na primeira vez que realizar ataque em cada turno. Não pode manter concentração. Desvantagem em testes de Concentração até tratada com Medicina CD 10 ou Sobrevivência CD 16.',
+                'efeitos' => [
+                    [
+                        'alvo' => 'concentracao',
+                        'modo' => 'desvantagem',
+                    ],
+                ],
             ],
             [
                 'id' => 'sangramento',
                 'nome' => 'Sangramento',
-                'descricao' => 'Condição do One Piece: a criatura perde sangue. As regras completas estão no livro; encerrada por Primeiros Socorros.',
+                'descricao' => 'Sofre 1d6 de dano Cortante na primeira vez que se mover de forma voluntária em cada turno. Persiste até tratada com Medicina CD 10 ou Sobrevivência CD 16.',
+                'efeitos' => [],
+            ],
+            [
+                'id' => 'sonolento',
+                'nome' => 'Sonolento',
+                'descricao' => 'Não pode usar Reações. No máximo uma jogada de ataque corpo a corpo em seu turno. Desvantagem em Testes de Atributo de Destreza e Sabedoria.',
+                'efeitos' => [
+                    [
+                        'alvo' => 'teste.des',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'pericia.acrobacia',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'pericia.furtividade',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'pericia.prestidigitacao',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'teste.sab',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'pericia.adestramento',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'pericia.intuicao',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'pericia.medicina',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'pericia.percepcao',
+                        'modo' => 'desvantagem',
+                    ],
+                    [
+                        'alvo' => 'pericia.sobrevivencia',
+                        'modo' => 'desvantagem',
+                    ],
+                ],
+            ],
+            [
+                'id' => 'sufocado',
+                'nome' => 'Sufocado',
+                'descricao' => 'Não consegue formular palavras inteligíveis. Após 1 + mod. CON rodadas, faz Salvaguarda de Constituição CD 10 (+2 por turno) ou fica Inconsciente. Mais de 1 min inconsciente causa morte.',
+                'efeitos' => [],
+            ],
+            [
+                'id' => 'surdo',
+                'nome' => 'Surdo',
+                'descricao' => 'Falha automaticamente em qualquer Teste de Atributo que exija o uso da audição.',
                 'efeitos' => [],
             ],
         ];
@@ -218,28 +350,5 @@ final class Condicoes
     public static function ids(): array
     {
         return array_column(self::catalogo(), 'id');
-    }
-
-    /** Efeitos (sem a fonte) que a condição `$id` gera; id desconhecido não gera nada. */
-    public static function efeitosDe(string $id): array
-    {
-        foreach (self::catalogo() as $c) {
-            if ($c['id'] === $id) {
-                return $c['efeitos'];
-            }
-        }
-
-        return [];
-    }
-
-    public static function nomeDe(string $id): string
-    {
-        foreach (self::catalogo() as $c) {
-            if ($c['id'] === $id) {
-                return $c['nome'];
-            }
-        }
-
-        return $id;
     }
 }
