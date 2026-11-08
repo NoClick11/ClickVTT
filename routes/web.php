@@ -14,6 +14,7 @@ use App\Http\Controllers\App\ItemController;
 use App\Http\Controllers\App\JogoController;
 use App\Http\Controllers\App\LojaController;
 use App\Http\Controllers\App\LootController;
+use App\Http\Controllers\App\MusicaController;
 use App\Http\Controllers\App\NpcController;
 use App\Http\Controllers\App\ObjetoController;
 use App\Http\Controllers\App\ProgressaoController;
@@ -59,6 +60,7 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::delete('paginas/{pagina}', [PaginaController::class, 'destroy'])->name('paginas.destroy');
     Route::post('paginas/{pagina}/jogadores/{jogador}', [PaginaController::class, 'moverJogador'])->name('paginas.jogador');
     Route::delete('personagens/{personagem}', [PersonagemDoJogoController::class, 'excluir'])->middleware('throttle:30,1')->name('personagens.excluir');
+    Route::post('personagens/{personagem}/foto', [PersonagemDoJogoController::class, 'foto'])->middleware('throttle:30,1')->name('personagens.foto');
     Route::patch('personagens/{personagem}/ficha', [FichaController::class, 'atualizar'])
         ->middleware('throttle:120,1')->name('personagens.ficha');
     Route::post('personagens/{personagem}/companheiros', [CompanheiroController::class, 'criar'])->middleware('throttle:10,1')->name('personagens.companheiros');
@@ -115,6 +117,7 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::put('paginas/{pagina}/exploracao', [ExploracaoController::class, 'guardar'])->middleware('throttle:30,1')->name('exploracao.guardar');
     Route::delete('paginas/{pagina}/exploracao', [ExploracaoController::class, 'limpar'])->middleware('throttle:20,1')->name('exploracao.limpar');
     Route::post('objetos/{objeto}/alternar', [ObjetoController::class, 'alternar'])->middleware('throttle:120,1')->name('objetos.alternar');
+    Route::post('objetos/{objeto}/viajar', [ObjetoController::class, 'viajar'])->middleware('throttle:60,1')->name('objetos.viajar');
     Route::delete('objetos/{objeto}', [ObjetoController::class, 'destroy'])->name('objetos.destroy');
     Route::post('mensagens', [ChatController::class, 'texto'])->middleware('throttle:60,1')->name('mensagens.store');
     Route::post('rolagens', [ChatController::class, 'rolar'])->middleware('throttle:60,1')->name('rolagens.store');
@@ -135,7 +138,13 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::post('gatilhos/{mensagem}/atacar', [TecnicaAtivaController::class, 'atacar'])->middleware('throttle:60,1')->name('gatilhos.atacar');
     Route::post('gatilhos/{mensagem}/escolher', [TecnicaAtivaController::class, 'escolher'])->middleware('throttle:60,1')->name('gatilhos.escolher');
     Route::post('gatilhos/{mensagem}/ignorar', [TecnicaAtivaController::class, 'ignorar'])->middleware('throttle:60,1')->name('gatilhos.ignorar');
+    Route::post('dano-brutal/{mensagem}/pedir', [AlvoController::class, 'pedirSalvaguardaDanoBrutal'])->middleware('throttle:60,1')->name('dano-brutal.pedir');
+    Route::post('dano-brutal/{mensagem}/rolar', [AlvoController::class, 'rolarDanoBrutal'])->middleware('throttle:60,1')->name('dano-brutal.rolar');
+    Route::post('dano-brutal/{mensagem}/aplicar', [AlvoController::class, 'aplicarDanoBrutal'])->middleware('throttle:60,1')->name('dano-brutal.aplicar');
+    Route::post('dano-brutal/{mensagem}/ignorar', [AlvoController::class, 'ignorarDanoBrutal'])->middleware('throttle:60,1')->name('dano-brutal.ignorar');
+    Route::post('personagens/{personagem}/tratar-brutal', [AlvoController::class, 'tratarDanoBrutal'])->middleware('throttle:60,1')->name('personagens.tratar-brutal');
     Route::patch('fogo-amigo', [CombateController::class, 'fogoAmigo'])->name('fogo-amigo');
+    Route::patch('musica', [MusicaController::class, 'atualizar'])->name('musica.atualizar');
     // Progressão (só o mestre): libera descansos e subir de nível; divide XP entre os personagens dos jogadores.
     Route::patch('liberacoes', [ProgressaoController::class, 'liberacoes'])->name('liberacoes');
     Route::post('xp', [ProgressaoController::class, 'distribuirXp'])->middleware('throttle:30,1')->name('xp.distribuir');

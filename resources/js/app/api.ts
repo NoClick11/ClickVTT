@@ -87,6 +87,14 @@ export function apiMesa(mesaId: number, atorId: number) {
         atualizarObjeto: (id: number, campos: object) => requisitar<ObjetoDto>(atorId, 'PATCH', r('jogo.objetos.update', id), campos),
         /** Abre/fecha uma porta ou janela (o servidor recusa se estiver trancada, salvo para o mestre). */
         alternarObjeto: (id: number) => requisitar<ObjetoDto>(atorId, 'POST', r('jogo.objetos.alternar', id)),
+        /** Usa um ponto de viagem para navegar até outra página e posicionar o token. */
+        viajar: (objetoId: number, personagemId?: number) =>
+            requisitar<{ destino_pagina_id: number; x: number; y: number; token_movido: boolean }>(
+                atorId,
+                'POST',
+                r('jogo.objetos.viajar', objetoId),
+                personagemId ? { personagem_id: personagemId } : {},
+            ),
         /** A memória das áreas que ESTE jogador já viu na página (PNG em data URL) ou null. */
         exploracao: (paginaId: number) => requisitar<{ imagem: string | null }>(atorId, 'GET', r('jogo.exploracao.mostrar', paginaId)),
         guardarExploracao: (paginaId: number, imagem: string) =>
@@ -130,6 +138,34 @@ export function apiMesa(mesaId: number, atorId: number) {
             requisitar<Personagem>(atorId, 'POST', r('jogo.personagens.store'), dados),
         /** Só o mestre: exclui o personagem (ficha, tokens e lugar no combate). */
         excluirPersonagem: (personagemId: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.personagens.excluir', personagemId)),
+        /** Altera ou remove a foto do personagem (arquivo local ou URL). */
+        alterarFotoPersonagem: (
+            personagemId: number,
+            dados: { arquivo?: Blob | File | null; arquivo_token?: Blob | File | null; url?: string | null; remover?: boolean },
+        ) => {
+            if (dados.arquivo) {
+                const f = new FormData();
+                f.append('arquivo', dados.arquivo, 'ficha.jpg');
+                if (dados.arquivo_token) {
+                    f.append('arquivo_token', dados.arquivo_token, 'token.jpg');
+                }
+                return requisitar<{ ok: boolean; foto: string | null; foto_token?: string | null; personagem?: Personagem }>(
+                    atorId,
+                    'POST',
+                    r('jogo.personagens.foto', personagemId),
+                    f,
+                );
+            }
+            return requisitar<{ ok: boolean; foto: string | null; foto_token?: string | null; personagem?: Personagem }>(
+                atorId,
+                'POST',
+                r('jogo.personagens.foto', personagemId),
+                {
+                    url: dados.url ?? null,
+                    remover: dados.remover ? true : false,
+                },
+            );
+        },
         // Diário (só o mestre): pastas, folhetos e a pasta de cada personagem.
         criarPastaDoDiario: (nome: string, paiId: number | null = null) =>
             requisitar<DiarioPastaDto>(atorId, 'POST', r('jogo.diario.pastas.store'), { nome, pai_id: paiId }),
@@ -239,9 +275,13 @@ export function apiMesa(mesaId: number, atorId: number) {
             }),
         /** Responde a janela de reação: usa a reação `opcao` ou passa (`null`). */
         reagir: (eventoId: number, personagemId: number, opcao: string | null) =>
-            requisitar<ResumoEvento>(atorId, 'POST', r('jogo.combate.eventos.reagir', eventoId), { personagem_id: personagemId, opcao }),
+            requisitar<{ evento: ResumoEvento; combate: Combate }>(atorId, 'POST', r('jogo.combate.eventos.reagir', eventoId), {
+                personagem_id: personagemId,
+                opcao,
+            }),
         /** O mestre fecha a janela de reação: quem não respondeu conta como "passou". */
-        encerrarJanela: (eventoId: number) => requisitar<ResumoEvento>(atorId, 'POST', r('jogo.combate.eventos.encerrar', eventoId), {}),
+        encerrarJanela: (eventoId: number) =>
+            requisitar<{ evento: ResumoEvento; combate: Combate }>(atorId, 'POST', r('jogo.combate.eventos.encerrar', eventoId), {}),
         /** Gasta uma ação do personagem no combate (o servidor recusa com o motivo se não pode agir agora). */
         gastarAcao: (personagemId: number, categoria: string, tecnica = false) =>
             requisitar<{ combate: Combate }>(atorId, 'POST', r('jogo.combate.acao'), { personagem_id: personagemId, categoria, tecnica }),
@@ -267,6 +307,16 @@ export function apiMesa(mesaId: number, atorId: number) {
         gatilhoEscolher: (mensagemId: number, opcao: string) =>
             requisitar<Mensagem>(atorId, 'POST', r('jogo.gatilhos.escolher', mensagemId), { opcao }),
         gatilhoIgnorar: (mensagemId: number) => requisitar<Mensagem>(atorId, 'POST', r('jogo.gatilhos.ignorar', mensagemId), {}),
+        /** Dano Brutal (One Piece): pedir para o jogador rolar, rolar Salvaguarda de CON CD 16, aplicar ou ignorar. */
+        danoBrutalPedir: (mensagemId: number) => requisitar<Mensagem>(atorId, 'POST', r('jogo.dano-brutal.pedir', mensagemId), {}),
+        danoBrutalRolar: (mensagemId: number) => requisitar<Mensagem>(atorId, 'POST', r('jogo.dano-brutal.rolar', mensagemId), {}),
+        danoBrutalAplicar: (mensagemId: number) => requisitar<Mensagem>(atorId, 'POST', r('jogo.dano-brutal.aplicar', mensagemId), {}),
+        danoBrutalIgnorar: (mensagemId: number) => requisitar<Mensagem>(atorId, 'POST', r('jogo.dano-brutal.ignorar', mensagemId), {}),
+        /** Trata a ferida brutal restaurando os PV máximos reduzidos. */
+        tratarDanoBrutal: (personagemId: number, quantidade?: number) =>
+            requisitar<{ ok: boolean }>(atorId, 'POST', r('jogo.personagens.tratar-brutal', personagemId), {
+                ...(quantidade ? { quantidade } : {}),
+            }),
         /** Só o mestre: liga ou desliga o fogo amigo da mesa. */
         /** Só o mestre: libera (ou trava) descansos e subir de nível para os jogadores. */
         liberacoes: (campos: { descanso_curto?: boolean; descanso_longo?: boolean; subir_nivel?: boolean }) =>
@@ -374,6 +424,8 @@ export function apiMesa(mesaId: number, atorId: number) {
         atualizarPasta: (id: number, campos: object) =>
             requisitar<{ id: number; nome: string; ordem: number }>(atorId, 'PATCH', r('jogo.pastas.update', id), campos),
         removerPasta: (id: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.pastas.destroy', id)),
+        atualizarMusica: (dados: { tocando?: object | null; playlist?: object[] }) =>
+            requisitar<{ musica: { tocando?: object | null; playlist?: object[] } }>(atorId, 'PATCH', r('jogo.musica.atualizar'), dados),
     };
 }
 

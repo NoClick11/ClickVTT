@@ -3,6 +3,7 @@ import type { Criacao, Jogador, Personagem } from '@/site/types';
 import { Head, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import { apiMesa, ErroApi, medirArquivo } from '../api';
+import AlterarFotoPersonagemDialog from '../components/AlterarFotoPersonagemDialog.vue';
 import AtribuirJogadoresDialog from '../components/AtribuirJogadoresDialog.vue';
 import BarraAtalhos from '../components/BarraAtalhos.vue';
 import BarraFerramentas from '../components/BarraFerramentas.vue';
@@ -21,6 +22,7 @@ import FolhetoDialog from '../components/diario/FolhetoDialog.vue';
 import NomeDialog from '../components/diario/NomeDialog.vue';
 import NovoFolhetoDialog from '../components/diario/NovoFolhetoDialog.vue';
 import DistribuirXpDialog from '../components/DistribuirXpDialog.vue';
+import EscolherAlvoDialog, { type AlvoCandidato } from '../components/EscolherAlvoDialog.vue';
 import ExcluirPersonagemDialog from '../components/ExcluirPersonagemDialog.vue';
 import Inspetor from '../components/Inspetor.vue';
 import LootDialog from '../components/LootDialog.vue';
@@ -33,6 +35,7 @@ import PainelAlvo from '../components/PainelAlvo.vue';
 import PainelChat from '../components/PainelChat.vue';
 import PainelConfiguracoes from '../components/PainelConfiguracoes.vue';
 import PainelDados from '../components/PainelDados.vue';
+import PainelMusica from '../components/PainelMusica.vue';
 import PainelPersonagens from '../components/PainelPersonagens.vue';
 import PainelTurnos from '../components/PainelTurnos.vue';
 import SeletorCamada from '../components/SeletorCamada.vue';
@@ -47,11 +50,12 @@ import {
     type PaginaDto,
     type TipoParede,
 } from '../engine/tipos';
+import { tocarSomCura, tocarSomDano } from '../nucleo/audio/sonsCombate';
 import { avaliarAcao, avaliarAtaque, type CategoriaAcao } from '../nucleo/combate/acoes';
 import type { AreaDeEfeito } from '../nucleo/combate/area';
 import { podeAtingir } from '../nucleo/combate/equipes';
 import { emCurso, itemAtual, normalizar as normalizarCombate, podeAgirAgora, rodadaParaFicha, semIniciativaDe } from '../nucleo/combate/estado';
-import { totalDoTurno } from '../nucleo/combate/movimento';
+import { fatorParaMetros, totalDoTurno } from '../nucleo/combate/movimento';
 import { comResumo, semOfertasDe, type OfertaDeReacao, type ResumoEvento } from '../nucleo/combate/reacoes';
 import { definirCaminho } from '../nucleo/ficha/caminho';
 import { arrastandoDaLoja, arrastandoItem, arrastandoPersonagem, itemDaLojaSolto, itemSolto, personagemSolto } from '../nucleo/itens/arrastar';
@@ -65,6 +69,7 @@ import type { AbrirEditorItem } from '../nucleo/sistemas/tipos';
 import JanelaFlutuante from '../nucleo/ui/JanelaFlutuante.vue';
 import { conectar, type Conexao } from '../realtime';
 import type { UsoDeTecnica } from '../sistemas/onepiece/contexto';
+import { efeitoDaTecnica, tocarAudioDaTecnica } from '../sistemas/onepiece/efeitosTecnicas';
 import type { AcaoCaracteristica } from '../sistemas/onepiece/regras';
 import type {
     Combate,
@@ -75,6 +80,7 @@ import type {
     LojaAbertaDto,
     LojaDoJogadorDto,
     Mensagem,
+    MusicaMesaDto,
     NovoItem,
     NovoItemDeCatalogo,
     VisibilidadeRolagem,
@@ -95,6 +101,7 @@ const props = defineProps<{
         descanso_curto?: boolean;
         descanso_longo?: boolean;
         subir_nivel?: boolean;
+        musica?: MusicaMesaDto | null;
     };
     /** Sistema da mesa: o módulo (ficha, regras) é resolvido pelo slug. */
     sistema: { slug: string; nome: string; modulo: boolean };
@@ -149,6 +156,7 @@ const painelTurnos = ref(false);
 const estilo = ref<EstiloPintura>({ cor: '#ef4444', espessura: 4, tamanho: 28 });
 const mensagens = ref<Mensagem[]>(copia(props.mensagens));
 const combate = ref<Combate>(normalizarCombate(copia(props.combate)));
+const musicaMesa = ref<MusicaMesaDto | null>(copia(props.mesa.musica ?? null));
 const textoPendente = ref<{ x: number; y: number; tela: { x: number; y: number }; valor: string } | null>(null);
 
 // Animação dos dados: ligada por padrão (exceto para quem pede movimento reduzido); preferência salva no navegador.
@@ -195,7 +203,9 @@ const naoLidas = ref(0);
 function abaSalva(): AbaLateral {
     const salva = lerLocal('clickvtt.abaLateral', 'chat');
 
-    return salva === 'personagens' || ((salva === 'itens' || salva === 'frutas' || salva === 'configuracoes') && props.mestre) ? salva : 'chat';
+    return salva === 'personagens' || salva === 'musica' || ((salva === 'itens' || salva === 'frutas' || salva === 'configuracoes') && props.mestre)
+        ? salva
+        : 'chat';
 }
 watch(abaLateral, (v) => gravarLocal('clickvtt.abaLateral', v));
 watch(lateralAberta, (v) => gravarLocal('clickvtt.lateralAberta', v ? '1' : '0'));
@@ -303,7 +313,10 @@ const reagindo = ref(false);
 async function reagir(eventoId: number, personagemId: number, opcao: string | null) {
     reagindo.value = true;
     try {
-        await api.reagir(eventoId, personagemId, opcao);
+        const res = await api.reagir(eventoId, personagemId, opcao);
+        if (res.combate) {
+            combate.value = normalizarCombate(res.combate);
+        }
         ofertasDeReacao.value = semOfertasDe(ofertasDeReacao.value, eventoId, personagemId);
     } catch (e) {
         avisar(mensagemDe(e));
@@ -314,11 +327,25 @@ async function reagir(eventoId: number, personagemId: number, opcao: string | nu
 }
 async function encerrarJanela(eventoId: number) {
     try {
-        await api.encerrarJanela(eventoId);
+        const res = await api.encerrarJanela(eventoId);
+        if (res.combate) {
+            combate.value = normalizarCombate(res.combate);
+        }
     } catch (e) {
         avisar(mensagemDe(e));
     }
 }
+/** Confere se um personagem é um NPC derrotado (0 de vida): não pode ser mirado nem atingido. */
+function ehNpcMorto(personagemId: number | null | undefined): boolean {
+    if (!personagemId) return false;
+    const p = props.personagens.find((x) => x.id === personagemId);
+    if (!p) return false;
+    if (p.morto) return true;
+    const localFicha = typeof fichas !== 'undefined' ? fichas.value?.[personagemId] : undefined;
+    const f = (localFicha ?? p.ficha) as Record<string, unknown> | undefined;
+    return !!f?.npc && Number((f.pv as { atual?: number } | undefined)?.atual ?? 1) <= 0;
+}
+
 /** O alvo do ataque que a ficha manda junto da rolagem: só com o combate em curso e um alvo mirado. */
 // Com um alvo travado na mira, todo ataque vai contra ele (rola contra a defesa; no acerto o chat libera o dano), dentro ou fora do combate.
 const alvoDoAtaque = computed(() => alvoPersonagem.value?.id ?? null);
@@ -331,13 +358,24 @@ const alvoObjetoId = ref<number | null>(null);
 /** A mira foi posta por uma Técnica (o mais perto da área): o painel de aplicar efeito não abre, a Técnica já traz o efeito, a CD e a duração. */
 const miraDaTecnica = ref(false);
 function miraManual(id: number | null) {
+    if (id !== null) {
+        const obj = objetos.value.find((o) => o.id === id);
+        if (ehNpcMorto(obj?.personagem_id)) {
+            avisar('NPCs com 0 de vida não podem ser mirados.');
+            return;
+        }
+    }
     miraDaTecnica.value = false;
     alvoObjetoId.value = id;
 }
 const alvoObjeto = computed(() => objetos.value.find((o) => o.id === alvoObjetoId.value && o.tipo === 'token') ?? null);
-const alvoPersonagem = computed(() => props.personagens.find((p) => p.id === alvoObjeto.value?.personagem_id) ?? null);
-watch(alvoObjeto, (o) => {
-    if (alvoObjetoId.value !== null && !o) alvoObjetoId.value = null; // o token saiu da cena
+const alvoPersonagem = computed(() => {
+    const p = props.personagens.find((x) => x.id === alvoObjeto.value?.personagem_id) ?? null;
+    if (ehNpcMorto(p?.id)) return null;
+    return p;
+});
+watch(alvoPersonagem, (p) => {
+    if (alvoObjetoId.value !== null && !p) alvoObjetoId.value = null;
 });
 const aplicadosLocais = ref<Set<string>>(new Set());
 /** Ids das rolagens de dano já aplicadas ao alvo atual (o botão do chat fica desligado). */
@@ -353,6 +391,7 @@ const alvoOcupado = ref(false);
 async function aplicarDanoDoChat(mensagem: Mensagem) {
     const alvo = alvoPersonagem.value;
     if (!alvo) return avisar('Mire um token de personagem para aplicar o dano.');
+    if (ehNpcMorto(alvo.id)) return avisar('Este alvo já foi derrotado.');
     try {
         await api.aplicarDano(alvo.id, mensagem.id); // o servidor desconta os PV e avisa a mesa no chat
         aplicadosLocais.value = new Set([...aplicadosLocais.value, `${mensagem.id}:${alvo.id}`]);
@@ -444,10 +483,12 @@ const objetosDaCena = computed(() =>
         const ficha = fichas.value[o.personagem_id];
         const barras = ficha ? (moduloSistema?.resumoDoToken?.(ficha, itensPorIdDaMesa.value) ?? []) : [];
 
-        // NPC com 0 de vida: o token mostra o indicador de morte (só quem recebe a ficha do NPC, ou seja, o mestre, o vê)
-        const npcMorto = !!ficha?.npc && Number((ficha.pv as { atual?: number } | undefined)?.atual ?? 1) <= 0;
+        // NPC com 0 de vida: o token mostra o indicador de morte (tanto para mestre quanto para jogadores)
+        const p = props.personagens.find((x) => x.id === o.personagem_id);
+        const ehNpc = !p?.jogadores?.length || !!p?.ficha?.npc || !!ficha?.npc;
+        const npcMorto = !!p?.morto || (!!ficha?.npc && Number((ficha.pv as { atual?: number } | undefined)?.atual ?? 1) <= 0);
 
-        return { ...o, status: statusPorPersonagem.value[o.personagem_id] ?? [], barras, morto: npcMorto };
+        return { ...o, status: statusPorPersonagem.value[o.personagem_id] ?? [], barras, morto: npcMorto, npc: ehNpc };
     }),
 );
 watch(
@@ -458,6 +499,7 @@ watch(
 const selecionado = computed(() => objetos.value.find((o) => o.id === selecionadoId.value) ?? null);
 // Um clique num token o torna o personagem ativo (chat, rolagens e a barra de atalhos passam a ser dele); a ficha só abre com duplo clique.
 watch(selecionado, (o) => {
+    if (!o) configurandoObjetoId.value = null;
     if (o?.tipo !== 'token' || !o.personagem_id) return;
     const p = props.personagens.find((x) => x.id === o.personagem_id);
     if (p && (props.meusPersonagens.includes(p.id) || (props.mestre && p.ficha?.npc))) ativoId.value = p.id;
@@ -632,10 +674,83 @@ async function criarLoot(cx: number, cy: number) {
     }
 }
 
-// Botão direito sobre um objeto: menu para movê-lo entre camadas (só o mestre).
+async function criarViagem(cx: number, cy: number) {
+    if (!props.pagina || !props.mestre) return;
+    const lado = props.pagina.tamanho_quadrado;
+    const alvoCamada: Camada = camada.value === 'jogadores' ? 'jogadores' : 'mestre';
+    try {
+        const novo = await api.criarObjeto(props.pagina.id, {
+            camada: alvoCamada,
+            tipo: 'viagem',
+            nome: 'Ponto de Viagem',
+            x: cx - lado / 2,
+            y: cy - lado / 2,
+            largura: lado,
+            altura: lado,
+            dados: {
+                cor: '#6366f1',
+                destino_pagina_id: null,
+            },
+        });
+        objetos.value.push(novo);
+        selecionadoId.value = novo.id;
+        avisar('Ponto de viagem criado. Configure o mapa de destino no painel à direita.');
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+
+async function usarPontoViagem(id: number) {
+    const obj = objetos.value.find((o) => o.id === id);
+    if (!obj || obj.tipo !== 'viagem') return;
+    const destinoId = obj.dados?.destino_pagina_id;
+    if (!destinoId) {
+        avisar('Este ponto de viagem ainda não tem um mapa de destino configurado.');
+        return;
+    }
+
+    // Se for jogador, encontra o token do personagem ativo ou controlado que esteja perto
+    let tokenPerto: ObjetoDto | undefined;
+    if (!props.mestre) {
+        const meusTokens = objetos.value.filter(
+            (o) => o.tipo === 'token' && o.personagem_id !== null && props.meusPersonagens.includes(o.personagem_id),
+        );
+        const tamQuad = props.pagina?.tamanho_quadrado ?? 70;
+        const raioMax = tamQuad * 1.75;
+        const cxV = obj.x + obj.largura / 2;
+        const cyV = obj.y + obj.altura / 2;
+
+        tokenPerto = meusTokens.find((t) => {
+            const cxT = t.x + t.largura / 2;
+            const cyT = t.y + t.altura / 2;
+            return Math.hypot(cxT - cxV, cyT - cyV) <= raioMax;
+        });
+
+        if (!tokenPerto && meusTokens.length > 0) {
+            avisar('Aproxime seu personagem do ponto de viagem para utilizá-lo.');
+            return;
+        }
+    }
+
+    try {
+        const resp = await api.viajar(id, tokenPerto?.personagem_id ?? undefined);
+        abrirPagina(resp.destino_pagina_id);
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+
+// Botão direito sobre um objeto: menu para movê-lo entre camadas ou configurar (só o mestre).
 const menuObjeto = ref<{ id: number; x: number; y: number } | null>(null);
+const configurandoObjetoId = ref<number | null>(null);
 const abrirMenuObjeto = (id: number, tela: { x: number; y: number }) => (menuObjeto.value = { id, ...tela });
 const objetoDoMenu = computed(() => objetos.value.find((o) => o.id === menuObjeto.value?.id) ?? null);
+function configurarObjetoDoMenu() {
+    if (!menuObjeto.value) return;
+    configurandoObjetoId.value = menuObjeto.value.id;
+    selecionadoId.value = menuObjeto.value.id;
+    menuObjeto.value = null;
+}
 function moverParaCamada(nova: Camada) {
     const o = objetoDoMenu.value;
     menuObjeto.value = null;
@@ -682,7 +797,7 @@ async function criarToken(
     const x = ponto ? Math.floor(ponto.x / t) * t : centro.x;
     const y = ponto ? Math.floor(ponto.y / t) * t : centro.y;
     const lado = d.tamanho * t;
-    const alvoCamada: Camada = camadaDeDestino();
+    const alvoCamada: Camada = props.mestre ? camadaDeDestino() : 'jogadores';
     const base = { camada: alvoCamada, tipo: 'token', nome: d.nome, x, y, largura: lado, altura: lado };
     try {
         let corpo: object | FormData;
@@ -705,23 +820,34 @@ async function criarToken(
 /** Personagem arrastado do painel para o mapa: cria o token dele onde soltou (um token por personagem na página). */
 const arrastandoArquivo = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files');
 function personagemSobreMapa(e: DragEvent) {
-    if (!props.mestre || !props.pagina || !(arrastandoPersonagem(e) || arrastandoArquivo(e))) return;
-    e.preventDefault(); // sem isto o navegador não deixa soltar
-    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    if (!props.pagina) return;
+    if (props.mestre && arrastandoArquivo(e)) {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+        return;
+    }
+    if (arrastandoPersonagem(e)) {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    }
 }
 async function soltarNoMapa(e: DragEvent) {
-    if (!props.mestre || !props.pagina) return;
-    if (arrastandoArquivo(e)) {
+    if (!props.pagina) return;
+    if (props.mestre && arrastandoArquivo(e)) {
         e.preventDefault();
 
         return enviarMapa(e.dataTransfer?.files[0]);
     }
     if (!arrastandoPersonagem(e)) return;
     e.preventDefault();
-    const p = props.personagens.find((x) => x.id === personagemSolto(e));
+    const pid = personagemSolto(e);
+    if (!props.mestre && (!pid || !props.meusPersonagens.includes(pid))) {
+        return;
+    }
+    const p = props.personagens.find((x) => x.id === pid);
     if (!p) return;
     const ponto = canvas.value?.pontoDoMundo(e.clientX, e.clientY);
-    if (ehModeloDeNpc(p)) {
+    if (props.mestre && ehModeloDeNpc(p)) {
         // o NPC modelo gera uma cópia nova a cada vez (cada token tem a sua vida)
         try {
             const copia = await api.instanciarNpc(p.id);
@@ -879,13 +1005,62 @@ function abrirPersonagem(id: number) {
     fichasAbertas.value.push({ id, x: 90 + desloca, y: 64 + desloca });
 }
 
+// --- efeito audiovisual de dano / cura flutuante -----------------------------
+const efeitosExibidos = new Map<string, number>();
+
+function exibirEfeitoCombate(personagemId: number, delta: number, tipoForcado?: 'dano' | 'cura') {
+    if (delta === 0) return;
+    const chave = `${personagemId}:${delta}`;
+    const agora = Date.now();
+    const ultimo = efeitosExibidos.get(chave) ?? 0;
+    if (agora - ultimo < 600) return;
+    efeitosExibidos.set(chave, agora);
+
+    const tipo: 'dano' | 'cura' = tipoForcado ?? (delta < 0 ? 'dano' : 'cura');
+    const valor = Math.abs(delta);
+    const texto = tipo === 'dano' ? `-${valor}` : `+${valor}`;
+
+    // Acha o token no mapa atual
+    const token = objetos.value.find((o) => o.tipo === 'token' && o.personagem_id === personagemId);
+    if (token) {
+        const x = token.x + token.largura / 2;
+        const y = token.y;
+        canvas.value?.mostrarTextoFlutuante(x, y, texto, tipo);
+    }
+
+    if (tipo === 'dano') {
+        tocarSomDano();
+    } else {
+        tocarSomCura();
+    }
+}
+
+const pvAnteriorPorPersonagem = new Map<number, number>();
+
+function rastrearPvPersonagem(personagemId: number, ficha: Record<string, unknown> | undefined) {
+    if (!ficha) return;
+    const pvObj = (ficha.pv as { atual?: number; temp?: number; escudo?: number } | undefined) ?? {};
+    const pvAtual = (pvObj.atual ?? 0) + (pvObj.temp ?? 0) + (pvObj.escudo ?? 0);
+    const pvAntigo = pvAnteriorPorPersonagem.get(personagemId);
+    pvAnteriorPorPersonagem.set(personagemId, pvAtual);
+
+    if (pvAntigo !== undefined && pvAntigo !== pvAtual) {
+        exibirEfeitoCombate(personagemId, pvAtual - pvAntigo);
+    }
+}
+
 // --- dados das fichas ----------------------------------------------------------
 // O servidor só envia a ficha a quem controla o personagem (mestre e donos). Aqui fica uma cópia local:
 // edições são aplicadas na hora (otimista), enviadas campo a campo e, se falharem, a tela volta ao estado do servidor.
 const fichas = ref<Record<number, Record<string, unknown>>>({});
 function sincronizarFichas() {
     const novas: Record<number, Record<string, unknown>> = {};
-    for (const p of props.personagens) if (p.ficha) novas[p.id] = copia(p.ficha);
+    for (const p of props.personagens) {
+        if (p.ficha) {
+            novas[p.id] = copia(p.ficha);
+            rastrearPvPersonagem(p.id, p.ficha);
+        }
+    }
     sincronizarPorId(fichas.value, novas); // só as fichas que mudaram de verdade são trocadas: as janelas abertas não piscam a cada recarga
 }
 sincronizarFichas();
@@ -898,6 +1073,7 @@ function salvarFicha(personagemId: number, campos: Record<string, unknown>) {
     if (!ficha) return;
     for (const [caminho, valor] of Object.entries(campos)) definirCaminho(ficha, caminho, copia(valor));
     if ('condicoes' in campos) statusPorPersonagem.value[personagemId] = [...((campos.condicoes as string[] | null) ?? [])];
+    rastrearPvPersonagem(personagemId, ficha);
     const fila = (filasFicha.get(personagemId) ?? Promise.resolve())
         .then(() => api.salvarFicha(personagemId, campos))
         .then(() => {
@@ -915,6 +1091,7 @@ function aoMudarFicha(e: { personagem_id: number; campos: Record<string, unknown
     const ficha = fichas.value[e.personagem_id];
     if (e.ator === props.jogador.id || !ficha) return;
     for (const [caminho, valor] of Object.entries(e.campos)) definirCaminho(ficha, caminho, copia(valor));
+    rastrearPvPersonagem(e.personagem_id, ficha);
 }
 // --- itens da mesa -------------------------------------------------------------
 // Um item salvo agora vale aqui até a recarga do servidor trazê-lo (evita piscar "item removido" ou o valor antigo).
@@ -998,15 +1175,28 @@ async function rolarDaFicha(
 
 // --- Técnicas: gabarito de área e Salvaguarda coletiva ---------------------------------------------------------------------
 // Técnica de Salvaguarda: a área aparece no mapa a partir do token de quem usa; quem estiver dentro é alvo. O clique confirma, Esc cancela.
+export interface InfoGabaritoArea {
+    medida: { forma: 'linha' | 'cone' | 'esfera'; metros: number; angulo: number };
+    origem: { x: number; y: number };
+    mpp: number;
+}
+export type ResultadoGabarito = number[] & { info?: InfoGabaritoArea | null };
+
 const gabarito = ref<{ area: AreaDeEfeito; origem: number; excluir?: number[] } | null>(null);
-let resolverGabarito: ((ids: number[] | null) => void) | null = null;
-function aoGabarito(ids: number[] | null) {
+let resolverGabarito: ((r: ResultadoGabarito | null) => void) | null = null;
+function aoGabarito(ids: number[] | null, info?: InfoGabaritoArea | null) {
     gabarito.value = null;
-    resolverGabarito?.(ids);
+    if (ids === null) {
+        resolverGabarito?.(null);
+    } else {
+        const res = [...ids] as ResultadoGabarito;
+        res.info = info;
+        resolverGabarito?.(res);
+    }
     resolverGabarito = null;
 }
 const escolherNaArea = (area: AreaDeEfeito, origem: number, excluir: number[]) =>
-    new Promise<number[] | null>((resolver) => {
+    new Promise<ResultadoGabarito | null>((resolver) => {
         resolverGabarito?.(null);
         resolverGabarito = resolver;
         gabarito.value = { area, origem, excluir };
@@ -1099,16 +1289,77 @@ const ladoDe = (id: number) => {
 
     return { id, jogador: (p?.jogadores?.length ?? 0) > 0, aliado: !!p?.aliado };
 };
-/** Os tokens que a Técnica de quem usa NÃO pode atingir (jogador, aliado...): a área não os conta nem destaca. */
+/** Os tokens que a Técnica de quem usa NÃO pode atingir (jogador, aliado, NPC com 0 de vida...): a área não os conta nem destaca. */
 const protegidosDe = (personagemId: number) =>
     objetos.value
-        .filter((o) => o.tipo === 'token' && o.personagem_id !== null && !podeAtingir(fogoAmigo.value, ladoDe(personagemId), ladoDe(o.personagem_id)))
+        .filter(
+            (o) =>
+                o.tipo === 'token' &&
+                o.personagem_id !== null &&
+                (!podeAtingir(fogoAmigo.value, ladoDe(personagemId), ladoDe(o.personagem_id)) || ehNpcMorto(o.personagem_id)),
+        )
         .map((o) => o.id);
+/** Verifica se uma Técnica afeta apenas um alvo único, mesmo que seu alcance seja em linha ou área. */
+function tecnicaEhAlvoUnico(nome: string, descricao?: string): boolean {
+    const n = nome.toLowerCase();
+    if (
+        n.includes('prison whip') ||
+        n.includes('power whip') ||
+        n.includes('laço de dominação') ||
+        n.includes('laco de dominacao') ||
+        n.includes('pain whip')
+    ) {
+        return true;
+    }
+    if (descricao) {
+        if (/cada criatura na área/i.test(descricao) || /todos os inimigos/i.test(descricao)) return false;
+        if (/uma criatura|única contra um alvo|o alvo atingido|contra um alvo/i.test(descricao)) return true;
+    }
+    return false;
+}
+
+const alvoDialogConfig = ref<{
+    open: boolean;
+    tecnicaNome: string;
+    alvos: AlvoCandidato[];
+    resolver: ((id: number | null) => void) | null;
+}>({
+    open: false,
+    tecnicaNome: '',
+    alvos: [],
+    resolver: null,
+});
+
+function pedirEscolhaDeAlvo(tecnicaNome: string, alvos: AlvoCandidato[]): Promise<number | null> {
+    return new Promise((resolver) => {
+        alvoDialogConfig.value = {
+            open: true,
+            tecnicaNome,
+            alvos,
+            resolver,
+        };
+    });
+}
+
+function aoEscolherAlvo(id: number) {
+    const res = alvoDialogConfig.value.resolver;
+    alvoDialogConfig.value.open = false;
+    alvoDialogConfig.value.resolver = null;
+    res?.(id);
+}
+
+function aoCancelarEscolhaAlvo() {
+    const res = alvoDialogConfig.value.resolver;
+    alvoDialogConfig.value.open = false;
+    alvoDialogConfig.value.resolver = null;
+    res?.(null);
+}
+
 /**
  * Marca a área da Técnica no mapa e devolve os personagens atingidos (do mais perto ao mais longe), ou null (cancelou, sem token no mapa ou
  * ninguém dentro). O mais perto vira o alvo mirado: o ataque e o "Aplicar" do chat o usam.
  */
-async function escolherAreaDaFicha(personagemId: number, area: AreaDeEfeito): Promise<number[] | null> {
+async function escolherAreaDaFicha(personagemId: number, area: AreaDeEfeito): Promise<ResultadoGabarito | null> {
     if (area.bloqueio) {
         avisar(area.bloqueio);
 
@@ -1124,18 +1375,163 @@ async function escolherAreaDaFicha(personagemId: number, area: AreaDeEfeito): Pr
     const alvos = await escolherNaArea(area, token.id, protegidosDe(personagemId));
     erro.value = null;
     if (alvos === null) return null;
-    if (!alvos.length) {
-        avisar('Nenhum alvo válido na área (sem fogo amigo: jogadores e aliados não são atingidos).');
 
-        return null;
-    }
-    const maisPerto = objetos.value.find((o) => o.tipo === 'token' && o.personagem_id === alvos[0]);
-    if (maisPerto) {
-        alvoObjetoId.value = maisPerto.id;
-        miraDaTecnica.value = true;
+    const alvosVivos = alvos.filter((id) => !ehNpcMorto(id));
+    if ((alvos as any).info) (alvosVivos as any).info = (alvos as any).info;
+
+    if (alvosVivos.length) {
+        const maisPerto = objetos.value.find((o) => o.tipo === 'token' && o.personagem_id === alvosVivos[0]);
+        if (maisPerto) {
+            alvoObjetoId.value = maisPerto.id;
+            miraDaTecnica.value = true;
+        }
     }
 
-    return alvos;
+    return alvosVivos as ResultadoGabarito;
+}
+
+/** Dispara o efeito visual e sonoro da técnica no mapa (o áudio toca apenas uma vez no início). */
+function dispararEfeitoAudiovisual(
+    personagemId: number,
+    uso: UsoDeTecnica,
+    alvos?: ResultadoGabarito | number[] | null,
+    infoArea?: InfoGabaritoArea | null,
+) {
+    const efeito = efeitoDaTecnica(uso.nomeBase ?? uso.nome);
+    if (!efeito) return;
+
+    // 1. Áudio da técnica: toca apenas uma única vez na ativação (nunca em loop)
+    tocarAudioDaTecnica(efeito.audio);
+
+    // 2. Coordenadas de origem (o personagem que está usando a técnica)
+    const origem = centroDoToken(personagemId);
+    if (!origem) return;
+
+    const info = infoArea ?? ((alvos as any)?.info as InfoGabaritoArea | undefined);
+    const mpp =
+        info?.mpp ??
+        ((props.pagina?.distancia_quadrado ?? 1.5) * fatorParaMetros(props.pagina?.unidade)) / Math.max(1, props.pagina?.tamanho_quadrado ?? 100);
+
+    // Identifica o alvo mirado (seja pelo atalho 'T', alvo na área ou objeto selecionado):
+    let destino: { x: number; y: number } | null = null;
+    const alvoId = (Array.isArray(alvos) && alvos.length ? alvos[0] : null) ?? alvoPersonagem.value?.id;
+    if (alvoId) {
+        destino = centroDoToken(alvoId);
+    } else if (alvoObjetoId.value) {
+        const obj = objetos.value.find((o) => o.id === alvoObjetoId.value);
+        if (obj) destino = { x: obj.x + obj.largura / 2, y: obj.y + obj.altura / 2 };
+    }
+
+    // 1. Efeitos em volta do alvo ou ponto escolhido (ex: Prison Whip, Sonic Boom):
+    if (efeito.posicao === 'alvo') {
+        const ehSonic = (uso.nomeBase ?? uso.nome).includes('Sonic Boom');
+        const pos = ehSonic && info?.origem ? info.origem : (destino ?? info?.origem ?? origem);
+        const metros = info?.medida?.metros ?? uso.area?.metros;
+        let tamanhoPx = efeito.tamanho ?? 260;
+        if (metros && (info?.medida?.forma === 'esfera' || uso.area?.forma === 'esfera' || ehSonic)) {
+            const diametroPx = (metros / mpp) * 2;
+            const fatorEnquadramento = ehSonic ? 256 / 236 : 1.0;
+            tamanhoPx = diametroPx * fatorEnquadramento;
+        }
+
+        canvas.value?.tocarEfeito(pos.x, pos.y, efeito.animacao, {
+            largura: tamanhoPx,
+            altura: tamanhoPx,
+            duracaoMs: efeito.duracaoMs,
+            ancoraX: 0.5,
+            ancoraY: 0.5,
+        });
+        return;
+    }
+
+    // 2. Efeito pessoal (buff ou cúpula centralizada no próprio conjurador):
+    if (efeito.posicao === 'pessoal') {
+        const metros = info?.medida?.metros ?? uso.area?.metros;
+        let larguraPx = efeito.tamanho ?? 220;
+        let alturaPx = larguraPx;
+
+        if (metros && (info?.medida?.forma === 'esfera' || uso.area?.forma === 'esfera' || (uso.nomeBase ?? uso.nome).includes('Círculo da Morte'))) {
+            // Esfera ocupa todo o alcance/raio (diâmetro em pixels)
+            const diametroPx = (metros / mpp) * 2;
+            const fatorEnquadramento = (uso.nomeBase ?? uso.nome).includes('Círculo da Morte') ? 256 / 236 : 1.0;
+            larguraPx = diametroPx * fatorEnquadramento;
+            alturaPx = larguraPx;
+        }
+
+        canvas.value?.tocarEfeito(origem.x, origem.y, efeito.animacao, {
+            largura: larguraPx,
+            altura: alturaPx,
+            duracaoMs: efeito.duracaoMs,
+            ancoraX: 0.5,
+            ancoraY: 0.5,
+        });
+        return;
+    }
+
+    // 3. Efeitos de origem para alvo / projeção (cone, linha, disparo, chicotada):
+    if (info && info.medida.forma === 'cone') {
+        // Cones sempre ocupam todo o cone a partir do conjurador
+        const comprimentoPx = info.medida.metros / info.mpp;
+        canvas.value?.tocarEfeito(origem.x, origem.y, efeito.animacao, {
+            largura: comprimentoPx,
+            altura: comprimentoPx,
+            duracaoMs: efeito.duracaoMs,
+            rotacao: info.medida.angulo,
+            ancoraX: 0.0,
+            ancoraY: 0.5,
+        });
+        return;
+    }
+
+    // Para ataques direcionados (ex: Laço de Dominação, tiros, chicotadas):
+    // Se há um alvo sendo mirado, o efeito vai da origem até o token mirado
+    if (destino) {
+        const dx = destino.x - origem.x;
+        const dy = destino.y - origem.y;
+        const dist = Math.hypot(dx, dy);
+        const rotacao = Math.atan2(dy, dx);
+        // O laço foi desenhado com o nó/laço em x=350 num quadro de 400px; escala para coincidir com o alvo:
+        const ehLaco = (uso.nomeBase ?? uso.nome).includes('Laço');
+        const largura = ehLaco ? Math.max(efeito.tamanho ?? 240, dist * (400 / 350)) : Math.max(efeito.tamanho ?? 240, dist * 1.05);
+        const altura = Math.max(120, Math.min(largura * 0.5, 300));
+
+        canvas.value?.tocarEfeito(origem.x, origem.y, efeito.animacao, {
+            largura,
+            altura,
+            duracaoMs: efeito.duracaoMs,
+            rotacao,
+            ancoraX: 0.0,
+            ancoraY: 0.5,
+        });
+        return;
+    }
+
+    // Se foi marcada uma linha no mapa sem alvo mirado:
+    if (info && info.medida.forma === 'linha') {
+        const comprimentoPx = info.medida.metros / info.mpp;
+        const larguraPx = comprimentoPx;
+        const alturaPx = Math.max(1.5 / info.mpp, 70);
+        canvas.value?.tocarEfeito(origem.x, origem.y, efeito.animacao, {
+            largura: larguraPx,
+            altura: alturaPx,
+            duracaoMs: efeito.duracaoMs,
+            rotacao: info.medida.angulo,
+            ancoraX: 0.0,
+            ancoraY: 0.5,
+        });
+        return;
+    }
+
+    // Disparo em linha reta padrão se não houver alvo mirado nem área
+    const alcancePadrao = efeito.tamanho ?? 240;
+    canvas.value?.tocarEfeito(origem.x, origem.y, efeito.animacao, {
+        largura: alcancePadrao,
+        altura: Math.min(alcancePadrao * 0.6, 180),
+        duracaoMs: efeito.duracaoMs,
+        rotacao: 0,
+        ancoraX: 0.0,
+        ancoraY: 0.5,
+    });
 }
 
 /**
@@ -1171,6 +1567,7 @@ async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
             });
             salvarFicha(personagemId, uso.camposDosPP);
             combate.value = normalizarCombate(r.combate);
+            dispararEfeitoAudiovisual(personagemId, uso, null);
 
             return;
         }
@@ -1190,36 +1587,107 @@ async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
             });
             salvarFicha(personagemId, uso.camposDosPP);
             combate.value = normalizarCombate(r.combate);
+            dispararEfeitoAudiovisual(personagemId, uso, null);
 
             return;
         }
-        let alvos: number[] | null = null;
-        if (uso.area) {
+        let alvos: ResultadoGabarito | number[] | null = null;
+        let infoGabarito: InfoGabaritoArea | null = null;
+
+        if ((uso.nomeBase ?? uso.nome).includes('Sonic Boom')) {
+            const de = centroDoToken(personagemId);
+            if (!de) return avisar('Coloque o seu token no mapa para marcar a área.');
+            avisar('Escolha o ponto da explosão (até 21 m): clique para confirmar, Esc cancela.');
+            const centro = await escolherPonto({ de, maximo: 21, raio: 6 });
+            erro.value = null;
+            if (!centro) return;
+            const mpp =
+                ((props.pagina?.distancia_quadrado ?? 1.5) * fatorParaMetros(props.pagina?.unidade)) /
+                Math.max(1, props.pagina?.tamanho_quadrado ?? 100);
+            const raioPx = 6 / mpp;
+            const protegidos = new Set(protegidosDe(personagemId));
+            const atingidos = objetos.value
+                .filter((o) => o.tipo === 'token' && o.personagem_id !== null && o.personagem_id !== personagemId && !protegidos.has(o.id))
+                .filter((o) => {
+                    const cx = o.x + o.largura / 2;
+                    const cy = o.y + o.altura / 2;
+                    const distPx = Math.hypot(cx - centro.x, cy - centro.y);
+                    const raioToken = Math.min(o.largura, o.altura) / 2;
+                    return distPx <= raioPx + raioToken;
+                })
+                .map((o) => o.personagem_id as number);
+
+            infoGabarito = {
+                medida: { forma: 'esfera', metros: 6, angulo: 0 },
+                origem: centro,
+                mpp,
+            };
+            const res = atingidos as ResultadoGabarito;
+            res.info = infoGabarito;
+            alvos = res;
+        } else if (uso.area) {
             alvos = await escolherAreaDaFicha(personagemId, uso.area);
             if (!alvos) return;
+            infoGabarito = (alvos as any)?.info ?? null;
         }
+
+        // Se a técnica for de alvo único e houver mais de um alvo atingido na área:
+        if (alvos && alvos.length > 1 && tecnicaEhAlvoUnico(uso.nomeBase ?? uso.nome, uso.descricao)) {
+            const candidatos: AlvoCandidato[] = alvos
+                .filter((id) => !ehNpcMorto(id))
+                .map((id) => {
+                    const p = props.personagens.find((x) => x.id === id);
+                    const token = objetos.value.find((o) => o.tipo === 'token' && o.personagem_id === id);
+                    if (!p) return null;
+                    return {
+                        id: p.id,
+                        nome: p.nome,
+                        imagem: token?.arquivo ?? p.avatar ?? null,
+                        cor: p.cor,
+                        pvAtual: p.ficha?.pv?.atual,
+                        pvMax: p.ficha?.pv?.maximo,
+                    };
+                })
+                .filter((c): c is AlvoCandidato => c !== null);
+
+            if (candidatos.length > 1) {
+                const escolhidoId = await pedirEscolhaDeAlvo(uso.nome, candidatos);
+                if (!escolhidoId) return; // jogador cancelou
+                alvos = [escolhidoId];
+                if (infoGabarito) (alvos as any).info = infoGabarito;
+                const tokenEscolhido = objetos.value.find((o) => o.tipo === 'token' && o.personagem_id === escolhidoId);
+                if (tokenEscolhido) {
+                    alvoObjetoId.value = tokenEscolhido.id;
+                    miraDaTecnica.value = true;
+                }
+            }
+        }
+
         const teste = uso.teste;
         // sem área, a Salvaguarda vale para o alvo mirado: confere antes de gastar
         if (teste?.tipo === 'salvaguarda' && !alvos && !alvoPersonagem.value) return avisar('Mire um alvo.');
         if (!(await gastarAcaoDoCombate(personagemId, uso.categoria, true))) return;
         if (uso.municao) await api.gastarMunicaoDaTecnica(personagemId, uso.municao.tecnica); // sem munição o servidor recusa e os PP não são gastos
         salvarFicha(personagemId, uso.camposDosPP);
+        dispararEfeitoAudiovisual(personagemId, uso, alvos, infoGabarito);
 
         if (teste?.tipo === 'salvaguarda' && teste.atributo) {
             const alvosDaSalvaguarda = alvos ?? (alvoPersonagem.value ? [alvoPersonagem.value.id] : []);
-            aoNovaMensagem(
-                await api.abrirSalvaguarda({
-                    personagem_id: personagemId,
-                    nome: uso.nome,
-                    atributo: teste.atributo,
-                    desvantagem: uso.desvantagem,
-                    ao_passar: teste.aoPassar ?? 'metade',
-                    alvos: alvosDaSalvaguarda,
-                    dano: uso.dano,
-                    ...(teste.aplica ? { aplica: teste.aplica } : {}),
-                    ...(uso.secundaria ? { secundaria: uso.secundaria } : {}),
-                }),
-            );
+            if (alvosDaSalvaguarda.length > 0) {
+                aoNovaMensagem(
+                    await api.abrirSalvaguarda({
+                        personagem_id: personagemId,
+                        nome: uso.nome,
+                        atributo: teste.atributo,
+                        desvantagem: uso.desvantagem,
+                        ao_passar: teste.aoPassar ?? 'metade',
+                        alvos: alvosDaSalvaguarda,
+                        dano: uso.dano,
+                        ...(teste.aplica ? { aplica: teste.aplica } : {}),
+                        ...(uso.secundaria ? { secundaria: uso.secundaria } : {}),
+                    }),
+                );
+            }
         } else if (teste?.tipo === 'ataque') {
             const dados = uso.modoAtaque === 'vantagem' ? '2d20kh1' : uso.modoAtaque === 'desvantagem' ? '2d20kl1' : '1d20';
             await rolarDaFicha(
@@ -1315,6 +1783,21 @@ async function agirNoGatilho(mensagem: Mensagem, chamada: () => Promise<Mensagem
     try {
         aoNovaMensagem(await chamada(), true);
         recarregar(['personagens']); // o dano mexe nos PV do alvo
+    } catch (e) {
+        avisar(mensagemDe(e));
+    } finally {
+        salvaguardasRolando.value = salvaguardasRolando.value.filter((c) => c !== chave);
+    }
+}
+
+/** Card de Dano Brutal: rolar Salvaguarda de CON CD 16, aplicar ou ignorar. */
+async function agirNoDanoBrutal(mensagem: Mensagem, chamada: () => Promise<Mensagem>) {
+    const chave = `b${mensagem.id}`;
+    if (salvaguardasRolando.value.includes(chave)) return;
+    salvaguardasRolando.value = [...salvaguardasRolando.value, chave];
+    try {
+        aoNovaMensagem(await chamada(), true);
+        recarregar(['personagens']);
     } catch (e) {
         avisar(mensagemDe(e));
     } finally {
@@ -1666,6 +2149,43 @@ async function salvarAtribuicao(personagemId: number, jogadores: number[]) {
     }
 }
 
+// --- foto do personagem -------------------------------------------------------------
+const modalFotoPersonagem = ref<{ id: number; nome: string; foto?: string | null; fotoToken?: string | null; ehNpc?: boolean } | null>(null);
+
+function abrirAlterarFoto(p: { id: number; nome: string; foto?: string | null; fotoToken?: string | null; ehNpc?: boolean }) {
+    modalFotoPersonagem.value = { ...p };
+}
+provide('abrirAlterarFoto', abrirAlterarFoto);
+
+async function salvarFotoPersonagem(
+    dados: { arquivo?: Blob | File | null; arquivo_token?: Blob | File | null; url?: string | null; remover?: boolean },
+) {
+    if (!modalFotoPersonagem.value) return;
+    const personagemId = modalFotoPersonagem.value.id;
+    const res = await api.alterarFotoPersonagem(personagemId, dados);
+    const foto = res.foto ?? null;
+    const fotoToken = res.foto_token ?? foto;
+    if (fichas.value[personagemId]) {
+        fichas.value[personagemId].foto = foto;
+        fichas.value[personagemId].foto_token = fotoToken;
+    }
+    const p = props.personagens.find((x) => x.id === personagemId);
+    if (p) {
+        p.foto = foto;
+        p.foto_token = fotoToken;
+        if (p.ficha) {
+            p.ficha.foto = foto;
+            p.ficha.foto_token = fotoToken;
+        }
+    }
+    for (const obj of objetos.value) {
+        if (obj.tipo === 'token' && obj.personagem_id === personagemId) {
+            obj.arquivo = fotoToken;
+        }
+    }
+    recarregar(['personagens']);
+}
+
 // --- pintar e texto ----------------------------------------------------------------
 
 /** Jogador sempre desenha na camada Jogadores; o mestre, na camada ativa (menos Iluminação). */
@@ -1833,7 +2353,35 @@ onMounted(() => {
                     if (e.estado === 'resolvido') ofertasDeReacao.value = semOfertasDe(ofertasDeReacao.value, e.id);
                 })
                 .listen('.status', (e: { personagem_id: number; status: string[] }) => (statusPorPersonagem.value[e.personagem_id] = e.status))
-                .listen('.combate', (e: { combate: Combate; ator: number }) => e.ator !== meuId && (combate.value = normalizarCombate(e.combate)));
+                .listen('.personagem:foto', (e: { personagem_id: number; foto: string | null; foto_token?: string | null }) => {
+                    const foto = e.foto;
+                    const fotoToken = e.foto_token ?? foto;
+                    if (fichas.value[e.personagem_id]) {
+                        fichas.value[e.personagem_id].foto = foto;
+                        fichas.value[e.personagem_id].foto_token = fotoToken;
+                    }
+                    const p = props.personagens.find((x) => x.id === e.personagem_id);
+                    if (p) {
+                        p.foto = foto;
+                        p.foto_token = fotoToken;
+                        if (p.ficha) {
+                            p.ficha.foto = foto;
+                            p.ficha.foto_token = fotoToken;
+                        }
+                    }
+                    for (const obj of objetos.value) {
+                        if (obj.tipo === 'token' && obj.personagem_id === e.personagem_id) {
+                            obj.arquivo = fotoToken;
+                        }
+                    }
+                })
+                .listen('.combate-efeito', (e: { personagem_id: number; delta: number; tipo: 'dano' | 'cura' }) =>
+                    exibirEfeitoCombate(e.personagem_id, e.delta, e.tipo),
+                )
+                .listen('.musica', (e: { musica: MusicaMesaDto }) => {
+                    musicaMesa.value = e.musica;
+                })
+                .listen('.combate', (e: { combate: Combate; ator: number }) => (combate.value = normalizarCombate(e.combate)));
         abrir(conexao.echo.private(base));
         abrir(conexao.echo.private(`${base}.jogador.${meuId}`));
         if (props.mestre) abrir(conexao.echo.private(`${base}.mestre`));
@@ -1914,6 +2462,18 @@ async function alternarPorta(id: number) {
         avisar(mensagemDe(e));
     }
 }
+
+async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
+    if (!props.mestre) return;
+    try {
+        const resp = await api.atualizarMusica(dados);
+        if (resp.musica) {
+            musicaMesa.value = resp.musica as MusicaMesaDto;
+        }
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
 </script>
 
 <template>
@@ -1948,6 +2508,8 @@ async function alternarPorta(id: number) {
                     @zoom="escala = $event"
                     @criar-luz="criarLuz"
                     @criar-loot="criarLoot"
+                    @criar-viagem="criarViagem"
+                    @usar-ponto-viagem="usarPontoViagem"
                     @abrir-loot="abrirLoot"
                     @abrir-token="abrirDoToken"
                     @memoria="guardarMemoria"
@@ -1992,11 +2554,14 @@ async function alternarPorta(id: number) {
                     :style="{ right: margemDireita + 'px', top: lateralAberta ? '0px' : '2.75rem' }"
                 >
                     <Inspetor
-                        v-if="mestre && selecionado && pagina"
+                        v-if="mestre && selecionado && pagina && (selecionado.tipo !== 'token' || configurandoObjetoId === selecionado.id)"
                         :objeto="selecionado"
                         :pagina="pagina"
+                        :paginas="paginas"
                         @atualizar="atualizarSelecionado"
                         @remover="removerSelecionado"
+                        @fechar="configurandoObjetoId = null"
+                        @navegar="abrirPagina"
                     />
                     <ControlesZoom :escala="escala" @mais="canvas?.zoomPor(1.25)" @menos="canvas?.zoomPor(1 / 1.25)" @ajustar="canvas?.ajustar()" />
                     <BarraAtalhos v-if="ativo && atalhosDoAtivo.length" :atalhos="atalhosDoAtivo" :nome="ativo.nome" :cor="ativo.cor" />
@@ -2007,6 +2572,7 @@ async function alternarPorta(id: number) {
                         :meus-personagens="meusPersonagens"
                         @disparar="dispararDoTurno"
                         @devolver="(item, categoria) => comandoCombate('devolver', { item_id: item, categoria })"
+                        @finalizar="comandoCombate('turno', { sentido: 'proximo' })"
                     />
                     <PainelAlvo
                         v-if="alvoPersonagem && !miraDaTecnica"
@@ -2018,6 +2584,8 @@ async function alternarPorta(id: number) {
                         :combate="combate"
                         :mestre="mestre"
                         :meus-personagens="meusPersonagens"
+                        :objetos="objetos"
+                        :personagens="personagens"
                         @anterior="comandoCombate('turno', { sentido: 'anterior' })"
                         @proximo="comandoCombate('turno', { sentido: 'proximo' })"
                         @abrir="((painelTurnos = true), (painelDados = false))"
@@ -2061,6 +2629,10 @@ async function alternarPorta(id: number) {
                             @gatilho-atacar="(m: Mensagem) => agirNoGatilho(m, () => api.gatilhoAtacar(m.id))"
                             @gatilho-escolher="(m: Mensagem, o: string) => agirNoGatilho(m, () => api.gatilhoEscolher(m.id, o))"
                             @gatilho-ignorar="(m: Mensagem) => agirNoGatilho(m, () => api.gatilhoIgnorar(m.id))"
+                            @pedir-dano-brutal="(m: Mensagem) => agirNoDanoBrutal(m, () => api.danoBrutalPedir(m.id))"
+                            @rolar-dano-brutal="(m: Mensagem) => agirNoDanoBrutal(m, () => api.danoBrutalRolar(m.id))"
+                            @aplicar-dano-brutal="(m: Mensagem) => agirNoDanoBrutal(m, () => api.danoBrutalAplicar(m.id))"
+                            @ignorar-dano-brutal="(m: Mensagem) => agirNoDanoBrutal(m, () => api.danoBrutalIgnorar(m.id))"
                             @rolar-salvaguarda="rolarSalvaguarda"
                             @pedir-salvaguarda="pedirSalvaguardaDoEfeito"
                             @efeito-da-municao="efeitoDaMunicaoDoChat"
@@ -2096,6 +2668,9 @@ async function alternarPorta(id: number) {
                             @alternar-folheto="(id, v) => acao(() => api.atualizarFolheto(id, { visivel: v }), ['diario'])()"
                             @mostrar-folheto="(id) => acao(() => api.mostrarFolheto(id), ['diario'])()"
                         />
+                    </template>
+                    <template #musica>
+                        <PainelMusica :musica="musicaMesa" :mestre="mestre" @atualizar="atualizarMusicaDaMesa" />
                     </template>
                     <template v-if="mestre && moduloSistema?.PainelDeFrutas" #frutas>
                         <component
@@ -2259,6 +2834,22 @@ async function alternarPorta(id: number) {
             @update:open="(v: boolean) => !v && (excluindoId = null)"
             @confirmar="excluirPersonagem"
         />
+        <AlterarFotoPersonagemDialog
+            :open="modalFotoPersonagem !== null"
+            :personagem-nome="modalFotoPersonagem?.nome ?? ''"
+            :foto-atual="modalFotoPersonagem?.foto"
+            :foto-token-atual="modalFotoPersonagem?.fotoToken"
+            :eh-npc="modalFotoPersonagem?.ehNpc"
+            :salvar="salvarFotoPersonagem"
+            @update:open="(v: boolean) => !v && (modalFotoPersonagem = null)"
+        />
+        <EscolherAlvoDialog
+            :open="alvoDialogConfig.open"
+            :tecnica-nome="alvoDialogConfig.tecnicaNome"
+            :alvos="alvoDialogConfig.alvos"
+            @escolher="aoEscolherAlvo"
+            @update:open="(v: boolean) => !v && aoCancelarEscolhaAlvo()"
+        />
         <LootDialog
             v-model:open="lootAberto"
             :loot="lootEstado"
@@ -2279,6 +2870,7 @@ async function alternarPorta(id: number) {
             :y="menuObjeto.y"
             @mover="moverParaCamada"
             @abrir="abrirLootDoMenu"
+            @configurar="configurarObjetoDoMenu"
             @fechar="menuObjeto = null"
         />
 
