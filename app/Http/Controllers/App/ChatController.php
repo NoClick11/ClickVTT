@@ -63,6 +63,7 @@ class ChatController extends Controller
             'acao' => ['nullable', 'array'],
             'acao.categoria' => ['required_with:acao', 'string', 'max:20'],
             'acao.tecnica' => ['nullable', 'boolean'],
+            'dano.fonte' => ['nullable', 'string', 'in:black-leg'], // origem do dano extra: o servidor confere as características de quem rola
             'dano.fator' => ['nullable', 'numeric', 'between:0,4'], // fração do dano que vale (0,5 = metade, ex.: arma à distância do anão)
             // Ataque de uma Técnica: o card do chat oferece o dano dela (e o crítico) depois do acerto, e mostra a Salvaguarda do efeito.
             // Arma por munição (pistola, arco...): a munição do inventário escolhida para este ataque (gasta 1 unidade)
@@ -72,6 +73,9 @@ class ChatController extends Controller
             'tecnica.dano' => ['nullable', 'array'],
             'tecnica.dano.expressao' => ['required_with:tecnica.dano', 'string', 'max:'.Rolador::MAX_EXPRESSAO],
             'tecnica.dano.tipo' => ['nullable', 'string', 'max:30'],
+            'tecnica.dano.extras' => ['nullable', 'array', 'max:4'],
+            'tecnica.dano.extras.*.expressao' => ['required', 'string', 'max:'.Rolador::MAX_EXPRESSAO],
+            'tecnica.dano.extras.*.tipo' => ['nullable', 'string', 'max:30'],
             'tecnica.secundaria' => ['nullable', 'array'],
             'tecnica.secundaria.atributo' => ['required_with:tecnica.secundaria', 'string', 'max:3'],
             'tecnica.secundaria.desvantagem' => ['nullable', 'boolean'],
@@ -118,6 +122,13 @@ class ChatController extends Controller
                 'tipo' => filled($dados['dano']['tipo'] ?? null) ? trim($dados['dano']['tipo']) : null,
                 ...(isset($dados['dano']['fator']) && (float) $dados['dano']['fator'] !== 1.0 ? ['fator' => (float) $dados['dano']['fator']] : []),
             ];
+            // Dano extra do Black Leg (Fogo do Diable Jambe): Ifrit Jambe e Hell Memories mudam como o dano de Fogo vale contra o alvo
+            if (($dados['dano']['fonte'] ?? null) === 'black-leg') {
+                $fogo = \App\Sistemas\OnePiece\Regras::fogoDoBlackLeg($ficha, $marcas['dano']['tipo'] ?? null);
+                if ($fogo) {
+                    $marcas['dano']['ignora'] = [...($marcas['dano']['ignora'] ?? []), ...$fogo];
+                }
+            }
             // Dano de Técnica com chicote (o botão leva o nome da Técnica no rótulo): Golpe Moral confere a Técnica na ficha de quem rola
             if (filled($dados['rotulo'] ?? null) && ! preg_match('/@arma\.\d+\.dano/', (string) $dados['expressao'])) {
                 $ignoraTecnica = \App\Sistemas\OnePiece\Regras::golpeMoralDaTecnica($ficha, trim($dados['rotulo']), $marcas['dano']['tipo'] ?? null);
@@ -212,6 +223,15 @@ class ChatController extends Controller
             $meta['acoes'] = $destaque === 'critico'
                 ? [[...$acao('dano-critico', 'Dano crítico', \App\Sistemas\OnePiece\Regras::dobrarDadosDaExpressao($dano['expressao'])), 'destaque' => 'critico'], [...$normal, 'rotulo' => 'Dano normal']]
                 : [$normal];
+            // Danos extras de outro tipo (Fogo do Diable Jambe...): um botão cada, com o próprio tipo (no crítico, os dados dobram)
+            foreach ($dano['extras'] ?? [] as $i => $extra) {
+                $tipoExtra = filled($extra['tipo'] ?? null) ? trim($extra['tipo']) : null;
+                $expressaoExtra = $destaque === 'critico' ? \App\Sistemas\OnePiece\Regras::dobrarDadosDaExpressao($extra['expressao']) : $extra['expressao'];
+                $meta['acoes'][] = [
+                    'id' => "dano-extra-{$i}", 'rotulo' => 'Dano extra'.($tipoExtra ? " ({$tipoExtra})" : ''), 'resumo' => $expressaoExtra, 'expressao' => $expressaoExtra,
+                    'rotuloRolagem' => trim($tecnica['nome']).' (extra)', 'dano' => ['tipo' => $tipoExtra, 'fonte' => 'black-leg'],
+                ];
+            }
         }
 
         return $meta;

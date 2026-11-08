@@ -74,4 +74,22 @@ class DanoDoEstiloTest extends TestCase
         $this->assertSame(5, $this->critico($f, $municao, 5)['tiroSemPaciencia']);
         $this->assertSame(6, $this->critico($f, $municao, 40)['tiroSemPaciencia']); // 2 × nível 3
     }
+
+    public function test_fogo_do_black_leg_ifrit_ignora_resistencia_e_hell_memories_vira_vulnerabilidade(): void
+    {
+        $this->assertSame([], Regras::fogoDoBlackLeg($this->ficha([$this->car('Ifrit Jambe', ['tipo' => 'ativa', 'ativa' => true])]), 'Contundente')); // só Fogo
+        $ifrit = $this->ficha([$this->car('Ifrit Jambe', ['tipo' => 'ativa', 'ativa' => true])], 15);
+        $this->assertSame(['resistencia'], Regras::fogoDoBlackLeg($ifrit, 'Fogo'));
+        $this->assertSame([], Regras::fogoDoBlackLeg($this->ficha([$this->car('Ifrit Jambe', ['tipo' => 'ativa', 'ativa' => false])], 15), 'Fogo')); // desligado
+        $hell = $this->ficha([$this->car('Hell Memories')], 19);
+        $this->assertSame(['imunidade', 'vulneravel_se_nao_resiste'], Regras::fogoDoBlackLeg($hell, 'Fogo'));
+
+        $comum = [];
+        $this->assertSame(40, Dano::calcular($comum, 20, 'Fogo', ['vulneravel_se_nao_resiste'])['final']); // sem defesa: em dobro
+        $resiste = ['resistencias' => ['Fogo']];
+        $this->assertSame(10, Dano::calcular($resiste, 20, 'Fogo', ['vulneravel_se_nao_resiste'])['final']); // resiste: segue resistindo
+        $this->assertSame(20, Dano::calcular($resiste, 20, 'Fogo', ['resistencia'])['final']); // Ifrit: ignora a resistência
+        $imune = ['imunidades' => ['Fogo']];
+        $this->assertSame(20, Dano::calcular($imune, 20, 'Fogo', ['imunidade', 'vulneravel_se_nao_resiste'])['final']); // Hell: ignora a invulnerabilidade
+    }
 }

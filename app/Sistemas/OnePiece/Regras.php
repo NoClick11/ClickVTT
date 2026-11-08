@@ -96,6 +96,29 @@ final class Regras
         return str_contains(Dano::normalizar((string) $tipoDano), 'cortante') ? ['resistencia', 'imunidade_metade'] : ['imunidade_metade'];
     }
 
+    /**
+     * O dano de Fogo do Black Leg: Ifrit Jambe (ligado) ignora a resistência a Fogo; Hell Memories ignora a invulnerabilidade e faz o alvo sem resistência
+     * nem invulnerabilidade sofrer como se fosse vulnerável. Só vale para o tipo Fogo.
+     *
+     * @param  array<string, mixed>  $f
+     * @return list<string>
+     */
+    public static function fogoDoBlackLeg(array $f, ?string $tipoDano): array
+    {
+        if (! str_contains(Dano::normalizar((string) $tipoDano), 'fogo')) {
+            return [];
+        }
+        $ignora = [];
+        if (self::temCaracteristica($f, 'Ifrit Jambe')) {
+            $ignora[] = 'resistencia';
+        }
+        if (self::temCaracteristica($f, 'Hell Memories')) {
+            array_push($ignora, 'imunidade', 'vulneravel_se_nao_resiste');
+        }
+
+        return $ignora;
+    }
+
     /** `golpeMoral` para uma Técnica com chicote como requisito (a Técnica tem de estar na ficha). */
     public static function golpeMoralDaTecnica(array $f, string $nomeTecnica, ?string $tipoDano): array
     {

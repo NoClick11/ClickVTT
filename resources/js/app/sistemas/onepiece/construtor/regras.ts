@@ -693,7 +693,9 @@ export function caracteristicaDe(t: TracoEscolhido, nivel: number): Caracteristi
     if (traco.alternativo && c.usos) c.alternativo = { atual: traco.alternativo, max: traco.alternativo };
     if (traco.acoes?.length) c.acoes = traco.acoes;
     if (traco.reacao) c.reacao = traco.reacao;
-    if (c.tipo === 'ativa' && c.efeitos) c.ativa = false;
+    if (traco.bonusDano?.length) c.bonusDano = traco.bonusDano;
+    if (traco.interruptor) c.interruptor = true;
+    if (c.tipo === 'ativa' && (c.efeitos || traco.interruptor)) c.ativa = false;
     if (traco.nivelMin && traco.nivelMin > 1) c.nivelMin = traco.nivelMin;
     if (traco.nivelMax) c.nivelMax = traco.nivelMax;
     if (traco.hb) c.hb = traco.hb;

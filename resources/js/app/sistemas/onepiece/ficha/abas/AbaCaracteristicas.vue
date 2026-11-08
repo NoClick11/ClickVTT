@@ -24,7 +24,7 @@ const podeLigar = (c: Caracteristica) => (c.ativa ? { ok: true } : acoes.pode(c.
 // índices da lista completa (a lista é salva por inteiro), agrupados por tipo
 /** Em cada grupo, na frente: as ligadas, depois as que se usam ou ligam (usos, interruptor, ações, alternativa); o resto segue a ordem da ficha. */
 const prioridade = (c: Caracteristica) =>
-    c.ativa === true ? 0 : c.usos || c.alternativo || c.acoes?.length || (c.tipo === 'ativa' && c.efeitos?.length) ? 1 : 2;
+    c.ativa === true ? 0 : c.usos || c.alternativo || c.acoes?.length || (c.tipo === 'ativa' && (c.efeitos?.length || c.interruptor)) ? 1 : 2;
 const doTipo = (tipo: 'ativa' | 'passiva') =>
     props.ficha.caracteristicas
         .map((c, i) => ({ c, i }))
@@ -173,7 +173,7 @@ function aoSalvar(c: Caracteristica) {
                         >
                         <!-- interruptor do buff: só para ativas que têm efeitos -->
                         <button
-                            v-if="c.tipo === 'ativa' && c.efeitos?.length"
+                            v-if="c.tipo === 'ativa' && (c.efeitos?.length || c.interruptor)"
                             type="button"
                             role="switch"
                             :aria-checked="c.ativa === true"

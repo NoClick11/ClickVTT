@@ -974,7 +974,7 @@ test('Brutamontes: d12, FOR primária, salvaguardas FOR e CON, 2 perícias só d
 test('Brutamontes: 10 Técnicas por nível, Corpo de Criatura +60 PV e Invencibilidade com resistência total', () => {
     const tecnicas = (n) => camposDaCriacao(brutamontes(), { nivel: n }).campos['tecnicas.lista'].map((t) => t.nome);
     assert.deepEqual(tecnicas(1), ['Nari Kabura', 'Shinsoku Hakujaku']);
-    assert.equal(tecnicas(20).length, 10);
+    assert.equal(tecnicas(20).length, 11); // inclui a Kongo Kabura (Nari Kabura aprimorada no 6º nível)
     const car = (n) => camposDaCriacao(brutamontes(), { nivel: n }).campos.caracteristicas;
     assert.ok(!car(5).some((c) => c.nome === 'Corpo de Criatura'));
     assert.ok(car(6).some((c) => c.nome === 'Corpo de Criatura'));
@@ -1022,7 +1022,7 @@ test('Black Leg: d12, FOR ou DES como primário, salvaguardas FOR e DES e períc
 test('Black Leg: 10 Técnicas, deslocamento por nível (12/15/18 m) e Parry Shot é reação defensiva de uso único', () => {
     const tecnicas = (n) => camposDaCriacao(blackLeg(), { nivel: n }).campos['tecnicas.lista'];
     assert.deepEqual(tecnicas(1).map((t) => t.nome), ['Kick Shot', 'Anti-Manner Kick Course']);
-    assert.equal(tecnicas(20).length, 10);
+    assert.equal(tecnicas(20).length, 11); // inclui o Kick Strike (Kick Shot aprimorada no 6º nível)
     assert.deepEqual(tecnicas(6).find((t) => t.nome === 'Parry Shot').reacao.reducao, { reserva: '8d8', mais: '2d8', maximo: 20, unica: true });
     const andar = (n) => {
         const f = camposDaCriacao(blackLeg(), { nivel: n }).campos;

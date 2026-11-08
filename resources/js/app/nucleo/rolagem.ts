@@ -40,7 +40,7 @@ export interface AcaoDaRolagem {
     rotuloRolagem: string;
     destaque?: 'critico';
     /** Rolagem de dano: o tipo (fogo, cortante...) vai junto para o dano aplicado respeitar resistências e imunidades. */
-    dano?: { tipo: string | null };
+    dano?: { tipo: string | null; fonte?: string };
 }
 
 /** Resultado de um ataque com alvo (ver `Pipeline` no servidor). */

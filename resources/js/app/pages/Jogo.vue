@@ -1040,6 +1040,16 @@ async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
             );
         } else if (uso.dano) {
             await rolarDaFicha(personagemId, uso.dano.expressao, uso.nome, undefined, uso.dano.tipo ? { tipo: uso.dano.tipo } : undefined);
+            // danos extras de outro tipo (Fogo do Diable Jambe...): cada um rola à parte, com o próprio tipo
+            for (const extra of uso.dano.extras ?? []) {
+                await rolarDaFicha(
+                    personagemId,
+                    extra.expressao,
+                    `${uso.nome} (${extra.tipo ?? 'extra'})`,
+                    undefined,
+                    extra.tipo ? { tipo: extra.tipo, fonte: 'black-leg' } : undefined,
+                );
+            }
         }
     } catch (e) {
         avisar(mensagemDe(e));

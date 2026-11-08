@@ -123,6 +123,8 @@ final class FichaOnePiece
             // Reduções de dano armadas por reações defensivas (Yamantaka: reserva em pontos; Corpo de Criatura: zera o próximo dano).
             // Quem mexe é o servidor: o dano aplicado as consome (`OnePiece::absorverDano`) e o fim do turno do dono as vence.
             'reducao' => [],
+            // Bônus armado para a próxima Técnica de Combate (Fire Lash, Strike): vence no fim do turno do dono.
+            'bonusTecnica' => [],
             'caracteristicas' => [],
             'tecnicas' => ['atributo' => 'von', 'lista' => []],
             // A Akuma no Mi: o nome é `fruta`; os poderes têm o mesmo formato das técnicas e gastam os mesmos PP.
@@ -292,6 +294,15 @@ final class FichaOnePiece
         $r['inventario.*.itens.*.arma.danoExtra.*.dados'] = ['required', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/'];
         $r['inventario.*.itens.*.arma.danoExtra.*.tipo'] = ['nullable', 'string', 'max:40'];
 
+        $r['bonusTecnica'] = ['array'];
+        $r['bonusTecnica.dados'] = $inteiro(0, 20);
+        $r['bonusTecnica.tipo'] = ['nullable', 'string', 'max:20'];
+        $r['bonusTecnica.soTipo'] = ['nullable', 'string', 'max:20'];
+        foreach (['limitarAoGrau', 'reduzCusto', 'instantanea'] as $flag) {
+            $r["bonusTecnica.{$flag}"] = ['nullable', 'boolean:strict'];
+        }
+        $r['bonusTecnica.turnos'] = $inteiro(0, 9);
+
         $r['reducao'] = ['array'];
         $r['reducao.reserva'] = $inteiro(0, 9999);
         $r['reducao.dados'] = $inteiro(0, 99);
@@ -326,6 +337,20 @@ final class FichaOnePiece
         // Faixa de nível em que a característica vale (as Habilidades Básicas mudam com o nível) e de qual HB ela vem
         $r['caracteristicas.*.nivelMin'] = ['nullable', 'integer:strict', 'between:1,20'];
         $r['caracteristicas.*.nivelMax'] = ['nullable', 'integer:strict', 'between:1,20'];
+        $r['caracteristicas.*.interruptor'] = ['nullable', 'boolean:strict'];
+        // Dano extra que a característica dá enquanto vale (Diable Jambe...): ver `BonusDeDano` (TS)
+        $r['caracteristicas.*.bonusDano'] = ['nullable', 'array', 'max:12'];
+        $r['caracteristicas.*.bonusDano.*.alvo'] = ['required', 'string', Rule::in(['desarmado', 'tecnica'])];
+        $r['caracteristicas.*.bonusDano.*.dados'] = ['nullable', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/'];
+        $r['caracteristicas.*.bonusDano.*.porGrau'] = ['nullable', 'numeric', 'between:0,5'];
+        $r['caracteristicas.*.bonusDano.*.fixo'] = ['nullable', 'integer:strict', 'between:-99,99'];
+        $r['caracteristicas.*.bonusDano.*.tipo'] = ['nullable', 'string', 'max:30'];
+        $r['caracteristicas.*.bonusDano.*.nivelMin'] = ['nullable', 'integer:strict', 'between:1,20'];
+        $r['caracteristicas.*.bonusDano.*.nivelMax'] = ['nullable', 'integer:strict', 'between:1,20'];
+        $r['caracteristicas.*.bonusDano.*.grupo'] = ['nullable', 'string', 'max:40'];
+        $r['caracteristicas.*.bonusDano.*.prioridade'] = ['nullable', 'integer:strict', 'between:0,99'];
+        $r['caracteristicas.*.bonusDano.*.requer'] = ['nullable', 'array', 'max:4'];
+        $r['caracteristicas.*.bonusDano.*.requer.*'] = ['string', 'max:80'];
         $r['caracteristicas.*.hb'] = ['nullable', 'string', 'max:40'];
         $r['caracteristicas.*.acao'] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];
         $r['caracteristicas.*.acoes.*.acao'] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];
@@ -402,6 +427,16 @@ final class FichaOnePiece
         }
 
         // Técnica que dura vários turnos (Quick Draw): rodadas, concentração e os efeitos que o jogador escolhe no acerto.
+        // Técnica auxiliar que arma um bônus para a próxima Técnica de Combate (Fire Lash, Strike)
+        foreach (['tecnicas.lista.*', 'akuma.lista.*'] as $base) {
+            $r["{$base}.armarBonus"] = ['nullable', 'array'];
+            $r["{$base}.armarBonus.dados"] = ['required_with:'.$base.'.armarBonus', 'integer:strict', 'between:1,20'];
+            $r["{$base}.armarBonus.tipo"] = ['nullable', 'string', 'max:20'];
+            $r["{$base}.armarBonus.soTipo"] = ['nullable', 'string', 'max:20'];
+            foreach (['limitarAoGrau', 'reduzCusto', 'instantanea'] as $flag) {
+                $r["{$base}.armarBonus.{$flag}"] = ['nullable', 'boolean:strict'];
+            }
+        }
         foreach (['tecnicas.lista.*', 'akuma.lista.*'] as $base) {
             $r["{$base}.duracao"] = ['nullable', 'array'];
             $r["{$base}.duracao.rodadas"] = ['required_with:'.$base.'.duracao', 'integer:strict', 'between:1,99'];

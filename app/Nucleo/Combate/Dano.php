@@ -40,6 +40,10 @@ final class Dano
         }
         $resiste = ! in_array('resistencia', $ignora, true) && self::contem($ficha['resistencias'] ?? [], $tipo);
         $vulneravel = self::contem($ficha['vulnerabilidades'] ?? [], $tipo);
+        // `vulneravel_se_nao_resiste` (Hell Memories): sem resistência nem invulnerabilidade ao tipo, sofre como se fosse vulnerável
+        if (in_array('vulneravel_se_nao_resiste', $ignora, true) && ! self::contem($ficha['resistencias'] ?? [], $tipo) && ! self::contem($ficha['imunidades'] ?? [], $tipo)) {
+            $vulneravel = true;
+        }
         if ($resiste && ! $vulneravel) {
             return ['final' => intdiv($total, 2), 'modo' => 'resistido'];
         }

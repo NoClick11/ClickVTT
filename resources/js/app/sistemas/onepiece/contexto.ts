@@ -76,6 +76,8 @@ export interface ContextoFicha {
 export interface DanoDaTecnica {
     expressao: string;
     tipo: string | null;
+    /** Danos extras de outro tipo (Fogo do Diable Jambe...): rolam à parte e se aplicam com o próprio tipo. */
+    extras?: { expressao: string; tipo: string | null }[];
 }
 export interface EfeitoSecundario {
     atributo: AtributoId;

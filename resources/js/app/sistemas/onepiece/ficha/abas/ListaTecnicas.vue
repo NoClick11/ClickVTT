@@ -23,6 +23,7 @@ import {
     type FichaOnePiece,
     type Tecnica,
 } from '../../regras';
+import { montarDanoDaTecnica } from '../../tecnicaBonus';
 import CriadorDeTecnicas from '../criador/CriadorDeTecnicas.vue';
 
 /**
@@ -124,11 +125,25 @@ const comDadosDaMeito = (expressao: string, t: Tecnica): string =>
  */
 function usar(t: Tecnica) {
     if (bloqueio(t)) return;
-    const campos = camposDoGastoDePP(props.ficha, t.custo);
+    // Dano base + bônus armado (Fire Lash, Strike), dano extra das características (Diable Jambe...) e dano máximo (Domínio Fatal)
+    const base = t.rolagem.trim() ? comDadosDaMeito(expandirRolagem(t.rolagem.trim(), calc.value, 'tecnica'), t) : '';
+    const montado = base ? montarDanoDaTecnica(props.ficha, t, grauDa(t) ?? 0, base) : null;
+    const campos = camposDoGastoDePP(props.ficha, montado?.custo ?? t.custo);
     if (!campos) return;
-    const expressao = t.rolagem.trim()
-        ? comDadosDaMeito(expandirRolagem(t.rolagem.trim(), calc.value, 'tecnica'), t) + (dobrarDano(t) ? '^2' : '')
-        : '';
+    if (montado?.consumiuBonus) campos['bonusTecnica.dados'] = 0; // o bônus armado foi usado
+    if (t.armarBonus) {
+        const b = t.armarBonus;
+        Object.assign(campos, {
+            'bonusTecnica.dados': b.dados,
+            'bonusTecnica.tipo': b.tipo ?? null,
+            'bonusTecnica.soTipo': b.soTipo ?? null,
+            'bonusTecnica.limitarAoGrau': !!b.limitarAoGrau,
+            'bonusTecnica.reduzCusto': !!b.reduzCusto,
+            'bonusTecnica.instantanea': !!b.instantanea,
+            'bonusTecnica.turnos': 1,
+        });
+    }
+    const expressao = montado ? montado.expressao + (dobrarDano(t) ? '^2' : '') : '';
     // O alcance da Kokuto amplia a área; as criaturas dela têm desvantagem na Salvaguarda
     const ampliado = alcanceDe(t);
     const teste = t.teste;
@@ -140,7 +155,7 @@ function usar(t: Tecnica) {
         area: areaComLimite(ampliado?.mudou ? ampliado.texto : t.alcance),
         ...(duracaoDaTecnica(t) ? { duracao: duracaoDaTecnica(t) } : {}),
         ...(duracaoDaTecnica(t)?.vigia ? { vigia: vigiaDoUso(t) } : {}),
-        dano: expressao ? { expressao, tipo: t.tipoDano?.trim() || null } : null,
+        dano: expressao ? { expressao, tipo: t.tipoDano?.trim() || null, ...(montado?.extras.length ? { extras: montado.extras } : {}) } : null,
         ...(teste?.secundaria ? { secundaria: teste.secundaria } : {}),
         modoAtaque: modoDe('ataque') === 'vantagem' ? 'vantagem' : modoDe('ataque') === 'desvantagem' ? 'desvantagem' : null,
         categoria: categoria(t),

@@ -3,7 +3,7 @@
  * direto nos testes. Cada espécie nova é só um item novo em `especies.ts`, sem mudar a lógica.
  */
 import type { EfeitoBruto } from '../../../../nucleo/efeitos/efeitos.ts';
-import type { AcaoCaracteristica, AtributoId, CategoriaDeAcao, ReacaoDeCombate, Tecnica } from '../../regras.ts';
+import type { AcaoCaracteristica, AtributoId, BonusDeDano, CategoriaDeAcao, ReacaoDeCombate, Tecnica } from '../../regras.ts';
 
 export type Preconceito = 'Inexistente' | 'Débil' | 'Medíocre' | 'Severo';
 export const NIVEIS_PRECONCEITO: Preconceito[] = ['Inexistente', 'Débil', 'Medíocre', 'Severo'];
@@ -58,6 +58,9 @@ export interface TracoDados {
     alternativo?: number;
     /** Reação a um ataque (Aparar): a característica oferece a defesa a quem foi atacado. */
     reacao?: ReacaoDeCombate;
+    /** Ativa sem efeitos de motor que ainda assim tem interruptor, e o dano extra que dá enquanto vale (ver `BonusDeDano`). */
+    interruptor?: boolean;
+    bonusDano?: BonusDeDano[];
     /** Botões da característica (condição no alvo, hospedar-se, dado extra). */
     acoes?: AcaoCaracteristica[];
     /** Técnicas que o traço dá (ex.: a esfera de fogo dos Lunarianos): entram na lista de técnicas, marcadas como do assistente. */

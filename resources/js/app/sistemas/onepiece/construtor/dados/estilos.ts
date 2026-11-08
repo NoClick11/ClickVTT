@@ -420,6 +420,20 @@ export const ATIRADOR: EstiloDados = {
             'perfurante',
             'Disparos contra as criaturas ao redor, escolhendo quais estão no alcance. Cada criatura na área faz Salvaguarda de Destreza com desvantagem: todo o dano se falhar, metade se passar. <Gun Powder Party> No 6º nível pode ser usada como de 3º Grau: 6d6 e 5 PP. Requisito: arma favorita, 8 munições (qualquer). Ataque combinado: impossível.',
         ),
+        // Death Blossom aprimorada: no 6º nível entra como Técnica de 3º Grau
+        tec(
+            6,
+            3,
+            CAMINHO_DUELISTA,
+            'Gun Powder Party',
+            5,
+            'poderosa',
+            'Arma, Esfera',
+            '6d6 Contundente ou Perfurante',
+            '6d6',
+            'perfurante',
+            'Death Blossom aprimorada (3º Grau): disparos contra as criaturas ao redor, escolhendo quais estão no alcance. Cada criatura na área faz Salvaguarda de Destreza com desvantagem: todo o dano se falhar, metade se passar. Requisito: arma favorita, 8 munições (qualquer). Ataque combinado: impossível.',
+        ),
         tec(
             3,
             2,
@@ -678,6 +692,7 @@ export const ATIRADOR: EstiloDados = {
  */
 const TESTES_DO_ATIRADOR: Record<string, TesteDaTecnica> = {
     'Death Blossom': { tipo: 'salvaguarda', atributo: 'des', desvantagem: true, aoPassar: 'metade' },
+    'Gun Powder Party': { tipo: 'salvaguarda', atributo: 'des', desvantagem: true, aoPassar: 'metade' },
     Covering: { tipo: 'ataque' },
     'Quick Fire': { tipo: 'ataque', secundaria: { atributo: 'con', efeito: 'encerra o turno logo após sofrer o dano' } },
     'Death Shower': {
@@ -981,6 +996,7 @@ export const AVENTUREIRO: EstiloDados = {
             '',
             undefined,
             'Com as chamas do ambiente ou um isqueiro, adicione 5 dados de dano de Fogo à sua próxima Técnica de Combate instantânea, limitados ao grau da Técnica (uma de 1º Grau só recebe 1 dado). Para cada dado que não puder ser adicionado, reduza o custo em PP dessa Técnica em 1. Duração: até o fim do seu turno. Requisito: ignição.',
+            { armarBonus: { dados: 5, tipo: 'Fogo', limitarAoGrau: true, reduzCusto: true, instantanea: true } },
         ),
         tec(
             3,
@@ -1289,6 +1305,20 @@ export const BRUTAMONTES: EstiloDados = {
             'contundente',
             'Golpe poderoso e preciso que transforma o ar, rochas ou destroços em projétil contra uma criatura, em jogada de ataque (Técnicas) à distância com margem de crítico 19-20. <Kongo Kabura> No 6º nível, pode ser usada como Técnica de 3º Grau: 5d10 Contundente, 21 m em Linha, 6 PP e margem de crítico 18-20. Requisito: arma favorita. Ataque combinado: possível.',
         ),
+        // Nari Kabura aprimorada: no 6º nível entra como Técnica de 3º Grau
+        tec(
+            6,
+            3,
+            '',
+            'Kongo Kabura',
+            6,
+            'poderosa',
+            'Até 21 m, Linha',
+            '5d10 Contundente',
+            '5d10',
+            'contundente',
+            'Nari Kabura aprimorada (3º Grau): o golpe poderoso e preciso transforma o ar, rochas ou destroços em projétil contra uma criatura, em jogada de ataque (Técnicas) à distância com margem de crítico 18-20. Requisito: arma favorita. Ataque combinado: possível.',
+        ),
         tec(
             1,
             undefined,
@@ -1413,6 +1443,7 @@ export const BRUTAMONTES: EstiloDados = {
 /** Como cada Técnica do Brutamontes causa o dano: ataque (Técnicas) ou Salvaguarda da área. Sem entrada, não há teste automático. */
 const TESTES_DO_BRUTAMONTES: Record<string, TesteDaTecnica> = {
     'Nari Kabura': { tipo: 'ataque' },
+    'Kongo Kabura': { tipo: 'ataque' },
     'Kosanze Ragnaraku': { tipo: 'ataque' },
     Mahoroba: { tipo: 'ataque' },
     'Raimei Hakke': { tipo: 'ataque' },
@@ -1543,7 +1574,20 @@ export const BLACK_LEG: EstiloDados = {
             nome: 'Diable Jambe',
             nivelMin: 3,
             tipo: 'ativa',
-            usos: { max: 3, descanso: 'longo' },
+            interruptor: true,
+            // 19º (Hell Memories): sem limite de usos
+            usos: { max: 3, formula: '3+97*max(0,min(1,@nivel-18))', descanso: 'longo' },
+            bonusDano: [
+                { alvo: 'desarmado', dados: '1d4', tipo: 'Fogo', nivelMax: 6, grupo: 'diable-desarmado', prioridade: 1 },
+                { alvo: 'desarmado', dados: '1d6', tipo: 'Fogo', nivelMin: 7, nivelMax: 10, grupo: 'diable-desarmado', prioridade: 1 },
+                { alvo: 'desarmado', dados: '1d8', tipo: 'Fogo', nivelMin: 11, grupo: 'diable-desarmado', prioridade: 1 },
+                // Ifrit Jambe (ligado): o extra vira 1d12 e todo ataque desarmado soma +5 de Fogo
+                { alvo: 'desarmado', dados: '1d12', tipo: 'Fogo', nivelMin: 15, requer: ['Ifrit Jambe'], grupo: 'diable-desarmado', prioridade: 2 },
+                { alvo: 'desarmado', fixo: 5, tipo: 'Fogo', nivelMin: 15, requer: ['Ifrit Jambe'] },
+                // Técnicas: dados de Fogo iguais à metade do grau (mín. 1); com Hell Memories, ao grau inteiro
+                { alvo: 'tecnica', porGrau: 0.5, tipo: 'Fogo', grupo: 'diable-tecnica', prioridade: 1 },
+                { alvo: 'tecnica', porGrau: 1, tipo: 'Fogo', nivelMin: 19, grupo: 'diable-tecnica', prioridade: 2 },
+            ],
             descricao:
                 'O atrito dos chutes cria labaredas nas pernas por até 1 minuto: resistência a dano de Fogo; ataques (comum) corpo a corpo desarmados com 1d4 de dano de Fogo extra (1d6 no 7º nível, 1d8 no 11º); ao executar uma Técnica, aumenta uma quantidade de dados de dano de Fogo igual à metade do grau (mín. 1 dado); ao acertar duas jogadas de ataque (comum) consecutivas nos seus turnos (só a primeira rolagem de cada ataque, sem repetições nem acertos automáticos), você ganha uma ação bônus ou reação adicional até o início do próximo turno — a sequência segue de turno a turno enquanto durar, uma vez por turno. Até 3 usos; voltam em descanso longo.',
             etiquetas: [
@@ -1601,6 +1645,8 @@ export const BLACK_LEG: EstiloDados = {
             id: 'ifrit-jambe',
             nome: 'Ifrit Jambe',
             nivelMin: 15,
+            tipo: 'ativa',
+            interruptor: true,
             usos: { max: 1, formula: '1+2*max(0,min(1,@nivel-18))', descanso: 'longo' },
             descricao:
                 'As chamas ficam azuladas. Ao usar o "Diable Jambe": ataques (comum) corpo a corpo desarmados causam +5 de dano de Fogo; o dano de Fogo extra do Diable Jambe vira 1d12; com uma ação bônus, ao atacar desarmado, faça a jogada com vantagem ou imponha "Queimado" se a criatura falhar numa Salvaguarda de Constituição. O dano das características de Black Leg ignora resistência a Fogo. Um uso até descanso longo (3 usos no 19º nível).',
@@ -1635,6 +1681,20 @@ export const BLACK_LEG: EstiloDados = {
             '2d10',
             'contundente',
             'Chute rápido contra uma criatura, em jogada de ataque (Técnicas) corpo a corpo desarmado. A criatura atingida faz Salvaguarda de Constituição ou recebe desvantagem na próxima jogada de ataque (comum ou Técnicas). <Kick Strike> No 6º nível, pode ser usada como Técnica de 3º Grau: 6d10 Contundente e 5 PP. Ataque combinado: possível.',
+        ),
+        // Kick Shot aprimorada: no 6º nível entra como Técnica de 3º Grau
+        tec(
+            6,
+            3,
+            '',
+            'Kick Strike',
+            5,
+            'poderosa',
+            'Toque',
+            '6d10 Contundente',
+            '6d10',
+            'contundente',
+            'Kick Shot aprimorada (3º Grau): chute rápido contra uma criatura, em jogada de ataque (Técnicas) corpo a corpo desarmado. A criatura atingida faz Salvaguarda de Constituição ou recebe desvantagem na próxima jogada de ataque (comum ou Técnicas). Ataque combinado: possível.',
         ),
         tec(
             1,
@@ -1727,6 +1787,7 @@ export const BLACK_LEG: EstiloDados = {
             '',
             undefined,
             'Ao executar uma Técnica com tipo de dano "Contundente", intensifique a força do golpe e aumente o poder em 5 dados de dano.',
+            { armarBonus: { dados: 5, soTipo: 'contundente' } },
         ),
         tec(
             16,
@@ -1760,6 +1821,7 @@ export const BLACK_LEG: EstiloDados = {
 /** Como cada Técnica do Black Leg causa o dano: ataque (Técnicas) ou Salvaguarda da área. Sem entrada, não há teste automático. */
 const TESTES_DO_BLACK_LEG: Record<string, TesteDaTecnica> = {
     'Kick Shot': { tipo: 'ataque' },
+    'Kick Strike': { tipo: 'ataque' },
     'Party Table Kick Course': { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'metade' },
     'Frites Assorties': { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'metade' },
     Concassé: { tipo: 'ataque' },
@@ -1818,6 +1880,7 @@ export function tecnicaDoEstilo(t: TecnicaDoEstilo & { origem: string }): Tecnic
         ...(t.tipoDano ? { tipoDano: t.tipoDano } : {}),
         ...(t.acao ? { acao: t.acao } : {}),
         ...(t.reacao ? { reacao: t.reacao } : {}),
+        ...(t.armarBonus ? { armarBonus: t.armarBonus } : {}),
         ...(t.teste ? { teste: t.teste } : {}),
         ...(t.duracao ? { duracao: t.duracao } : {}),
         builder: 'estilo',

@@ -39,15 +39,16 @@ final class Duracoes
     {
         $ficha = $p->ficha ?? [];
         $duracoes = $ficha['duracoes'] ?? [];
-        if (! $duracoes && ! ($ficha['reducao'] ?? [])) {
+        if (! $duracoes && ! ($ficha['reducao'] ?? []) && ! ($ficha['bonusTecnica'] ?? [])) {
             return;
         }
         $ficha['condicoes'] = array_values(array_diff($ficha['condicoes'] ?? [], array_keys($duracoes)));
         $ficha['duracoes'] = [];
         $ficha['reducao'] = [];
+        $ficha['bonusTecnica'] = [];
         $p->ficha = $ficha;
         $p->save();
-        self::transmitir($mesa, $p, ['condicoes' => $ficha['condicoes'], 'duracoes' => [], 'reducao' => []], true);
+        self::transmitir($mesa, $p, ['condicoes' => $ficha['condicoes'], 'duracoes' => [], 'reducao' => [], 'bonusTecnica' => []], true);
     }
 
     /** Um turno a menos nas condições com duração do personagem; as que zeram saem da lista. */
@@ -66,6 +67,13 @@ final class Duracoes
             $duracoes = $ficha['duracoes'] ?? [];
             // Redução armada por reação defensiva: vence quando acabam os turnos dela (o resto some junto)
             $reducao = $ficha['reducao'] ?? [];
+            // Bônus armado para a próxima Técnica (Fire Lash, Strike): vale até o fim do turno do dono
+            if (! empty($ficha['bonusTecnica'])) {
+                $ficha['bonusTecnica'] = [];
+                $p->ficha = $ficha;
+                $p->save();
+                self::transmitir($mesa, $p, ['bonusTecnica' => []], false);
+            }
             if (($reducao['turnos'] ?? 0) > 0) {
                 $restam = (int) $reducao['turnos'] - 1;
                 $ficha['reducao'] = $restam > 0 ? [...$reducao, 'turnos' => $restam] : [];

@@ -257,8 +257,42 @@ export interface AcaoCaracteristica {
     turnos?: string;
     aoDano?: boolean;
 }
+/**
+ * Dano extra que uma característica dá enquanto vale (passiva, ou ativa ligada): `desarmado` (ataque desarmado) ou `tecnica` (Técnicas de dano).
+ * `dados` fixos (`1d4`) ou `porGrau` (fração do grau da Técnica, mín. 1 dado, com o dado da própria Técnica); `fixo` soma um valor. `tipo` é o tipo
+ * do dano extra (Fogo...). `requer`: nomes de outras características que têm de estar valendo; entre as que valem no mesmo `grupo`, vence a de maior `prioridade`.
+ */
+export interface BonusDeDano {
+    alvo: 'desarmado' | 'tecnica';
+    dados?: string;
+    porGrau?: number;
+    fixo?: number;
+    tipo?: string;
+    nivelMin?: number;
+    nivelMax?: number;
+    grupo?: string;
+    prioridade?: number;
+    requer?: string[];
+}
+/** Técnica auxiliar que arma um bônus para a PRÓXIMA Técnica de Combate (Fire Lash, Strike): dados extras e custo menor. */
+export interface ArmarBonus {
+    dados: number;
+    /** Tipo dos dados extras (Fogo); sem tipo, são do mesmo tipo da Técnica. */
+    tipo?: string;
+    /** Só vale em Técnica de Combate deste tipo de dano (Strike: contundente). */
+    soTipo?: string;
+    /** Não passa do grau da Técnica (Fire Lash); cada dado que não coube baixa 1 PP do custo (`reduzCusto`). */
+    limitarAoGrau?: boolean;
+    reduzCusto?: boolean;
+    /** Só em Técnica de duração instantânea. */
+    instantanea?: boolean;
+}
 export interface Caracteristica {
     nome: string;
+    /** Característica ativa SEM efeitos de motor que mesmo assim tem interruptor (Diable Jambe, Tiro Sem Paciência): o dano dela é lido por nome. */
+    interruptor?: boolean;
+    /** Dano extra que dá enquanto vale (Diable Jambe...). */
+    bonusDano?: BonusDeDano[];
     origem: string;
     tipo: 'ativa' | 'passiva';
     /** `porProf`: o máximo acompanha o bônus de proficiência (ver `usosMax`); `max` guarda o último valor calculado. */
@@ -372,6 +406,8 @@ export interface Tecnica {
     teste?: TesteDaTecnica;
     /** Técnica que dura vários turnos (ativa no combate); sem isto, o uso é de uma vez só. */
     duracao?: DuracaoDaTecnica;
+    /** Técnica auxiliar que arma um bônus para a próxima Técnica de Combate (Fire Lash, Strike). */
+    armarBonus?: ArmarBonus;
     /** A Técnica tem uma arma cortante como requisito: as armas Meito equipadas somam dados ao dano dela. */
     armaCortante?: boolean;
     /** Quem criou: o assistente de criação marca `especie`, para refazer o passo sem duplicar. */
@@ -470,6 +506,8 @@ export interface FichaOnePiece {
     condicoes?: string[];
     /** Condições com duração: turnos que faltam e se acabam ao receber dano. O servidor conta os turnos (rastreador de turnos). */
     duracoes?: Record<string, { turnos: number; aoDano: boolean }>;
+    /** Bônus armado para a próxima Técnica de Combate (Fire Lash, Strike): vence no fim do turno do dono. */
+    bonusTecnica?: ArmarBonus & { turnos: number };
     /** Reduções de dano armadas por reações defensivas (o servidor mantém): reserva em pontos, dados dela, "zera o próximo dano" e turnos restantes. */
     reducao?: { reserva?: number; dados?: number; zerar?: boolean; unica?: boolean; turnos?: number };
     caracteristicas: Caracteristica[];

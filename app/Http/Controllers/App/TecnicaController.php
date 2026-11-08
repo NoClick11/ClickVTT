@@ -50,6 +50,9 @@ class TecnicaController extends Controller
             'dano' => ['nullable', 'array'],
             'dano.expressao' => ['required_with:dano', 'string', 'max:'.Rolador::MAX_EXPRESSAO],
             'dano.tipo' => ['nullable', 'string', 'max:30'],
+            'dano.extras' => ['nullable', 'array', 'max:4'], // danos de outro tipo (Fogo do Diable Jambe...), rolados à parte
+            'dano.extras.*.expressao' => ['required', 'string', 'max:'.Rolador::MAX_EXPRESSAO],
+            'dano.extras.*.tipo' => ['nullable', 'string', 'max:30'],
             'efeito' => ['nullable', 'string', 'max:200'], // o que acontece com quem falha (Salvaguarda do efeito)
             // A condição que quem falha recebe sozinha, com a duração (id da condição do sistema)
             'aplica' => ['nullable', 'array'],
@@ -82,6 +85,9 @@ class TecnicaController extends Controller
         if (isset($d['dano'])) {
             try {
                 $rolador->rolar($d['dano']['expressao'], $variaveis); // só valida a expressão
+                foreach ($d['dano']['extras'] ?? [] as $extra) {
+                    $rolador->rolar($extra['expressao'], $variaveis);
+                }
             } catch (RolagemInvalida $e) {
                 throw ValidationException::withMessages(['dano.expressao' => $e->getMessage()]);
             }
@@ -96,7 +102,8 @@ class TecnicaController extends Controller
         $mensagem = $this->criar($mesa, $acesso, $atacante, [
             'nome' => trim($d['nome']), 'atributo' => $d['atributo'], 'desvantagem' => (bool) ($d['desvantagem'] ?? false),
             'cd' => (int) $variaveis['cd'], 'aoPassar' => $d['ao_passar'] ?? 'metade',
-            'dano' => isset($d['dano']) ? ['expressao' => $d['dano']['expressao'], 'tipo' => filled($d['dano']['tipo'] ?? null) ? trim($d['dano']['tipo']) : null] : null,
+            'dano' => isset($d['dano']) ? ['expressao' => $d['dano']['expressao'], 'tipo' => filled($d['dano']['tipo'] ?? null) ? trim($d['dano']['tipo']) : null,
+                'extras' => array_map(fn ($e) => ['expressao' => $e['expressao'], 'tipo' => filled($e['tipo'] ?? null) ? trim($e['tipo']) : null], $d['dano']['extras'] ?? [])] : null,
             'efeito' => $d['efeito'] ?? null, 'aplica' => $d['aplica'] ?? null, 'secundaria' => $d['secundaria'] ?? null,
         ], $d['alvos']);
 
@@ -292,6 +299,22 @@ class TecnicaController extends Controller
                     $dados['alvos'][$i]['final'] = $res['calculo']['final'];
                     $dados['alvos'][$i]['modo'] = $res['calculo']['modo'];
                     $aplicados[] = $res;
+                }
+            }
+            // Danos extras de outro tipo (Fogo): cada um rola à parte e vale por alvo como o principal (todo se falhou, metade ou nada se passou)
+            $fichaAtacante = $atacante ? $atacante->fichaCompleta($sistema) : [];
+            foreach ($t['dano']['extras'] ?? [] as $x => $extra) {
+                $re = $rolador->rolar($extra['expressao'], $vars);
+                $dados['dano']['extras'][$x] = ['total' => $re['total'], 'expressao' => $re['expressao'], 'tipo' => $extra['tipo']];
+                $ignoraExtra = \App\Sistemas\OnePiece\Regras::fogoDoBlackLeg($fichaAtacante, $extra['tipo']);
+                foreach ($dados['alvos'] as $i => $a) {
+                    $baseExtra = $a['passou'] ? ($t['aoPassar'] === 'metade' ? intdiv($re['total'], 2) : 0) : $re['total'];
+                    if ($baseExtra > 0) {
+                        $res = $aplicar->aplicar($mesa, $a['personagem_id'], $sistema, $baseExtra, $extra['tipo'], $ignoraExtra, $t['atacante_id'], ['origem' => 'salvaguarda', 'atributo' => $t['atributo'] ?? null, 'passou' => (bool) $a['passou']]);
+                        $dados['alvos'][$i]['base'] = ($dados['alvos'][$i]['base'] ?? 0) + $baseExtra;
+                        $dados['alvos'][$i]['final'] = ($dados['alvos'][$i]['final'] ?? 0) + $res['calculo']['final'];
+                        $aplicados[] = $res;
+                    }
                 }
             }
         }

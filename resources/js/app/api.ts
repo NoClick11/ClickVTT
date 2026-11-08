@@ -99,10 +99,14 @@ export function apiMesa(mesaId: number, atorId: number) {
             visibilidade: VisibilidadeRolagem,
             personagemId: number | null,
             rotulo?: string,
-            dano?: { tipo: string | null; fator?: number },
+            dano?: { tipo: string | null; fator?: number; fonte?: string },
             acao?: { categoria: string; tecnica?: boolean },
             alvoPersonagemId?: number | null,
-            tecnica?: { nome: string; dano?: { expressao: string; tipo: string | null } | null; secundaria?: object | null },
+            tecnica?: {
+                nome: string;
+                dano?: { expressao: string; tipo: string | null; extras?: { expressao: string; tipo: string | null }[] } | null;
+                secundaria?: object | null;
+            },
             municaoItemId?: number,
         ) =>
             requisitar<Mensagem>(atorId, 'POST', r('jogo.rolagens.store'), {
@@ -142,7 +146,7 @@ export function apiMesa(mesaId: number, atorId: number) {
             desvantagem?: boolean;
             ao_passar?: 'metade' | 'nada';
             alvos: number[];
-            dano?: { expressao: string; tipo: string | null } | null;
+            dano?: { expressao: string; tipo: string | null; extras?: { expressao: string; tipo: string | null }[] } | null;
             efeito?: string;
             aplica?: { condicao: string; turnos?: number; aoDano?: boolean } | null;
             secundaria?: {
