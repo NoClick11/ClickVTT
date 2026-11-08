@@ -63,6 +63,8 @@ class JogoController extends Controller
             // Navegação entre páginas e posicionamento de jogadores: só o mestre.
             'paginas' => $mestre ? $mesa->paginas->map->paraFront()->values() : [],
             'pastas' => $mestre ? $mesa->pastas->map(fn ($p) => ['id' => $p->id, 'nome' => $p->nome, 'ordem' => $p->ordem])->values() : [],
+            // Diário (pastas e folhetos): o mestre vê tudo; o jogador, só os folhetos liberados e as pastas que os contêm.
+            'diario' => $this->diario($mesa, $mestre),
             // Todos veem quem joga e os personagens (com os donos); só o mestre vê a página de cada jogador.
             'jogadores' => $mesa->jogadores()->orderByRaw("papel = 'mestre' desc")->orderBy('nome')->get()
                 ->map(fn ($j) => $mestre ? $j->paraFront() : $j->publico())->values(),
@@ -86,6 +88,25 @@ class JogoController extends Controller
                 ->map(fn ($m) => $m->para($acesso->jogador))->filter()->values(),
             'sairUrl' => route('convite.sair', $mesa->convite_token).'?jogador='.$acesso->jogador->id,
         ]);
+    }
+
+    /** @return array{pastas: list<array>, folhetos: list<array>} */
+    private function diario(Mesa $mesa, bool $mestre): array
+    {
+        $pastas = $mesa->diarioPastas()->get();
+        $folhetos = $mesa->folhetos()->when(! $mestre, fn ($q) => $q->where('visivel', true))->get();
+        if (! $mestre) {
+            $porId = $pastas->keyBy('id');
+            $uteis = [];
+            foreach ($folhetos as $f) {
+                for ($id = $f->pasta_id; $id && isset($porId[$id]) && ! isset($uteis[$id]); $id = $porId[$id]->pai_id) {
+                    $uteis[$id] = true;
+                }
+            }
+            $pastas = $pastas->filter(fn ($p) => isset($uteis[$p->id]));
+        }
+
+        return ['pastas' => $pastas->map->paraFront()->values()->all(), 'folhetos' => $folhetos->map->paraFront()->values()->all()];
     }
 
     /** A loja aberta para este jogador (categorias, ajuste de preço e os itens criados pelo mestre nelas) ou null. */

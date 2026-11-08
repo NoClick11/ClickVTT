@@ -5,6 +5,7 @@ use App\Http\Controllers\App\BroadcastAuthController;
 use App\Http\Controllers\App\ChatController;
 use App\Http\Controllers\App\CombateController;
 use App\Http\Controllers\App\CompanheiroController;
+use App\Http\Controllers\App\DiarioController;
 use App\Http\Controllers\App\EventoDeCombateController;
 use App\Http\Controllers\App\ExploracaoController;
 use App\Http\Controllers\App\FichaController;
@@ -92,6 +93,15 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::post('loot/{objeto}/itens', [LootController::class, 'adicionarItem'])->middleware('throttle:60,1')->name('loot.itens.store');
     Route::patch('loot/{objeto}/itens/{linha}', [LootController::class, 'definirQtd'])->middleware('throttle:120,1')->name('loot.itens.update');
     Route::patch('loot/{objeto}', [LootController::class, 'atualizar'])->middleware('throttle:60,1')->name('loot.update');
+    // Diário: pastas e folhetos (só o mestre) e a pasta de cada personagem.
+    Route::post('diario/pastas', [DiarioController::class, 'criarPasta'])->middleware('throttle:60,1')->name('diario.pastas.store');
+    Route::patch('diario/pastas/{pasta}', [DiarioController::class, 'atualizarPasta'])->middleware('throttle:60,1')->name('diario.pastas.update');
+    Route::delete('diario/pastas/{pasta}', [DiarioController::class, 'excluirPasta'])->middleware('throttle:60,1')->name('diario.pastas.destroy');
+    Route::post('diario/folhetos', [DiarioController::class, 'criarFolheto'])->middleware('throttle:30,1')->name('diario.folhetos.store');
+    Route::patch('diario/folhetos/{folheto}', [DiarioController::class, 'atualizarFolheto'])->middleware('throttle:60,1')->name('diario.folhetos.update');
+    Route::delete('diario/folhetos/{folheto}', [DiarioController::class, 'excluirFolheto'])->middleware('throttle:60,1')->name('diario.folhetos.destroy');
+    Route::post('diario/folhetos/{folheto}/mostrar', [DiarioController::class, 'mostrarFolheto'])->middleware('throttle:30,1')->name('diario.folhetos.mostrar');
+    Route::patch('personagens/{personagem}/pasta', [DiarioController::class, 'moverPersonagem'])->middleware('throttle:120,1')->name('personagens.pasta');
     Route::post('pastas', [PastaController::class, 'store'])->name('pastas.store');
     Route::patch('pastas/{pasta}', [PastaController::class, 'update'])->name('pastas.update');
     Route::delete('pastas/{pasta}', [PastaController::class, 'destroy'])->name('pastas.destroy');

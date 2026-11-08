@@ -12,7 +12,7 @@ class Personagem extends Model
 {
     protected $table = 'personagens';
 
-    protected $fillable = ['nome', 'cor'];
+    protected $fillable = ['nome', 'cor', 'pasta_id'];
 
     /** `ficha` e `criacao` só mudam pela API da ficha (validada pelo sistema), nunca por atribuição em massa. */
     protected function casts(): array
@@ -53,6 +53,7 @@ class Personagem extends Model
         return [
             ...($comFicha ? ['ficha' => $sistema ? $this->fichaCompleta($sistema) : $this->ficha, 'criacao' => $this->criacao] : []),
             'id' => $this->id,
+            'pasta_id' => $this->pasta_id,
             'nome' => $this->nome,
             'cor' => $this->cor,
             'status' => array_values($this->ficha['condicoes'] ?? []),
