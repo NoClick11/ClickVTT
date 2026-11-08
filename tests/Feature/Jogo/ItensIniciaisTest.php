@@ -169,6 +169,17 @@ class ItensIniciaisTest extends TestCase
         $this->assertSame($r['bellys'], $c->aria->fresh()->ficha['dinheiroInicial']);
     }
 
+    public function test_black_leg_soma_90_mil_fixos_aos_15d10_vezes_mil(): void
+    {
+        $c = $this->cenario();
+        $r = $this->rolarDinheiro($c, 'black-leg')->assertOk()->json();
+        $this->assertSame(15, count($r['dados']));
+        $this->assertSame(90000, $r['fixo']);
+        $this->assertSame($r['total'] * 1000 + 90000, $r['bellys']);
+        $this->assertGreaterThanOrEqual(15000 + 90000, $r['bellys']);
+        $this->assertLessThanOrEqual(150000 + 90000, $r['bellys']);
+    }
+
     public function test_arma_favorita_mosquete_entrega_um_mosquete_e_refazer_nao_duplica_nem_soma_dinheiro(): void
     {
         $c = $this->cenario();

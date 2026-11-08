@@ -28,12 +28,14 @@ final class EstilosDeLuta
     /**
      * Os dados que rolam os Bellys iniciais do estilo (`5d10` e o multiplicador `1000`), ou null se o dinheiro é fixo ou não há.
      *
-     * @return array{dados: string, multiplicador: int}|null
+     * `fixo`: Bellys fixos que somam aos rolados (Black Leg: 90.000 + 15d10 × 1000).
+     *
+     * @return array{dados: string, multiplicador: int, fixo: int}|null
      */
     public static function dinheiroRolado(string $estiloId): ?array
     {
         $d = self::estilo($estiloId)['equipamentoInicial']['dinheiro'] ?? null;
 
-        return isset($d['dados']) ? ['dados' => $d['dados'], 'multiplicador' => (int) $d['multiplicador']] : null;
+        return isset($d['dados']) ? ['dados' => $d['dados'], 'multiplicador' => (int) $d['multiplicador'], 'fixo' => (int) ($d['fixo'] ?? 0)] : null;
     }
 }

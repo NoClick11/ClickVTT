@@ -223,7 +223,8 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         if (isset($reducao['reserva'])) {
             [$total, $dados] = $rolar($reducao['reserva']);
 
-            return ['reducao.reserva' => $total, 'reducao.dados' => $dados, 'reducao.turnos' => $turnos];
+            // `unica` (Parry Shot): a reserva vale só para o próximo dano que o personagem sofrer
+            return ['reducao.reserva' => $total, 'reducao.dados' => $dados, 'reducao.turnos' => $turnos, 'reducao.unica' => ! empty($reducao['unica'])];
         }
         if (isset($reducao['mais'])) {
             $n = (int) explode('d', $reducao['mais'])[0];
@@ -271,11 +272,13 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         if ($dano > 0 && $reserva > 0) {
             $abs = min($dano, $reserva);
             $dano -= $abs;
-            $campos['reducao.reserva'] = $reserva - $abs;
-            if ($reserva - $abs === 0) {
+            $unica = ! empty($r['unica']);
+            $campos['reducao.reserva'] = $unica ? 0 : $reserva - $abs;
+            if ($unica || $reserva - $abs === 0) {
                 $campos['reducao.dados'] = 0;
+                $campos['reducao.unica'] = false;
             }
-            $avisos[] = "a reserva de redução absorve {$abs} (restam ".($reserva - $abs).')';
+            $avisos[] = "a reserva de redução absorve {$abs}".($unica ? '' : ' (restam '.($reserva - $abs).')');
         }
 
         return ['final' => $dano, 'campos' => $campos, 'aviso' => $avisos ? ucfirst(implode('; ', $avisos)).'.' : null];

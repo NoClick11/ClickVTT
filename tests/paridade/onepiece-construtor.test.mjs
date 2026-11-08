@@ -987,3 +987,47 @@ test('Brutamontes: 10 Técnicas por nível, Corpo de Criatura +60 PV e Invencibi
     assert.deepEqual(res(18), []);
     assert.ok(res(19).includes('Verdadeiro') && res(19).includes('Contundente'));
 });
+
+// --- estilo de luta: Black Leg ----------------------------------------------------------------------------------------
+const blackLeg = (primario = 'for', extra = {}) =>
+    feito({
+        estilo: {
+            id: 'black-leg',
+            nome: 'Black Leg',
+            dado: 'd12',
+            primario,
+            caminho: null,
+            armaFavorita: 'Corporal',
+            hbInata: 'perito-em-tecnicas',
+            pericias: ['atletismo', 'acrobacia'],
+        },
+        especies: ['humano'],
+        variantes: [null],
+        dinheiro: { estilo: 'black-leg', dados: Array(15).fill(5), total: 75, bellys: 165000, fixo: 90000, expressao: '15d10', multiplicador: 1000 },
+        ...extra,
+    });
+
+test('Black Leg: d12, FOR ou DES como primário, salvaguardas FOR e DES e perícias só da lista', () => {
+    const e = blackLeg('des');
+    assert.deepEqual(problemasDaEtapa(e, 'estilo'), []);
+    assert.ok(problemasDaEtapa(blackLeg(null), 'estilo').some((m) => m.includes('atributo primário')));
+    assert.ok(problemasDaEtapa(blackLeg('for', { estilo: { ...e.estilo, pericias: ['atletismo', 'intimidacao'] } }), 'estilo').some((m) => m.includes('permitidas')));
+    const { campos } = camposDaCriacao(e);
+    assert.equal(campos['dadosVida.tipo'], 'd12');
+    assert.equal(campos.atributoPrimario, 'des');
+    assert.equal(campos['tecnicas.atributo'], 'des');
+    assert.ok(['for', 'des'].every((s) => campos.salvaguardas.includes(s)));
+});
+
+test('Black Leg: 10 Técnicas, deslocamento por nível (12/15/18 m) e Parry Shot é reação defensiva de uso único', () => {
+    const tecnicas = (n) => camposDaCriacao(blackLeg(), { nivel: n }).campos['tecnicas.lista'];
+    assert.deepEqual(tecnicas(1).map((t) => t.nome), ['Kick Shot', 'Anti-Manner Kick Course']);
+    assert.equal(tecnicas(20).length, 10);
+    assert.deepEqual(tecnicas(6).find((t) => t.nome === 'Parry Shot').reacao.reducao, { reserva: '8d8', mais: '2d8', maximo: 20, unica: true });
+    const andar = (n) => {
+        const f = camposDaCriacao(blackLeg(), { nivel: n }).campos;
+        return f.caracteristicas.filter((c) => c.nome.startsWith('Godspeed: Speed Walk')).map((c) => [c.nivelMin, c.nivelMax ?? null]);
+    };
+    assert.deepEqual(andar(3), [[3, 4]]);
+    assert.ok(andar(12).some(([min]) => min === 12));
+});

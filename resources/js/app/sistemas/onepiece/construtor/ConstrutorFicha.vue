@@ -1061,7 +1061,7 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1.5 text-sm 
                                     {{
                                         e.dinheiro?.estilo === estiloEscolhido.id
                                             ? 'Já rolado'
-                                            : `Rolar Bellys (${dinheiroRoladoDoEstilo(estiloEscolhido)!.dados} × ฿ ${dinheiroRoladoDoEstilo(estiloEscolhido)!.multiplicador.toLocaleString('pt-BR')})`
+                                            : `Rolar Bellys (${dinheiroRoladoDoEstilo(estiloEscolhido)!.dados} × ฿ ${dinheiroRoladoDoEstilo(estiloEscolhido)!.multiplicador.toLocaleString('pt-BR')}${dinheiroRoladoDoEstilo(estiloEscolhido)!.fixo ? ` + ฿ ${dinheiroRoladoDoEstilo(estiloEscolhido)!.fixo!.toLocaleString('pt-BR')}` : ''})`
                                     }}</Button
                                 >
                                 <span v-if="e.dinheiro?.estilo === estiloEscolhido.id" class="font-mono text-sm text-ouro-100" role="status"
@@ -1074,7 +1074,9 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1.5 text-sm 
                             <span :class="rotulo">Perícias do estilo ({{ e.estilo.pericias?.length ?? 0 }}/{{ estiloEscolhido.pericias }})</span>
                             <div class="flex flex-wrap gap-1.5" role="group" aria-label="Perícias do estilo">
                                 <button
-                                    v-for="p in PERICIAS_ESCOLHIVEIS.filter((x) => !estiloEscolhido!.periciasPermitidas || estiloEscolhido!.periciasPermitidas.includes(x.id))"
+                                    v-for="p in PERICIAS_ESCOLHIVEIS.filter(
+                                        (x) => !estiloEscolhido!.periciasPermitidas || estiloEscolhido!.periciasPermitidas.includes(x.id),
+                                    )"
                                     :key="p.id"
                                     type="button"
                                     :class="[cartao, 'px-2 py-1 text-xs', e.estilo.pericias?.includes(p.id) ? ativo : inativo]"

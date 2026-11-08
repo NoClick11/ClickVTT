@@ -310,4 +310,26 @@ class ReacaoTest extends TestCase
         $this->assertSame([], $f['duracoes']);
         $this->assertNotContains('atordoado', $f['condicoes']);
     }
+
+    public function test_parry_shot_e_reacao_defensiva_de_uso_unico_a_reserva_nao_sobra(): void
+    {
+        $c = $this->cenario();
+        $this->combate($c);
+        $sis = app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece');
+        $this->ficha($c, $c->ana, $c->aria, ['pp.atual' => 6, 'tecnicas.lista' => [[
+            'nome' => 'Parry Shot', 'origem' => 'Estilo', 'custo' => 3, 'alcance' => 'Pessoal', 'efeito' => 'reduz', 'rolagem' => '', 'descricao' => 'Reduz o dano.', 'acao' => 'reacao',
+            'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'si', 'reducao' => ['reserva' => '8d8', 'mais' => '2d8', 'maximo' => 20, 'unica' => true]],
+        ]]]);
+        $this->ataque($c);
+        $this->reagir($c, $c->ana, $c->aria, 't:0');
+        $f = $c->aria->fresh()->fichaCompleta($sis);
+        $this->assertSame(8, $f['reducao']['dados']);
+        $this->assertTrue($f['reducao']['unica']);
+
+        $primeiro = $this->aplicarDano($c, $c->aria->id, 1000);
+        $this->assertSame(1000 - $f['reducao']['reserva'], $primeiro['calculo']['final']);
+        $f = $c->aria->fresh()->fichaCompleta($sis);
+        $this->assertSame(0, $f['reducao']['reserva']); // uso único: não sobra reserva
+        $this->assertSame(7, $this->aplicarDano($c, $c->aria->id, 7)['calculo']['final']);
+    }
 }

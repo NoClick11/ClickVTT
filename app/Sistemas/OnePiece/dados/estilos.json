@@ -73,6 +73,23 @@
           "multiplicador": 1000
         }
       }
+    },
+    {
+      "id": "black-leg",
+      "nome": "Black Leg",
+      "equipamentoInicial": {
+        "itens": [
+          {
+            "catalogo": "roupa-de-gala",
+            "qtd": 1
+          }
+        ],
+        "dinheiro": {
+          "dados": "15d10",
+          "multiplicador": 1000,
+          "fixo": 90000
+        }
+      }
     }
   ]
 }

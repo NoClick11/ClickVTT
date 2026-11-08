@@ -193,7 +193,7 @@ class FichaController extends Controller
             }
             $r = ($rolador ?? new Rolador)->rolar($regra['dados']);
             $dados = collect($r['termos'])->firstWhere('tipo', 'dados')['resultados'] ?? [];
-            $novo = ['estilo' => $d['estilo'], 'dados' => $dados, 'total' => $r['total'], 'bellys' => $r['total'] * $regra['multiplicador'], 'expressao' => $regra['dados'], 'multiplicador' => $regra['multiplicador']];
+            $novo = ['estilo' => $d['estilo'], 'dados' => $dados, 'total' => $r['total'], 'bellys' => $r['total'] * $regra['multiplicador'] + $regra['fixo'], 'fixo' => $regra['fixo'], 'expressao' => $regra['dados'], 'multiplicador' => $regra['multiplicador']];
             $criacao['dados'] = [...($criacao['dados'] ?? []), 'dinheiro' => $novo];
             $p->criacao = $criacao;
             $p->save();

@@ -39,7 +39,7 @@ export interface ItemInicial {
 export interface EquipamentoInicial {
     porArma?: Record<string, ItemInicial[]>;
     itens: ItemInicial[];
-    dinheiro?: { valor: number } | { dados: string; multiplicador: number };
+    dinheiro?: { valor: number } | { dados: string; multiplicador: number; fixo?: number };
 }
 
 export interface EstiloDados {
@@ -1420,7 +1420,354 @@ const TESTES_DO_BRUTAMONTES: Record<string, TesteDaTecnica> = {
 };
 for (const t of BRUTAMONTES.tecnicas) if (TESTES_DO_BRUTAMONTES[t.nome]) t.teste = TESTES_DO_BRUTAMONTES[t.nome];
 
-export const ESTILOS: EstiloDados[] = [ATIRADOR, AVENTUREIRO, BRUTAMONTES];
+/**
+ * Black Leg (chutes e chamas). Regra do projeto: só dano, área e PP são automáticos (Técnicas) e a reação defensiva Parry Shot; o resto das
+ * características fica como texto/etiqueta para a mesa conduzir. Numéricos simples: deslocamento por nível, Ataque Extra e usos por descanso.
+ */
+export const BLACK_LEG: EstiloDados = {
+    id: 'black-leg',
+    nome: 'Black Leg',
+    descricao:
+        'Mescla os movimentos de perna mais poderosos das artes marciais, fortalecendo os membros inferiores e ganhando velocidade, elasticidade e força descomunal. Os maiores mestres são mais rápidos que a visão humana, correm no próprio céu e criam chamas a partir do atrito com o ar. As mãos ficam de fora: são reservadas à vocação.',
+    dado: 'd12',
+    atributosPrimarios: ['for', 'des'],
+    salvaguardas: ['for', 'des'],
+    proficiencias: [],
+    pericias: 2,
+    periciasPermitidas: ['atletismo', 'acrobacia', 'intuicao', 'percepcao', 'prestidigitacao'],
+    armasFavoritas: ['Corporal'],
+    habilidadesInatas: [
+        { id: 'corpo-de-guerreiro', nome: 'Corpo de Guerreiro' },
+        { id: 'perito-em-tecnicas', nome: 'Perito em Técnicas' },
+    ],
+    equipamento: 'Uma roupa de gala, 90.000 Bellys e 15d10 x 1000 Bellys.',
+    equipamentoInicial: {
+        itens: [{ catalogo: 'roupa-de-gala', qtd: 1 }],
+        dinheiro: { dados: '15d10', multiplicador: 1000, fixo: 90000 },
+    },
+    niveisAva: [4, 8, 12, 16, 20],
+    niveisDeTecnica: [1, 3, 6, 9, 12, 16, 20],
+    tracos: [
+        {
+            id: 'pacto-sagrado',
+            nome: 'Pernas Fortes e Mãos Gentis: Pacto Sagrado',
+            descricao:
+                'Escolha uma vocação, realizada com as próprias mãos (ex.: tocar piano), e jure nunca usá-las em combate nem colocá-las em risco. Criaturas não hostis que experimentarem sua vocação fazem Salvaguarda de Vontade ou ficam "Enfeitiçadas" por até 1 hora (ou até você ou seus companheiros agirem de forma nociva contra elas); você recebe +10 em Testes de Presença (Atuação e Persuasão) contra elas. Quem foi enfeitiçado nas últimas 24 horas sofre −5 nas jogadas de ataque (comum) contra você durante o 1º minuto do encontro. Se usar as mãos em jogada de ataque (comum ou Técnicas) ou as colocar conscientemente em perigo (com aviso do Narrador), perde esses benefícios para sempre. Alternativamente, em vez do Pacto Sagrado, seus ataques (comum) corpo a corpo desarmados recebem os benefícios de uma arma marcial, com qualquer expertise sua (refazível a cada novo nível).',
+            etiquetas: [
+                'Vocação com as mãos: Enfeitiçado (Salv. VON) e +10 em Atuação/Persuasão',
+                'Ou: ataques desarmados como arma marcial (com expertise)',
+            ],
+        },
+        {
+            id: 'kicker',
+            nome: 'Pernas Fortes e Mãos Gentis: Kicker',
+            descricao:
+                'Sem gastar ação, ação poderosa, reação ou ação bônus, você destrói construções e objetos até 6 m: 1º nível, tamanho Pequeno ou menor; 6º, Médio (1 PP); 11º, Grande e Enorme (2 PP, 1 Nível de Exaustão e 30 segundos de preparo); 16º, Imenso ou maior (3 PP, 2 Níveis de Exaustão e 1 minuto). Além disso, suas jogadas de ataque (comum) em cada turno recebem +1 no acerto e no dano para cada 4,5 m percorridos no turno.',
+            etiquetas: ['Destrói objetos a 6 m (tamanho cresce com o nível)', '+1 acerto e dano a cada 4,5 m percorridos no turno'],
+        },
+        {
+            id: 'hard-walk',
+            nome: 'Godspeed: Hard Walk',
+            nivelMin: 2,
+            descricao:
+                'Seu deslocamento não pode ser reduzido por terreno difícil e não provoca reações de nenhuma criatura, mesmo as que ignoram isso, como "Ataque de Oportunidade Superior".',
+            etiquetas: ['Terreno difícil não reduz o deslocamento', 'Deslocamento não provoca reações'],
+        },
+        {
+            id: 'speed-walk-12',
+            nome: 'Godspeed: Speed Walk (12 m)',
+            nivelMin: 3,
+            nivelMax: 4,
+            descricao: 'A partir do 3º nível de Black Leg, seu deslocamento normal aumenta para 12 metros.',
+            efeitos: [{ alvo: 'movimento.normal', modo: 'min', valor: 120 }],
+        },
+        {
+            id: 'speed-walk-12-nado',
+            nome: 'Godspeed: Speed Walk (12 m) e Blue Walk',
+            nivelMin: 5,
+            nivelMax: 7,
+            descricao:
+                'Deslocamento normal de 12 metros. Blue Walk (a partir do 5º nível): você não recebe desvantagens por não ser uma criatura aquática (Capítulo 12) e, submerso, seu deslocamento de natação é igual ao normal.',
+            efeitos: [
+                { alvo: 'movimento.normal', modo: 'min', valor: 120 },
+                { alvo: 'movimento.nado', modo: 'min', valor: 120 },
+            ],
+        },
+        {
+            id: 'speed-walk-15',
+            nome: 'Godspeed: Speed Walk (15 m) e Blue Walk',
+            nivelMin: 8,
+            nivelMax: 11,
+            descricao: 'Deslocamento normal de 15 metros (no 8º nível de Black Leg), e de natação igual ao normal (Blue Walk).',
+            efeitos: [
+                { alvo: 'movimento.normal', modo: 'min', valor: 150 },
+                { alvo: 'movimento.nado', modo: 'min', valor: 150 },
+            ],
+        },
+        {
+            id: 'speed-walk-18',
+            nome: 'Godspeed: Speed Walk (18 m) e Blue Walk',
+            nivelMin: 12,
+            descricao: 'Deslocamento normal de 18 metros (no 12º nível de Black Leg), e de natação igual ao normal (Blue Walk).',
+            efeitos: [
+                { alvo: 'movimento.normal', modo: 'min', valor: 180 },
+                { alvo: 'movimento.nado', modo: 'min', valor: 180 },
+            ],
+        },
+        {
+            id: 'burst-walk',
+            nome: 'Godspeed: Burst Walk',
+            nivelMin: 4,
+            descricao: 'Você pode usar uma ação bônus em cada turno seu em combate para executar uma "Disparada".',
+            etiquetas: ['Ação bônus: Disparada (1 por turno)'],
+        },
+        {
+            id: 'sky-walk',
+            nome: 'Godspeed: Sky Walk',
+            nivelMin: 7,
+            descricao: 'Você tem acesso à técnica auxiliar "Geppo" do Estilo de Combate "Usuário de Rokushiki".',
+            etiquetas: ['Técnica auxiliar Geppo (Rokushiki)'],
+        },
+        {
+            id: 'stealth-walk',
+            nome: 'Godspeed: Stealth Walk',
+            nivelMin: 10,
+            descricao:
+                'Você pode sacrificar 9 metros de deslocamento para ficar invisível até o início do seu próximo turno, ou até fazer jogada de ataque (comum ou Técnicas), causar qualquer efeito ou dano a uma criatura.',
+            etiquetas: ['−9 m de deslocamento: invisível até o próximo turno ou até agir contra alguém'],
+        },
+        {
+            id: 'diable-jambe',
+            nome: 'Diable Jambe',
+            nivelMin: 3,
+            tipo: 'ativa',
+            usos: { max: 3, descanso: 'longo' },
+            descricao:
+                'O atrito dos chutes cria labaredas nas pernas por até 1 minuto: resistência a dano de Fogo; ataques (comum) corpo a corpo desarmados com 1d4 de dano de Fogo extra (1d6 no 7º nível, 1d8 no 11º); ao executar uma Técnica, aumenta uma quantidade de dados de dano de Fogo igual à metade do grau (mín. 1 dado); ao acertar duas jogadas de ataque (comum) consecutivas nos seus turnos (só a primeira rolagem de cada ataque, sem repetições nem acertos automáticos), você ganha uma ação bônus ou reação adicional até o início do próximo turno — a sequência segue de turno a turno enquanto durar, uma vez por turno. Até 3 usos; voltam em descanso longo.',
+            etiquetas: [
+                'Resistência a Fogo',
+                'Desarmado: +1d4 Fogo (1d6 no 7º, 1d8 no 11º)',
+                'Técnicas: +½ grau em dados de Fogo',
+                '2 acertos seguidos: ação bônus ou reação extra',
+            ],
+        },
+        {
+            id: 'way-of-the-kick',
+            nome: 'Way of the Kick',
+            nivelMin: 5,
+            descricao:
+                'Uma vez no seu turno, com uma ação bônus, você faz jogadas de ataque (comum) desarmadas adicionais, uma para cada 5 níveis de Black Leg (no 10º nível, até 2). No 11º nível (Overdrive) ela é ativada com a primeira jogada de ataque (comum) feita, em vez da ação bônus, e aumenta em 2 as jogadas adicionais.',
+            etiquetas: ['Ação bônus (1 por turno): 1 ataque desarmado extra a cada 5 níveis'],
+        },
+        {
+            id: 'shoot',
+            nome: 'Shoot',
+            nivelMin: 6,
+            descricao:
+                'Quem for atingido por um ou mais ataques corpo a corpo desarmados seus escolhe, no início do próprio turno seguinte, ficar impedido de: deslocamento, ação, ação bônus ou reação (se ainda disponível); o impedimento dura até o início do turno seguinte dela. Além disso, se o d20 de um ataque (comum) corpo a corpo desarmado bem-sucedido for 16 ou mais, a criatura faz Salvaguarda de Constituição ou recebe a condição do "Kick Festival" até o fim do próximo turno dela: 16 Letárgico (barriga), 17 Caído (perna), 18 Impedido (nuca), 19 Cego (olhos), 20 Atordoado (cabeça). Se já a acertou no turno, pode somar ou subtrair o resultado pelo número de ataques, ou trocar uma dessas variações por desvantagem na Salvaguarda. Parage Shoot: sequência de chutes no rosto de uma criatura voluntária: 1d4 de dano por nível (ou ND) dela e aparência nova irreconhecível, com um defeito adicional do Capítulo 5 à escolha do Narrador; num crítico natural contra humanoide inimigo, você pode alterar as feições em vez da tabela.',
+            etiquetas: [
+                'Atingido: escolhe perder deslocamento, ação, bônus ou reação',
+                'd20 16+ no desarmado: Kick Festival (Letárgico, Caído, Impedido, Cego, Atordoado; Salv. CON)',
+            ],
+        },
+        {
+            id: 'ataque-extra',
+            nome: 'Ataque Extra',
+            nivelMin: 7,
+            descricao: 'Você pode atacar duas vezes, em vez de uma, ao usar a ação "Atacar" no seu turno.',
+            etiquetas: ['Ação Atacar: 2 ataques'],
+            efeitos: [{ alvo: 'ataques.acao', modo: 'soma', valor: 1 }],
+        },
+        {
+            id: 'enfer-de-flammes',
+            nome: 'Enfer de Flammes',
+            nivelMin: 10,
+            usos: { max: 1, formula: '1+2*min(1,max(0,floor((@nivel-10)/5)))', descanso: 'longo' },
+            descricao:
+                'Escolha uma esfera de até 4,5 m de raio, centrada num ponto a até 9 m de você. Por 1 minuto, você se move em alta velocidade por toda essa área. Sempre que uma criatura na área iniciar uma ação, antes de concluí-la, você pode fazer uma jogada de ataque (comum) contra ela; quem for atingido faz Salvaguarda de Constituição e, se falhar, o turno termina logo após o dano. Enquanto ativa, você não faz turnos normais e não pode ser alvo de ataques nem sofrer efeitos; pode encerrá-la a qualquer momento, sem ação, escolhendo um espaço desocupado na área. Um uso até descanso longo; no 15º nível, até 3 usos (um por encontro).',
+            etiquetas: ['Esfera de 4,5 m por 1 minuto: ataque ao iniciarem ação; você fica intocável'],
+        },
+        {
+            id: 'spectre',
+            nome: 'Spectre',
+            nivelMin: 14,
+            descricao:
+                'Ao fazer uma jogada de ataque (comum) corpo a corpo desarmado, escolha um efeito: compare a mesma jogada com a CR de cada criatura a até 1,5 m de você (cada atingida sofre só o dano base do desarmado, sem modificadores, efeitos nem dados adicionais, nem de crítico); empurre a criatura até 3 m, para um espaço desocupado; ou aumente em 1,5 m o alcance do ataque.',
+            etiquetas: ['Desarmado: ataca todos a 1,5 m (dano base), empurra 3 m ou +1,5 m de alcance'],
+        },
+        {
+            id: 'ifrit-jambe',
+            nome: 'Ifrit Jambe',
+            nivelMin: 15,
+            usos: { max: 1, formula: '1+2*max(0,min(1,@nivel-18))', descanso: 'longo' },
+            descricao:
+                'As chamas ficam azuladas. Ao usar o "Diable Jambe": ataques (comum) corpo a corpo desarmados causam +5 de dano de Fogo; o dano de Fogo extra do Diable Jambe vira 1d12; com uma ação bônus, ao atacar desarmado, faça a jogada com vantagem ou imponha "Queimado" se a criatura falhar numa Salvaguarda de Constituição. O dano das características de Black Leg ignora resistência a Fogo. Um uso até descanso longo (3 usos no 19º nível).',
+            etiquetas: ['Com Diable Jambe: +5 Fogo, extra 1d12, vantagem ou Queimado; ignora resistência a Fogo'],
+        },
+        {
+            id: 'mestre-black-leg',
+            nome: 'Mestre Black Leg',
+            nivelMin: 18,
+            descricao:
+                'Distribua livremente 6 pontos entre seus atributos, respeitando o máximo de 24 em cada um. Você pode escolher dois atributos para aplicar esses pontos até o máximo de 30.',
+        },
+        {
+            id: 'hell-memories',
+            nome: 'Hell Memories',
+            nivelMin: 19,
+            descricao:
+                'Você envolve o corpo em chamas sempre que quiser: o "Diable Jambe" perde os limites de uso (e pode ser escolhido em cada jogada de ataque isoladamente); o "Ifrit Jambe" passa a até 3 usos; todo dano de Fogo que você causa impõe "Queimado"; o dano das características de Black Leg ignora invulnerabilidade a Fogo e, contra quem não tem resistência nem invulnerabilidade a Fogo, conta como vulnerabilidade; as Técnicas de Black Leg ganham dados de Fogo extras iguais ao grau (em vez da metade).',
+            etiquetas: ['Diable Jambe sem limite de uso', 'Dano de Fogo: Queimado e vulnerabilidade', 'Técnicas: +grau em dados de Fogo'],
+        },
+    ],
+    tecnicas: [
+        tec(
+            1,
+            1,
+            '',
+            'Kick Shot',
+            2,
+            'poderosa',
+            'Toque',
+            '2d10 Contundente',
+            '2d10',
+            'contundente',
+            'Chute rápido contra uma criatura, em jogada de ataque (Técnicas) corpo a corpo desarmado. A criatura atingida faz Salvaguarda de Constituição ou recebe desvantagem na próxima jogada de ataque (comum ou Técnicas). <Kick Strike> No 6º nível, pode ser usada como Técnica de 3º Grau: 6d10 Contundente e 5 PP. Ataque combinado: possível.',
+        ),
+        tec(
+            1,
+            undefined,
+            '',
+            'Anti-Manner Kick Course',
+            2,
+            'bonus',
+            'Toque',
+            'Empurra até 9 m; 3d8 Contundente ao bater',
+            '',
+            undefined,
+            'Ao fazer jogada de ataque (comum ou Técnicas) corpo a corpo desarmado, aumente o impacto: a criatura (Grande ou menor) é empurrada até 9 m para um espaço desocupado se falhar numa Salvaguarda de Força; se bater em objeto ou estrutura de mais de 1,5 m de raio, recebe 3d8 de dano Contundente.',
+        ),
+        tec(
+            3,
+            2,
+            '',
+            'Party Table Kick Course',
+            3,
+            'poderosa',
+            'Até 1,5 m, Esfera',
+            '4d8 Contundente',
+            '4d8',
+            'contundente',
+            'Com as mãos no chão, gire o corpo e chute todos os inimigos ao redor. Cada criatura na área faz Salvaguarda de Destreza: todo o dano se falhar, metade se passar. Ataque combinado: impossível.',
+        ),
+        tec(
+            6,
+            3,
+            '',
+            'Frites Assorties',
+            5,
+            'poderosa',
+            'Até 18 m, Cone',
+            '6d6 Contundente',
+            '6d6',
+            'contundente',
+            'Três chutes rápidos provocam uma forte rajada de vento contra seus inimigos. Cada criatura na área faz Salvaguarda de Destreza: todo o dano se falhar, metade se passar. Ataque combinado: possível.',
+        ),
+        tec(
+            6,
+            undefined,
+            '',
+            'Parry Shot',
+            3,
+            'reacao',
+            'Pessoal',
+            'Reduz 8d8 do dano (até 20d8)',
+            '',
+            undefined,
+            'Ao receber jogada de ataque (comum ou Técnicas) ou ter de fazer Salvaguarda de Força ou Destreza, use força e reflexo para proteger o corpo e reduzir 8d8 do dano. Se isso reduzir a 0 o dano que sofreria, você pode fazer imediatamente uma jogada de ataque (comum) corpo a corpo desarmado contra a criatura responsável, se estiver ao seu alcance. Gaste 1 PP para somar 2d8 à redução, até 20d8.',
+            { reacao: { gatilho: 'ataque_declarado', alcance: 'si', reducao: { reserva: '8d8', mais: '2d8', maximo: 20, unica: true } } },
+        ),
+        tec(
+            9,
+            4,
+            '',
+            'Concassé',
+            8,
+            'poderosa',
+            'Toque',
+            '4d10 Contundente',
+            '4d10',
+            'contundente',
+            'Salte e gire no ar várias vezes para um chute implacável, em jogada de ataque (Técnicas) corpo a corpo desarmado contra uma criatura. Ela faz Salvaguarda de Constituição ou fica "Atordoada" até o fim do próximo turno dela. Ataque combinado: impossível.',
+        ),
+        tec(
+            12,
+            5,
+            '',
+            'Extra Hachis',
+            8,
+            'poderosa',
+            'Toque',
+            '10d8 Contundente',
+            '10d8',
+            'contundente',
+            'Série de chutes intermináveis, em jogada de ataque (Técnicas) corpo a corpo desarmado, contra uma criatura, que faz Salvaguarda de Destreza: todo o dano se falhar, metade se passar. Ataque combinado: possível.',
+        ),
+        tec(
+            12,
+            undefined,
+            '',
+            'Strike',
+            4,
+            'bonus',
+            'Pessoal',
+            '+5 dados de dano',
+            '',
+            undefined,
+            'Ao executar uma Técnica com tipo de dano "Contundente", intensifique a força do golpe e aumente o poder em 5 dados de dano.',
+        ),
+        tec(
+            16,
+            6,
+            '',
+            'Ondo Rare Strike',
+            9,
+            'poderosa',
+            'Até 27 m, Cone',
+            '12d6 Contundente',
+            '12d6',
+            'contundente',
+            'Desapareça ao se mover em alta velocidade, golpeando todos os inimigos à frente. Ao término, escolha um espaço desocupado dentro da área para ficar. Cada criatura na área faz Salvaguarda de Destreza: todo o dano se falhar, metade se passar. Ataque combinado: possível.',
+        ),
+        tec(
+            20,
+            7,
+            '',
+            'Beef Burst',
+            14,
+            'poderosa',
+            'Toque',
+            '14d10 Contundente',
+            '14d10',
+            'contundente',
+            'Jogada de ataque (Técnicas) corpo a corpo desarmado obliteradora contra uma criatura. Ao acertar, verifique os PV dela antes do dano: se tiver 150 PV ou menos, ela também é arremessada por quilômetros ao céu, fora da vista. Ataque combinado: impossível.',
+        ),
+    ],
+};
+
+/** Como cada Técnica do Black Leg causa o dano: ataque (Técnicas) ou Salvaguarda da área. Sem entrada, não há teste automático. */
+const TESTES_DO_BLACK_LEG: Record<string, TesteDaTecnica> = {
+    'Kick Shot': { tipo: 'ataque' },
+    'Party Table Kick Course': { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'metade' },
+    'Frites Assorties': { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'metade' },
+    Concassé: { tipo: 'ataque' },
+    'Extra Hachis': { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'metade' },
+    'Ondo Rare Strike': { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'metade' },
+    'Beef Burst': { tipo: 'ataque' },
+};
+for (const t of BLACK_LEG.tecnicas) if (TESTES_DO_BLACK_LEG[t.nome]) t.teste = TESTES_DO_BLACK_LEG[t.nome];
+
+export const ESTILOS: EstiloDados[] = [ATIRADOR, AVENTUREIRO, BRUTAMONTES, BLACK_LEG];
 export const estiloPorId = (id: string | undefined | null): EstiloDados | undefined => ESTILOS.find((e) => e.id === id);
 
 /** O atributo primário do personagem: o escolhido, ou o único possível. */

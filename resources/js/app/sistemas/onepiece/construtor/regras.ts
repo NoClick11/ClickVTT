@@ -133,7 +133,7 @@ export interface Escolhas {
 export { textoDeMovimento };
 
 /** O estilo rola os Bellys iniciais (`5d10 × 1000`)? Devolve a regra, ou null se o dinheiro é fixo ou não há. */
-export function dinheiroRoladoDoEstilo(est: { equipamentoInicial?: EquipamentoInicial }): { dados: string; multiplicador: number } | null {
+export function dinheiroRoladoDoEstilo(est: { equipamentoInicial?: EquipamentoInicial }): { dados: string; multiplicador: number; fixo?: number } | null {
     const d = est.equipamentoInicial?.dinheiro;
 
     return d && 'dados' in d ? d : null;

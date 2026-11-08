@@ -296,6 +296,7 @@ final class FichaOnePiece
         $r['reducao.reserva'] = $inteiro(0, 9999);
         $r['reducao.dados'] = $inteiro(0, 99);
         $r['reducao.zerar'] = ['boolean:strict'];
+        $r['reducao.unica'] = ['boolean:strict'];
         $r['reducao.turnos'] = $inteiro(0, 9);
 
         $r['condicoes'] = ['array', 'max:'.count(Condicoes::ids())];
@@ -432,6 +433,7 @@ final class FichaOnePiece
             $r["{$base}.reacao.reducao.mais"] = ['nullable', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/'];
             $r["{$base}.reacao.reducao.maximo"] = ['nullable', 'integer:strict', 'between:1,99'];
             $r["{$base}.reacao.reducao.zerar"] = ['nullable', 'boolean:strict'];
+            $r["{$base}.reacao.reducao.unica"] = ['nullable', 'boolean:strict'];
             $r["{$base}.reacao.categoria"] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];
             $r["{$base}.reacao.cura"] = ['nullable', 'string', 'regex:/^\d{1,3}$|^\d{1,2}d\d{1,3}$/'];
         }

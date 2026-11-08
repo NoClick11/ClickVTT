@@ -226,7 +226,7 @@ export interface ReacaoDeCombate {
      * Reação defensiva que reduz o dano que quem reage sofrer depois: `reserva` (dados da reserva de redução), `mais` (dados somados por 1 PP, até
      * `maximo` dados no total) ou `zerar` (o próximo dano vira 0). O servidor rola e consome (`OnePiece::absorverDano`).
      */
-    reducao?: { reserva?: string; mais?: string; maximo?: number; zerar?: boolean };
+    reducao?: { reserva?: string; mais?: string; maximo?: number; zerar?: boolean; unica?: boolean };
 }
 export type CategoriaDeAcao = 'padrao' | 'poderosa' | 'bonus' | 'livre' | 'reacao';
 export interface AcaoCaracteristica {
@@ -471,7 +471,7 @@ export interface FichaOnePiece {
     /** Condições com duração: turnos que faltam e se acabam ao receber dano. O servidor conta os turnos (rastreador de turnos). */
     duracoes?: Record<string, { turnos: number; aoDano: boolean }>;
     /** Reduções de dano armadas por reações defensivas (o servidor mantém): reserva em pontos, dados dela, "zera o próximo dano" e turnos restantes. */
-    reducao?: { reserva?: number; dados?: number; zerar?: boolean; turnos?: number };
+    reducao?: { reserva?: number; dados?: number; zerar?: boolean; unica?: boolean; turnos?: number };
     caracteristicas: Caracteristica[];
     /** A Akuma no Mi: tipo, despertar e os poderes da fruta (mesmo formato das técnicas, gastam os mesmos PP). O nome é `fruta`. */
     akuma: AkumaFicha;
