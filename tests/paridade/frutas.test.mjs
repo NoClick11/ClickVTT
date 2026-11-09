@@ -47,16 +47,16 @@ test('entregar a fruta: só as Técnicas do nível chegam, marcadas como da frut
 });
 
 test('subir de nível libera o que faltava sem apagar o uso já gasto; tirar a fruta limpa tudo dela', () => {
-    const dada = ficha(3);
-    const c3 = camposDaFruta(dada, 'ito-ito-no-mi');
-    const comFruta = ficha(3, { caracteristicas: c3.caracteristicas, akuma: { ...akumaPadrao(), tipo: 'paramecia', usuario: 'avancado', fruta: 'ito-ito-no-mi', lista: c3['akuma.lista'] } });
-    // gasta 1 uso do Estágio Desperto e sobe para o 6º nível
+    const dada = ficha(16);
+    const c16 = camposDaFruta(dada, 'ito-ito-no-mi');
+    const comFruta = ficha(16, { caracteristicas: c16.caracteristicas, akuma: { ...akumaPadrao(), tipo: 'paramecia', usuario: 'avancado', fruta: 'ito-ito-no-mi', lista: c16['akuma.lista'] } });
+    // gasta 1 uso do Estágio Desperto e sobe para o 20º nível
     comFruta.caracteristicas = comFruta.caracteristicas.map((c) => (c.nome === 'Estágio Desperto' ? { ...c, usos: { ...c.usos, atual: 1 } } : c));
-    const c6 = camposDaFrutaNoNivel({ ...comFruta, nivel: 6 }, 6, { caracteristicas: comFruta.caracteristicas, lista: comFruta.akuma.lista });
-    assert.ok(c6['akuma.lista'].some((t) => t.nome === 'Parasite'));
-    assert.equal(c6.caracteristicas.find((c) => c.nome === 'Estágio Desperto').usos.atual, 1);
+    const c20 = camposDaFrutaNoNivel({ ...comFruta, nivel: 20 }, 20, { caracteristicas: comFruta.caracteristicas, lista: comFruta.akuma.lista });
+    assert.ok(c20['akuma.lista'].some((t) => t.nome === 'Parasite'));
+    assert.equal(c20.caracteristicas.find((c) => c.nome === 'Estágio Desperto').usos.atual, 1);
     // sem fruta pronta não muda nada
-    assert.deepEqual(camposDaFrutaNoNivel(ficha(6), 6, {}), {});
+    assert.deepEqual(camposDaFrutaNoNivel(ficha(20), 20, {}), {});
     // tirar a fruta
     const fora = camposDaFruta(comFruta, null);
     assert.ok(!fora['akuma.lista'].some((t) => t.builder === 'fruta'));

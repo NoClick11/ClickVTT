@@ -54,8 +54,11 @@ class MesaController extends Controller
             ],
             'jogadores' => $mesa->jogadores()->orderByRaw("papel = 'mestre' desc")->orderBy('nome')->get()
                 ->map(fn ($j) => $j->paraFront()),
+            // NPCs (criados pelo botão de NPC no jogo, incluindo as cópias dos tokens) não são personagens de jogadores.
             'personagens' => $mesa->personagens()->with('jogadores')->orderBy('nome')->get()
-                ->map(fn ($p) => $p->paraFront()),
+                ->reject(fn ($p) => ! empty($p->ficha['npc']))
+                ->map(fn ($p) => $p->paraFront())
+                ->values(),
         ]);
     }
 

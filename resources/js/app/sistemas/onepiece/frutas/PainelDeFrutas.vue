@@ -18,8 +18,8 @@ const emit = defineEmits<{ salvar: [personagemId: number, campos: Record<string,
 const aberta = ref<string | null>(null);
 const destino = ref<Record<string, number | ''>>({});
 const fichaDe = (id: number) => (props.fichas[id] ?? props.personagens.find((p) => p.id === id)?.ficha ?? null) as unknown as FichaOnePiece | null;
-/** Só personagens do One Piece com ficha (a de D&D, por exemplo, não tem Akuma). */
-const candidatos = computed(() => props.personagens.filter((p) => !!fichaDe(p.id)?.akuma));
+/** Só personagens do One Piece com ficha (a de D&D, por exemplo, não tem Akuma) e nunca NPCs (nem as cópias dos tokens). */
+const candidatos = computed(() => props.personagens.filter((p) => !!fichaDe(p.id)?.akuma && !(fichaDe(p.id) as unknown as { npc?: unknown })?.npc));
 const donos = (fruta: FrutaDados) => candidatos.value.filter((p) => normalizarAkuma(fichaDe(p.id)!).fruta === fruta.id);
 const nivelDe = (id: number) => Number(fichaDe(id)?.nivel ?? 1);
 
