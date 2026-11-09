@@ -21,6 +21,7 @@ const tocando = ref<EstadoMusicaTocando | null>(props.musica?.tocando ?? null);
 const novaUrl = ref('');
 const novoTitulo = ref('');
 const erroEntrada = ref('');
+const erroPlayer = ref('');
 const carregandoAdicionar = ref(false);
 
 // Controle de volume individual do usuário (salvo no localStorage)
@@ -159,6 +160,12 @@ function inicializarPlayer() {
                 },
                 onError: (event) => {
                     console.warn('Erro no player do YouTube:', event.data);
+                    erroPlayer.value =
+                        event.data === 101 || event.data === 150
+                            ? 'O dono deste vídeo não permite reprodução incorporada. Use outro vídeo (ex.: uma versão "Topic" ou de outro canal).'
+                            : event.data === 100
+                              ? 'Vídeo não encontrado ou privado.'
+                              : `Erro no player do YouTube (${event.data}).`;
                 },
             },
         });
@@ -182,6 +189,7 @@ function sincronizarPlayer(anterior: EstadoMusicaTocando | null, atual: EstadoMu
     }
 
     const videoIdMudou = !anterior || anterior.videoId !== atual.videoId;
+    if (videoIdMudou) erroPlayer.value = '';
 
     if (videoIdMudou) {
         try {
@@ -345,6 +353,11 @@ const porcentagemTempo = computed(() => {
         <!-- Contêiner do IFrame oculto (YouTube) -->
         <div class="pointer-events-none absolute -left-[9999px] -top-[9999px] h-1 w-1 overflow-hidden opacity-0">
             <div ref="playerContainer" />
+        </div>
+
+        <div v-if="erroPlayer" class="flex items-center gap-1.5 border-b border-red-500/30 bg-red-500/10 p-2 text-xs text-red-300">
+            <CircleAlert class="size-4 shrink-0" />
+            <span>{{ erroPlayer }}</span>
         </div>
 
         <!-- Banner de desbloqueio de áudio para o navegador se necessário -->
