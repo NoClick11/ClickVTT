@@ -136,6 +136,11 @@ class PersonagemController extends Controller
             }
         }
 
+        Transmitir::enviar($mesa, 'personagem:foto', [
+            'personagem_id' => $personagem->id,
+            'foto' => $novaFoto,
+            'foto_token' => $novaFotoToken,
+        ], ['mesa']);
         Transmitir::cena($mesa, null, $acesso->jogador->id);
 
         return response()->json([

@@ -102,7 +102,7 @@ final class ItensIniciais
             $modelo = $item['catalogo']
                 ? app(LojaService::class)->materializar($mesa, $sistema, Itens::item($item['catalogo']))
                 : $mesa->itens()->firstOrCreate(
-                    ['catalogo_id' => 'inicial:'.Str::slug($item['nome'])],
+                    ['catalogo_id' => substr('inicial:'.Str::slug($item['nome']), 0, 60)],
                     ['nome' => $item['nome'], 'descricao' => $descricao, 'peso' => 0, 'equipavel' => false, 'requer_sintonia' => false],
                 );
             $ficha = $sistema->entregarNoInventario($ficha, $modelo->id, $item['qtd']);

@@ -526,7 +526,7 @@ class ForjaController extends Controller
     private function transmitir(Mesa $mesa, AcessoMesa $acesso, Personagem $p, array $campos): void
     {
         $canais = ['mestre', ...$p->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
-        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => $campos, 'criacao' => $p->criacao, 'ator' => $acesso->jogador->id], $canais);
+        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => $campos, 'ator' => $acesso->jogador->id], $canais);
     }
 
     /** O resultado vai para o chat (todos veem a forja acontecer). */

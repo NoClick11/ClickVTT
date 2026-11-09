@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Site\JogadorRequest;
 use App\Models\Jogador;
 use App\Models\Mesa;
+use App\Support\Transmitir;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -15,6 +16,7 @@ class JogadorController extends Controller
     public function store(JogadorRequest $request, Mesa $mesa): RedirectResponse
     {
         $mesa->jogadores()->create($request->safe()->only(['nome', 'papel', 'cor', 'senha']));
+        Transmitir::cena($mesa, null, null);
 
         return back();
     }
@@ -30,6 +32,7 @@ class JogadorController extends Controller
             $dados['senha'] = null;
         }
         $jogador->update($dados);
+        Transmitir::cena($mesa, null, null);
 
         return back();
     }
@@ -38,6 +41,7 @@ class JogadorController extends Controller
     {
         abort_unless($mesa->user_id === $request->user()->id && $jogador->mesa_id === $mesa->id, 403);
         $jogador->delete();
+        Transmitir::cena($mesa, null, null);
 
         return back();
     }

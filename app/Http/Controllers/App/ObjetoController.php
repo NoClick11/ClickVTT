@@ -109,9 +109,11 @@ class ObjetoController extends Controller
         }
 
         $objeto = $pagina->objetos()->create($dados)->refresh();
+        $front = $objeto->paraFront();
+        Transmitir::objeto($mesa, $pagina->id, 'salvar', $front, $objeto->id, $acesso->jogador->id, $somenteMestre);
         Transmitir::cena($mesa, $pagina->id, $acesso->jogador->id, $somenteMestre);
 
-        return response()->json($objeto->paraFront(), 201);
+        return response()->json($front, 201);
     }
 
     public function update(Request $request, Mesa $mesa, Objeto $objeto): JsonResponse
@@ -193,14 +195,21 @@ class ObjetoController extends Controller
             $dados['y'] = $r['y'];
         }
 
+        $camadaAntiga = $objeto->camada;
         $objeto->update($dados);
-        Transmitir::cena($mesa, $objeto->pagina_id, $acesso->jogador->id, $this->soMestre($objeto));
+        $front = $objeto->paraFront();
+        $soMestreAgora = $this->soMestre($objeto);
+        Transmitir::objeto($mesa, $objeto->pagina_id, 'salvar', $front, $objeto->id, $acesso->jogador->id, $soMestreAgora);
+        if ($camadaAntiga !== 'mestre' && $soMestreAgora) {
+            Transmitir::objeto($mesa, $objeto->pagina_id, 'remover', null, $objeto->id, $acesso->jogador->id, false);
+        }
+        Transmitir::cena($mesa, $objeto->pagina_id, $acesso->jogador->id, $soMestreAgora && $camadaAntiga === 'mestre');
         // Vigília (Overwatch): o atirador que anda a encerra
         if ($objeto->tipo === 'token' && isset($dados['x'], $dados['y']) && ($de['x'] !== (float) $dados['x'] || $de['y'] !== (float) $dados['y'])) {
             TecnicasAtivas::aoMover($mesa, $acesso, $objeto);
         }
 
-        return response()->json($objeto->paraFront());
+        return response()->json($front);
     }
 
     /**
@@ -224,9 +233,11 @@ class ObjetoController extends Controller
 
             return $o;
         });
+        $front = $objeto->paraFront();
+        Transmitir::objeto($mesa, $objeto->pagina_id, 'salvar', $front, $objeto->id, $acesso->jogador->id, $this->soMestre($objeto));
         Transmitir::cena($mesa, $objeto->pagina_id, $acesso->jogador->id, $this->soMestre($objeto));
 
-        return response()->json($objeto->paraFront());
+        return response()->json($front);
     }
 
     /** Algum token do jogador está encostado na porta (a até um quadrado da borda do token)? Só de perto se abre. */
@@ -309,6 +320,11 @@ class ObjetoController extends Controller
             }
         });
 
+        if ($tokenAMover) {
+            $soMestreToken = $this->soMestre($tokenAMover);
+            Transmitir::objeto($mesa, $origemPaginaId, 'remover', null, $tokenAMover->id, $acesso->jogador->id, $soMestreToken);
+            Transmitir::objeto($mesa, $destinoPagina->id, 'salvar', $tokenAMover->fresh()->paraFront(), $tokenAMover->id, $acesso->jogador->id, $soMestreToken);
+        }
         Transmitir::cena($mesa, $origemPaginaId, $acesso->jogador->id);
         Transmitir::cena($mesa, $destinoPagina->id, $acesso->jogador->id);
 
@@ -356,10 +372,12 @@ class ObjetoController extends Controller
                 403,
             );
         }
+        $objetoId = $objeto->id;
         $paginaId = $objeto->pagina_id;
         $somenteMestre = $this->soMestre($objeto);
         $personagemId = $objeto->tipo === 'token' ? $objeto->personagem_id : null;
         $objeto->delete();
+        Transmitir::objeto($mesa, $paginaId, 'remover', null, $objetoId, $acesso->jogador->id, $somenteMestre);
         Transmitir::cena($mesa, $paginaId, $acesso->jogador->id, $somenteMestre);
         $this->apagarCopiaSemToken($mesa, $personagemId, $acesso->jogador->id);
 

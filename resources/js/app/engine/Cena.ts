@@ -203,12 +203,19 @@ export class Cena {
             if (existente) {
                 const sendoArrastado = this.modo === 'mover' && (this.selecionadoId === dto.id || this.grupoInicio.has(dto.id));
                 if (!sendoArrastado) {
-                    const mudouPosicao = dto.tipo === 'token' && Math.hypot(dto.x - existente.dto.x, dto.y - existente.dto.y) > 2;
-                    const distancia = mudouPosicao ? Math.hypot(dto.x - existente.dto.x, dto.y - existente.dto.y) : 0;
-                    if (mudouPosicao && distancia < 3000) {
-                        this.deslizarTokenPara(existente, dto);
+                    const anim = this.animacoesTokens.get(dto.id);
+                    if (anim && Math.hypot(anim.para.x - dto.x, anim.para.y - dto.y) <= 2) {
+                        anim.dtoFinal = { ...dto, x: anim.para.x, y: anim.para.y };
+                        existente.atualizar({ ...dto, x: existente.dto.x, y: existente.dto.y });
                     } else {
-                        existente.atualizar(dto);
+                        const mudouPosicao = dto.tipo === 'token' && Math.hypot(dto.x - existente.dto.x, dto.y - existente.dto.y) > 2;
+                        const distancia = mudouPosicao ? Math.hypot(dto.x - existente.dto.x, dto.y - existente.dto.y) : 0;
+                        if (mudouPosicao && distancia < 3000) {
+                            this.deslizarTokenPara(existente, dto);
+                        } else {
+                            this.animacoesTokens.delete(dto.id);
+                            existente.atualizar(dto);
+                        }
                     }
                 }
                 this.moverParaCamada(existente, dto.camada);
@@ -1217,6 +1224,7 @@ export class Cena {
         }
         this.selecionar(alvo.dto.id);
         if (alvo.dto.tipo !== 'parede') {
+            this.animacoesTokens.delete(alvo.dto.id);
             this.modo = 'mover';
             this.inicioObjeto = { x: alvo.dto.x, y: alvo.dto.y };
         }
@@ -1227,7 +1235,10 @@ export class Cena {
         this.grupoInicio.clear();
         for (const id of this.selecionadosIds()) {
             const o = this.visuais.get(id);
-            if (o && o.dto.tipo !== 'parede') this.grupoInicio.set(id, { x: o.dto.x, y: o.dto.y });
+            if (o && o.dto.tipo !== 'parede') {
+                this.animacoesTokens.delete(id);
+                this.grupoInicio.set(id, { x: o.dto.x, y: o.dto.y });
+            }
         }
         this.modo = 'mover';
         this.inicioObjeto = { x: ancora.dto.x, y: ancora.dto.y };
@@ -1559,7 +1570,7 @@ export class Cena {
                 this.definirSelecao(this.lacoSoma ? [...new Set([...this.selecionadosIds(), ...pegos])] : pegos);
             }
         }
-        // Fim do arrasto em grupo: tokens deslizam suavemente até o destino (Foundry style)
+        // Fim do arrasto em grupo: tokens deslizam suavemente até o destino (Foundry style) e salvam na hora
         if (this.modo === 'mover' && this.grupoInicio.size > 1 && this.iniciou) {
             for (const [id, ini] of this.grupoInicio) {
                 const o = this.visuais.get(id);
@@ -1568,12 +1579,9 @@ export class Cena {
                     const destino = this.alvosGrupoMovimento.get(id) ?? ini;
                     const dist = Math.hypot(destino.x - ini.x, destino.y - ini.y);
                     if (dist >= 2) {
-                        this.deslizarTokenPara(o, { ...o.dto, x: destino.x, y: destino.y }, () => {
-                            this.opcoes.eventos.alterar(id, { x: destino.x, y: destino.y }, true);
-                        });
-                    } else {
-                        this.opcoes.eventos.alterar(id, { x: destino.x, y: destino.y }, true);
+                        this.deslizarTokenPara(o, { ...o.dto, x: destino.x, y: destino.y });
                     }
+                    this.opcoes.eventos.alterar(id, { x: destino.x, y: destino.y }, true);
                 } else {
                     this.opcoes.eventos.alterar(id, { x: o.dto.x, y: o.dto.y }, true);
                 }
@@ -1604,13 +1612,11 @@ export class Cena {
                 if (dist >= 2) {
                     // O token desliza continuamente do ponto inicial até o destino solto,
                     // atualizando luz, visão e sombras frame a frame sem nenhum delay
-                    this.deslizarTokenPara(v, { ...v.dto, x: destino.x, y: destino.y }, () => {
-                        this.opcoes.eventos.alterar(v.dto.id, { x: destino.x, y: destino.y }, true);
-                    });
+                    this.deslizarTokenPara(v, { ...v.dto, x: destino.x, y: destino.y });
                 } else {
                     this.desenharSelecao();
-                    this.opcoes.eventos.alterar(v.dto.id, { x: destino.x, y: destino.y }, true);
                 }
+                this.opcoes.eventos.alterar(v.dto.id, { x: destino.x, y: destino.y }, true);
             } else {
                 const { x, y } = v.dto;
                 this.opcoes.eventos.alterar(v.dto.id, { x, y }, true);

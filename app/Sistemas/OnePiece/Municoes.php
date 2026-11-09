@@ -201,6 +201,6 @@ final class Municoes
     private static function avisar(Mesa $mesa, Personagem $p): void
     {
         $canais = ['mestre', ...$p->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
-        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => ['inventario' => $p->ficha['inventario'] ?? []], 'criacao' => $p->criacao, 'ator' => 0], $canais);
+        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => ['inventario' => $p->ficha['inventario'] ?? []], 'ator' => 0], $canais);
     }
 }

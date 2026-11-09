@@ -68,7 +68,7 @@ class ProgressaoController extends Controller
         foreach (Personagem::query()->where('mesa_id', $mesa->id)->whereIn('id', $ids)->with('jogadores')->get() as $p) {
             $canais = ['mestre', ...$p->jogadores->pluck('id')->map(fn ($id) => "jogador.{$id}")->all()];
             Transmitir::enviar($mesa, 'ficha', [
-                'personagem_id' => $p->id, 'campos' => ['xp' => $p->ficha['xp']], 'criacao' => $p->criacao, 'ator' => 0,
+                'personagem_id' => $p->id, 'campos' => ['xp' => $p->ficha['xp']], 'ator' => 0,
             ], $canais);
         }
         $aviso = $mesa->mensagens()->create([

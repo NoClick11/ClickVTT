@@ -72,7 +72,7 @@ class AlvoController extends Controller
         });
 
         [$r, $mensagem] = $resultado;
-        $texto = $aplicar->avisar($mesa, $acesso, $mensagem->visibilidade, $r);
+        $texto = $aplicar->avisar($mesa, $acesso, $mensagem->visibilidade, $r, postar: false);
 
         return response()->json(['final' => $r['calculo']['final'], 'modo' => $r['calculo']['modo'], 'texto' => $texto]);
     }

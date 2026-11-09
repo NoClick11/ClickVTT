@@ -79,19 +79,26 @@ class FichaController extends Controller
         // Quem vê a ficha: o mestre e os jogadores do personagem (nunca o canal aberto da mesa).
         $canais = ['mestre', ...$atual->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
         Transmitir::enviar($mesa, 'ficha', [
-            'personagem_id' => $atual->id, 'campos' => $campos, 'criacao' => $atual->criacao, 'ator' => $acesso->jogador->id,
+            'personagem_id' => $atual->id, 'campos' => $campos, 'ator' => $acesso->jogador->id,
         ], $canais);
         if ($entregou) {
             // o inventário veio do servidor: quem abriu a ficha em outra aba o recebe
             Transmitir::enviar($mesa, 'ficha', [
                 'personagem_id' => $atual->id, 'campos' => ['inventario' => $atual->ficha['inventario'] ?? [], 'itensIniciais' => $atual->ficha['itensIniciais'] ?? []],
-                'criacao' => $atual->criacao, 'ator' => 0,
+                'ator' => 0,
             ], $canais);
         }
 
-        // Os ícones de efeito no token são públicos: quem muda as condições avisa a mesa toda (só os ids, nunca a ficha).
-        if (array_key_exists('condicoes', $campos)) {
-            Transmitir::enviar($mesa, 'status', ['personagem_id' => $atual->id, 'status' => array_values($atual->ficha['condicoes'] ?? [])], ['mesa']);
+        // Os ícones de efeito, morte de NPC e marcador de aliado no token são públicos: avisa a mesa toda (só o estado público, nunca a ficha).
+        $mudouPvNpc = ($atual->ficha['npc'] ?? false)
+            && collect(array_keys($campos))->contains(fn ($k) => $k === 'pv' || str_starts_with((string) $k, 'pv.'));
+        if (array_key_exists('condicoes', $campos) || array_key_exists('aliado', $campos) || $mudouPvNpc) {
+            Transmitir::enviar($mesa, 'status', [
+                'personagem_id' => $atual->id,
+                'status' => array_values($atual->ficha['condicoes'] ?? []),
+                'morto' => (bool) (($atual->ficha['npc'] ?? false) && ((int) ($atual->ficha['pv']['atual'] ?? 1) <= 0)),
+                'aliado' => (bool) ($atual->ficha['aliado'] ?? false),
+            ], ['mesa']);
         }
 
         return response()->json(['ficha' => $atual->ficha ?? $sistema->fichaPadrao(), 'criacao' => $atual->criacao]);

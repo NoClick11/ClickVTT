@@ -19,13 +19,48 @@ final class Transmitir
         self::enviar($mesa, 'cena', ['pagina_id' => $paginaId, 'ator' => $atorId], $somenteMestre ? ['mestre'] : ['mesa']);
     }
 
+    /**
+     * Envia imediatamente uma criação, atualização ou remoção de objeto do mapa pelo WebSocket,
+     * sem esperar o ciclo de reload do Inertia.
+     *
+     * @param  'salvar'|'remover'  $acao
+     * @param  array<string, mixed>|null  $objeto
+     */
+    public static function objeto(
+        Mesa|int $mesa,
+        int $paginaId,
+        string $acao,
+        ?array $objeto,
+        int $id,
+        ?int $atorId,
+        bool $somenteMestre = false,
+    ): void {
+        self::enviar($mesa, 'objeto', [
+            'acao' => $acao,
+            'pagina_id' => $paginaId,
+            'objeto' => $objeto,
+            'id' => $id,
+            'ator' => $atorId,
+        ], $somenteMestre ? ['mestre'] : ['mesa']);
+    }
+
     /** @param  list<string>  $canais */
     public static function enviar(Mesa|int $mesa, string $nome, array $payload, array $canais): void
     {
+        if (($payload['ator'] ?? null) !== 0 && ! array_key_exists('socket', $payload)) {
+            $socket = request()->header('X-Socket-ID');
+            if ($socket) {
+                $payload['socket'] = $socket;
+            }
+        }
+
         try {
             broadcast(new EventoMesa($mesa instanceof Mesa ? $mesa->id : $mesa, $nome, $payload, $canais));
         } catch (Throwable $e) {
             Log::warning("Broadcast '{$nome}' falhou: {$e->getMessage()}");
+            if ($nome === 'ficha') {
+                self::cena($mesa, null, is_int($payload['ator'] ?? null) ? $payload['ator'] : null);
+            }
         }
     }
 }

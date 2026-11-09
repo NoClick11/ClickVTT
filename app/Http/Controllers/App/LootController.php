@@ -48,9 +48,11 @@ class LootController extends Controller
 
             return Loot::query()->create(['mesa_id' => $mesa->id, 'objeto_id' => $objeto->id])->refresh();
         });
+        $front = $loot->objeto->paraFront();
+        Transmitir::objeto($mesa, $pagina->id, 'salvar', $front, $loot->objeto->id, $acesso->jogador->id, $d['camada'] === 'mestre');
         Transmitir::cena($mesa, $pagina->id, $acesso->jogador->id, $d['camada'] === 'mestre');
 
-        return response()->json(['objeto' => $loot->objeto->paraFront(), 'loot' => $loot->paraFront()], 201);
+        return response()->json(['objeto' => $front, 'loot' => $loot->paraFront()], 201);
     }
 
     /** Mestre: o catálogo (do sistema e o que ele criou) para escolher o que pôr no loot. */
@@ -113,7 +115,7 @@ class LootController extends Controller
 
         $p = $r['personagem'];
         $canais = ['mestre', ...$p->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
-        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => $campos, 'criacao' => $p->criacao, 'ator' => $acesso->jogador->id], $canais);
+        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => $campos, 'ator' => $acesso->jogador->id], $canais);
         $estado = $loot->fresh()->paraFront();
         $this->avisar($mesa, $objeto, $estado, "{$p->nome} pegou {$texto} de {$estado['nome']}.", $acesso->jogador->id);
 
@@ -169,6 +171,7 @@ class LootController extends Controller
         }
         if (isset($d['nome']) && trim($d['nome']) !== '') {
             $objeto->update(['nome' => trim($d['nome'])]);
+            Transmitir::objeto($mesa, $objeto->pagina_id, 'salvar', $objeto->paraFront(), $objeto->id, $acesso->jogador->id, $objeto->camada === 'mestre');
             Transmitir::cena($mesa, $objeto->pagina_id, $acesso->jogador->id, $objeto->camada === 'mestre');
         }
 

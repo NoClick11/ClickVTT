@@ -36,6 +36,6 @@ final class ConsumoDaSaijo
         });
         $canais = ['mestre', ...$p->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
         // ator 0: quem rolou também aplica (o contador mudou no servidor)
-        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => ['meito.usados' => $n], 'criacao' => $p->criacao, 'ator' => 0], $canais);
+        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => ['meito.usados' => $n], 'ator' => 0], $canais);
     }
 }

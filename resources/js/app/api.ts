@@ -1,6 +1,7 @@
 import type { Criacao, Personagem } from '@/site/types';
 import type { LootDto, ObjetoDto, PaginaDto } from './engine/tipos';
 import type { ResumoEvento } from './nucleo/combate/reacoes';
+import { socketIdAtual } from './realtime';
 import type {
     ArmaParaForja,
     Combate,
@@ -40,6 +41,8 @@ async function requisitar<T>(jogadorId: number, metodo: string, url: string, cor
         'X-Requested-With': 'XMLHttpRequest',
         'X-Jogador': String(jogadorId),
     };
+    const sid = socketIdAtual();
+    if (sid) cabecalhos['X-Socket-ID'] = sid;
     let body: BodyInit | undefined;
     if (corpo instanceof FormData) {
         body = corpo;
@@ -80,7 +83,7 @@ export interface DinheiroRolado {
 }
 
 export function apiMesa(mesaId: number, atorId: number) {
-    const r = (nome: string, ...params: (number | string)[]) => route(nome, [mesaId, ...params]);
+    const r = (nome: string, ...params: (number | string)[]) => route(nome, [mesaId, ...params], false);
 
     return {
         criarObjeto: (paginaId: number, dados: object | FormData) => requisitar<ObjetoDto>(atorId, 'POST', r('jogo.objetos.store', paginaId), dados),

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Site\PersonagemRequest;
 use App\Models\Mesa;
 use App\Models\Personagem;
+use App\Support\Transmitir;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -16,6 +17,7 @@ class PersonagemController extends Controller
     {
         $personagem = $mesa->personagens()->create($request->safe()->only(['nome', 'cor']));
         $personagem->jogadores()->sync($request->validated('jogadores', []));
+        Transmitir::cena($mesa, null, null);
 
         return back();
     }
@@ -25,6 +27,7 @@ class PersonagemController extends Controller
         abort_unless($personagem->mesa_id === $mesa->id, 404);
         $personagem->update($request->safe()->only(['nome', 'cor']));
         $personagem->jogadores()->sync($request->validated('jogadores', []));
+        Transmitir::cena($mesa, null, null);
 
         return back();
     }
@@ -33,6 +36,7 @@ class PersonagemController extends Controller
     {
         abort_unless($mesa->user_id === $request->user()->id && $personagem->mesa_id === $mesa->id, 403);
         $personagem->delete();
+        Transmitir::cena($mesa, null, null);
 
         return back();
     }
