@@ -237,12 +237,6 @@ final class Pipeline
         $mensagem = $mesa->mensagens()->find($c['mensagem_id']);
         if ($mensagem) {
             $this->marcarMensagem($mesa, $acesso, $mensagem, ['estado' => 'resolvido', 'evento_id' => $e->id, 'alvo' => $c['alvo'], 'alvo_id' => $c['alvo_id'], ...$r]);
-            $mods = $r['mods'] ? ' ('.implode(', ', array_map(fn ($m) => "{$m['fonte']} ".($m['valor'] >= 0 ? '+' : '').$m['valor'], $r['mods'])).')' : '';
-            $texto = $r['acerto']
-                ? "{$c['atacante']} ".($r['critico'] ? 'acerta um golpe crítico em' : 'acerta')." {$c['alvo']}: {$c['total']} contra defesa {$r['defesa']}{$mods}."
-                : "{$c['atacante']} erra {$c['alvo']}: {$c['total']} contra defesa {$r['defesa']}{$mods}.";
-            $aviso = $mesa->mensagens()->create(['jogador_id' => $mensagem->jogador_id, 'personagem_id' => null, 'tipo' => 'texto', 'visibilidade' => $mensagem->visibilidade === 'secreto' ? 'mestre' : $mensagem->visibilidade, 'texto' => $texto, 'dados' => null]);
-            EntregarMensagem::para($mesa, $aviso, $acesso);
         }
         $this->enviarResumo($mesa, $e);
 
