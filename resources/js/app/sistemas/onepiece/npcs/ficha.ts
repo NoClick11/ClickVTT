@@ -49,8 +49,9 @@ export const PERICIA_ATRIBUTO: Record<string, AtributoNpc> = {
 const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
 /** "Acrobacia +4, Atletismo +5" → { acrobacia: 4, atletismo: 5 } (nomes que não existem na ficha são ignorados). */
-export function lerBonus(texto: string, validos: (id: string) => boolean): Record<string, number> {
+export function lerBonus(texto: string | null | undefined, validos: (id: string) => boolean): Record<string, number> {
     const saida: Record<string, number> = {};
+    if (typeof texto !== 'string' || !texto) return saida;
     for (const parte of texto.split(',')) {
         const m = parte.trim().match(/^(.+?)\s*([+-]\d+)$/);
         if (!m) continue;
@@ -138,11 +139,41 @@ export function npcEmBranco(): NpcDados {
     };
 }
 
-/** Os dados do NPC de uma ficha (`null` = personagem comum). */
+/** Os dados do NPC de uma ficha (`null` = personagem comum). Normaliza campos que o servidor pode devolver como `null` quando vazios. */
 export function lerNpc(ficha: Record<string, unknown> | null | undefined): NpcDados | null {
     const n = ficha?.npc;
+    if (!n || typeof n !== 'object') return null;
+    const d = n as Partial<NpcDados>;
+    const padrao = npcEmBranco();
 
-    return n && typeof n === 'object' ? (n as NpcDados) : null;
+    return {
+        ...padrao,
+        ...d,
+        nome: d.nome ?? padrao.nome,
+        nd: d.nd ?? padrao.nd,
+        xp: d.xp ?? padrao.xp,
+        pp: d.pp ?? null,
+        cr: d.cr ?? padrao.cr,
+        pv: {
+            medio: d.pv?.medio ?? padrao.pv.medio,
+            dados: d.pv?.dados ?? '',
+        },
+        bp: d.bp ?? padrao.bp,
+        cd: d.cd ?? padrao.cd,
+        deslocamento: d.deslocamento ?? padrao.deslocamento,
+        nado: d.nado ?? padrao.nado,
+        atributos: { ...padrao.atributos, ...(d.atributos ?? {}) },
+        pericias: d.pericias ?? '',
+        salvaguardas: d.salvaguardas ?? '',
+        sentidos: d.sentidos ?? '',
+        aspectos: Array.isArray(d.aspectos) ? d.aspectos.map((a) => ({ ...a, nome: a?.nome ?? '', texto: a?.texto ?? '' })) : [],
+        ataques: Array.isArray(d.ataques) ? d.ataques : [],
+        acoesBonus: Array.isArray(d.acoesBonus) ? d.acoesBonus.map((a) => ({ ...a, nome: a?.nome ?? '', texto: a?.texto ?? '' })) : [],
+        reacoes: Array.isArray(d.reacoes) ? d.reacoes.map((a) => ({ ...a, nome: a?.nome ?? '', texto: a?.texto ?? '' })) : [],
+        tecnicas: Array.isArray(d.tecnicas) ? d.tecnicas.map((t) => ({ ...t, tipoDano: Array.isArray(t?.tipoDano) ? t.tipoDano : [] })) : [],
+        usos: d.usos && typeof d.usos === 'object' && !Array.isArray(d.usos) ? d.usos : {},
+        lendarias_usadas: d.lendarias_usadas ?? 0,
+    };
 }
 
 // --- rolagens ---------------------------------------------------------------------------------------------------------------
@@ -160,10 +191,11 @@ export const alcanceDoAtaque = (a: AtaqueNpc): string =>
 /** A margem de crítico do NPC quando o texto de um aspecto a muda ("margem de acerto crítico de 19-20"). */
 export function margemDeCritico(npc: NpcDados, ataque: AtaqueNpc | TecnicaNpc): number {
     let margem = 20;
-    for (const a of npc.aspectos) {
-        const m = a.texto.match(/margem de acerto crítico (?:passa a ser |de )(\d+)-20/i);
+    for (const a of npc.aspectos ?? []) {
+        const texto = a?.texto ?? '';
+        const m = texto.match(/margem de acerto crítico (?:passa a ser |de )(\d+)-20/i);
         if (!m) continue;
-        const so = /corpo a corpo com arma cortante|arma cortante/i.test(a.texto);
+        const so = /corpo a corpo com arma cortante|arma cortante/i.test(texto);
         const cortante =
             'tipoDano' in ataque ? (Array.isArray(ataque.tipoDano) ? ataque.tipoDano.includes('Cortante') : ataque.tipoDano === 'Cortante') : false;
         if (!so || cortante) margem = Math.min(margem, Number(m[1]));
