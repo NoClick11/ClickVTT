@@ -20,12 +20,12 @@ export default defineConfig({
             },
         }),
     ],
-    // No Docker o Vite escuta em 0.0.0.0, mas o navegador precisa de um endereço que alcance: o `public/hot` e o HMR usam localhost.
+    // No Docker o Vite escuta em 0.0.0.0. O browser externo acessa via IP do Tailscale.
     server: {
         host: '0.0.0.0',
-        origin: `http://localhost:${process.env.VITE_PORT ?? 5173}`,
+        origin: `http://${process.env.VITE_HMR_HOST || '100.127.187.110'}:${process.env.VITE_PORT ?? 5173}`,
         cors: true,
-        hmr: { host: 'localhost' },
+        hmr: { host: process.env.VITE_HMR_HOST || '100.127.187.110' },
     },
     resolve: {
         alias: {

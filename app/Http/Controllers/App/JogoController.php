@@ -89,7 +89,7 @@ class JogoController extends Controller
             'categoriasDeAcao' => ($s = $sistemas->resolver($mesa->sistema->slug)) instanceof SistemaDeCombate ? $s->categoriasDeAcao() : [],
             'mensagens' => $mesa->mensagens()->with(['personagem', 'jogador'])->latest('id')->limit(80)->get()->reverse()
                 ->map(fn ($m) => $m->para($acesso->jogador))->filter()->values(),
-            'sairUrl' => route('convite.sair', $mesa->convite_token).'?jogador='.$acesso->jogador->id,
+            'sairUrl' => route('convite.sair', $mesa->convite_token, false).'?jogador='.$acesso->jogador->id,
         ]);
     }
 

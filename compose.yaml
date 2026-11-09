@@ -44,6 +44,7 @@ services:
         environment:
             WWWUSER: '${WWWUSER}'
             LARAVEL_SAIL: 1
+            VITE_HMR_HOST: '${VITE_HMR_HOST:-100.127.187.110}'
         ports:
             - '${VITE_PORT:-5173}:5173'
         volumes:
