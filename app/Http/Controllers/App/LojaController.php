@@ -40,10 +40,16 @@ class LojaController extends Controller
             'fator' => ['nullable', 'integer', 'between:1,10000'],
         ]);
         $alvos = $this->jogadoresAlvo($mesa, $dados['jogadores']);
+        $lojaService = app(LojaService::class);
         foreach ($alvos as $j) {
-            $mesa->lojasAbertas()->updateOrCreate(['jogador_id' => $j->id], ['categorias' => array_values(array_unique($dados['categorias'])), 'raridades' => array_values(array_unique($dados['raridades'] ?? [])), 'fator' => $dados['fator'] ?? 100]);
+            $aberta = $mesa->lojasAbertas()->updateOrCreate(
+                ['jogador_id' => $j->id],
+                ['categorias' => array_values(array_unique($dados['categorias'])), 'raridades' => array_values(array_unique($dados['raridades'] ?? [])), 'fator' => $dados['fator'] ?? 100]
+            );
+            $dadosLoja = $aberta->paraFront() + ['itens' => $lojaService->itensProprios($mesa, $aberta->categorias, $aberta->raridades ?? [])->map->paraFront()->values()->all()];
+            Transmitir::enviar($mesa, 'loja', ['aberta' => true, 'loja' => $dadosLoja], ["jogador.{$j->id}"]);
         }
-        Transmitir::enviar($mesa, 'loja', ['aberta' => true], $alvos->map(fn ($j) => "jogador.{$j->id}")->all());
+        Transmitir::enviar($mesa, 'loja', ['aberta' => true], ['mestre']);
 
         return response()->json(['lojas' => $this->lojas($mesa)]);
     }
@@ -54,7 +60,7 @@ class LojaController extends Controller
         $request->validate(['jogadores' => ['required']]);
         $alvos = $this->jogadoresAlvo($mesa, $request->input('jogadores'));
         $mesa->lojasAbertas()->whereIn('jogador_id', $alvos->pluck('id'))->delete();
-        Transmitir::enviar($mesa, 'loja', ['aberta' => false], $alvos->map(fn ($j) => "jogador.{$j->id}")->all());
+        Transmitir::enviar($mesa, 'loja', ['aberta' => false], ['mestre', ...$alvos->map(fn ($j) => "jogador.{$j->id}")->all()]);
 
         return response()->json(['lojas' => $this->lojas($mesa)]);
     }
@@ -75,8 +81,9 @@ class LojaController extends Controller
         $moeda = $sistema->moedaDaLoja();
         $campos = [$moeda['campo'] => $r['saldo'], 'inventario' => $p->ficha['inventario']];
         $canais = ['mestre', ...$p->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
-        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => $campos, 'criacao' => $p->criacao, 'ator' => $acesso->jogador->id], $canais);
+        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => $campos, 'ator' => $acesso->jogador->id], $canais);
         Transmitir::enviar($mesa, 'loja-compra', ['personagem_id' => $p->id, 'jogador' => $acesso->jogador->nome, 'item' => $r['entrada']['nome'], 'qtd' => $dados['qtd'] ?? 1, 'total' => $r['total']], ['mestre']);
+        Transmitir::cena($mesa, null, $acesso->jogador->id);
 
         return response()->json(['campos' => $campos, 'item' => $r['item']->paraFront(), 'total' => $r['total'], 'saldo' => $r['saldo']]);
     }
@@ -106,7 +113,8 @@ class LojaController extends Controller
         });
         $campos = ['inventario' => $p->ficha['inventario']];
         $canais = ['mestre', ...$p->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
-        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => $campos, 'criacao' => $p->criacao, 'ator' => $acesso->jogador->id], $canais);
+        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => $campos, 'ator' => $acesso->jogador->id], $canais);
+        Transmitir::cena($mesa, null, $acesso->jogador->id);
 
         return response()->json(['campos' => $campos, 'nome' => $entrada['nome'], 'qtd' => $qtd]);
     }

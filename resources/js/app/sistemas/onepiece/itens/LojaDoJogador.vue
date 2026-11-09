@@ -38,7 +38,7 @@ const comprando = ref<string | null>(null);
 
 /** Os itens do mestre desta loja, no formato do catálogo. */
 const doMestre = computed<ItemDoCatalogo[]>(() =>
-    props.loja.itens.map((i: ItemDeCatalogoDto) => ({
+    (props.loja.itens ?? []).map((i: ItemDeCatalogoDto) => ({
         id: `c:${i.id}`,
         nome: i.nome,
         categoria: i.categoria as CategoriaId,
@@ -51,22 +51,22 @@ const doMestre = computed<ItemDoCatalogo[]>(() =>
         loja: true,
     })),
 );
-const categoriasDaLoja = computed(() => CATEGORIAS.filter((c) => props.loja.categorias.includes(c.id)));
+const categoriasDaLoja = computed(() => CATEGORIAS.filter((c) => props.loja.categorias?.includes(c.id)));
 const lista = computed(() =>
     buscarNoCatalogo({ texto: texto.value, categoria: categoria.value, soItens: true, soLoja: true }, [
         ...doMestre.value,
         ...CATALOGO_DE_ITENS,
     ]).filter(
         (i) =>
-            props.loja.categorias.includes(i.categoria) &&
+            props.loja.categorias?.includes(i.categoria) &&
             i.preco !== null &&
             (!props.loja.raridades?.length || props.loja.raridades.includes(i.raridade)),
     ),
 );
 const qtd = (id: string) => Math.max(1, Math.min(99, Math.floor(quantidades.value[id] ?? 1)));
 /** Preço de venda ao jogador: o do catálogo vezes o ajuste da loja (%), para cima, como o servidor. */
-const precoUnitario = (i: ItemDoCatalogo) => Math.ceil(((i.preco ?? 0) * props.loja.fator) / 100);
-const total = (i: ItemDoCatalogo) => Math.ceil(((i.preco ?? 0) * qtd(i.id) * props.loja.fator) / 100);
+const precoUnitario = (i: ItemDoCatalogo) => Math.ceil(((i.preco ?? 0) * (props.loja.fator ?? 100)) / 100);
+const total = (i: ItemDoCatalogo) => Math.ceil(((i.preco ?? 0) * qtd(i.id) * (props.loja.fator ?? 100)) / 100);
 
 async function comprarItem(i: ItemDoCatalogo) {
     aviso.value = null;

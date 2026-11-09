@@ -10,7 +10,7 @@ class LojaAberta extends Model
 {
     protected $table = 'lojas_abertas';
 
-    protected $fillable = ['jogador_id', 'categorias', 'raridades', 'fator'];
+    protected $fillable = ['mesa_id', 'jogador_id', 'categorias', 'raridades', 'fator'];
 
     protected function casts(): array
     {

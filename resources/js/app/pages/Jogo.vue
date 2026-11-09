@@ -133,7 +133,7 @@ const props = defineProps<{
 }>();
 
 const api = apiMesa(props.mesa.id, props.jogador.id);
-const urlJogo = () => route('jogo', [props.mesa.slug, props.jogador.id]);
+const urlJogo = () => route('jogo', [props.mesa.slug, props.jogador.id], false);
 const copia = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 
 // Camada padrão = Jogadores (só o mestre troca). Estado local da tela:
@@ -234,9 +234,22 @@ function focarPersonagem(personagemId: number) {
     if (token) canvas.value?.focar(token.id, props.mestre && camada.value === 'jogadores');
 }
 
+const pendentesObjeto = new Map<number, CamposGeometria>();
+function incluirObjeto(novo: ObjetoDto) {
+    const idx = objetos.value.findIndex((o) => o.id === novo.id);
+    if (idx >= 0) Object.assign(objetos.value[idx], novo);
+    else objetos.value.push(novo);
+}
 watch(
     () => props.objetos,
-    (novos) => (objetos.value = copia(novos)),
+    (novos) => {
+        const lista = copia(novos);
+        for (const o of lista) {
+            const pendente = pendentesObjeto.get(o.id);
+            if (pendente) Object.assign(o, pendente);
+        }
+        objetos.value = lista;
+    },
 );
 
 /** Ações do combate para as fichas: o botão liga ou desliga pela categoria e gastar avisa o servidor (que recusa se não pode). */
@@ -539,12 +552,18 @@ function aoAlterar(id: number, campos: CamposGeometria, final: boolean) {
     if (!o) return;
     Object.assign(o, campos);
     if (!final) return;
+    pendentesObjeto.set(id, { ...campos });
     api.atualizarObjeto(id, campos)
         .then((r) => {
+            pendentesObjeto.delete(id);
+            const atual = objetos.value.find((x) => x.id === id);
             // O servidor tem a palavra final (parede no caminho, deslocamento do turno): se mudou a posição, o token vai para onde ele disse.
-            if (r.x !== campos.x || r.y !== campos.y) Object.assign(o, { x: r.x, y: r.y });
+            if (atual && (r.x !== campos.x || r.y !== campos.y)) Object.assign(atual, { x: r.x, y: r.y });
         })
-        .catch(falhou);
+        .catch((e) => {
+            pendentesObjeto.delete(id);
+            falhou(e);
+        });
 }
 
 function atualizarSelecionado(campos: Partial<ObjetoDto>) {
@@ -666,7 +685,7 @@ async function criarLoot(cx: number, cy: number) {
             x: cx - lado / 2,
             y: cy - lado / 2,
         });
-        objetos.value.push(r.objeto);
+        incluirObjeto(r.objeto);
         lootObjetoId.value = r.objeto.id;
         lootEstado.value = r.loot;
     } catch (e) {
@@ -692,7 +711,7 @@ async function criarViagem(cx: number, cy: number) {
                 destino_pagina_id: null,
             },
         });
-        objetos.value.push(novo);
+        incluirObjeto(novo);
         selecionadoId.value = novo.id;
         avisar('Ponto de viagem criado. Configure o mapa de destino no painel à direita.');
     } catch (e) {
@@ -779,7 +798,7 @@ async function enviarMapa(arquivo: File | undefined) {
         dados.append('largura', String(larguraPagina));
         dados.append('altura', String(Math.round((larguraPagina * altura) / largura)));
         dados.append('arquivo', arquivo);
-        objetos.value.push(await api.criarObjeto(props.pagina.id, dados));
+        incluirObjeto(await api.criarObjeto(props.pagina.id, dados));
         avisar(`Imagem adicionada na camada ${CAMADAS.find((c) => c.id === camadaDeDestino())?.nome}. Botão direito nela para trocar de camada.`);
     } catch (err) {
         avisar(mensagemDe(err));
@@ -811,7 +830,7 @@ async function criarToken(
         } else {
             corpo = { ...base, dados: { cor: d.cor } };
         }
-        objetos.value.push(await api.criarObjeto(props.pagina.id, corpo));
+        incluirObjeto(await api.criarObjeto(props.pagina.id, corpo));
     } catch (err) {
         avisar(mensagemDe(err));
     }
@@ -850,8 +869,9 @@ async function soltarNoMapa(e: DragEvent) {
     if (props.mestre && ehModeloDeNpc(p)) {
         // o NPC modelo gera uma cópia nova a cada vez (cada token tem a sua vida)
         try {
-            const copia = await api.instanciarNpc(p.id);
-            await criarToken({ nome: copia.nome, personagem_id: copia.id, cor: copia.cor, tamanho: 1, arquivo: null }, ponto);
+            const copiaNpc = await api.instanciarNpc(p.id);
+            if (copiaNpc.ficha) fichas.value[copiaNpc.id] = copia(copiaNpc.ficha);
+            await criarToken({ nome: copiaNpc.nome, personagem_id: copiaNpc.id, cor: copiaNpc.cor, tamanho: 1, arquivo: null }, ponto);
             recarregar(['personagens', 'meusPersonagens', 'diario']);
         } catch (err) {
             avisar(mensagemDe(err));
@@ -1087,9 +1107,9 @@ function salvarFicha(personagemId: number, campos: Record<string, unknown>) {
     filasFicha.set(personagemId, fila);
 }
 /** Outro participante (ou outra aba) alterou a ficha: aplica os mesmos campos. */
-function aoMudarFicha(e: { personagem_id: number; campos: Record<string, unknown>; ator: number }) {
+function aoMudarFicha(e: { personagem_id: number; campos: Record<string, unknown>; ator: number; socket?: string | null }) {
     const ficha = fichas.value[e.personagem_id];
-    if (e.ator === props.jogador.id || !ficha) return;
+    if (deMim(e) || !ficha) return;
     for (const [caminho, valor] of Object.entries(e.campos)) definirCaminho(ficha, caminho, copia(valor));
     rastrearPvPersonagem(e.personagem_id, ficha);
 }
@@ -1759,20 +1779,26 @@ const atalhosDoAtivo = computed(() => {
     const ficha = a ? fichas.value[a.id] : null;
     if (!a || !ficha || !moduloSistema?.atalhos) return [];
 
-    return moduloSistema.atalhos({
-        personagemId: a.id,
-        ficha,
-        itens: itensPorIdDaMesa.value,
-        mestre: props.mestre,
-        alvo: alvoDoAtaque.value,
-        rolar: (...argumentos) => void rolarDaFicha(a.id, ...(argumentos as RolagemDaFicha)),
-        salvar: (campos) => salvarFicha(a.id, campos),
-        usarTecnica: (uso) => void usarTecnicaDaFicha(a.id, uso as UsoDeTecnica),
-        usarTecnicaPorNome: (nome) => executorDeTecnicas.value?.usarTecnicaPorNome?.(nome) ?? 'A ficha ainda está carregando.',
-        fixados: fixadosDe(a.id),
-        abrirFicha: () => abrirPersonagem(a.id),
-        avisar,
-    });
+    try {
+        return moduloSistema.atalhos({
+            personagemId: a.id,
+            ficha,
+            itens: itensPorIdDaMesa.value,
+            mestre: props.mestre,
+            alvo: alvoDoAtaque.value,
+            rolar: (...argumentos) => void rolarDaFicha(a.id, ...(argumentos as RolagemDaFicha)),
+            salvar: (campos) => salvarFicha(a.id, campos),
+            usarTecnica: (uso) => void usarTecnicaDaFicha(a.id, uso as UsoDeTecnica),
+            usarTecnicaPorNome: (nome) => executorDeTecnicas.value?.usarTecnicaPorNome?.(nome) ?? 'A ficha ainda está carregando.',
+            fixados: fixadosDe(a.id),
+            abrirFicha: () => abrirPersonagem(a.id),
+            avisar,
+        });
+    } catch (e) {
+        console.warn('Falha ao montar atalhos do personagem ativo', e);
+
+        return [];
+    }
 });
 
 /** Card de uma Técnica ativa (Quick Draw): atacar, escolher o efeito do acerto ou ignorar. O servidor decide e devolve o card novo. */
@@ -1917,6 +1943,15 @@ async function excluirItemDeCatalogo(id: number) {
     await api.excluirItemDeCatalogo(id);
     recarregar(['catalogoDoMestre']);
 }
+const lojaDoJogador = ref<LojaDoJogadorDto | null>(copia(props.lojaDoJogador ?? null));
+watch(
+    () => props.lojaDoJogador,
+    (l) => {
+        lojaDoJogador.value = copia(l ?? null);
+        if (l) lojaVisivel.value = true;
+    },
+    { deep: true },
+);
 const lojaVisivel = ref(true);
 /** Compra: o servidor confere tudo; a ficha daqui recebe o novo Belly e o inventário na hora. */
 async function comprarNaLoja(dados: { personagem_id: number; item: string; qtd: number }) {
@@ -1928,7 +1963,9 @@ async function comprarNaLoja(dados: { personagem_id: number; item: string; qtd: 
     return { total: r.total, saldo: r.saldo };
 }
 const meusPersonagensDaLoja = computed(() =>
-    props.personagens.filter((p) => props.meusPersonagens.includes(p.id)).map((p) => ({ id: p.id, nome: p.nome })),
+    props.personagens
+        .filter((p) => !p.ficha?.npc && !fichas.value[p.id]?.npc && props.meusPersonagens.includes(p.id))
+        .map((p) => ({ id: p.id, nome: p.nome })),
 );
 
 // Serviços da mesa para a ficha (forja do Ferreiro): a ficha nunca fala com a API, a mesa executa e aplica o resultado.
@@ -2157,9 +2194,12 @@ function abrirAlterarFoto(p: { id: number; nome: string; foto?: string | null; f
 }
 provide('abrirAlterarFoto', abrirAlterarFoto);
 
-async function salvarFotoPersonagem(
-    dados: { arquivo?: Blob | File | null; arquivo_token?: Blob | File | null; url?: string | null; remover?: boolean },
-) {
+async function salvarFotoPersonagem(dados: {
+    arquivo?: Blob | File | null;
+    arquivo_token?: Blob | File | null;
+    url?: string | null;
+    remover?: boolean;
+}) {
     if (!modalFotoPersonagem.value) return;
     const personagemId = modalFotoPersonagem.value.id;
     const res = await api.alterarFotoPersonagem(personagemId, dados);
@@ -2194,7 +2234,7 @@ const camadaDeDesenho = (): Camada => (props.mestre && camada.value !== 'ilumina
 async function criarTraco(t: { x: number; y: number; largura: number; altura: number; pontos: number[] }) {
     if (!props.pagina) return;
     try {
-        objetos.value.push(
+        incluirObjeto(
             await api.criarObjeto(props.pagina.id, {
                 camada: camadaDeDesenho(),
                 tipo: 'traco',
@@ -2226,7 +2266,7 @@ async function confirmarTexto() {
     if (!t || !t.valor.trim() || !props.pagina) return;
     const tamanho = estilo.value.tamanho;
     try {
-        objetos.value.push(
+        incluirObjeto(
             await api.criarObjeto(props.pagina.id, {
                 camada: camadaDeDesenho(),
                 tipo: 'texto',
@@ -2305,9 +2345,50 @@ let conexao: Conexao | null = null;
 let temporizadorCena: ReturnType<typeof setTimeout> | undefined;
 const meuId = props.jogador.id;
 
-/** Outro participante mudou a cena: recarrega só o necessário (e não para quem agiu). */
-function aoMudarCena(payload: { ator: number | null }) {
-    if (payload.ator === meuId) return;
+/** Verdadeiro só quando o evento partiu desta mesma aba/conexão (permite sincronizar múltiplos PCs/abas do mesmo jogador ou mestre). */
+function deMim(e: { ator?: number | null; socket?: string | null }): boolean {
+    if (!e.ator) return false;
+    const meuSocket = conexao?.socketId();
+    if (e.socket && meuSocket) return e.socket === meuSocket;
+
+    return e.ator === meuId;
+}
+
+/** Aplica na hora a criação, movimento, edição ou remoção de um objeto na página atual. */
+function aoMudarObjeto(e: {
+    acao: 'salvar' | 'remover';
+    pagina_id: number;
+    objeto: ObjetoDto | null;
+    id: number;
+    ator: number | null;
+    socket?: string | null;
+}) {
+    if (deMim(e) || e.pagina_id !== props.pagina?.id) return;
+    if (e.acao === 'remover') {
+        objetos.value = objetos.value.filter((o) => o.id !== e.id);
+        if (selecionadoId.value === e.id) selecionadoId.value = null;
+        if (selecionadosIds.value.includes(e.id)) {
+            selecionadosIds.value = selecionadosIds.value.filter((x) => x !== e.id);
+        }
+        return;
+    }
+    if (e.acao === 'salvar' && e.objeto) {
+        if (!props.mestre && e.objeto.camada === 'mestre') {
+            objetos.value = objetos.value.filter((o) => o.id !== e.id);
+            return;
+        }
+        const idx = objetos.value.findIndex((o) => o.id === e.objeto!.id);
+        if (idx >= 0) {
+            Object.assign(objetos.value[idx], copia(e.objeto));
+        } else {
+            objetos.value.push(copia(e.objeto));
+        }
+    }
+}
+
+/** Outro participante mudou a cena: recarrega só o necessário (e não para a aba que agiu). */
+function aoMudarCena(payload: { ator: number | null; socket?: string | null }) {
+    if (deMim(payload)) return;
     clearTimeout(temporizadorCena);
     temporizadorCena = setTimeout(
         () => recarregar(['objetos', 'pagina', 'paginas', 'pastas', 'diario', 'jogadores', 'personagens', 'meusPersonagens', 'itens', 'mesa']),
@@ -2315,28 +2396,58 @@ function aoMudarCena(payload: { ator: number | null }) {
     );
 }
 
+function aoVoltarVisibilidade() {
+    if (document.visibilityState === 'visible') {
+        recarregar(['objetos', 'pagina', 'paginas', 'pastas', 'diario', 'jogadores', 'personagens', 'meusPersonagens', 'itens', 'mesa', 'combate']);
+    }
+}
+
 onMounted(() => {
+    document.addEventListener('visibilitychange', aoVoltarVisibilidade);
     try {
         conexao = conectar(props.mesa.id, meuId);
+        conexao.aoReconectar(() =>
+            recarregar([
+                'objetos',
+                'pagina',
+                'paginas',
+                'pastas',
+                'diario',
+                'jogadores',
+                'personagens',
+                'meusPersonagens',
+                'itens',
+                'mesa',
+                'combate',
+                'mensagens',
+            ]),
+        );
         const base = `mesa.${props.mesa.id}`;
         const abrir = (canal: ReturnType<Conexao['echo']['private']>) =>
             canal
                 .listen('.mensagem', (e: { mensagem: Mensagem; substitui?: boolean }) => aoNovaMensagem(e.mensagem, !!e.substitui))
-                .listen('.cena', (e: { ator: number | null }) => aoMudarCena(e))
+                .listen('.objeto', aoMudarObjeto)
+                .listen('.cena', (e: { ator: number | null; socket?: string | null }) => aoMudarCena(e))
                 .listen('.ficha', aoMudarFicha)
-                .listen('.folheto', (e: { folheto: FolhetoDto; ator: number | null }) => {
-                    if (e.ator === meuId) return; // quem mostrou já está com ele aberto
+                .listen('.folheto', (e: { folheto: FolhetoDto; ator: number | null; socket?: string | null }) => {
+                    if (deMim(e)) return; // quem mostrou já está com ele aberto
                     folhetoAberto.value = e.folheto;
                     recarregar(['diario']);
                 })
-                .listen('.loja', (e: { aberta: boolean; catalogo?: boolean }) => {
+                .listen('.loja', (e: { aberta: boolean; loja?: LojaDoJogadorDto; catalogo?: boolean }) => {
                     if (props.mestre) return recarregar(['catalogoDoMestre', 'lojasAbertas']);
-                    if (e.aberta) lojaVisivel.value = true;
+                    if (e.aberta) {
+                        if (e.loja) lojaDoJogador.value = e.loja;
+                        lojaVisivel.value = true;
+                    } else {
+                        lojaVisivel.value = false;
+                        lojaDoJogador.value = null;
+                    }
                     recarregar(['lojaDoJogador']);
                 })
-                .listen('.loot', (e: { loot: LootDto; aviso: string | null; ator: number | null }) => {
+                .listen('.loot', (e: { loot: LootDto; aviso: string | null; ator: number | null; socket?: string | null }) => {
                     aplicarLoot(e.loot);
-                    if (e.aviso && e.ator !== meuId) avisar(e.aviso);
+                    if (e.aviso && !deMim(e)) avisar(e.aviso);
                 })
                 .listen('.exploracao', (e: { pagina_id: number }) => {
                     if (e.pagina_id === props.pagina?.id) canvas.value?.limparMemoria();
@@ -2352,7 +2463,14 @@ onMounted(() => {
                     janelasDeReacao.value = comResumo(janelasDeReacao.value, e);
                     if (e.estado === 'resolvido') ofertasDeReacao.value = semOfertasDe(ofertasDeReacao.value, e.id);
                 })
-                .listen('.status', (e: { personagem_id: number; status: string[] }) => (statusPorPersonagem.value[e.personagem_id] = e.status))
+                .listen('.status', (e: { personagem_id: number; status: string[]; morto?: boolean; aliado?: boolean }) => {
+                    statusPorPersonagem.value[e.personagem_id] = e.status;
+                    const p = props.personagens.find((x) => x.id === e.personagem_id);
+                    if (p) {
+                        if (e.morto !== undefined) p.morto = e.morto;
+                        if (e.aliado !== undefined) p.aliado = e.aliado;
+                    }
+                })
                 .listen('.personagem:foto', (e: { personagem_id: number; foto: string | null; foto_token?: string | null }) => {
                     const foto = e.foto;
                     const fotoToken = e.foto_token ?? foto;
@@ -2390,6 +2508,7 @@ onMounted(() => {
     }
 });
 onBeforeUnmount(() => {
+    document.removeEventListener('visibilitychange', aoVoltarVisibilidade);
     clearTimeout(temporizadorCena);
     conexao?.fechar();
 });
@@ -2414,7 +2533,7 @@ async function criarLuz(cx: number, cy: number) {
     if (!props.pagina || !props.mestre) return;
     const raio = props.pagina.tamanho_quadrado * 4; // 4 quadrados (6 m)
     try {
-        objetos.value.push(
+        incluirObjeto(
             await api.criarObjeto(props.pagina.id, {
                 camada: 'iluminacao',
                 tipo: 'luz',
@@ -2445,7 +2564,7 @@ async function criarParede(p: [number, number, number, number], tipo: TipoParede
             altura: Math.max(1, Math.abs(y2 - y1)),
             dados: { pontos: p, tipo, aberta: false },
         });
-        objetos.value.push(novo);
+        incluirObjeto(novo);
     } catch (e) {
         avisar(mensagemDe(e));
     }
@@ -2912,14 +3031,6 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                 @salvar="salvarPasta"
             />
             <NovoFolhetoDialog v-model:open="novoFolhetoAberto" :criar="criarFolheto" />
-            <FolhetoDialog
-                :folheto="folhetoAberto"
-                :mestre="mestre"
-                @fechar="folhetoAberto = null"
-                @salvar="salvarFolheto"
-                @mostrar="(id) => acao(() => api.mostrarFolheto(id), ['diario'])()"
-                @excluir="excluirFolheto"
-            />
             <component
                 :is="moduloSistema.NovoNpcDialog"
                 v-if="mestre && moduloSistema?.NovoNpcDialog"
@@ -2935,7 +3046,7 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                 :jogadores="jogadoresDaLoja"
                 :lojas="lojas"
                 :proprios="catalogoDoMestre ?? []"
-                :personagens="props.personagens.map((p) => ({ id: p.id, nome: p.nome }))"
+                :personagens="props.personagens.filter((p) => !p.ficha?.npc && !fichas[p.id]?.npc).map((p) => ({ id: p.id, nome: p.nome }))"
                 :entregar="entregarDoCatalogo"
                 :abrir-loja="abrirLoja"
                 :fechar-loja="fecharLoja"
@@ -2950,23 +3061,6 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                 :salvar="salvarItemDeCatalogo"
                 :excluir="excluirItemDeCatalogo"
             />
-            <component
-                :is="moduloSistema.Loja"
-                v-if="lojaDoJogador && lojaVisivel && moduloSistema?.Loja"
-                :loja="lojaDoJogador"
-                :personagens="meusPersonagensDaLoja"
-                :fichas="fichas"
-                :comprar="comprarNaLoja"
-                @fechar="lojaVisivel = false"
-            />
-            <button
-                v-if="lojaDoJogador && !lojaVisivel && moduloSistema?.Loja"
-                type="button"
-                class="fixed bottom-4 right-4 z-40 rounded-full border border-ouro-400 bg-ouro-500 px-4 py-2 text-sm font-semibold text-preto-950 shadow-lg hover:bg-ouro-400"
-                @click="lojaVisivel = true"
-            >
-                Loja aberta
-            </button>
             <EditorItemDialog
                 v-model:open="editorAberto"
                 :item="itemEditando"
@@ -2976,5 +3070,30 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                 @salvo="aoSalvarItemOk"
             />
         </template>
+        <FolhetoDialog
+            :folheto="folhetoAberto"
+            :mestre="mestre"
+            @fechar="folhetoAberto = null"
+            @salvar="salvarFolheto"
+            @mostrar="(id) => acao(() => api.mostrarFolheto(id), ['diario'])()"
+            @excluir="excluirFolheto"
+        />
+        <component
+            :is="moduloSistema.Loja"
+            v-if="lojaDoJogador && lojaVisivel && moduloSistema?.Loja"
+            :loja="lojaDoJogador"
+            :personagens="meusPersonagensDaLoja"
+            :fichas="fichas"
+            :comprar="comprarNaLoja"
+            @fechar="lojaVisivel = false"
+        />
+        <button
+            v-if="lojaDoJogador && !lojaVisivel && moduloSistema?.Loja"
+            type="button"
+            class="fixed bottom-4 right-4 z-40 rounded-full border border-ouro-400 bg-ouro-500 px-4 py-2 text-sm font-semibold text-preto-950 shadow-lg hover:bg-ouro-400"
+            @click="lojaVisivel = true"
+        >
+            Loja aberta
+        </button>
     </div>
 </template>
