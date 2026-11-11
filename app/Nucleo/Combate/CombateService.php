@@ -227,7 +227,9 @@ final class CombateService
             $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
             $c = self::normalizar($m->combate);
             $k = collect($c['itens'])->search(fn ($i) => $i['id'] === $c['atual']);
-            if ($c['fase'] !== 'em_curso' || $k === false || $token->personagem_id === null || $c['itens'][$k]['personagem_id'] !== $token->personagem_id) {
+            $batePersonagem = $token->personagem_id !== null && $k !== false && ($c['itens'][$k]['personagem_id'] ?? null) === $token->personagem_id;
+            $bateObjeto = $k !== false && ($c['itens'][$k]['objeto_id'] ?? null) === $token->id;
+            if ($c['fase'] !== 'em_curso' || $k === false || (! $batePersonagem && ! $bateObjeto)) {
                 return $c;
             }
             $item = $c['itens'][$k];
@@ -242,6 +244,45 @@ final class CombateService
             ];
             $final = ['x' => $r['x'], 'y' => $r['y'], 'travou' => $r['travou']];
             $c['itens'][$k]['movimento'] = [...$item['movimento'], 'usado' => round($item['movimento']['usado'] + $r['metros'], 3), 'base' => $base];
+            $m->forceFill(['combate' => $c])->save();
+            $mudou = true;
+
+            return $c;
+        });
+        if ($mudou) {
+            Transmitir::enviar($mesa, 'combate', ['combate' => $depois, 'ator' => 0], ['mesa']);
+        }
+
+        return $final;
+    }
+
+    /**
+     * Reverte o deslocamento de um token em combate (desfazer / Ctrl+Z).
+     * O que ele andou de volta é subtraído de `movimento.usado` (nunca abaixo de 0).
+     *
+     * @return array{x: float, y: float}
+     */
+    public function reverterMovimento(Mesa $mesa, Objeto $token, float $x1, float $y1): array
+    {
+        $final = ['x' => $x1, 'y' => $y1];
+        $mudou = false;
+        $depois = DB::transaction(function () use ($mesa, $token, $x1, $y1, &$final, &$mudou) {
+            $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
+            $c = self::normalizar($m->combate);
+            $k = collect($c['itens'])->search(fn ($i) => $i['id'] === $c['atual']);
+            if ($c['fase'] !== 'em_curso' || $k === false) {
+                return $c;
+            }
+            $item = $c['itens'][$k];
+            $batePersonagem = $token->personagem_id !== null && ($item['personagem_id'] ?? null) === $token->personagem_id;
+            $bateObjeto = ($item['objeto_id'] ?? null) === $token->id;
+            if (! $batePersonagem && ! $bateObjeto) {
+                return $c;
+            }
+            $pagina = $token->pagina;
+            $metros = Movimento::metros($x1 - (float) $token->x, $y1 - (float) $token->y, $pagina);
+            $novoUsado = max(0.0, round((float) ($item['movimento']['usado'] ?? 0) - $metros, 3));
+            $c['itens'][$k]['movimento'] = [...$item['movimento'], 'usado' => $novoUsado];
             $m->forceFill(['combate' => $c])->save();
             $mudou = true;
 

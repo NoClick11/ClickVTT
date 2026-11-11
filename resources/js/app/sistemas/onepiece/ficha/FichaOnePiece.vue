@@ -31,6 +31,7 @@ const props = defineProps<{
     ficha: FichaOnePiece;
     itens: ItemDto[];
     mestre: boolean;
+    podeEditar?: boolean;
     servicos?: ServicosDaFicha;
     permissoes?: PermissoesDaMesa;
     construtorConcluido?: boolean;
@@ -109,6 +110,7 @@ provide(CHAVE_FICHA, {
     armas,
     itens: itensPorId,
     mestre: props.mestre,
+    podeEditar: computed(() => props.podeEditar ?? props.mestre),
     servicos: props.servicos ?? null,
     permissoes: computed(() => props.permissoes ?? { descansoCurto: true, descansoLongo: true, subirNivel: true }),
     personagemId: props.personagem.id,

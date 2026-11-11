@@ -15,7 +15,7 @@ import { pilhasDeMunicao, type PilhaDeMunicao } from '../itens/pilhas';
 import { camposDoDadoDeVida, comSinal, DADOS_DE_VIDA, textoDeMovimento, type AtributoId, type FichaOnePiece } from '../regras';
 
 const props = defineProps<{ ficha: FichaOnePiece; personagem: PersonagemFicha }>();
-const { editar, calc, salvar, rolar, d20, modoDe, armas, origens, acoes, rodada, itens } = useFicha();
+const { editar, calc, salvar, rolar, d20, modoDe, armas, origens, acoes, rodada, itens, podeEditar } = useFicha();
 
 const abrirAlterarFoto = inject<((p: { id: number; nome: string; foto?: string | null; fotoToken?: string | null; ehNpc?: boolean }) => void) | null>(
     'abrirAlterarFoto',
@@ -355,7 +355,9 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                     <CampoNumero
                         :model-value="ficha.pv.atual"
                         :min="0"
-                        :max="9999"
+                        :max="calc['pv.max'] > 0 ? calc['pv.max'] : 9999"
+                        :relativo="true"
+                        :somente-leitura="!podeEditar"
                         aria-label="PV atuais"
                         :class="estilos.num"
                         @salvar="salvar({ 'pv.atual': $event })"
@@ -379,6 +381,8 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                     :model-value="ficha.pv.temp"
                     :min="0"
                     :max="9999"
+                    :relativo="true"
+                    :somente-leitura="!podeEditar"
                     aria-label="PV temporários"
                     :class="estilos.num"
                     @salvar="salvar({ 'pv.temp': $event })"

@@ -239,7 +239,8 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                     <CampoNumero
                         :model-value="ficha.pv.atual"
                         :min="0"
-                        :max="9999"
+                        :max="calc['pv.max'] > 0 ? calc['pv.max'] : 9999"
+                        :relativo="true"
                         aria-label="PV atuais"
                         :class="estilos.num"
                         @salvar="salvar({ 'pv.atual': $event })"
@@ -263,6 +264,7 @@ const condicoesAtivas = computed(() => (props.ficha.condicoes ?? []).map((id) =>
                     :model-value="ficha.pv.temp"
                     :min="0"
                     :max="9999"
+                    :relativo="true"
                     aria-label="PV temporários"
                     :class="estilos.num"
                     @salvar="salvar({ 'pv.temp': $event })"

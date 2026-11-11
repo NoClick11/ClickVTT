@@ -53,6 +53,8 @@ export interface ContextoFicha {
     itens: ComputedRef<Record<number, ItemDto>>;
     /** Quem vê os controles de criar e entregar itens. */
     mestre: boolean;
+    /** Se o participante atual pode alterar dados desta ficha (mestre ou dono do personagem). */
+    podeEditar: ComputedRef<boolean>;
     /** Serviços da mesa (forja do Ferreiro); null quando a mesa não os oferece. */
     servicos: ServicosDaFicha | null;
     /** O que o mestre liberou: descansar e subir de nível (fora do jogo, tudo liberado). */

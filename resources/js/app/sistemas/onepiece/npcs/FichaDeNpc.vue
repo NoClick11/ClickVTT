@@ -2,6 +2,7 @@
 import { Button } from '@/components/ui/button';
 import { Camera, Minus, Pencil, Plus, RotateCcw, Save, Swords, Trash2, X, Zap } from 'lucide-vue-next';
 import { computed, inject, ref, type ComputedRef } from 'vue';
+import CampoNumero from '../../../nucleo/ui/CampoNumero.vue';
 import type { UsoDeTecnica } from '../contexto';
 import {
     alcanceDoAtaque,
@@ -303,10 +304,20 @@ const rotuloSecao = 'mb-1 text-[11px] font-semibold uppercase tracking-wider tex
             <div class="rounded border border-preto-800 bg-preto-900/60 p-2">
                 <div class="mb-1 flex items-baseline justify-between">
                     <span class="text-[10px] uppercase text-preto-400">Pontos de Vida</span>
-                    <span class="font-semibold tabular-nums"
-                        >{{ pv.atual }} <span class="text-preto-400">/ {{ pv.max }}</span
-                        ><span v-if="pv.temp" class="ml-1 text-xs text-sky-300">(+{{ pv.temp }} temp.)</span></span
-                    >
+                    <div class="flex items-center gap-1 font-semibold tabular-nums">
+                        <CampoNumero
+                            :model-value="pv.atual"
+                            :min="0"
+                            :max="pv.max > 0 ? pv.max : 9999"
+                            :relativo="true"
+                            :somente-leitura="!mestre"
+                            class="h-6 w-14 rounded border border-preto-700 bg-preto-950 px-1 text-center text-xs font-semibold text-ouro-100 focus-visible:border-ouro-400 focus-visible:outline-none"
+                            aria-label="PV atuais do NPC"
+                            @salvar="definirPv($event)"
+                        />
+                        <span class="text-preto-400">/ {{ pv.max }}</span>
+                        <span v-if="pv.temp" class="ml-1 text-xs text-sky-300">(+{{ pv.temp }} temp.)</span>
+                    </div>
                 </div>
                 <div class="mb-1.5 h-2 overflow-hidden rounded bg-preto-800">
                     <div class="h-full transition-all" :class="corPv" :style="{ width: pctPv + '%' }" />

@@ -153,6 +153,7 @@ class ObjetoController extends Controller
                 'dados.destino_pagina_id' => ['nullable', 'integer'],
                 'dados.destino_objeto_id' => ['nullable', 'integer'],
                 'dados.destino_nome' => ['nullable', 'string', 'max:80'],
+                'reverter_movimento' => ['sometimes', 'boolean'],
             ]);
             if (isset($dados['camada'])) {
                 $this->validarCamada($dados['camada'], $objeto->tipo);
@@ -174,13 +175,20 @@ class ObjetoController extends Controller
                 $atual = CombateService::itemAtual(CombateService::normalizar($mesa->combate));
                 abort_unless($atual !== null && $atual['personagem_id'] !== null && $atual['personagem_id'] === $objeto->personagem_id, 403, 'Não é o turno deste personagem.');
             }
-            $dados = $request->validate(['x' => ['required', 'numeric'], 'y' => ['required', 'numeric']]);
+            $dados = $request->validate([
+                'x' => ['required', 'numeric'],
+                'y' => ['required', 'numeric'],
+                'reverter_movimento' => ['sometimes', 'boolean'],
+            ]);
         }
+
+        $reverter = (bool) ($dados['reverter_movimento'] ?? false);
+        unset($dados['reverter_movimento']);
 
         $de = ['x' => (float) $objeto->x, 'y' => (float) $objeto->y];
         // Paredes barram o movimento (o mestre atravessa): se o caminho reto até o ponto novo cruza uma parede (ou porta/janela fechada),
         // o token fica onde estava. O cliente já trava antes; aqui é a palavra final.
-        if ($objeto->tipo === 'token' && isset($dados['x'], $dados['y']) && ! $acesso->ehMestre()) {
+        if ($objeto->tipo === 'token' && isset($dados['x'], $dados['y']) && ! $acesso->ehMestre() && ! $reverter) {
             $mx = (float) $objeto->largura / 2;
             $my = (float) $objeto->altura / 2;
             if (! Paredes::caminhoLivre($objeto->pagina, $de['x'] + $mx, $de['y'] + $my, (float) $dados['x'] + $mx, (float) $dados['y'] + $my)) {
@@ -190,9 +198,15 @@ class ObjetoController extends Controller
         }
         // Token em combate: o que andou entra no deslocamento do turno; quem não é o mestre trava no limite (como a régua).
         if ($objeto->tipo === 'token' && isset($dados['x'], $dados['y']) && CombateService::emCurso($mesa)) {
-            $r = app(CombateService::class)->registrarMovimento($mesa, $objeto, (float) $dados['x'], (float) $dados['y'], ! $acesso->ehMestre());
-            $dados['x'] = $r['x'];
-            $dados['y'] = $r['y'];
+            if ($reverter) {
+                $r = app(CombateService::class)->reverterMovimento($mesa, $objeto, (float) $dados['x'], (float) $dados['y']);
+                $dados['x'] = $r['x'];
+                $dados['y'] = $r['y'];
+            } else {
+                $r = app(CombateService::class)->registrarMovimento($mesa, $objeto, (float) $dados['x'], (float) $dados['y'], ! $acesso->ehMestre());
+                $dados['x'] = $r['x'];
+                $dados['y'] = $r['y'];
+            }
         }
 
         $camadaAntiga = $objeto->camada;
