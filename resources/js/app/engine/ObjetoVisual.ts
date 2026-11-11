@@ -2,7 +2,7 @@ import { Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { GifSprite } from 'pixi.js/gif';
 import type { BarraDoToken } from '../nucleo/sistemas/tipos';
 import { iconeDoStatus } from '../nucleo/status';
-import type { ObjetoDto } from './tipos';
+import type { InfoMira, ObjetoDto } from './tipos';
 
 /** Representa um objeto da cena no Pixi: imagem/vídeo/GIF (mapa), token (círculo), luz ou parede. */
 export class ObjetoVisual {
@@ -28,6 +28,7 @@ export class ObjetoVisual {
     private caveira = new Container();
     private caveiraDesenhada = '';
     private miraLigada = false;
+    private mirasAtivas: InfoMira[] = [];
     private destruido = false;
     private enfase = true;
     /** Iluminação dinâmica ligada: a luz vem do mapa de luz (GPU), não do brilho desenhado aqui. */
@@ -38,7 +39,7 @@ export class ObjetoVisual {
         private mestre = false,
     ) {
         this.dto = { ...dto };
-        this.container.addChild(this.fundo, this.bordaToken, this.marcador, this.caveira, this.iconesStatus, this.barras, this.mira);
+        this.container.addChild(this.fundo, this.bordaToken, this.mira, this.marcador, this.caveira, this.barras, this.iconesStatus);
         this.aplicar();
         void this.carregarMidia();
     }
@@ -143,8 +144,8 @@ export class ObjetoVisual {
         this.desenharBordaToken();
         this.desenharMarcador();
         this.desenharCaveira();
-        this.desenharStatus();
         this.desenharBarras();
+        this.desenharStatus();
         this.desenharMira();
         this.ajustarMidia();
         this.atualizarRotulo(largura, altura);
@@ -451,36 +452,121 @@ export class ObjetoVisual {
         g.circle(this.dto.largura / 2, this.dto.altura / 2, 3).fill(0xffffff);
     }
 
-    /** Liga ou desliga a mira (o token é o alvo de quem joga). */
+    /** Liga ou desliga a mira genérica (o token é o alvo de quem joga ou de uma área de efeito). */
     definirAlvo(ligada: boolean): void {
         if (this.miraLigada === ligada) return;
         this.miraLigada = ligada;
         this.desenharMira();
     }
 
-    /** Mira vermelha por fora do token: um anel com quatro tracinhos apontando para o centro. */
+    /** Define as miras ativas dos jogadores neste token com suas respectivas cores. */
+    definirMiras(miras: InfoMira[]): void {
+        this.mirasAtivas = miras;
+        this.desenharMira();
+    }
+
+    get temMiraAtiva(): boolean {
+        return this.ehToken && (this.mirasAtivas.length > 0 || this.miraLigada);
+    }
+
+    /** Gira a mira suavemente no sentido horário (chamado a cada frame). */
+    atualizarMira(deltaMS: number): void {
+        if (!this.temMiraAtiva) return;
+        // ~1 volta completa a cada 14s no sentido horário
+        this.mira.rotation += ((Math.PI * 2) / 14000) * deltaMS;
+    }
+
+    /** Mira com textura metálica, degradê puxado pro preto e dentes facetados estilo usinado. */
     private desenharMira(): void {
         const g = this.mira.clear();
-        if (!this.miraLigada || !this.ehToken) return;
+        if (!this.ehToken) return;
+
+        // Se houver jogadores mirando neste token, usa suas cores;
+        // Se não houver miras de jogadores mas miraLigada for true (ex.: área de efeito), usa vermelho padrão forte.
+        const lista: InfoMira[] = this.mirasAtivas.length > 0 ? this.mirasAtivas : this.miraLigada ? [{ cor: '#991b1b' }] : [];
+        if (lista.length === 0) {
+            this.mira.rotation = 0;
+            return;
+        }
+
         const { largura, altura } = this.dto;
         const cx = largura / 2;
         const cy = altura / 2;
-        const rx = largura / 2 + 6;
-        const ry = altura / 2 + 6;
-        const risco = Math.max(8, Math.min(largura, altura) * 0.22);
-        g.ellipse(cx, cy, rx, ry).stroke({ color: 0xef4444, width: 3, alpha: 0.95 });
-        for (const [dx, dy, ax, ay] of [
-            [0, -1, 0, 1],
-            [0, 1, 0, -1],
-            [-1, 0, 1, 0],
-            [1, 0, -1, 0],
-        ] as const) {
-            const x0 = cx + dx * rx;
-            const y0 = cy + dy * ry;
-            g.moveTo(x0 + dx * 6, y0 + dy * 6)
-                .lineTo(x0 + ax * risco, y0 + ay * risco)
-                .stroke({ color: 0xef4444, width: 3, alpha: 0.95, cap: 'round' });
-        }
+        this.mira.position.set(cx, cy);
+
+        lista.forEach((m, idx) => {
+            const corNum = corHex(m.cor || '#991b1b');
+            const offset = 6 + idx * 5;
+            const rx = largura / 2 + offset;
+            const ry = altura / 2 + offset;
+
+            // Paleta metálica suave (degradê harmonioso sem choque de preto puro ou faixas duras):
+            const pretoFundo = 0x111116;
+            const tomEscuro = misturarCores(corNum, pretoFundo, 0.45); // tom escuro rico (mantém a identidade da cor)
+            const tomMedio = misturarCores(corNum, pretoFundo, 0.72); // tom encorpado principal
+            const tomLuz = misturarCores(corNum, 0xffffff, 0.86); // reflexo metálico suave
+            const tomRealce = misturarCores(corNum, 0xffffff, 0.65); // realce acetinado
+
+            // 1. Contorno de profundidade escuro de fundo (anel)
+            g.ellipse(0, 0, rx, ry).stroke({ color: 0x0a0a0e, width: 4.2, alpha: 0.85 });
+
+            // 2. Anel em degradê contínuo e suave (com moveTo explícito em cada arco para NUNCA traçar linha ao centro)
+            const totalSegmentos = 48;
+            const passoAng = (Math.PI * 2) / totalSegmentos;
+            for (let s = 0; s < totalSegmentos; s++) {
+                const a1 = s * passoAng;
+                const a2 = a1 + passoAng + 0.025;
+                // Variação senoidal suave entre tomLuz e tomEscuro
+                const t = 0.5 + 0.5 * Math.sin(a1 * 2);
+                const corSeg = misturarCores(tomLuz, tomEscuro, t);
+
+                const x1 = Math.cos(a1) * rx;
+                const y1 = Math.sin(a1) * ry;
+                g.moveTo(x1, y1).arc(0, 0, rx, a1, a2).stroke({ color: corSeg, width: 2.6 });
+            }
+
+            // 3. Filete metálico chanfrado sutil (relevo suave)
+            g.ellipse(0, 0, rx - 1, ry - 1).stroke({ color: tomRealce, width: 0.6, alpha: 0.25 });
+            g.ellipse(0, 0, rx + 1, ry + 1).stroke({ color: 0x050508, width: 0.6, alpha: 0.35 });
+
+            // 4. Dentes de mira metálicos com sombreamento suave (losangos cardeais integrados ao anel)
+            const anguloBase = idx === 1 ? Math.PI / 4 : idx === 2 ? Math.PI / 8 : 0;
+            for (let a = 0; a < 4; a++) {
+                const ang = anguloBase + (a * Math.PI) / 2;
+                const cos = Math.cos(ang);
+                const sin = Math.sin(ang);
+                const xAnel = cos * rx;
+                const yAnel = sin * ry;
+                const tx = -sin;
+                const ty = cos;
+
+                // Vértices do dente metálico:
+                const pExt = { x: xAnel + cos * 2.8, y: yAnel + sin * 2.8 }; // ponta externa
+                const pDir = { x: xAnel + tx * 3.2, y: yAnel + ty * 3.2 }; // lateral direita
+                const pInt = { x: xAnel - cos * 6.5, y: yAnel - sin * 6.5 }; // ponta interna afunilada
+                const pEsq = { x: xAnel - tx * 3.2, y: yAnel - ty * 3.2 }; // lateral esquerda
+
+                const contornoTotal = [pExt.x, pExt.y, pDir.x, pDir.y, pInt.x, pInt.y, pEsq.x, pEsq.y];
+
+                // Sombra de fundo suave do dente
+                g.poly(contornoTotal).fill({ color: 0x0a0a0e, alpha: 0.85 }).stroke({ color: 0x0a0a0e, width: 1.5, join: 'round' });
+
+                // Preenchimento base homogêneo na cor média
+                g.poly(contornoTotal).fill({ color: tomMedio, alpha: 1 });
+
+                // Faceta esquerda com sombreamento suave
+                g.poly([pExt.x, pExt.y, pInt.x, pInt.y, pEsq.x, pEsq.y]).fill({ color: tomEscuro, alpha: 0.6 });
+
+                // Faceta direita com iluminação suave
+                g.poly([pExt.x, pExt.y, pDir.x, pDir.y, pInt.x, pInt.y]).fill({ color: tomLuz, alpha: 0.45 });
+
+                // Vinco metálico central com realce sutil
+                g.moveTo(pExt.x, pExt.y).lineTo(pInt.x, pInt.y).stroke({ color: tomRealce, width: 0.8, alpha: 0.5, cap: 'round' });
+
+                // Borda externa de acabamento fino
+                g.poly(contornoTotal).stroke({ color: tomMedio, width: 1, alpha: 0.7, join: 'round' });
+            }
+        });
     }
 
     /** Token de NPC com 0 de vida: um X vermelho e uma caveira por cima (o token fica esmaecido). */
@@ -513,10 +599,27 @@ export class ObjetoVisual {
      * Ícones dos efeitos ativos do personagem no canto superior do token, em fileira (até 4 e um "+N" para o resto).
      * Cada efeito tem o seu ícone (`nucleo/status.ts`). O tamanho acompanha o token, com mínimo legível.
      */
+    private alturaDasBarras(): number {
+        const dados = this.ehToken ? (this.dto.barras ?? []) : [];
+        if (!dados.length) return 0;
+        const altura = Math.max(13, Math.min(20, this.dto.largura * 0.22));
+        let n = 0;
+        if (dados.some((b) => b.id === 'pp')) n++;
+        if (dados.some((b) => b.id === 'pv')) n++;
+        return n > 0 ? n * (altura + 2) + 2 : 0;
+    }
+
+    /**
+     * Ícones dos efeitos ativos do personagem, alinhados em fileira (até 4 e um "+N" para o resto).
+     * Quando o token tem barras de vida/PP desenhadas no topo, os status são posicionados logo ACIMA
+     * das barras para nunca ficarem cobertos ou escondidos atrás delas.
+     * Cada efeito tem o seu ícone (`nucleo/status.ts`). O tamanho acompanha o token, com mínimo legível.
+     */
     private desenharStatus(): void {
         const ids = this.ehToken ? (this.dto.status ?? []) : [];
         const lado = Math.max(16, Math.min(30, Math.min(this.dto.largura, this.dto.altura) * 0.3));
-        const chave = `${ids.join(',')}|${Math.round(lado)}|${Math.round(this.dto.largura)}`;
+        const offsetBarras = this.alturaDasBarras();
+        const chave = `${ids.join(',')}|${Math.round(lado)}|${Math.round(this.dto.largura)}|${Math.round(offsetBarras)}`;
         if (chave === this.statusDesenhado) return;
         this.statusDesenhado = chave;
         for (const filho of this.iconesStatus.removeChildren()) filho.destroy({ children: true });
@@ -525,13 +628,16 @@ export class ObjetoVisual {
             ids.length > 4
                 ? [...visiveis.map((id) => ({ id, resto: 0 })), { id: '', resto: ids.length - 3 }]
                 : visiveis.map((id) => ({ id, resto: 0 }));
+
+        const posY = offsetBarras > 0 ? -(offsetBarras + lado * 0.55) : -lado * 0.25;
+
         itens.forEach((it, i) => {
             const { icone, cor } = iconeDoStatus(it.id);
             const bolha = new Container();
-            bolha.position.set(this.dto.largura - lado * 0.5 - i * (lado * 0.85), -lado * 0.25);
+            bolha.position.set(this.dto.largura - lado * 0.5 - i * (lado * 0.85), posY);
             const fundo = new Graphics()
                 .circle(0, 0, lado / 2)
-                .fill({ color: 0x0d0a12, alpha: 0.92 })
+                .fill({ color: 0x0d0a12, alpha: 0.95 })
                 .stroke({ color: it.resto ? 0xd4a843 : corHex(cor), width: 2 });
             const texto = new Text({
                 text: it.resto ? `+${it.resto}` : icone,
@@ -546,6 +652,32 @@ export class ObjetoVisual {
             bolha.addChild(fundo, texto);
             this.iconesStatus.addChild(bolha);
         });
+    }
+
+    /**
+     * Retorna a lista de ícones de status com suas posições locais (x, y do centro e raio)
+     * para detecção de hover e exibição de tooltip mecânica.
+     */
+    geometriaDosStatus(): { id: string; resto: number; cx: number; cy: number; raio: number }[] {
+        if (!this.ehToken || !this.dto.status?.length) return [];
+        const ids = this.dto.status;
+        const lado = Math.max(16, Math.min(30, Math.min(this.dto.largura, this.dto.altura) * 0.3));
+        const visiveis = ids.length > 4 ? ids.slice(0, 3) : ids;
+        const itens =
+            ids.length > 4
+                ? [...visiveis.map((id) => ({ id, resto: 0 })), { id: '', resto: ids.length - 3 }]
+                : visiveis.map((id) => ({ id, resto: 0 }));
+
+        const offsetBarras = this.alturaDasBarras();
+        const posY = offsetBarras > 0 ? -(offsetBarras + lado * 0.55) : -lado * 0.25;
+
+        return itens.map((it, i) => ({
+            id: it.id,
+            resto: it.resto,
+            cx: this.dto.largura - lado * 0.5 - i * (lado * 0.85),
+            cy: posY,
+            raio: lado / 2,
+        }));
     }
 
     /**
@@ -732,6 +864,29 @@ export class ObjetoVisual {
 
 export function corHex(cor?: string): number {
     return cor && /^#[0-9a-f]{6}$/i.test(cor) ? parseInt(cor.slice(1), 16) : 0xd4a843;
+}
+
+/** Mistura duas cores RGB (peso1 entre 0 e 1). */
+export function misturarCores(cor1: number, cor2: number, peso1: number): number {
+    const p1 = Math.max(0, Math.min(1, peso1));
+    const p2 = 1 - p1;
+    const r = Math.round(((cor1 >> 16) & 255) * p1 + ((cor2 >> 16) & 255) * p2);
+    const g = Math.round(((cor1 >> 8) & 255) * p1 + ((cor2 >> 8) & 255) * p2);
+    const b = Math.round((cor1 & 255) * p1 + (cor2 & 255) * p2);
+    return (r << 16) | (g << 8) | b;
+}
+
+/** Escurece e intensifica a cor para miras táticas mais fortes e legíveis. */
+export function corEscuraEForte(cor?: string, fator = 0.72): number {
+    const limpo = cor?.replace('#', '') ?? '';
+    const num = /^[0-9a-f]{6}$/i.test(limpo) ? parseInt(limpo, 16) : 0x991b1b;
+    let r = (num >> 16) & 255;
+    let g = (num >> 8) & 255;
+    let b = num & 255;
+    r = Math.round(r * fator);
+    g = Math.round(g * fator);
+    b = Math.round(b * fator);
+    return (r << 16) | (g << 8) | b;
 }
 
 function distanciaAoSegmento(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {

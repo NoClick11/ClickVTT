@@ -29,6 +29,7 @@ import LootDialog from '../components/LootDialog.vue';
 import MenuObjeto from '../components/MenuObjeto.vue';
 import MenuPaginas from '../components/MenuPaginas.vue';
 import MenuPersonagem from '../components/MenuPersonagem.vue';
+import MenuPing from '../components/MenuPing.vue';
 import NovoPersonagemDialog from '../components/NovoPersonagemDialog.vue';
 import OpcoesFerramenta from '../components/OpcoesFerramenta.vue';
 import PainelAlvo from '../components/PainelAlvo.vue';
@@ -45,6 +46,7 @@ import {
     type CamposGeometria,
     type EstiloPintura,
     type Ferramenta,
+    type InfoMira,
     type LootDto,
     type ObjetoDto,
     type PaginaDto,
@@ -66,6 +68,9 @@ import FichaNaoImplementada from '../nucleo/sistemas/FichaNaoImplementada.vue';
 import FichaPrivada from '../nucleo/sistemas/FichaPrivada.vue';
 import { moduloDoSistema } from '../nucleo/sistemas/registro';
 import type { AbrirEditorItem } from '../nucleo/sistemas/tipos';
+import { infoDoStatus } from '../nucleo/status';
+import type { TempoMesa } from '../nucleo/tempo/tempo';
+import CampoNumero from '../nucleo/ui/CampoNumero.vue';
 import JanelaFlutuante from '../nucleo/ui/JanelaFlutuante.vue';
 import { conectar, type Conexao } from '../realtime';
 import type { UsoDeTecnica } from '../sistemas/onepiece/contexto';
@@ -102,6 +107,7 @@ const props = defineProps<{
         descanso_longo?: boolean;
         subir_nivel?: boolean;
         musica?: MusicaMesaDto | null;
+        tempo?: TempoMesa | null;
     };
     /** Sistema da mesa: o módulo (ficha, regras) é resolvido pelo slug. */
     sistema: { slug: string; nome: string; modulo: boolean };
@@ -157,6 +163,24 @@ const estilo = ref<EstiloPintura>({ cor: '#ef4444', espessura: 4, tamanho: 28 })
 const mensagens = ref<Mensagem[]>(copia(props.mensagens));
 const combate = ref<Combate>(normalizarCombate(copia(props.combate)));
 const musicaMesa = ref<MusicaMesaDto | null>(copia(props.mesa.musica ?? null));
+const tempoMesa = ref<TempoMesa>(copia(props.mesa.tempo ?? { dia: 1, hora: 8, minuto: 0 }));
+watch(
+    () => props.mesa.tempo,
+    (novo) => {
+        if (novo) tempoMesa.value = copia(novo);
+    },
+    { deep: true },
+);
+
+async function atualizarTempo(novo: TempoMesa) {
+    if (!props.mestre) return;
+    tempoMesa.value = novo;
+    try {
+        await api.atualizarTempo(novo);
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
 const textoPendente = ref<{ x: number; y: number; tela: { x: number; y: number }; valor: string } | null>(null);
 
 // Animação dos dados: ligada por padrão (exceto para quem pede movimento reduzido); preferência salva no navegador.
@@ -365,9 +389,48 @@ const alvoDoAtaque = computed(() => alvoPersonagem.value?.id ?? null);
 provide('alvoDoAtaque', alvoDoAtaque);
 
 // --- alvo (mira) -----------------------------------------------------------------------------------------------
-// Cada jogador mira o seu alvo (só local): botão Mirar ou tecla T + clique num token de personagem. O alvo fica travado
-// até ser trocado ou limpo e recebe o dano aplicado pelo chat e os efeitos do painel.
+// Cada jogador mira o seu alvo: botão Mirar ou tecla T + clique num token de personagem. O alvo fica travado
+// até ser trocado ou limpo e recebe o dano aplicado pelo chat e os efeitos do painel. A mira segue a cor do jogador e é visível a todos.
 const alvoObjetoId = ref<number | null>(null);
+const mirasPorJogador = ref<Record<number, { objetoId: number | null; cor: string; nome: string }>>({});
+
+watch(
+    alvoObjetoId,
+    (novoId) => {
+        if (props.jogador?.id) {
+            mirasPorJogador.value[props.jogador.id] = {
+                objetoId: novoId,
+                cor: props.jogador.cor ?? '#ef4444',
+                nome: props.jogador.nome,
+            };
+        }
+        api.mirar({ objeto_id: novoId, pagina_id: props.pagina?.id }).catch((e) => console.error('Erro ao transmitir mira:', e));
+    },
+    { immediate: true },
+);
+
+watch(
+    () => props.pagina?.id,
+    () => {
+        alvoObjetoId.value = null;
+        mirasPorJogador.value = {};
+    },
+);
+
+const mirasPorObjeto = computed<Record<number, InfoMira[]>>(() => {
+    const mapa: Record<number, InfoMira[]> = {};
+    for (const [jogIdStr, info] of Object.entries(mirasPorJogador.value)) {
+        if (!info.objetoId) continue;
+        if (!mapa[info.objetoId]) mapa[info.objetoId] = [];
+        mapa[info.objetoId].push({
+            jogadorId: Number(jogIdStr),
+            cor: info.cor,
+            nome: info.nome,
+        });
+    }
+    return mapa;
+});
+
 /** A mira foi posta por uma Técnica (o mais perto da área): o painel de aplicar efeito não abre, a Técnica já traz o efeito, a CD e a duração. */
 const miraDaTecnica = ref(false);
 function miraManual(id: number | null) {
@@ -522,6 +585,119 @@ function abrirDoToken(objetoId: number) {
     if (o?.personagem_id) abrirPersonagem(o.personagem_id);
 }
 
+// Controle de vida rápida do token selecionado no mapa (estilo Roll20)
+const posTokenSelecionado = ref<{ x: number; y: number; largura: number; altura: number } | null>(null);
+const editandoVidaTokenId = ref<number | null>(null);
+
+// Tooltip resumida mecânica estilo Foundry VTT para os efeitos/condições ativas no token
+const tooltipStatus = ref<{
+    tokenNome: string;
+    itens: { id: string; nome: string; icone: string; cor: string; mecanica: string[] }[];
+    pos: { x: number; y: number };
+} | null>(null);
+
+function aoHoverStatus(dados: { tokenNome: string; statusIds: string[]; tela: { x: number; y: number } } | null) {
+    if (!dados || !dados.statusIds.length) {
+        tooltipStatus.value = null;
+        return;
+    }
+    const itens = dados.statusIds.map((id) => infoDoStatus(id));
+    tooltipStatus.value = {
+        tokenNome: dados.tokenNome,
+        itens,
+        pos: dados.tela,
+    };
+}
+
+// Menu de contexto de ping acionado pelo botão direito no mapa
+const menuPing = ref<{ mundo: { x: number; y: number }; tela: { x: number; y: number } } | null>(null);
+
+function aoMenuPing(mundo: { x: number; y: number }, tela: { x: number; y: number }) {
+    menuPing.value = { mundo, tela };
+}
+
+async function aoPing(x: number, y: number, puxar: boolean) {
+    if (!props.pagina?.id) return;
+    // Toca imediatamente no cliente local
+    canvas.value?.tocarPing(x, y, props.jogador.cor ?? '#f59e0b');
+    if (puxar) {
+        canvas.value?.centralizarEm(x, y, true, 0.65);
+    }
+    try {
+        await api.enviarPing({ pagina_id: props.pagina.id, x, y, puxar });
+    } catch (e) {
+        console.warn('Falha ao transmitir ping:', e);
+    }
+}
+
+function atualizarPosicaoTokenSelecionado() {
+    if (!selecionadoId.value || !canvas.value) {
+        posTokenSelecionado.value = null;
+        editandoVidaTokenId.value = null;
+        return;
+    }
+    const o = objetosDaCena.value.find((x) => x.id === selecionadoId.value);
+    if (o?.tipo === 'token' && o.personagem_id) {
+        posTokenSelecionado.value = (canvas.value as any)?.posicaoTela?.(selecionadoId.value) ?? null;
+    } else {
+        posTokenSelecionado.value = null;
+        editandoVidaTokenId.value = null;
+    }
+}
+
+watch(selecionadoId, (id) => {
+    if (id !== editandoVidaTokenId.value) {
+        editandoVidaTokenId.value = null;
+    }
+    atualizarPosicaoTokenSelecionado();
+});
+
+watch(
+    () => objetos.value,
+    () => {
+        atualizarPosicaoTokenSelecionado();
+    },
+);
+
+const tokenComVida = computed(() => {
+    if (!selecionadoId.value || !posTokenSelecionado.value) return null;
+    const o = objetosDaCena.value.find((x) => x.id === selecionadoId.value);
+    if (!o || o.tipo !== 'token' || !o.personagem_id) return null;
+    const p = props.personagens.find((x) => x.id === o.personagem_id);
+    if (!p) return null;
+    const f = fichas.value[p.id];
+    const ehNpcToken = !!(f?.npc ?? (p.ficha as any)?.npc);
+    const barraPv = o.barras?.find((b) => b.id === 'pv');
+    const barraPp = o.barras?.find((b) => b.id === 'pp');
+    const pvAtual = barraPv?.atual ?? (f?.pv as any)?.atual ?? 0;
+    const pvMax = barraPv?.max ?? (f?.pv as any)?.max ?? 1;
+    const pvTemp = (f?.pv as any)?.temp ?? 0;
+    const podeEditarVida = props.mestre || (!ehNpcToken && props.meusPersonagens.includes(p.id));
+
+    // Cálculo da altura das barras desenhadas pelo Pixi acima do token
+    const numBarras = (barraPv ? 1 : 0) + (barraPp ? 1 : 0);
+    const escala = o.largura > 0 ? posTokenSelecionado.value.largura / o.largura : 1;
+    const altBarraMundo = Math.max(13, Math.min(20, o.largura * 0.22));
+    const offsetBarras = numBarras > 0 ? (numBarras * (altBarraMundo + 2) + 3) * escala : 2;
+
+    return {
+        objetoId: o.id,
+        personagemId: p.id,
+        nome: p.nome,
+        cor: p.cor,
+        pvAtual,
+        pvMax,
+        pvTemp,
+        podeEditar: podeEditarVida,
+        pos: posTokenSelecionado.value,
+        offsetBarras,
+    };
+});
+
+function salvarVidaToken(personagemId: number, novoPv: number) {
+    salvarFicha(personagemId, { 'pv.atual': novoPv });
+}
+
 // --- utilidades ----------------------------------------------------------------
 
 let temporizadorErro: ReturnType<typeof setTimeout> | undefined;
@@ -547,21 +723,92 @@ const recarregar = (only: string[], extra: { onSuccess?: () => void } = {}) =>
 
 // --- objetos -------------------------------------------------------------------
 
-function aoAlterar(id: number, campos: CamposGeometria, final: boolean) {
+interface MovimentoHistorico {
+    objetoId: number;
+    personagemId: number | null;
+    de: { x: number; y: number };
+    para: { x: number; y: number };
+}
+
+// Histórico das últimas 3 ações de movimento de tokens para Ctrl+Z
+const historicoMovimentos = ref<MovimentoHistorico[]>([]);
+
+function aoAlterar(id: number, campos: CamposGeometria, final: boolean, origem?: { x: number; y: number }) {
     const o = objetos.value.find((x) => x.id === id);
     if (!o) return;
     Object.assign(o, campos);
     if (!final) return;
+
+    if (o.tipo === 'token' && origem && (campos.x !== undefined || campos.y !== undefined)) {
+        const paraX = campos.x ?? o.x;
+        const paraY = campos.y ?? o.y;
+        if (Math.hypot(paraX - origem.x, paraY - origem.y) >= 2) {
+            historicoMovimentos.value.push({
+                objetoId: id,
+                personagemId: o.personagem_id,
+                de: { x: origem.x, y: origem.y },
+                para: { x: paraX, y: paraY },
+            });
+            if (historicoMovimentos.value.length > 3) {
+                historicoMovimentos.value.shift();
+            }
+        }
+    }
+
     pendentesObjeto.set(id, { ...campos });
     api.atualizarObjeto(id, campos)
         .then((r) => {
             pendentesObjeto.delete(id);
             const atual = objetos.value.find((x) => x.id === id);
             // O servidor tem a palavra final (parede no caminho, deslocamento do turno): se mudou a posição, o token vai para onde ele disse.
-            if (atual && (r.x !== campos.x || r.y !== campos.y)) Object.assign(atual, { x: r.x, y: r.y });
+            if (atual && (r.x !== campos.x || r.y !== campos.y)) {
+                Object.assign(atual, { x: r.x, y: r.y });
+                const ultimo = historicoMovimentos.value[historicoMovimentos.value.length - 1];
+                if (ultimo && ultimo.objetoId === id) {
+                    ultimo.para = { x: r.x, y: r.y };
+                }
+            }
         })
         .catch((e) => {
             pendentesObjeto.delete(id);
+            falhou(e);
+        });
+}
+
+function desfazerUltimoMovimento() {
+    if (!historicoMovimentos.value.length) return;
+
+    // Busca o último movimento elegível (mestre mexe em qualquer token; jogador nos seus personagens)
+    let idx = -1;
+    for (let i = historicoMovimentos.value.length - 1; i >= 0; i--) {
+        const item = historicoMovimentos.value[i];
+        const pode = props.mestre || (item.personagemId !== null && props.meusPersonagens.includes(item.personagemId));
+        if (pode) {
+            idx = i;
+            break;
+        }
+    }
+    if (idx === -1) return;
+
+    const [mov] = historicoMovimentos.value.splice(idx, 1);
+    const o = objetos.value.find((x) => x.id === mov.objetoId);
+    if (!o) return;
+
+    const destino = { x: mov.de.x, y: mov.de.y };
+    Object.assign(o, destino);
+
+    // Animação suave deslizando o token de volta no mapa
+    (canvas.value as any)?.deslizarObjeto?.(mov.objetoId, destino);
+
+    pendentesObjeto.set(mov.objetoId, destino);
+    api.atualizarObjeto(mov.objetoId, { ...destino, reverter_movimento: true })
+        .then((r) => {
+            pendentesObjeto.delete(mov.objetoId);
+            const atual = objetos.value.find((x) => x.id === mov.objetoId);
+            if (atual && (r.x !== destino.x || r.y !== destino.y)) Object.assign(atual, { x: r.x, y: r.y });
+        })
+        .catch((e) => {
+            pendentesObjeto.delete(mov.objetoId);
             falhou(e);
         });
 }
@@ -2499,6 +2746,25 @@ onMounted(() => {
                 .listen('.musica', (e: { musica: MusicaMesaDto }) => {
                     musicaMesa.value = e.musica;
                 })
+                .listen('.tempo', (e: { tempo: TempoMesa }) => {
+                    tempoMesa.value = e.tempo;
+                })
+                .listen('.ping', (e: { pagina_id: number; x: number; y: number; puxar?: boolean; ator: number; cor: string; nome: string }) => {
+                    if (e.pagina_id !== props.pagina?.id) return;
+                    canvas.value?.tocarPing(e.x, e.y, e.cor);
+                    if (e.puxar) {
+                        canvas.value?.centralizarEm(e.x, e.y, true, 0.65);
+                    }
+                })
+                .listen('.mira', (e: { jogador_id: number; objeto_id: number | null; pagina_id?: number | null; cor: string; nome: string }) => {
+                    if (e.jogador_id === props.jogador?.id) return;
+                    if (e.pagina_id && props.pagina?.id && e.pagina_id !== props.pagina.id) return;
+                    mirasPorJogador.value[e.jogador_id] = {
+                        objetoId: e.objeto_id,
+                        cor: e.cor,
+                        nome: e.nome,
+                    };
+                })
                 .listen('.combate', (e: { combate: Combate; ator: number }) => (combate.value = normalizarCombate(e.combate)));
         abrir(conexao.echo.private(base));
         abrir(conexao.echo.private(`${base}.jogador.${meuId}`));
@@ -2518,6 +2784,11 @@ onBeforeUnmount(() => {
 function aoTeclar(e: KeyboardEvent) {
     const alvo = e.target as HTMLElement;
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(alvo?.tagName)) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        desfazerUltimoMovimento();
+        return;
+    }
     if (e.key === 'Escape' && alvoObjetoId.value !== null) alvoObjetoId.value = null; // Esc limpa a mira
     if ((e.key === 'Delete' || e.key === 'Backspace') && (selecionadoId.value || selecionadosIds.value.length)) {
         e.preventDefault();
@@ -2605,6 +2876,7 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                     :pagina="pagina"
                     :objetos="objetosDaCena"
                     :alvo-id="alvoObjetoId"
+                    :miras="mirasPorObjeto"
                     :movimento="movimentoDaCena"
                     :gabarito="gabarito"
                     :ponto="pontoAtivo"
@@ -2636,7 +2908,87 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                     @criar-parede="criarParede"
                     @alternar-porta="alternarPorta"
                     @menu-objeto="abrirMenuObjeto"
+                    @vista="atualizarPosicaoTokenSelecionado"
+                    @hover-status="aoHoverStatus"
+                    @menu-ping="aoMenuPing"
+                    @ping="aoPing"
+                    @editar-vida="
+                        (id) => {
+                            editandoVidaTokenId = id;
+                            atualizarPosicaoTokenSelecionado();
+                        }
+                    "
                 />
+
+                <!-- Bolhinha com borda vermelho escuro e círculo preto no topo do token ao clicar na barra de vida -->
+                <div
+                    v-if="tokenComVida && editandoVidaTokenId === tokenComVida.objetoId && tokenComVida.podeEditar"
+                    class="pointer-events-auto fixed z-30 flex -translate-x-1/2 -translate-y-full select-none items-center justify-center rounded-full border-2 border-red-800 bg-black shadow-md shadow-black/80"
+                    :style="{
+                        left: tokenComVida.pos.x + tokenComVida.pos.largura / 2 + 'px',
+                        top: tokenComVida.pos.y - tokenComVida.offsetBarras - 2 + 'px',
+                        width: '24px',
+                        height: '24px',
+                        minWidth: '24px',
+                        maxWidth: '24px',
+                        minHeight: '24px',
+                        maxHeight: '24px',
+                        borderRadius: '9999px',
+                        overflow: 'hidden',
+                    }"
+                    :title="`${tokenComVida.nome}: ${tokenComVida.pvAtual}/${tokenComVida.pvMax}`"
+                    @pointerdown.stop
+                    @mousedown.stop
+                >
+                    <CampoNumero
+                        :model-value="tokenComVida.pvAtual"
+                        :min="0"
+                        :max="tokenComVida.pvMax > 0 ? tokenComVida.pvMax : 9999"
+                        :relativo="true"
+                        :autofocus="true"
+                        class="!m-0 !h-full !w-full !min-w-0 !max-w-full !appearance-none !rounded-full !border-0 !bg-transparent !p-0 text-center font-mono text-[11px] font-bold leading-none !text-white !outline-none !ring-0 focus:!outline-none"
+                        aria-label="PV atual do token"
+                        @salvar="
+                            salvarVidaToken(tokenComVida.personagemId, $event);
+                            editandoVidaTokenId = null;
+                        "
+                        @cancelar="editandoVidaTokenId = null"
+                    />
+                </div>
+
+                <!-- Tooltip estilo Foundry VTT para os efeitos e condições ativas no token -->
+                <div
+                    v-if="tooltipStatus"
+                    class="pointer-events-none fixed z-40 w-max max-w-xs -translate-x-1/2 -translate-y-full select-none pb-3 duration-150 animate-in fade-in-0 zoom-in-95"
+                    :style="{
+                        left: tooltipStatus.pos.x + 'px',
+                        top: tooltipStatus.pos.y - 6 + 'px',
+                    }"
+                >
+                    <div
+                        class="rounded-lg border border-preto-700/80 bg-preto-950/95 p-2.5 text-xs text-preto-100 shadow-2xl shadow-black/90 backdrop-blur-md"
+                    >
+                        <div
+                            class="mb-2 flex items-center gap-1.5 border-b border-preto-800 pb-1.5 text-[11px] font-semibold tracking-wide text-ouro-300"
+                        >
+                            <span>Efeitos em</span>
+                            <span class="truncate text-white">{{ tooltipStatus.tokenNome }}</span>
+                        </div>
+                        <ul class="space-y-2">
+                            <li v-for="item in tooltipStatus.itens" :key="item.id" class="rounded border border-preto-800/80 bg-preto-900/60 p-1.5">
+                                <div class="flex items-center gap-1.5 font-bold" :style="{ color: item.cor }">
+                                    <span class="text-sm leading-none" aria-hidden="true">{{ item.icone }}</span>
+                                    <span>{{ item.nome }}</span>
+                                </div>
+                                <ul class="mt-1 space-y-0.5 pl-3 text-[11px] font-normal leading-tight text-preto-200">
+                                    <li v-for="(mec, idx) in item.mecanica" :key="idx" class="list-disc">
+                                        {{ mec }}
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </template>
         <div v-else class="flex h-full items-center justify-center text-center text-preto-300">
@@ -2650,8 +3002,10 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                 :jogador="jogador"
                 :ativo="ativo"
                 :mestre="mestre"
+                :tempo="tempoMesa"
                 @paginas="menuAberto = true"
                 @sair="router.post(sairUrl)"
+                @atualizar-tempo="atualizarTempo"
             />
 
             <template v-if="pagina">
@@ -2867,6 +3221,7 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
             v-for="f in personagensAbertos"
             :key="f.id"
             :titulo="`Ficha · ${f.personagem!.nome}`"
+            :nome="f.personagem!.nome"
             :cor="f.personagem!.cor"
             :x="f.x"
             :y="f.y"
@@ -2895,6 +3250,7 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                 :personagem="f.personagem!"
                 :ficha="fichas[f.id]"
                 :mestre="mestre"
+                :pode-editar="mestre || meusPersonagens.includes(f.id)"
                 @salvar="(campos: Record<string, unknown>) => salvarFicha(f.id, campos)"
                 @rolar="(...a: RolagemDaFicha) => rolarDaFicha(f.id, ...a)"
                 @usar-tecnica="(uso: UsoDeTecnica) => usarTecnicaDaFicha(f.id, uso)"
@@ -2906,6 +3262,7 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                 :ficha="fichas[f.id]"
                 :itens="itensDaMesa"
                 :mestre="mestre"
+                :pode-editar="mestre || meusPersonagens.includes(f.id)"
                 v-bind="
                     moduloSistema.slug === 'one-piece'
                         ? { servicos: servicosDaFicha, construtorConcluido: !!criacoes[f.id]?.concluida, permissoes: permissoesDaMesa }
@@ -2991,6 +3348,15 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
             @abrir="abrirLootDoMenu"
             @configurar="configurarObjetoDoMenu"
             @fechar="menuObjeto = null"
+        />
+
+        <MenuPing
+            v-if="menuPing"
+            :x="menuPing.tela.x"
+            :y="menuPing.tela.y"
+            @ping-normal="aoPing(menuPing.mundo.x, menuPing.mundo.y, false)"
+            @ping-foco="aoPing(menuPing.mundo.x, menuPing.mundo.y, true)"
+            @fechar="menuPing = null"
         />
 
         <DadosAnimacao v-if="animacaoAtual" :key="animacaoAtual.id" :mensagem="animacaoAtual" @fim="animacaoAtual = null" />

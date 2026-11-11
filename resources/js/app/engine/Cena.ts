@@ -12,6 +12,7 @@ import {
     type CenaEventos,
     type EstiloPintura,
     type Ferramenta,
+    type InfoMira,
     type ObjetoDto,
     type PaginaDto,
 } from './tipos';
@@ -68,6 +69,7 @@ export class Cena {
     private zonasG = new Graphics();
     private desenhoG = new Graphics();
     private efeitosG = new Container();
+    private pingsG = new Container();
     private textosG = new Container();
     private reguaTexto = new Text({
         text: '',
@@ -89,6 +91,7 @@ export class Cena {
     /** O objeto que o arrasto do grupo segura (o encaixe na grade segue o dele). */
     private ancoraDoGrupo: number | null = null;
     private alvoId: number | null = null;
+    private mirasJogadores = new Map<number, InfoMira[]>();
     /** Deslocamento do turno do token que se move agora (metros): a régua do arrasto mostra o gasto e, para o jogador, trava. */
     private movimento: { objetoId: number; usado: number; total: number; limitar: boolean } | null = null;
     /** Gabarito de área em uso (Técnica de área): a forma segue o cursor a partir do token de quem usa; um clique confirma. */
@@ -152,7 +155,17 @@ export class Cena {
             this.mundo.addChild(c);
             if (id === 'mapa') this.mundo.addChild(this.grade);
         }
-        this.overlay.addChild(this.zonasG, this.selecaoG, this.reguaG, this.gabaritoG, this.desenhoG, this.efeitosG, this.textosG, this.reguaTexto);
+        this.overlay.addChild(
+            this.zonasG,
+            this.selecaoG,
+            this.reguaG,
+            this.gabaritoG,
+            this.desenhoG,
+            this.efeitosG,
+            this.pingsG,
+            this.textosG,
+            this.reguaTexto,
+        );
         this.reguaTexto.visible = false;
         this.mundo.addChild(this.overlay);
 
@@ -222,6 +235,7 @@ export class Cena {
             } else {
                 const v = new ObjetoVisual(dto, this.opcoes.mestre);
                 v.definirAlvo(dto.id === this.alvoId);
+                v.definirMiras(this.mirasJogadores.get(dto.id) ?? []);
                 v.definirEnfase(this.camadaAtiva === 'iluminacao');
                 this.visuais.set(dto.id, v);
                 this.camadas.get(dto.camada)?.addChild(v.container);
@@ -257,6 +271,17 @@ export class Cena {
     setAlvo(id: number | null): void {
         this.alvoId = id;
         for (const v of this.visuais.values()) v.definirAlvo(v.dto.id === id);
+    }
+
+    /** Miras ativas de todos os jogadores da mesa: desenhadas com suas respectivas cores nos tokens. */
+    setMiras(miras: Record<number, InfoMira[]>): void {
+        this.mirasJogadores.clear();
+        for (const [k, lista] of Object.entries(miras)) {
+            this.mirasJogadores.set(Number(k), lista);
+        }
+        for (const [id, v] of this.visuais) {
+            v.definirMiras(this.mirasJogadores.get(id) ?? []);
+        }
     }
 
     /** Liga o gabarito de área a partir do token `origem` (id do objeto), ou o desliga (`null`). */
@@ -444,6 +469,27 @@ export class Cena {
         this.opcoes.eventos.selecionar(ids.length === 1 ? ids[0] : null);
     }
 
+    /** Posição do objeto na tela (em pixels da viewport), para overlays em HTML sobre o canvas. */
+    posicaoTelaObjeto(id: number): { x: number; y: number; largura: number; altura: number } | null {
+        const v = this.visuais.get(id);
+        if (!v || !this.app?.canvas) return null;
+        const r = this.app.canvas.getBoundingClientRect();
+        const sendoArrastado = this.modo === 'mover' && this.selecionadoId === id && this.alvoMovimento;
+        const ox = sendoArrastado ? this.alvoMovimento!.x : v.container.x;
+        const oy = sendoArrastado ? this.alvoMovimento!.y : v.container.y;
+        const largura = v.dto.largura;
+        const altura = v.dto.altura;
+        const cx = ox * this.mundo.scale.x + this.mundo.x;
+        const cy = oy * this.mundo.scale.y + this.mundo.y;
+
+        return {
+            x: r.left + cx,
+            y: r.top + cy,
+            largura: largura * this.mundo.scale.x,
+            altura: altura * this.mundo.scale.y,
+        };
+    }
+
     /** Ctrl+A: seleciona tudo o que a pessoa pode mexer na camada ativa. */
     selecionarTodos(): void {
         this.definirSelecao([...this.visuais.values()].filter((v) => this.podeInteragir(v) && this.ferramenta !== 'mirar').map((v) => v.dto.id));
@@ -610,6 +656,105 @@ export class Cena {
         this.app.ticker.add(animar);
     }
 
+    /** Desliza um token suavemente até uma posição de destino (usado para desfazer movimento / Ctrl+Z). */
+    deslizarObjeto(id: number, destino: { x: number; y: number }): void {
+        const v = this.visuais.get(id);
+        if (!v) return;
+        this.animacoesTokens.delete(id);
+        this.deslizarTokenPara(v, { ...v.dto, x: destino.x, y: destino.y }, () => {
+            if (this.selecionadoId === id) this.desenharSelecao();
+            this.opcoes.eventos.vista?.();
+        });
+    }
+
+    /** Centraliza suavemente a visão do mapa num ponto específico (x, y) do mundo, opcionalmente ajustando o zoom (escala). */
+    centralizarEm(x: number, y: number, suave = true, escalaAlvo?: number): void {
+        const livreW = this.app.screen.width - this.margemDireita;
+        const livreH = this.app.screen.height - MARGEM_TOPO;
+        const eFinal = escalaAlvo !== undefined ? clamp(escalaAlvo, ESCALA_MIN, ESCALA_MAX) : this.mundo.scale.x;
+        const alvoX = livreW / 2 - x * eFinal;
+        const alvoY = MARGEM_TOPO + livreH / 2 - y * eFinal;
+
+        if (!suave) {
+            this.mundo.scale.set(eFinal);
+            this.mundo.position.set(alvoX, alvoY);
+            this.aoMudarVista();
+            return;
+        }
+
+        const iniX = this.mundo.x;
+        const iniY = this.mundo.y;
+        const iniE = this.mundo.scale.x;
+        let decorrido = 0;
+        const duracao = 650; // ms
+
+        const animar = (ticker: { deltaMS: number }) => {
+            decorrido += ticker.deltaMS;
+            const t = Math.min(1, decorrido / duracao);
+            // Curva easeOutCubic
+            const f = 1 - Math.pow(1 - t, 3);
+            const eAtual = iniE + (eFinal - iniE) * f;
+            this.mundo.scale.set(eAtual);
+            this.mundo.position.set(iniX + (alvoX - iniX) * f, iniY + (alvoY - iniY) * f);
+            this.desenharSelecao();
+            this.opcoes.eventos.zoom(eAtual);
+            this.opcoes.eventos.vista?.();
+            if (t >= 1) {
+                this.app.ticker.remove(animar);
+                this.aoMudarVista();
+            }
+        };
+
+        this.app.ticker.add(animar);
+    }
+
+    /** Dispara a animação visual de ondas de ping no mapa estilo Foundry/Roll20. */
+    tocarPing(x: number, y: number, corHexStr = '#f59e0b'): void {
+        const cor = parseInt(corHexStr.replace('#', ''), 16) || 0xf59e0b;
+        const pingCont = new Container();
+        pingCont.position.set(x, y);
+
+        const g = new Graphics();
+        pingCont.addChild(g);
+        this.pingsG.addChild(pingCont);
+
+        let tempo = 0;
+        const duracaoTotal = 1600; // ms
+
+        const animar = (ticker: { deltaMS: number }) => {
+            tempo += ticker.deltaMS;
+            g.clear();
+
+            // Ponto central brilhante fixo pulsando
+            const pulsoPonto = 0.8 + 0.3 * Math.sin((tempo / 150) * Math.PI);
+            g.circle(0, 0, 8 * pulsoPonto).fill(0xffffff);
+            g.circle(0, 0, 12 * pulsoPonto).stroke({ color: cor, width: 3 });
+
+            // 2 ondas concêntricas se expandindo sucessivamente
+            for (let i = 0; i < 2; i++) {
+                const atraso = i * 400; // 400ms de defasagem entre as ondas
+                if (tempo >= atraso) {
+                    const tOnda = ((tempo - atraso) % 900) / 900;
+                    if (tempo - atraso < 1400) {
+                        const raio = 8 + 65 * tOnda;
+                        const alpha = Math.max(0, 1 - tOnda);
+                        g.circle(0, 0, raio).stroke({ color: cor, width: 3.5, alpha });
+                    }
+                }
+            }
+
+            // Flechas ou anel externo de alerta
+            const tGlobal = Math.min(1, tempo / duracaoTotal);
+            if (tempo >= duracaoTotal) {
+                this.app.ticker.remove(animar);
+                this.pingsG.removeChild(pingCont);
+                pingCont.destroy({ children: true });
+            }
+        };
+
+        this.app.ticker.add(animar);
+    }
+
     /** Centraliza a vista num objeto (mantém o zoom) e, opcionalmente, o seleciona. */
     focar(id: number, selecionar = false): void {
         const v = this.visuais.get(id);
@@ -696,6 +841,7 @@ export class Cena {
 
     private tick(deltaMS: number): void {
         if (this.animacoesTokens.size > 0) {
+            const tinhaSelecionadoAnimando = this.selecionadoId !== null && this.animacoesTokens.has(this.selecionadoId);
             for (const [id, anim] of this.animacoesTokens) {
                 anim.decorrido += deltaMS;
                 const t = Math.min(1, anim.decorrido / anim.duracao);
@@ -714,12 +860,22 @@ export class Cena {
                     anim.aoConcluir?.();
                 }
             }
+            if (tinhaSelecionadoAnimando) {
+                this.opcoes.eventos.vista?.();
+            }
             this.iluminacaoPendente = true;
         }
 
         if (this.iluminacaoPendente) {
             this.iluminacaoPendente = false;
             this.atualizarIluminacao();
+        }
+
+        // Rotação suave no sentido horário das miras ativas nos tokens
+        for (const v of this.visuais.values()) {
+            if (v.temMiraAtiva) {
+                v.atualizarMira(deltaMS);
+            }
         }
     }
 
@@ -866,6 +1022,60 @@ export class Cena {
         candidatos.sort((a, b) => ordem(b) - ordem(a) || b.dto.z - a.dto.z || b.dto.id - a.dto.id);
 
         return candidatos[0] ?? null;
+    }
+
+    /** Verifica se o ponto clicado foi na barra de vida de um token ou próximo a ela (acima do topo do token). */
+    private barraVidaEm(x: number, y: number): ObjetoVisual | null {
+        const tol = 12 / this.mundo.scale.x;
+        for (const v of this.visuais.values()) {
+            if (v.dto.tipo !== 'token' || !this.podeInteragir(v)) continue;
+            const barras = v.dto.barras ?? [];
+            const temPv = barras.some((b) => b.id === 'pv');
+            if (!temPv) continue;
+
+            const ox = v.container.x;
+            const oy = v.container.y;
+            const largura = v.dto.largura;
+            const altBarra = Math.max(13, Math.min(20, largura * 0.22));
+            const numBarras = barras.filter((b) => b.id === 'pv' || b.id === 'pp').length;
+            const alturaBarras = numBarras * (altBarra + 2) + 4;
+
+            // Região da barra de vida: acima do token, entre y = oy - alturaBarras - tol e y = oy + 6
+            // e horizontalmente entre ox - tol e ox + largura + tol
+            if (x >= ox - tol && x <= ox + largura + tol && y >= oy - alturaBarras - tol && y <= oy + 6) {
+                return v;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Verifica se o cursor está sobre um dos ícones de status de algum token visível no mapa.
+     * Retorna o objeto visual, os ids do status sob o cursor e a posição central na tela.
+     */
+    private statusEm(x: number, y: number): { visual: ObjetoVisual; statusIds: string[]; tela: { x: number; y: number } } | null {
+        if (!this.app?.canvas) return null;
+        const tol = 3 / this.mundo.scale.x;
+        const rect = this.app.canvas.getBoundingClientRect();
+        for (const v of this.visuais.values()) {
+            if (v.dto.tipo !== 'token' || (v.dto.camada === 'mestre' && !this.opcoes.mestre)) continue;
+            const geometrias = v.geometriaDosStatus();
+            if (!geometrias.length) continue;
+            const vx = v.container.x;
+            const vy = v.container.y;
+            for (const g of geometrias) {
+                const cx = vx + g.cx;
+                const cy = vy + g.cy;
+                const dist = Math.hypot(x - cx, y - cy);
+                if (dist <= g.raio + tol) {
+                    const statusIds = g.resto > 0 ? (v.dto.status ?? []).slice(3) : [g.id];
+                    const telaX = rect.left + cx * this.mundo.scale.x + this.mundo.x;
+                    const telaY = rect.top + cy * this.mundo.scale.y + this.mundo.y;
+                    return { visual: v, statusIds, tela: { x: telaX, y: telaY } };
+                }
+            }
+        }
+        return null;
     }
 
     private objetoEm(x: number, y: number): ObjetoVisual | null {
@@ -1016,6 +1226,7 @@ export class Cena {
     private aoMudarVista(): void {
         this.desenharSelecao();
         this.opcoes.eventos.zoom(this.mundo.scale.x);
+        this.opcoes.eventos.vista?.();
     }
 
     private ligarEventos(): void {
@@ -1057,6 +1268,9 @@ export class Cena {
         });
         ouvir(canvas, 'pointerdown', (e) => this.aoPressionar(e));
         ouvir(canvas, 'pointermove', (e) => this.aoMover(e));
+        ouvir(canvas, 'pointerleave', () => {
+            this.opcoes.eventos.hoverStatus?.(null);
+        });
         ouvir(canvas, 'pointerup', (e) => this.aoSoltar(e));
         ouvir(canvas, 'pointercancel', (e) => this.aoSoltar(e));
 
@@ -1192,7 +1406,7 @@ export class Cena {
             }
         }
 
-        // Ferramenta "selecionar": alça > objeto > vazio.
+        // Ferramenta "selecionar": alça > vida > objeto > vazio.
         const alca = this.alcaEm(p.x, p.y);
         const sel = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
         if (alca && sel && this.extras.size === 0) {
@@ -1201,6 +1415,15 @@ export class Cena {
             this.inicioObjeto = { x: sel.dto.x, y: sel.dto.y, largura: sel.dto.largura, altura: sel.dto.altura };
             return;
         }
+
+        // Clique na barra de vida de um token (ou próximo dela no topo): abre a edição rápida de vida
+        const vidaToken = this.barraVidaEm(p.x, p.y);
+        if (vidaToken) {
+            this.selecionar(vidaToken.dto.id);
+            this.opcoes.eventos.editarVida?.(vidaToken.dto.id);
+            return;
+        }
+
         const alvo = this.objetoEm(p.x, p.y);
         const emLote = this.extras.size > 0;
         // Shift+clique: soma ou tira o objeto da seleção (sem arrastar)
@@ -1341,6 +1564,7 @@ export class Cena {
             if (v.dto.tipo === 'token') {
                 this.alvoMovimento = campos;
                 this.desenharPreviewDestino(v, campos);
+                this.opcoes.eventos.vista?.();
                 return;
             }
 
@@ -1363,7 +1587,17 @@ export class Cena {
         const alca = this.modo === 'nenhum' ? this.alcaEm(p.x, p.y) : null;
         const sobrePorta = this.modo === 'nenhum' && !alca && !!this.portaEm(p.x, p.y);
         const sobreViagem = this.modo === 'nenhum' && !alca && !sobrePorta && !!this.viagemEm(p.x, p.y);
-        this.atualizarCursor(alca ? cursorDaAlca(alca) : sobrePorta || sobreViagem ? 'pointer' : undefined);
+        const stHover = this.modo === 'nenhum' && !alca ? this.statusEm(p.x, p.y) : null;
+        if (stHover) {
+            this.opcoes.eventos.hoverStatus?.({
+                tokenNome: stHover.visual.dto.nome ?? 'Personagem',
+                statusIds: stHover.statusIds,
+                tela: stHover.tela,
+            });
+        } else if (this.modo === 'nenhum') {
+            this.opcoes.eventos.hoverStatus?.(null);
+        }
+        this.atualizarCursor(alca ? cursorDaAlca(alca) : sobrePorta || sobreViagem || stHover ? 'pointer' : undefined);
     }
 
     /**
@@ -1524,13 +1758,19 @@ export class Cena {
 
     private aoSoltarBase(e: PointerEvent): void {
         if (this.app.canvas.hasPointerCapture(e.pointerId)) this.app.canvas.releasePointerCapture(e.pointerId);
-        // Botão direito sem arrastar sobre um objeto: menu (mover entre camadas). Arrastar continua movendo a vista.
-        if (e.type === 'pointerup' && e.button === 2 && this.modo === 'pan' && this.opcoes.mestre) {
+        // Botão direito sem arrastar:
+        // - Se for sobre um objeto e for mestre: abre o menu do objeto
+        // - Se for no mapa: abre o menu de opções de ping (ping normal e ping com foco)
+        if (e.type === 'pointerup' && e.button === 2 && this.modo === 'pan') {
             const tela = this.posTela(e);
             if (Math.hypot(tela.x - this.pressTela.x, tela.y - this.pressTela.y) < 4) {
                 const p = this.paraMundo(tela.x, tela.y);
-                const alvo = this.objetoDeQualquerCamadaEm(p.x, p.y);
-                if (alvo) this.opcoes.eventos.menuObjeto(alvo.dto.id, { x: e.clientX, y: e.clientY });
+                const alvo = this.opcoes.mestre ? this.objetoDeQualquerCamadaEm(p.x, p.y) : null;
+                if (alvo) {
+                    this.opcoes.eventos.menuObjeto(alvo.dto.id, { x: e.clientX, y: e.clientY });
+                } else {
+                    this.opcoes.eventos.menuPing?.({ x: p.x, y: p.y }, { x: e.clientX, y: e.clientY });
+                }
             }
         }
         if (this.modo === 'pintar') {
@@ -1581,9 +1821,9 @@ export class Cena {
                     if (dist >= 2) {
                         this.deslizarTokenPara(o, { ...o.dto, x: destino.x, y: destino.y });
                     }
-                    this.opcoes.eventos.alterar(id, { x: destino.x, y: destino.y }, true);
+                    this.opcoes.eventos.alterar(id, { x: destino.x, y: destino.y }, true, { x: ini.x, y: ini.y });
                 } else {
-                    this.opcoes.eventos.alterar(id, { x: o.dto.x, y: o.dto.y }, true);
+                    this.opcoes.eventos.alterar(id, { x: o.dto.x, y: o.dto.y }, true, { x: ini.x, y: ini.y });
                 }
             }
         }
@@ -1602,6 +1842,7 @@ export class Cena {
         this.modo = 'nenhum';
         this.alca = null;
         this.atualizarCursor();
+        this.opcoes.eventos.vista?.();
         if (!v || emGrupo) return;
         if (modo === 'mover' && this.iniciou) {
             if (v.dto.tipo === 'token') {
@@ -1616,7 +1857,7 @@ export class Cena {
                 } else {
                     this.desenharSelecao();
                 }
-                this.opcoes.eventos.alterar(v.dto.id, { x: destino.x, y: destino.y }, true);
+                this.opcoes.eventos.alterar(v.dto.id, { x: destino.x, y: destino.y }, true, { x: iniX, y: iniY });
             } else {
                 const { x, y } = v.dto;
                 this.opcoes.eventos.alterar(v.dto.id, { x, y }, true);

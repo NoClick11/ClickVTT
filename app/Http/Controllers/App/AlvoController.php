@@ -15,6 +15,7 @@ use App\Nucleo\Sistemas\RegistroSistemas;
 use App\Nucleo\Sistemas\Sistema;
 use App\Support\AcessoMesa;
 use App\Support\EntregarMensagem;
+use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -410,6 +411,30 @@ class AlvoController extends Controller
             Duracoes::transmitir($mesa, $p, $campos);
             $this->avisar($mesa, $acesso, 'todos', "🩺 A ferida brutal de {$p->nome} foi tratada! PV máximos restaurados para {$novoMax}.");
         }
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** Transmite a mira atual do jogador no mapa para os demais participantes da mesa. */
+    public function mirar(Request $request, Mesa $mesa): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+
+        $dados = $request->validate([
+            'objeto_id' => ['nullable', 'integer'],
+            'pagina_id' => ['nullable', 'integer'],
+        ]);
+
+        $payload = [
+            'jogador_id' => $acesso->jogador->id,
+            'objeto_id' => $dados['objeto_id'] ?? null,
+            'pagina_id' => $dados['pagina_id'] ?? null,
+            'cor' => $acesso->jogador->cor ?? '#ef4444',
+            'nome' => $acesso->jogador->nome,
+            'ator' => $acesso->jogador->id,
+        ];
+
+        Transmitir::enviar($mesa, 'mira', $payload, ['mesa']);
 
         return response()->json(['ok' => true]);
     }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Cena } from '../engine/Cena';
-import type { Camada, CamposGeometria, EstiloPintura, Ferramenta, ObjetoDto, PaginaDto, TipoParede } from '../engine/tipos';
+import type { Camada, CamposGeometria, EstiloPintura, Ferramenta, InfoMira, ObjetoDto, PaginaDto, TipoParede } from '../engine/tipos';
 import type { AreaDeEfeito } from '../nucleo/combate/area';
 
 const props = defineProps<{
@@ -16,6 +16,8 @@ const props = defineProps<{
     margemDireita: number;
     /** Token mirado por este jogador (id do objeto), desenhado com a mira. */
     alvoId?: number | null;
+    /** Miras ativas dos jogadores na mesa: desenhadas com suas respectivas cores. */
+    miras?: Record<number, InfoMira[]>;
     /** Deslocamento do turno do token que se move (metros), com a régua do arrasto; null = sem limite medido. */
     movimento?: { objetoId: number; usado: number; total: number; limitar: boolean } | null;
     /** Gabarito de área da Técnica em uso: a forma, o tamanho e o token (id do objeto) de onde parte; null = sem gabarito. */
@@ -29,7 +31,7 @@ const props = defineProps<{
 const emit = defineEmits<{
     selecionar: [id: number | null];
     selecao: [ids: number[]];
-    alterar: [id: number, campos: CamposGeometria, final: boolean];
+    alterar: [id: number, campos: CamposGeometria, final: boolean, origem?: { x: number; y: number }];
     zoom: [escala: number];
     criarLuz: [x: number, y: number];
     criarLoot: [x: number, y: number];
@@ -54,6 +56,11 @@ const emit = defineEmits<{
         } | null,
     ];
     ponto: [ponto: { x: number; y: number } | null];
+    editarVida: [id: number];
+    hoverStatus: [dados: { tokenNome: string; statusIds: string[]; tela: { x: number; y: number } } | null];
+    menuPing: [mundo: { x: number; y: number }, tela: { x: number; y: number }];
+    ping: [x: number, y: number, puxar: boolean];
+    vista: [];
 }>();
 
 const host = ref<HTMLDivElement | null>(null);
@@ -68,7 +75,7 @@ onMounted(async () => {
         eventos: {
             selecionar: (id) => emit('selecionar', id),
             selecao: (ids) => emit('selecao', ids),
-            alterar: (id, campos, final) => emit('alterar', id, campos, final),
+            alterar: (id, campos, final, origem) => emit('alterar', id, campos, final, origem),
             zoom: (e) => emit('zoom', e),
             criarLuz: (x, y) => emit('criarLuz', x, y),
             criarLoot: (x, y) => emit('criarLoot', x, y),
@@ -86,6 +93,11 @@ onMounted(async () => {
             mirar: (id) => emit('mirar', id),
             gabarito: (ids, info) => emit('gabarito', ids, info),
             ponto: (p) => emit('ponto', p),
+            editarVida: (id) => emit('editarVida', id),
+            hoverStatus: (dados) => emit('hoverStatus', dados),
+            menuPing: (mundo, tela) => emit('menuPing', mundo, tela),
+            ping: (x, y, puxar) => emit('ping', x, y, puxar),
+            vista: () => emit('vista'),
         },
     });
     await nova.iniciar(host.value!);
@@ -101,6 +113,7 @@ onMounted(async () => {
     nova.setEstilo(props.estilo);
     nova.setObjetos(props.objetos);
     nova.setAlvo(props.alvoId ?? null);
+    nova.setMiras(props.miras ?? {});
     nova.setMovimento(props.movimento ?? null);
     nova.setGabarito(props.gabarito ?? null);
     nova.setPonto(props.ponto ?? null);
@@ -144,6 +157,11 @@ watch(
 watch(
     () => props.alvoId,
     (id) => cena?.setAlvo(id ?? null),
+);
+watch(
+    () => props.miras,
+    (m) => cena?.setMiras(m ?? {}),
+    { deep: true },
 );
 watch(
     () => props.camada,
@@ -200,6 +218,10 @@ defineExpose({
         },
     ) => void cena?.tocarEfeito(x, y, urlAnimacao, opcoes),
     mostrarTextoFlutuante: (x: number, y: number, texto: string, tipo: 'dano' | 'cura') => cena?.mostrarTextoFlutuante(x, y, texto, tipo),
+    deslizarObjeto: (id: number, destino: { x: number; y: number }) => cena?.deslizarObjeto(id, destino),
+    posicaoTela: (id: number) => cena?.posicaoTelaObjeto(id) ?? null,
+    tocarPing: (x: number, y: number, cor?: string) => cena?.tocarPing(x, y, cor),
+    centralizarEm: (x: number, y: number, suave?: boolean, escalaAlvo?: number) => cena?.centralizarEm(x, y, suave, escalaAlvo),
 });
 </script>
 

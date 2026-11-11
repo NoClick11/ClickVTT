@@ -429,6 +429,11 @@ export function apiMesa(mesaId: number, atorId: number) {
         removerPasta: (id: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.pastas.destroy', id)),
         atualizarMusica: (dados: { tocando?: object | null; playlist?: object[] }) =>
             requisitar<{ musica: { tocando?: object | null; playlist?: object[] } }>(atorId, 'PATCH', r('jogo.musica.atualizar'), dados),
+        atualizarTempo: (tempo: { dia: number; hora: number; minuto: number }) =>
+            requisitar<{ tempo: { dia: number; hora: number; minuto: number } }>(atorId, 'PATCH', r('jogo.tempo.atualizar'), tempo),
+        enviarPing: (dados: { pagina_id: number; x: number; y: number; puxar?: boolean }) =>
+            requisitar<{ ok: true }>(atorId, 'POST', r('jogo.ping'), dados),
+        mirar: (dados: { objeto_id: number | null; pagina_id?: number | null }) => requisitar<{ ok: true }>(atorId, 'POST', r('jogo.mirar'), dados),
     };
 }
 

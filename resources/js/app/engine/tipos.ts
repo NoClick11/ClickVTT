@@ -19,6 +19,13 @@ export interface EstiloPintura {
 
 export type TipoParede = 'parede' | 'porta' | 'janela';
 
+/** Mira de um jogador ativa num token de personagem. */
+export interface InfoMira {
+    jogadorId?: number;
+    cor: string;
+    nome?: string;
+}
+
 import type { BarraDoToken } from '../nucleo/sistemas/tipos';
 
 export interface ObjetoDto {
@@ -123,8 +130,8 @@ export interface CenaEventos {
     selecionar: (id: number | null) => void;
     /** A seleção inteira (um ou vários objetos: laço, Shift+clique, Ctrl+A). */
     selecao: (ids: number[]) => void;
-    /** `final` = soltou o mouse (persistir); false = arrasto em andamento. */
-    alterar: (id: number, campos: CamposGeometria, final: boolean) => void;
+    /** `final` = soltou o mouse (persistir); false = arrasto em andamento; `origem` = ponto de partida do movimento. */
+    alterar: (id: number, campos: CamposGeometria, final: boolean, origem?: { x: number; y: number }) => void;
     zoom: (escala: number) => void;
     criarLuz: (x: number, y: number) => void;
     /** Clique com a ferramenta Loot (mestre): cria um loot no ponto. */
@@ -163,4 +170,14 @@ export interface CenaEventos {
     memoria: (imagem: string) => void;
     /** Entrou numa página com iluminação: busca no servidor a memória deste jogador. */
     pedirMemoria: (paginaId: number) => void;
+    /** Clique na barra de vida de um token: abre edição rápida de vida flutuante. */
+    editarVida?: (id: number) => void;
+    /** Cursor sobre um ícone de status de um token: dados mecânicos para tooltip ou null ao sair. */
+    hoverStatus?: (dados: { tokenNome: string; statusIds: string[]; tela: { x: number; y: number } } | null) => void;
+    /** Clique com botão direito no mapa sem arrastar: abre menu de ping com coordenadas do mundo e da tela. */
+    menuPing?: (mundo: { x: number; y: number }, tela: { x: number; y: number }) => void;
+    /** Ping emitido no mapa: coordenadas do mundo e se deve puxar a câmera dos demais. */
+    ping?: (x: number, y: number, puxar: boolean) => void;
+    /** A câmera mudou de posição ou zoom, ou a tela foi redimensionada. */
+    vista?: () => void;
 }

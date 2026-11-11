@@ -17,12 +17,14 @@ use App\Http\Controllers\App\LootController;
 use App\Http\Controllers\App\MusicaController;
 use App\Http\Controllers\App\NpcController;
 use App\Http\Controllers\App\ObjetoController;
-use App\Http\Controllers\App\ProgressaoController;
 use App\Http\Controllers\App\PaginaController;
 use App\Http\Controllers\App\PastaController;
 use App\Http\Controllers\App\PersonagemController as PersonagemDoJogoController;
+use App\Http\Controllers\App\PingController;
+use App\Http\Controllers\App\ProgressaoController;
 use App\Http\Controllers\App\TecnicaAtivaController;
 use App\Http\Controllers\App\TecnicaController;
+use App\Http\Controllers\App\TempoController;
 use App\Http\Controllers\Site\ConviteController;
 use App\Http\Controllers\Site\JogadorController;
 use App\Http\Controllers\Site\MesaController;
@@ -145,6 +147,9 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::post('personagens/{personagem}/tratar-brutal', [AlvoController::class, 'tratarDanoBrutal'])->middleware('throttle:60,1')->name('personagens.tratar-brutal');
     Route::patch('fogo-amigo', [CombateController::class, 'fogoAmigo'])->name('fogo-amigo');
     Route::patch('musica', [MusicaController::class, 'atualizar'])->name('musica.atualizar');
+    Route::patch('tempo', [TempoController::class, 'atualizar'])->name('tempo.atualizar');
+    Route::post('ping', [PingController::class, 'ping'])->middleware('throttle:60,1')->name('ping');
+    Route::post('mirar', [AlvoController::class, 'mirar'])->middleware('throttle:120,1')->name('mirar');
     // Progressão (só o mestre): libera descansos e subir de nível; divide XP entre os personagens dos jogadores.
     Route::patch('liberacoes', [ProgressaoController::class, 'liberacoes'])->name('liberacoes');
     Route::post('xp', [ProgressaoController::class, 'distribuirXp'])->middleware('throttle:30,1')->name('xp.distribuir');
