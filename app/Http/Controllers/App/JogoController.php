@@ -56,7 +56,8 @@ class JogoController extends Controller
             'mesa' => ['id' => $mesa->id, 'slug' => $mesa->slug, 'nome' => $mesa->nome, 'capa' => $mesa->capaUrl(), 'fogo_amigo' => (bool) $mesa->fogo_amigo,
                 // O que o mestre liberou aos jogadores: descansar (curto/longo) e subir de nível.
                 'descanso_curto' => (bool) $mesa->descanso_curto, 'descanso_longo' => (bool) $mesa->descanso_longo, 'subir_nivel' => (bool) $mesa->subir_nivel,
-                'musica' => $mesa->musica ?? null],
+                'musica' => $mesa->musica ?? null,
+                'tempo' => $mesa->tempo ?? ['dia' => 1, 'hora' => 8, 'minuto' => 0]],
             // `modulo` = existe módulo do sistema no servidor; o front resolve o seu pelo mesmo slug.
             'sistema' => ['slug' => $mesa->sistema->slug, 'nome' => $mesa->sistema->nome, 'modulo' => $sistemas->possui($mesa->sistema->slug)],
             'jogador' => $acesso->jogador->paraFront(),

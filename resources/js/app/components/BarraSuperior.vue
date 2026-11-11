@@ -3,9 +3,23 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import { Button } from '@/components/ui/button';
 import { PAPEIS, type Jogador, type Personagem } from '@/site/types';
 import { BookOpen, Crown, LogOut } from 'lucide-vue-next';
+import type { TempoMesa } from '../nucleo/tempo/tempo';
+import ControleTempo from './ControleTempo.vue';
 
-defineProps<{ mesaNome: string; paginaNome: string; jogador: Jogador; ativo: Personagem | null; mestre: boolean }>();
-defineEmits<{ paginas: []; sair: [] }>();
+defineProps<{
+    mesaNome: string;
+    paginaNome: string;
+    jogador: Jogador;
+    ativo: Personagem | null;
+    mestre: boolean;
+    tempo: TempoMesa;
+}>();
+
+defineEmits<{
+    paginas: [];
+    sair: [];
+    atualizarTempo: [tempo: TempoMesa];
+}>();
 </script>
 
 <template>
@@ -16,12 +30,14 @@ defineEmits<{ paginas: []; sair: [] }>();
             <AppLogoIcon class="size-7 shrink-0 text-ouro-400" />
             <span class="truncate font-serif text-base font-semibold text-ouro-100">{{ mesaNome }}</span>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-3">
             <Button v-if="mestre" size="sm" variant="outline" class="border-ouro-500/40 text-ouro-100" @click="$emit('paginas')">
                 <BookOpen class="size-4" /> Páginas
                 <span class="max-w-40 truncate text-xs text-preto-300">· {{ paginaNome }}</span>
             </Button>
             <span v-else class="max-w-48 truncate text-sm text-preto-300">{{ paginaNome }}</span>
+
+            <ControleTempo :tempo="tempo" :mestre="mestre" @atualizar="$emit('atualizarTempo', $event)" />
         </div>
         <div class="flex items-center gap-2">
             <span class="flex items-center gap-1.5 text-sm text-preto-200">

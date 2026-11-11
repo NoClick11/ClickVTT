@@ -12,7 +12,7 @@ class Mesa extends Model
 {
     protected $fillable = [
         'nome', 'slug', 'sistema_id', 'descricao', 'capa', 'tema_entrada', 'favorita', 'travada', 'fogo_amigo',
-        'descanso_curto', 'descanso_longo', 'subir_nivel', 'musica',
+        'descanso_curto', 'descanso_longo', 'subir_nivel', 'musica', 'tempo',
     ];
 
     protected function casts(): array
@@ -20,6 +20,7 @@ class Mesa extends Model
         return [
             'combate' => 'array',
             'musica' => 'array',
+            'tempo' => 'array',
             'favorita' => 'boolean',
             'travada' => 'boolean',
             'fogo_amigo' => 'boolean',
