@@ -351,4 +351,27 @@ final class Condicoes
     {
         return array_column(self::catalogo(), 'id');
     }
+
+    /** Efeitos (sem a fonte) que a condição `$id` gera; id desconhecido não gera nada. */
+    public static function efeitosDe(string $id): array
+    {
+        foreach (self::catalogo() as $c) {
+            if ($c['id'] === $id) {
+                return $c['efeitos'];
+            }
+        }
+
+        return [];
+    }
+
+    public static function nomeDe(string $id): string
+    {
+        foreach (self::catalogo() as $c) {
+            if ($c['id'] === $id) {
+                return $c['nome'];
+            }
+        }
+
+        return $id;
+    }
 }
