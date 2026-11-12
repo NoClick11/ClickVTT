@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 class Pagina extends Model
 {
@@ -29,8 +28,8 @@ class Pagina extends Model
     {
         // O cascade do banco remove as linhas; aqui removemos os arquivos enviados.
         static::deleting(function (Pagina $pagina) {
-            $pagina->objetos()->whereNotNull('arquivo')->pluck('arquivo')
-                ->each(fn ($a) => Storage::disk('public')->delete($a));
+            $pagina->objetos()->whereNotNull('arquivo')->pluck('arquivo')->unique()
+                ->each(fn ($a) => Objeto::apagarArquivoSeOrfao($a, $pagina->id));
         });
     }
 

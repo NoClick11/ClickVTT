@@ -32,9 +32,29 @@ class Objeto extends Model
     {
         static::deleted(function (Objeto $o) {
             if ($o->arquivo) {
-                Storage::disk('public')->delete($o->arquivo);
+                self::apagarArquivoSeOrfao($o->arquivo);
             }
         });
+    }
+
+    /**
+     * Apaga o arquivo de um objeto excluído, mas só se ninguém mais o usa. A foto do token (`personagens/...`) é do PERSONAGEM
+     * (todos os tokens dele, em todas as páginas, apontam para o mesmo arquivo: quem a troca ou remove é a tela de foto), e uma
+     * página duplicada divide os arquivos com a original. Sem isto, excluir um token apagava a imagem de todos os outros.
+     *
+     * @param  int|null  $foraDaPagina  ignora os objetos desta página (ela está sendo excluída)
+     */
+    public static function apagarArquivoSeOrfao(string $arquivo, ?int $foraDaPagina = null): void
+    {
+        if (str_starts_with($arquivo, 'personagens/') || str_starts_with($arquivo, '/storage/personagens/') || str_starts_with($arquivo, 'http')) {
+            return;
+        }
+        $emUso = self::query()->where('arquivo', $arquivo)
+            ->when($foraDaPagina !== null, fn ($q) => $q->where('pagina_id', '!=', $foraDaPagina))
+            ->exists();
+        if (! $emUso) {
+            Storage::disk('public')->delete($arquivo);
+        }
     }
 
     public function pagina(): BelongsTo
