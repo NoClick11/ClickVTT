@@ -56,6 +56,7 @@ import { tocarSomCura, tocarSomDano } from '../nucleo/audio/sonsCombate';
 import { avaliarAcao, avaliarAtaque, type CategoriaAcao } from '../nucleo/combate/acoes';
 import type { AreaDeEfeito } from '../nucleo/combate/area';
 import { podeAtingir } from '../nucleo/combate/equipes';
+import type { ItemTurno } from '../nucleo/combate/estado';
 import { emCurso, itemAtual, normalizar as normalizarCombate, podeAgirAgora, rodadaParaFicha, semIniciativaDe } from '../nucleo/combate/estado';
 import { fatorParaMetros, totalDoTurno } from '../nucleo/combate/movimento';
 import { comResumo, semOfertasDe, type OfertaDeReacao, type ResumoEvento } from '../nucleo/combate/reacoes';
@@ -633,6 +634,21 @@ const menuPing = ref<{ mundo: { x: number; y: number }; tela: { x: number; y: nu
 
 function aoMenuPing(mundo: { x: number; y: number }, tela: { x: number; y: number }) {
     menuPing.value = { mundo, tela };
+}
+
+/**
+ * Barra de turnos: aponta no mapa o token do combatente (um pulso só para quem olhou; ninguém mais vê) e, no clique, leva a
+ * câmera até ele sem mexer no zoom. Token que este participante não enxerga (camada do mestre, outra página) não é apontado.
+ */
+function apontarCombatente(i: ItemTurno, focar: boolean) {
+    const token =
+        objetos.value.find((o) => o.id === i.objeto_id) ??
+        objetos.value.find((o) => o.tipo === 'token' && i.personagem_id !== null && o.personagem_id === i.personagem_id);
+    if (!token) return;
+    const x = token.x + token.largura / 2;
+    const y = token.y + token.altura / 2;
+    canvas.value?.tocarPing(x, y, i.cor ?? '#f59e0b');
+    if (focar) canvas.value?.centralizarEm(x, y, true);
 }
 
 async function aoPing(x: number, y: number, puxar: boolean) {
@@ -3184,6 +3200,8 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                         @anterior="comandoCombate('turno', { sentido: 'anterior' })"
                         @proximo="comandoCombate('turno', { sentido: 'proximo' })"
                         @abrir="((painelTurnos = true), (painelDados = false))"
+                        @apontar="(i: ItemTurno) => apontarCombatente(i, false)"
+                        @focar="(i: ItemTurno) => apontarCombatente(i, true)"
                     />
                 </div>
                 <OpcoesFerramenta

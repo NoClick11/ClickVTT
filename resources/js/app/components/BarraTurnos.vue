@@ -24,7 +24,15 @@ const props = withDefaults(
     { objetos: () => [], personagens: () => [] },
 );
 
-defineEmits<{ anterior: []; proximo: []; abrir: [] }>();
+defineEmits<{
+    anterior: [];
+    proximo: [];
+    abrir: [];
+    /** Passou o mouse (ou o foco) sobre o combatente: a mesa aponta o token dele no mapa. */
+    apontar: [item: ItemTurno];
+    /** Clicou no combatente: a mesa leva a câmera até o token dele. */
+    focar: [item: ItemTurno];
+}>();
 
 const atual = computed(() => (props.combate.fase === 'em_curso' ? itemAtual(props.combate) : null));
 
@@ -91,19 +99,24 @@ function corDisposicao(i: ItemTurno): string {
 
         <!-- Carrossel de Combatentes / Combat Cards -->
         <ol class="scrollbar-thin flex min-w-0 items-center gap-1.5 overflow-x-auto px-1.5 py-0.5">
+            <!-- Todos os cartões têm a mesma largura e o mesmo retrato (o nome longo é cortado; o do turno só ganha o destaque) -->
             <li
                 v-for="i in combate.itens"
                 :key="i.id"
-                class="group relative flex shrink-0 select-none flex-col items-center rounded-md border p-1 transition-all duration-150"
+                class="group relative flex w-16 shrink-0 cursor-pointer select-none flex-col items-center rounded-md border p-1 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
                 :class="[
                     combate.atual === i.id
-                        ? 'z-10 scale-105 border-ouro-400 bg-ouro-500/20 shadow-[0_0_14px_rgba(236,201,108,0.45)] ring-2 ring-ouro-400/60'
+                        ? 'z-10 border-ouro-400 bg-ouro-500/20 shadow-[0_0_14px_rgba(236,201,108,0.45)] ring-2 ring-ouro-400/60'
                         : 'border-[#2d2922] bg-[#1a1815]/90 opacity-70 hover:border-[#4d4536] hover:opacity-100',
                     corDisposicao(i),
                     'border-b-2',
                 ]"
                 :aria-current="combate.atual === i.id ? 'step' : undefined"
-                :title="`${i.nome} (Iniciativa: ${i.iniciativa ?? '—'})`"
+                :title="`${i.nome} (Iniciativa: ${i.iniciativa ?? '—'}): clique para ir até o token`"
+                tabindex="0"
+                @mouseenter="$emit('apontar', i)"
+                @click="$emit('focar', i)"
+                @keydown.enter.prevent="$emit('focar', i)"
             >
                 <!-- Indicador de Turno Ativo no topo -->
                 <span
@@ -113,11 +126,17 @@ function corDisposicao(i: ItemTurno): string {
                 />
 
                 <!-- Retrato / Avatar do Combatente -->
-                <div class="relative flex size-9 items-center justify-center overflow-hidden rounded-full border border-ouro-500/20 bg-preto-950">
-                    <img v-if="imagemDoCombatente(i)" :src="imagemDoCombatente(i)!" :alt="i.nome" class="size-full object-cover" loading="lazy" />
+                <div class="relative size-10 shrink-0">
+                    <img
+                        v-if="imagemDoCombatente(i)"
+                        :src="imagemDoCombatente(i)!"
+                        :alt="i.nome"
+                        class="size-10 rounded-full border border-ouro-500/20 bg-preto-950 object-cover"
+                        loading="lazy"
+                    />
                     <span
                         v-else
-                        class="flex size-full items-center justify-center font-serif text-sm font-bold text-preto-950"
+                        class="flex size-10 items-center justify-center rounded-full border border-ouro-500/20 font-serif text-sm font-bold text-preto-950"
                         :style="{ backgroundColor: i.cor ?? '#ecc96c' }"
                     >
                         {{ (i.nome || '?').slice(0, 1).toUpperCase() }}
@@ -133,7 +152,7 @@ function corDisposicao(i: ItemTurno): string {
 
                 <!-- Nome do Combatente -->
                 <span
-                    class="mt-1 max-w-[62px] truncate text-center text-[10px] font-medium leading-none"
+                    class="mt-1 w-full truncate text-center text-[10px] font-medium leading-none"
                     :class="combate.atual === i.id ? 'font-bold text-ouro-200' : 'text-preto-300'"
                 >
                     {{ i.nome }}
