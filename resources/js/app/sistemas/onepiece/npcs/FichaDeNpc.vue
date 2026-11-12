@@ -30,6 +30,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
     salvar: [campos: Record<string, unknown>];
+    renomear: [nome: string];
     rolar: [
         expressao: string,
         rotulo: string,
@@ -150,8 +151,10 @@ const descricaoDaTecnica = (t: TecnicaNpc) => {
 // --- edição ---------------------------------------------------------------------------------------------------------------
 const editando = ref(false);
 const rascunho = ref<NpcDados | null>(null);
+const nomeEditado = ref('');
 function editar() {
     rascunho.value = copiar(npc.value);
+    nomeEditado.value = props.personagem.nome;
     editando.value = true;
 }
 function salvarEdicao() {
@@ -159,6 +162,9 @@ function salvarEdicao() {
     if (!r) return;
     const max = Math.max(0, Math.round(r.pv.medio));
     emit('salvar', camposDoNpc(r, { atual: Math.min(pv.value.atual, max) }));
+    if (nomeEditado.value.trim() && nomeEditado.value.trim() !== props.personagem.nome) {
+        emit('renomear', nomeEditado.value.trim());
+    }
     editando.value = false;
     rascunho.value = null;
 }
@@ -204,7 +210,13 @@ const rotuloSecao = 'mb-1 text-[11px] font-semibold uppercase tracking-wider tex
                     <img :src="foto" :alt="personagem.nome" class="h-full w-full object-cover" />
                 </div>
                 <div class="min-w-0 flex-1">
-                    <h2 class="truncate font-serif text-lg font-semibold" :style="{ color: personagem.cor }">{{ personagem.nome }}</h2>
+                    <input
+                        v-if="editando"
+                        v-model="nomeEditado"
+                        class="w-full rounded border border-ouro-500/50 bg-preto-950 px-2 py-1 font-serif text-lg font-semibold text-ouro-100 focus-visible:border-ouro-400 focus-visible:outline-none"
+                        placeholder="Nome do NPC"
+                    />
+                    <h2 v-else class="truncate font-serif text-lg font-semibold" :style="{ color: personagem.cor }">{{ personagem.nome }}</h2>
                     <p class="text-xs text-preto-400">
                         ND {{ npc.nd }} · {{ npc.xp.toLocaleString('pt-BR') }} XP<template v-if="npc.faccao"> · {{ npc.faccao }}</template
                         ><template v-if="npc.instancia_de"> · cópia no mapa</template>

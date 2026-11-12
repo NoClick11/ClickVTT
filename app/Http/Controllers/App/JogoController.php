@@ -65,7 +65,7 @@ class JogoController extends Controller
             'pagina' => $pagina?->paraFront(),
             'objetos' => $objetos->map(fn (Objeto $o) => $o->paraFront())->values(),
             // Navegação entre páginas e posicionamento de jogadores: só o mestre.
-            'paginas' => $mestre ? $mesa->paginas->map->paraFront()->values() : [],
+            'paginas' => $mestre ? $mesa->paginas()->with(['objetos' => fn ($q) => $q->where('tipo', 'imagem')->whereNotNull('arquivo')])->get()->map->paraFront()->values() : [],
             'pastas' => $mestre ? $mesa->pastas->map(fn ($p) => ['id' => $p->id, 'nome' => $p->nome, 'ordem' => $p->ordem])->values() : [],
             // Diário (pastas e folhetos): o mestre vê tudo; o jogador, só os folhetos liberados e as pastas que os contêm.
             'diario' => $this->diario($mesa, $mestre),

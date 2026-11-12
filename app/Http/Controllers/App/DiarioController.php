@@ -8,6 +8,7 @@ use App\Models\Folheto;
 use App\Models\Mesa;
 use App\Models\Personagem;
 use App\Support\AcessoMesa;
+use App\Support\OtimizarImagem;
 use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -70,7 +71,7 @@ class DiarioController extends Controller
             'nome' => trim($dados['nome']),
             'texto' => $dados['texto'] ?? null,
             'pasta_id' => $dados['pasta_id'] ?? null,
-            'imagem' => $request->file('imagem')->store('folhetos', 'public'),
+            'imagem' => OtimizarImagem::armazenar($request->file('imagem'), 'folhetos'),
         ]);
         Transmitir::cena($mesa, null, $acesso->jogador->id);
 

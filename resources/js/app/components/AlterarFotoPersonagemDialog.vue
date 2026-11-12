@@ -232,7 +232,7 @@ function marcarRemocao() {
 // --- Geração dos Blobs de corte --------------------------------------------
 function dataUrlParaBlob(dataUrl: string): Blob {
     const partes = dataUrl.split(',');
-    const mime = partes[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+    const mime = partes[0].match(/:(.*?);/)?.[1] || 'image/webp';
     const bstr = atob(partes[1]);
     let n = bstr.length;
     const u8arr = new Uint8Array(n);
@@ -251,7 +251,7 @@ function canvasParaBlob(canvas: HTMLCanvasElement): Promise<Blob> {
                 if (finalizado) return;
                 finalizado = true;
                 try {
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+                    const dataUrl = canvas.toDataURL('image/webp', 0.88);
                     resolve(dataUrlParaBlob(dataUrl));
                 } catch (e) {
                     reject(e);
@@ -267,19 +267,19 @@ function canvasParaBlob(canvas: HTMLCanvasElement): Promise<Blob> {
                         resolve(blob);
                     } else {
                         try {
-                            const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+                            const dataUrl = canvas.toDataURL('image/webp', 0.88);
                             resolve(dataUrlParaBlob(dataUrl));
                         } catch (e) {
                             reject(e);
                         }
                     }
                 },
-                'image/jpeg',
-                0.92,
+                'image/webp',
+                0.88,
             );
         } catch (err) {
             try {
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+                const dataUrl = canvas.toDataURL('image/webp', 0.88);
                 resolve(dataUrlParaBlob(dataUrl));
             } catch (fallbackErr) {
                 reject(fallbackErr);

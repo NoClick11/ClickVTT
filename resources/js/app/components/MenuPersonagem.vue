@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Trash2 } from 'lucide-vue-next';
+import { Pencil, Trash2 } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 
-/** Menu do botão direito sobre um personagem da lista (só o mestre): hoje, excluir. */
+/** Menu do botão direito sobre um personagem da lista (só o mestre): renomear ou excluir. */
 const props = defineProps<{ nome: string; x: number; y: number }>();
-const emit = defineEmits<{ excluir: []; fechar: [] }>();
+const emit = defineEmits<{ renomear: []; excluir: []; fechar: [] }>();
 
 /** Mantém o menu dentro da janela. */
 const posicao = computed(() => ({
@@ -26,6 +26,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', aoTecla));
         :aria-label="`Opções de ${nome}`"
     >
         <p class="truncate px-2 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wider text-ouro-400" :title="nome">{{ nome }}</p>
+        <button
+            type="button"
+            role="menuitem"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-preto-200 transition hover:bg-ouro-500/15 hover:text-ouro-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+            @click="emit('renomear')"
+        >
+            <Pencil class="size-4 text-ouro-400" aria-hidden="true" /> Renomear
+        </button>
         <button
             type="button"
             role="menuitem"

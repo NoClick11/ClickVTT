@@ -2,6 +2,7 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { onBeforeUnmount, ref, watch } from 'vue';
+import { converterParaWebp } from '../../nucleo/imagens/webp';
 
 /** O mestre sobe uma imagem (com texto opcional) como folheto. Fica escondido dos jogadores até ele liberar. */
 const props = defineProps<{ open: boolean; criar: (dados: FormData) => Promise<unknown> }>();
@@ -47,12 +48,13 @@ async function enviar() {
     erro.value = '';
     if (!arquivo.value) return (erro.value = 'Escolha uma imagem.');
     if (!nome.value.trim()) return (erro.value = 'Dê um nome ao folheto.');
-    const dados = new FormData();
-    dados.append('nome', nome.value.trim());
-    dados.append('imagem', arquivo.value);
-    if (texto.value.trim()) dados.append('texto', texto.value.trim());
     ocupado.value = true;
     try {
+        const arquivoFinal = await converterParaWebp(arquivo.value);
+        const dados = new FormData();
+        dados.append('nome', nome.value.trim());
+        dados.append('imagem', arquivoFinal);
+        if (texto.value.trim()) dados.append('texto', texto.value.trim());
         await props.criar(dados);
         emit('update:open', false);
     } catch (e) {

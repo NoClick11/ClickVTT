@@ -139,6 +139,9 @@ export function apiMesa(mesaId: number, atorId: number) {
         /** Só o mestre: cria o personagem (sem jogadores = NPC). */
         criarPersonagem: (dados: { nome: string; cor: string; jogadores: number[] }) =>
             requisitar<Personagem>(atorId, 'POST', r('jogo.personagens.store'), dados),
+        /** Só o mestre: renomeia o personagem ou NPC. */
+        renomearPersonagem: (personagemId: number, nome: string) =>
+            requisitar<Personagem>(atorId, 'PATCH', r('jogo.personagens.renomear', personagemId), { nome }),
         /** Só o mestre: exclui o personagem (ficha, tokens e lugar no combate). */
         excluirPersonagem: (personagemId: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.personagens.excluir', personagemId)),
         /** Altera ou remove a foto do personagem (arquivo local ou URL). */
@@ -148,9 +151,17 @@ export function apiMesa(mesaId: number, atorId: number) {
         ) => {
             if (dados.arquivo) {
                 const f = new FormData();
-                f.append('arquivo', dados.arquivo, 'ficha.jpg');
+                const nomeFicha =
+                    dados.arquivo instanceof File ? dados.arquivo.name : dados.arquivo.type === 'image/webp' ? 'ficha.webp' : 'ficha.jpg';
+                f.append('arquivo', dados.arquivo, nomeFicha);
                 if (dados.arquivo_token) {
-                    f.append('arquivo_token', dados.arquivo_token, 'token.jpg');
+                    const nomeToken =
+                        dados.arquivo_token instanceof File
+                            ? dados.arquivo_token.name
+                            : dados.arquivo_token.type === 'image/webp'
+                              ? 'token.webp'
+                              : 'token.jpg';
+                    f.append('arquivo_token', dados.arquivo_token, nomeToken);
                 }
                 return requisitar<{ ok: boolean; foto: string | null; foto_token?: string | null; personagem?: Personagem }>(
                     atorId,

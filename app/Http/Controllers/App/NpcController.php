@@ -75,6 +75,13 @@ class NpcController extends Controller
             $origem = $npc['instancia_de'] ?? $personagem->id; // copiar uma cópia continua sendo do mesmo modelo
             $base = isset($npc['instancia_de']) ? preg_replace('/ \d+$/', '', $personagem->nome) : $personagem->nome;
             $ficha = $personagem->ficha;
+            if (empty($ficha['foto']) && $origem !== $personagem->id) {
+                $origemPersonagem = Personagem::find($origem);
+                if ($origemPersonagem) {
+                    $ficha['foto'] = $origemPersonagem->ficha['foto'] ?? null;
+                    $ficha['foto_token'] = $origemPersonagem->ficha['foto_token'] ?? null;
+                }
+            }
             $ficha['npc'] = [...$npc, 'instancia_de' => $origem, 'usos' => [], 'lendarias_usadas' => 0];
             $ficha['pv']['atual'] = (int) ($ficha['pv']['max'] ?? 0);
             $ficha['pv']['temp'] = 0;

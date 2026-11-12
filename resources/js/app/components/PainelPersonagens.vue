@@ -111,6 +111,7 @@ const emit = defineEmits<{
     mostrarFolheto: [id: number];
     /** Botão direito (só o mestre): o menu de opções do personagem. */
     menu: [personagemId: number, tela: { x: number; y: number }];
+    renomear: [personagemId: number];
 }>();
 
 // --- árvore: pastas (aninháveis), depois personagens e folhetos de cada nível, numa lista só com recuo ---
@@ -353,6 +354,17 @@ const vazio = computed(() => !visiveis.value.length && !props.diario.folhetos.le
                             @click="$emit('focar', l.personagem.id)"
                             ><Crosshair class="size-4"
                         /></Button>
+                        <Button
+                            v-if="mestre"
+                            size="icon"
+                            variant="ghost"
+                            class="size-8 shrink-0 text-preto-400 hover:text-ouro-200"
+                            :aria-label="`Renomear ${l.personagem.nome}`"
+                            title="Renomear"
+                            @click.stop="$emit('renomear', l.personagem.id)"
+                        >
+                            <Pencil class="size-3.5" />
+                        </Button>
                         <Button
                             v-if="mestre"
                             size="icon"

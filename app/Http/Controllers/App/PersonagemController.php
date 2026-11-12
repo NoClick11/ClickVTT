@@ -9,6 +9,7 @@ use App\Models\Objeto;
 use App\Models\Personagem;
 use App\Nucleo\Combate\CombateService;
 use App\Support\AcessoMesa;
+use App\Support\OtimizarImagem;
 use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -52,6 +53,30 @@ class PersonagemController extends Controller
     }
 
     /**
+     * Renomeia um personagem ou NPC na mesa (só o mestre).
+     * O nome deve ser único na mesa e atualiza também os tokens vinculados no mapa.
+     */
+    public function renomear(Request $request, Mesa $mesa, Personagem $personagem): JsonResponse
+    {
+        $acesso = AcessoMesa::exigirMestre($request, $mesa);
+        abort_unless($personagem->mesa_id === $mesa->id, 404);
+
+        $dados = $request->validate([
+            'nome' => ['required', 'string', 'max:60', Rule::unique('personagens', 'nome')->where('mesa_id', $mesa->id)->ignore($personagem->id)],
+        ]);
+
+        $novoNome = trim($dados['nome']);
+        $personagem->update(['nome' => $novoNome]);
+
+        // Atualiza o nome dos tokens deste personagem no mapa
+        Objeto::query()->where('personagem_id', $personagem->id)->where('tipo', 'token')->update(['nome' => $novoNome]);
+
+        Transmitir::cena($mesa, null, $acesso->jogador->id);
+
+        return response()->json($personagem->load('jogadores')->paraFront($acesso->podeControlar($personagem->id)));
+    }
+
+    /**
      * Altera ou remove a foto do personagem (PC ou NPC).
      * O mestre pode alterar qualquer um; o jogador só os seus.
      */
@@ -78,10 +103,10 @@ class PersonagemController extends Controller
             $novaFoto = null;
             $novaFotoToken = null;
         } elseif ($request->hasFile('arquivo')) {
-            $caminho = $request->file('arquivo')->store('personagens', 'public');
+            $caminho = OtimizarImagem::armazenar($request->file('arquivo'), 'personagens');
             $novaFoto = '/storage/'.$caminho;
             if ($request->hasFile('arquivo_token')) {
-                $caminhoToken = $request->file('arquivo_token')->store('personagens', 'public');
+                $caminhoToken = OtimizarImagem::armazenar($request->file('arquivo_token'), 'personagens');
                 $novaFotoToken = '/storage/'.$caminhoToken;
             } else {
                 $novaFotoToken = $novaFoto;
@@ -109,15 +134,58 @@ class PersonagemController extends Controller
 
         $personagem->forceFill(['ficha' => $ficha])->save();
 
-        // Atualiza tokens existentes do personagem que usavam a foto antiga ou não tinham arquivo
+        $idsPersonagens = [$personagem->id];
+
+        // Se for um modelo de NPC ou uma instância de NPC, sincroniza modelo e instâncias filhas
+        $npc = $personagem->ficha['npc'] ?? null;
+        if (is_array($npc)) {
+            $modeloId = $npc['instancia_de'] ?? $personagem->id;
+
+            // Se esta era uma instância, atualiza o modelo de origem também
+            if (! empty($npc['instancia_de'])) {
+                $modelo = Personagem::query()->where('mesa_id', $mesa->id)->find($npc['instancia_de']);
+                if ($modelo) {
+                    $modeloFicha = $modelo->ficha ?? [];
+                    if ($novaFoto) {
+                        $modeloFicha['foto'] = $novaFoto;
+                        $modeloFicha['foto_token'] = $novaFotoToken;
+                    } else {
+                        unset($modeloFicha['foto'], $modeloFicha['foto_token']);
+                    }
+                    $modelo->forceFill(['ficha' => $modeloFicha])->save();
+                    $idsPersonagens[] = $modelo->id;
+                }
+            }
+
+            // Atualiza todas as instâncias filhas do modelo na mesa
+            $instancias = Personagem::query()
+                ->where('mesa_id', $mesa->id)
+                ->where('ficha->npc->instancia_de', $modeloId)
+                ->where('id', '!=', $personagem->id)
+                ->get();
+
+            foreach ($instancias as $instancia) {
+                $instFicha = $instancia->ficha ?? [];
+                if ($novaFoto) {
+                    $instFicha['foto'] = $novaFoto;
+                    $instFicha['foto_token'] = $novaFotoToken;
+                } else {
+                    unset($instFicha['foto'], $instFicha['foto_token']);
+                }
+                $instancia->forceFill(['ficha' => $instFicha])->save();
+                $idsPersonagens[] = $instancia->id;
+            }
+        }
+
+        // Atualiza tokens existentes do personagem (e de suas instâncias de NPC) que usavam a foto antiga ou não tinham arquivo
         $tokens = Objeto::query()
-            ->where('personagem_id', $personagem->id)
+            ->whereIn('personagem_id', $idsPersonagens)
             ->where('tipo', 'token')
             ->get();
 
-        $caminhoRelativoTokenNovo = ($novaFotoToken && str_starts_with($novaFotoToken, '/storage/')) ? substr($novaFotoToken, 9) : null;
-        $caminhoRelativoTokenAntigo = ($fotoTokenAntiga && str_starts_with($fotoTokenAntiga, '/storage/')) ? substr($fotoTokenAntiga, 9) : null;
-        $caminhoRelativoFotoAntigo = ($fotoAntiga && str_starts_with($fotoAntiga, '/storage/')) ? substr($fotoAntiga, 9) : null;
+        $caminhoRelativoTokenNovo = $novaFotoToken ? (str_starts_with($novaFotoToken, '/storage/') ? substr($novaFotoToken, 9) : $novaFotoToken) : null;
+        $caminhoRelativoTokenAntigo = $fotoTokenAntiga ? (str_starts_with($fotoTokenAntiga, '/storage/') ? substr($fotoTokenAntiga, 9) : $fotoTokenAntiga) : null;
+        $caminhoRelativoFotoAntigo = $fotoAntiga ? (str_starts_with($fotoAntiga, '/storage/') ? substr($fotoAntiga, 9) : $fotoAntiga) : null;
 
         foreach ($tokens as $token) {
             if (empty($token->arquivo) || $token->arquivo === $caminhoRelativoTokenAntigo || $token->arquivo === $caminhoRelativoFotoAntigo) {
@@ -136,11 +204,13 @@ class PersonagemController extends Controller
             }
         }
 
-        Transmitir::enviar($mesa, 'personagem:foto', [
-            'personagem_id' => $personagem->id,
-            'foto' => $novaFoto,
-            'foto_token' => $novaFotoToken,
-        ], ['mesa']);
+        foreach ($idsPersonagens as $pid) {
+            Transmitir::enviar($mesa, 'personagem:foto', [
+                'personagem_id' => $pid,
+                'foto' => $novaFoto,
+                'foto_token' => $novaFotoToken,
+            ], ['mesa']);
+        }
         Transmitir::cena($mesa, null, $acesso->jogador->id);
 
         return response()->json([
