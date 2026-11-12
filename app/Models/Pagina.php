@@ -51,6 +51,12 @@ class Pagina extends Model
 
     public function paraFront(): array
     {
+        $miniatura = $this->relationLoaded('objetos')
+            ? ($this->objetos->first(fn ($o) => $o->tipo === 'imagem' && $o->camada === 'mapa' && ! empty($o->arquivo))
+                ?? $this->objetos->first(fn ($o) => $o->tipo === 'imagem' && ! empty($o->arquivo)))?->arquivo
+            : ($this->objetos()->where('tipo', 'imagem')->where('camada', 'mapa')->whereNotNull('arquivo')->value('arquivo')
+                ?? $this->objetos()->where('tipo', 'imagem')->whereNotNull('arquivo')->value('arquivo'));
+
         return [
             'id' => $this->id,
             'pasta_id' => $this->pasta_id,
@@ -67,6 +73,7 @@ class Pagina extends Model
             'visao_padrao' => (int) ($this->visao_padrao ?? 6),
             'usar_visao' => (bool) ($this->usar_visao ?? true),
             'memoria_ativa' => (bool) ($this->memoria_ativa ?? true),
+            'miniatura' => $miniatura ? '/storage/'.$miniatura : null,
         ];
     }
 }

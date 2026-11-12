@@ -40,18 +40,32 @@ const paginasDaPasta = (pastaId: number | null) => props.paginas.filter((p) => p
 const editando = ref<{ tipo: 'pagina' | 'pasta'; id: number; valor: string } | null>(null);
 const confirmando = ref<string | null>(null);
 const fechadas = ref<Set<number>>(new Set());
+let ignorarBlurPasta = false;
 
 async function editar(tipo: 'pagina' | 'pasta', id: number, valor: string) {
+    ignorarBlurPasta = true;
     editando.value = { tipo, id, valor };
-    await nextTick();
-    (document.getElementById('menu-edicao') as HTMLInputElement | null)?.select();
+    setTimeout(async () => {
+        await nextTick();
+        const input = document.getElementById('menu-edicao') as HTMLInputElement | null;
+        input?.focus();
+        input?.select();
+        setTimeout(() => {
+            ignorarBlurPasta = false;
+        }, 200);
+    }, 50);
 }
 function confirmarEdicao() {
+    if (ignorarBlurPasta) return;
     const e = editando.value;
     editando.value = null;
     if (!e || !e.valor.trim()) return;
     if (e.tipo === 'pagina') emit('renomearPagina', e.id, e.valor.trim());
     else emit('renomearPasta', e.id, e.valor.trim());
+}
+function cancelarEdicao() {
+    ignorarBlurPasta = false;
+    editando.value = null;
 }
 function alternarPasta(id: number) {
     const s = new Set(fechadas.value);
@@ -77,7 +91,10 @@ function iniciarArraste(e: DragEvent, p: Jogador) {
 
 <template>
     <Sheet :open="open" @update:open="emit('update:open', $event)">
-        <SheetContent side="left" class="flex w-full flex-col gap-0 overflow-hidden border-ouro-500/20 bg-preto-950 p-0 text-preto-100 sm:max-w-md">
+        <SheetContent
+            side="left"
+            class="flex w-full flex-col gap-0 overflow-hidden border-ouro-500/20 bg-preto-950 p-0 text-preto-100 sm:max-w-lg md:max-w-xl"
+        >
             <SheetHeader class="border-b border-ouro-500/20 p-4 text-left">
                 <SheetTitle class="font-serif text-xl text-ouro-100">Páginas</SheetTitle>
                 <SheetDescription class="text-preto-300">Arraste um jogador para uma página para levá-lo até lá.</SheetDescription>
@@ -134,7 +151,7 @@ function iniciarArraste(e: DragEvent, p: Jogador) {
                                 v-model="editando.valor"
                                 class="h-7 flex-1 px-2 text-sm"
                                 @keydown.enter="confirmarEdicao"
-                                @keydown.esc="editando = null"
+                                @keydown.esc="cancelarEdicao"
                                 @blur="confirmarEdicao"
                             />
                             <button
@@ -184,7 +201,7 @@ function iniciarArraste(e: DragEvent, p: Jogador) {
                             <p v-if="!paginasDaPasta(pasta.id).length" class="px-2 py-2 text-xs text-preto-400">
                                 Pasta vazia. Mova páginas pelo menu “⋮”.
                             </p>
-                            <ul class="grid gap-1.5 pt-1">
+                            <ul class="grid gap-3 pt-1">
                                 <PaginaLinha
                                     v-for="pg in paginasDaPasta(pasta.id)"
                                     :key="pg.id"
@@ -208,7 +225,7 @@ function iniciarArraste(e: DragEvent, p: Jogador) {
                 </section>
 
                 <!-- Páginas fora de pastas -->
-                <ul class="grid gap-1.5">
+                <ul class="grid gap-3">
                     <PaginaLinha
                         v-for="pg in paginasDaPasta(null)"
                         :key="pg.id"

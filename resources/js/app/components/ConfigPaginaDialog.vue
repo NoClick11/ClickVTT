@@ -72,7 +72,7 @@ function salvar() {
 
 <template>
     <Dialog :open="open" @update:open="emit('update:open', $event)">
-        <DialogContent class="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+        <DialogContent class="z-[60] max-h-[90dvh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
                 <DialogTitle class="font-serif text-xl">Configurações da página</DialogTitle>
                 <DialogDescription>Nome, tamanho e grade do mapa.</DialogDescription>
