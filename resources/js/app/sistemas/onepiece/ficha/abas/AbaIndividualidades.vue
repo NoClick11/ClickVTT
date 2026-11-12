@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, unref, watch } from 'vue';
 import { estilos, useFicha } from '../../contexto';
 import {
     INDIVIDUALIDADES,
@@ -27,6 +27,7 @@ import type { FichaOnePiece } from '../../regras';
  */
 const props = defineProps<{ ficha: FichaOnePiece }>();
 const { salvar, mestre } = useFicha();
+const ehMestre = computed(() => (typeof mestre === 'boolean' ? mestre : (unref(mestre) ?? false)));
 
 const salvas = computed(() => normalizarIndividualidades(props.ficha));
 const rascunho = ref<IndividualidadesFicha>(clonar(salvas.value));
@@ -38,7 +39,7 @@ watch(salvas, (nova) => {
     if (!sujo.value) rascunho.value = clonar(nova);
 });
 
-const travada = computed(() => salvas.value.travada && !mestre.value);
+const travada = computed(() => salvas.value.travada && !ehMestre.value);
 const problemas = computed(() => problemasDasIndividualidades({ pericias: props.ficha.pericias, individualidades: rascunho.value }));
 const usados = computed(() => espacosUsados(rascunho.value));
 const disponiveis = computed(() => espacosDaFicha(rascunho.value));
@@ -55,10 +56,10 @@ function alternar(d: Individualidade) {
     else l.push(d.escolha?.opcoes ? { id: d.id, escolha: d.escolha.opcoes[0].id } : { id: d.id });
     sujo.value = true;
 }
-const bloqueada = (d: Individualidade) => travada.value || (d.aprovacaoDoMestre && !mestre.value && !escolhido(d.tipo, d.id));
+const bloqueada = (d: Individualidade) => travada.value || (d.aprovacaoDoMestre && !ehMestre.value && !escolhido(d.tipo, d.id));
 
 function salvarRascunho() {
-    if (problemas.value.length) return;
+    if (problemas.value.length && !ehMestre.value) return;
     salvar(camposDasIndividualidades(props.ficha, clonar(rascunho.value)));
     sujo.value = false;
 }
@@ -219,12 +220,15 @@ const TITULO: Record<TipoDeIndividualidade, string> = { singularidade: 'Singular
             <ul v-if="problemas.length" class="list-disc pl-5 text-xs text-amber-300">
                 <li v-for="p in problemas" :key="p">{{ p }}</li>
             </ul>
+            <p v-if="ehMestre && sujo && problemas.length" class="text-xs text-ouro-300">
+                Como mestre, você tem permissão para salvar mesmo com avisos de espaços/defeitos.
+            </p>
             <p v-else-if="sujo" class="text-xs text-green-300">Tudo certo: pode salvar.</p>
             <div class="flex gap-2">
                 <button
                     type="button"
                     class="rounded bg-ouro-500 px-3 py-1.5 text-xs font-semibold text-preto-950 hover:bg-ouro-400 disabled:opacity-40"
-                    :disabled="!sujo || problemas.length > 0 || travada"
+                    :disabled="!sujo || (problemas.length > 0 && !ehMestre) || travada"
                     @click="salvarRascunho"
                 >
                     Salvar Individualidades

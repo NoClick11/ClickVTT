@@ -44,9 +44,11 @@ const props = defineProps<{
     /** Origem e tipo já definidos pela tela que abriu (Point da Zoan, Corpo Elemental da Logia...). */
     origemInicial?: OrigemDoCriador;
     tipoInicial?: TipoDeTecnica;
+    mestre?: boolean;
 }>();
 const emit = defineEmits<{ 'update:open': [boolean] }>();
-const { salvar } = useFicha();
+const { salvar, mestre: mestreContexto } = useFicha();
+const ehMestre = computed(() => props.mestre ?? mestreContexto ?? false);
 
 const caminho = computed(() => (props.destino === 'akuma' ? 'akuma.lista' : 'tecnicas.lista'));
 const lista = computed<Tecnica[]>(() => (props.destino === 'akuma' ? props.ficha.akuma.lista : props.ficha.tecnicas.lista));
@@ -61,6 +63,18 @@ const GRUPOS: { id: EfeitoDeTecnica['grupo']; nome: string }[] = [
 const nome = ref('');
 const esc = reactive<EscolhasDaTecnica>(escolhasPadrao('combate', props.genialidade ?? 1));
 const regraDoTipoDeDano = ref(false);
+
+watch(
+    () => esc.salvaguarda,
+    (salv) => {
+        if (salv) {
+            if (!esc.atributoSalvaguarda) esc.atributoSalvaguarda = 'des';
+            if (esc.modoDoDano === 'ataque') esc.modoDoDano = 'salvaguarda_metade';
+        } else if (esc.ataque) {
+            esc.modoDoDano = 'ataque';
+        }
+    },
+);
 
 const genialidadesAprendidas = computed(() => (props.ficha.treinamento?.aprendidos ?? []).filter((t) => t.id === 'genialidade-inusitada').length);
 /** Genialidades que ainda não geraram técnica (nº do treinamento = grau da técnica). */
@@ -84,6 +98,7 @@ const ctx = computed<ContextoDeValidacao>(() => ({
     zoan: props.ficha.akuma.zoan ?? '',
     points: props.ficha.akuma.points ?? [],
     destino: props.destino,
+    mestre: ehMestre.value,
 }));
 
 const espacos = computed(() => espacosPorNivel(ctx.value));
@@ -110,9 +125,14 @@ const limites = computed(() => {
 const origemFixa = computed(() => props.origemInicial && props.origemInicial.tipo !== 'nivel');
 function reiniciar() {
     const origem: OrigemDoCriador =
-        props.origemInicial ?? (props.genialidade ? { tipo: 'genialidade', indice: props.genialidade } : { tipo: 'nivel' });
+        props.origemInicial ??
+        (props.genialidade
+            ? { tipo: 'genialidade', indice: props.genialidade }
+            : props.destino === 'estilo' && !ehMestre.value && genialidadesLivres.value.length
+              ? { tipo: 'genialidade', indice: genialidadesLivres.value[0] }
+              : { tipo: 'nivel' });
     const tipo = props.tipoInicial ?? 'combate';
-    const grau = origem.tipo === 'point' ? origem.ponto : (props.genialidade ?? 1);
+    const grau = origem.tipo === 'point' ? origem.ponto : origem.tipo === 'genialidade' ? origem.indice : (props.genialidade ?? 1);
     Object.assign(esc, escolhasPadrao(tipo, grau, origem));
     if (origem.tipo === 'point' && tipo === 'mp') esc.ativacao = 'passiva';
     nome.value = '';
@@ -200,7 +220,8 @@ const nivelDoGrau = (g: number) => GRAUS.find((x) => x.grau === g)?.nivel ?? 0;
             <DialogHeader>
                 <DialogTitle class="font-serif text-ouro-200">Criar Técnica</DialogTitle>
                 <DialogDescription class="text-preto-400">
-                    {{ destino === 'akuma' ? 'Akuma no Mi' : 'Estilo de luta (Genialidade Inusitada)' }} · nível {{ ficha.nivel }}
+                    {{ destino === 'akuma' ? 'Akuma no Mi' : ehMestre ? 'Estilo de luta (Mestre)' : 'Estilo de luta (Genialidade Inusitada)' }} ·
+                    nível {{ ficha.nivel }}
                     <template v-if="destino === 'akuma'"
                         >· usuário {{ ficha.akuma.usuario === 'avancado' ? 'avançado' : 'simples'
                         }}{{ ficha.akuma.despertada ? ' desperto' : '' }}</template
@@ -235,14 +256,14 @@ const nivelDoGrau = (g: number) => GRAUS.find((x) => x.grau === g)?.nivel ?? 0;
                         ><span :class="rotulo">Nome</span>
                         <input v-model="nome" type="text" maxlength="120" :class="campo" placeholder="Nome da Técnica" />
                     </label>
-                    <label v-if="destino === 'akuma' && !genialidade && !origemFixa" class="grid gap-1"
-                        ><span :class="rotulo">Origem</span>
+                    <label v-if="!genialidade && !origemFixa && (destino === 'akuma' || ehMestre)" class="grid gap-1">
+                        <span :class="rotulo">Origem</span>
                         <select
                             :class="campo"
                             :value="esc.origem.tipo === 'genialidade' ? String(esc.origem.indice) : 'nivel'"
                             @change="trocarOrigem(($event.target as HTMLSelectElement).value)"
                         >
-                            <option value="nivel">Pelo nível (tabela do tipo de usuário)</option>
+                            <option value="nivel">{{ ehMestre ? 'Livre / Pelo nível (Mestre)' : 'Pelo nível (tabela do tipo de usuário)' }}</option>
                             <option v-for="g in genialidadesLivres" :key="g" :value="g">Genialidade Inusitada nº {{ g }} ({{ g }}º grau)</option>
                         </select>
                     </label>
@@ -265,11 +286,11 @@ const nivelDoGrau = (g: number) => GRAUS.find((x) => x.grau === g)?.nivel ?? 0;
                         <select
                             :class="campo"
                             :value="esc.tipo"
-                            :disabled="esc.origem.tipo === 'genialidade' || esc.origem.tipo === 'point'"
+                            :disabled="!ehMestre && (esc.origem.tipo === 'genialidade' || esc.origem.tipo === 'point')"
                             @change="trocarTipo(($event.target as HTMLSelectElement).value as TipoDeTecnica)"
                         >
                             <option value="combate">Técnica de Combate</option>
-                            <option v-if="destino === 'akuma'" value="auxiliar">Técnica Auxiliar</option>
+                            <option v-if="destino === 'akuma' || ehMestre" value="auxiliar">Técnica Auxiliar</option>
                             <option v-if="destino === 'akuma'" value="mp">Manifestação de Poder</option>
                         </select>
                     </label>
@@ -279,14 +300,18 @@ const nivelDoGrau = (g: number) => GRAUS.find((x) => x.grau === g)?.nivel ?? 0;
                             <select
                                 v-model.number="esc.grau"
                                 :class="campo"
-                                :disabled="esc.origem.tipo === 'genialidade' || esc.origem.tipo === 'point'"
+                                :disabled="!ehMestre && (esc.origem.tipo === 'genialidade' || esc.origem.tipo === 'point')"
                             >
                                 <option v-for="g in GRAUS" :key="g.grau" :value="g.grau">{{ g.grau }}º grau (nível {{ g.nivel }})</option>
                             </select>
                         </label>
                         <label class="grid gap-1"
                             ><span :class="rotulo">Forma</span>
-                            <select v-model="esc.forma" :class="campo" :disabled="esc.origem.tipo === 'genialidade' || esc.origem.tipo === 'point'">
+                            <select
+                                v-model="esc.forma"
+                                :class="campo"
+                                :disabled="!ehMestre && (esc.origem.tipo === 'genialidade' || esc.origem.tipo === 'point')"
+                            >
                                 <option value="base">Técnica nova</option>
                                 <option value="aperfeicoada">Forma Aperfeiçoada</option>
                                 <option value="alternativa">Forma Alternativa</option>
@@ -354,17 +379,28 @@ const nivelDoGrau = (g: number) => GRAUS.find((x) => x.grau === g)?.nivel ?? 0;
                         <label class="flex items-center gap-1.5"
                             ><input v-model="esc.salvaguarda" type="checkbox" class="accent-ouro-500" /> Exige Salvaguarda</label
                         >
+                        <label v-if="esc.salvaguarda" class="flex items-center gap-1.5">
+                            Atributo da Salvaguarda:
+                            <select v-model="esc.atributoSalvaguarda" :class="campo" aria-label="Atributo da Salvaguarda">
+                                <option value="des">Destreza (DES)</option>
+                                <option value="for">Força (FOR)</option>
+                                <option value="con">Constituição (CON)</option>
+                                <option value="sab">Sabedoria (SAB)</option>
+                                <option value="pre">Presença (PRE)</option>
+                                <option value="von">Vontade (VON)</option>
+                            </select>
+                        </label>
+                        <label v-if="esc.salvaguarda" class="flex items-center gap-1.5">
+                            Efeito ao passar:
+                            <select v-model="esc.modoDoDano" :class="campo" aria-label="Efeito ao passar na salvaguarda">
+                                <option value="salvaguarda_metade">metade do dano (d8)</option>
+                                <option value="salvaguarda_nada">nenhum dano (d10)</option>
+                            </select>
+                        </label>
                         <label v-if="esc.alvo === 'area'" class="flex items-center gap-1.5"
                             ><input v-model="esc.intensificado" type="checkbox" class="accent-ouro-500" /> Dano intensificado (d8, área
                             limitada)</label
                         >
-                        <label v-if="esc.alvo === 'unico' && esc.salvaguarda" class="flex items-center gap-1.5">
-                            Salvaguarda:
-                            <select v-model="esc.modoDoDano" :class="campo">
-                                <option value="salvaguarda_metade">metade do dano se passar (d8)</option>
-                                <option value="salvaguarda_nada">nenhum dano se passar (d10)</option>
-                            </select>
-                        </label>
                     </div>
                     <div v-if="esc.tipo === 'combate'" class="grid gap-3 sm:grid-cols-3">
                         <label class="grid gap-1"

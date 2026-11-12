@@ -747,6 +747,6 @@ function adicionar() {
             </datalist>
             <button type="submit" class="rounded bg-ouro-500 px-3 text-xs font-semibold text-preto-950 hover:bg-ouro-400">Adicionar</button>
         </form>
-        <CriadorDeTecnicas v-model:open="criando" :ficha="ficha" :destino="caminho === 'akuma.lista' ? 'akuma' : 'estilo'" />
+        <CriadorDeTecnicas v-model:open="criando" :ficha="ficha" :destino="caminho === 'akuma.lista' ? 'akuma' : 'estilo'" :mestre="mestre" />
     </div>
 </template>

@@ -154,8 +154,11 @@ class Individualidades
      * @param  array<string, mixed>  $antes
      * @param  array<string, mixed>  $depois
      */
-    public static function conferir(array $antes, array $depois): void
+    public static function conferir(array $antes, array $depois, bool $mestre = false): void
     {
+        if ($mestre) {
+            return;
+        }
         $a = self::norm($antes);
         $d = self::norm($depois);
         foreach (['variaveis', 'extras', 'travada'] as $campo) {

@@ -462,6 +462,9 @@ class Criador
                 $p[] = 'A Forma Aperfeiçoada tem de 1 a 2 graus acima da original (máximo 5º grau).';
             }
         }
+        if (! empty($ctx['mestre'])) {
+            return $p;
+        }
         if (($e['origem']['tipo'] ?? '') === 'genialidade') {
             $indice = $e['origem']['indice'] ?? null;
             if (! is_int($indice) || $indice < 1 || $indice > ($ctx['genialidades'] ?? 0)) {
@@ -494,7 +497,7 @@ class Criador
     /** @return list<string> */
     private static function problemasDaAuxiliar(array $e, array $ctx): array
     {
-        if (in_array($e['origem']['tipo'] ?? '', ['point', 'aspecto'], true)) {
+        if (in_array($e['origem']['tipo'] ?? '', ['point', 'aspecto'], true) || ! empty($ctx['mestre'])) {
             return [];
         }
         if (($e['origem']['tipo'] ?? '') === 'genialidade') {
@@ -779,7 +782,9 @@ class Criador
                 }
             }
         } elseif ($slots['combate'] || $slots['auxiliar'] || $slots['mp'] || $slots['aspecto'] || $slots['point']) {
-            $falha('Técnicas de estilo só são criadas com a Genialidade Inusitada.');
+            if (empty($ctx['mestre'])) {
+                $falha('Técnicas de estilo só são criadas com a Genialidade Inusitada.');
+            }
         }
         foreach ($slots['aperfeicoada'] as $g => $n) {
             if ($n > 1) {

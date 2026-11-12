@@ -60,6 +60,7 @@ export interface EscolhasDaTecnica {
     ataque: boolean;
     /** A Técnica exige Salvaguarda de alvos. */
     salvaguarda: boolean;
+    atributoSalvaguarda?: AtributoId;
     tipoDano: string;
     efeitos: EscolhaDeEfeito[];
     /** MP: requisito de ativação (`PONTOS_VIRTUAIS.ativacao`). */
@@ -319,6 +320,7 @@ export interface ContextoDeValidacao extends UsuarioDaFicha {
     destino: 'akuma' | 'estilo';
     /** Points da ficha (`akuma.points`), para as Técnicas e Traços Realçados criados dentro deles. */
     points?: { ponto: number; modelo: string }[];
+    mestre?: boolean;
 }
 
 function exigenciasDeEfeito(e: EscolhasDaTecnica, ef: EscolhaDeEfeito, def: EfeitoDeTecnica, problemas: string[]): void {
@@ -562,6 +564,9 @@ function problemasDoGrau(e: EscolhasDaTecnica, ctx: ContextoDeValidacao): string
             p.push('A Forma Aperfeiçoada tem de 1 a 2 graus acima da original (máximo 5º grau).');
         }
     }
+    if (ctx.mestre) {
+        return p;
+    }
     if (e.origem.tipo === 'genialidade') {
         const indice = e.origem.indice;
         if (!Number.isInteger(indice) || indice < 1 || indice > (ctx.genialidades ?? 0)) {
@@ -597,6 +602,9 @@ function problemasDoGrau(e: EscolhasDaTecnica, ctx: ContextoDeValidacao): string
 function problemasDaAuxiliar(e: EscolhasDaTecnica, ctx: ContextoDeValidacao): string[] {
     const p: string[] = [];
     if (e.origem.tipo === 'point' || e.origem.tipo === 'aspecto') {
+        return p;
+    }
+    if (ctx.mestre) {
         return p;
     }
     if (e.origem.tipo === 'genialidade') {
@@ -688,23 +696,44 @@ export function tecnicaDoCriador(nome: string, e: EscolhasDaTecnica, opcoes: Opc
     const dado = dadoDoDano(e);
     const tipoDano = e.tipoDano.trim();
 
+    const nomesAtributos: Record<string, string> = {
+        for: 'Força',
+        des: 'Destreza',
+        con: 'Constituição',
+        sab: 'Sabedoria',
+        pre: 'Presença',
+        von: 'Vontade',
+    };
+    const attrNome = nomesAtributos[e.atributoSalvaguarda ?? 'des'] ?? 'Destreza';
+    const modoSalv = e.modoDoDano === 'salvaguarda_nada' ? 'sem dano se passar' : 'Salvaguarda para metade';
+    const descSalv = `Salvaguarda de ${attrNome} (${e.modoDoDano === 'salvaguarda_nada' ? 'sem dano se passar' : 'metade do dano se passar'})`;
+
+    const descDano =
+        e.dados > 0
+            ? `Dano: ${e.dados}d${dado}${tipoDano ? ` de ${tipoDano}` : ''} (${e.ataque ? 'jogada de ataque (Técnicas)' : e.salvaguarda ? descSalv : modoSalv}).`
+            : e.salvaguarda
+              ? `Exige ${descSalv}.`
+              : '';
+
     return {
         nome: nome.trim(),
         origem: `${rotuloDoTipo(e.tipo, e.grau)}${origemTipo}`,
         custo: e.tipo === 'mp' ? 0 : custo.total,
         alcance: rotuloDoAlcance(e.formaDeAlcance, e.alcance),
         efeito: e.tipo === 'mp' ? `MP: ${ROTULO_ACAO[e.acao]}` : (linhas[0] ?? (e.dados > 0 ? 'Dano' : '')),
-        descricao: [
-            e.dados > 0
-                ? `Dano: ${e.dados}d${dado}${tipoDano ? ` de ${tipoDano}` : ''} (${e.ataque ? 'jogada de ataque (Técnicas)' : e.modoDoDano === 'salvaguarda_metade' ? 'Salvaguarda para metade' : 'Salvaguarda; sem dano se passar'}).`
-                : '',
-            ...linhas.map((l) => `• ${l}`),
-        ]
-            .filter(Boolean)
-            .join('\n'),
+        descricao: [descDano, ...linhas.map((l) => `• ${l}`)].filter(Boolean).join('\n'),
         rolagem: e.dados > 0 ? `${e.dados}d${dado}` : '',
         tipoDano: e.dados > 0 && tipoDano ? tipoDano : undefined,
         acao: e.acao,
+        teste: e.salvaguarda
+            ? {
+                  tipo: 'salvaguarda',
+                  atributo: e.atributoSalvaguarda ?? 'des',
+                  aoPassar: e.modoDoDano === 'salvaguarda_nada' ? 'nada' : 'metade',
+              }
+            : e.ataque
+              ? { tipo: 'ataque' }
+              : undefined,
         builder: 'criador',
         criador: e,
     };
@@ -726,6 +755,7 @@ export function escolhasPadrao(tipo: TipoDeTecnica = 'combate', grau = 1, origem
         acao: tipo === 'combate' ? 'poderosa' : 'bonus',
         ataque: tipo === 'combate',
         salvaguarda: false,
+        atributoSalvaguarda: 'des',
         tipoDano: '',
         efeitos: [],
         ativacao: tipo === 'mp' ? 'inacao' : undefined,

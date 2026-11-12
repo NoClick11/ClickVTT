@@ -489,7 +489,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
             abort(403, 'Só o mestre ou a própria forja alteram os Pontos de Forja.');
         }
         Akuma::conferir($antes, $depois);
-        Individualidades::conferir($antes, $depois);
+        Individualidades::conferir($antes, $depois, $mestre);
         Criador::conferirGenialidades($depois);
         Criador::conferir($antes, $depois);
         $a = array_replace_recursive(Haki::padrao(), $antes['haki'] ?? []);

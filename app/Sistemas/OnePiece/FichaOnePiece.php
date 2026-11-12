@@ -385,8 +385,8 @@ final class FichaOnePiece
         $r['caracteristicas.*.hb'] = ['nullable', 'string', 'max:40'];
         $r['caracteristicas.*.acao'] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];
         $r['caracteristicas.*.acoes.*.acao'] = ['nullable', 'string', Rule::in(self::CATEGORIAS_DE_ACAO)];
-        $r['caracteristicas.*.etiquetas'] = ['nullable', 'array', 'max:8'];
-        $r['caracteristicas.*.etiquetas.*'] = ['string', 'max:80'];
+        $r['caracteristicas.*.etiquetas'] = ['nullable', 'array', 'max:12'];
+        $r['caracteristicas.*.etiquetas.*'] = ['string', 'max:200'];
         // Limite por rodada compartilhado entre características do mesmo grupo (Heat, Electro, Potencializador) e a rodada do último uso.
         $r['caracteristicas.*.grupoRodada'] = ['nullable', 'string', 'max:30'];
         $r['caracteristicas.*.usadoNaRodada'] = ['nullable', 'integer:strict', 'between:0,9999'];
@@ -564,6 +564,7 @@ final class FichaOnePiece
             $r["{$c}.acao"] = ['required_with:'.$c, 'string', Rule::in(['poderosa', 'bonus', 'reacao'])];
             $r["{$c}.ataque"] = ['boolean:strict'];
             $r["{$c}.salvaguarda"] = ['boolean:strict'];
+            $r["{$c}.atributoSalvaguarda"] = ['nullable', 'string', Rule::in(self::ATRIBUTOS)];
             $r["{$c}.tipoDano"] = ['nullable', 'string', 'max:30'];
             $r["{$c}.ativacao"] = ['nullable', 'string', Rule::in(['passiva', 'inacao', 'bonus', 'reacao', 'poderosa'])];
             $r["{$c}.efeitos"] = ['array', 'max:30'];

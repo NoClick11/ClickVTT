@@ -471,11 +471,15 @@ test('Atirador: Corpo Treinado soma 1 PV por nível e Corrida Contínua dá 15 m
 });
 
 // --- Habilidades Básicas e subir de nível ------------------------------------------------------------------------------
-import { aumentosDoAprimoramento, HABILIDADES_BASICAS, OPCOES_APRIMORAMENTO } from '../../resources/js/app/sistemas/onepiece/construtor/dados/habilidades-basicas.ts';
-import { ptCulturais } from '../../resources/js/app/sistemas/onepiece/treinamentos/regras.ts';
-import { extrasDeDano, montarDanoDaTecnica } from '../../resources/js/app/sistemas/onepiece/tecnicaBonus.ts';
+import {
+    aumentosDoAprimoramento,
+    HABILIDADES_BASICAS,
+    OPCOES_APRIMORAMENTO,
+} from '../../resources/js/app/sistemas/onepiece/construtor/dados/habilidades-basicas.ts';
 import { camposDoNivel, pendenciasDoNivel, problemasDoNivel, pvPelaMedia } from '../../resources/js/app/sistemas/onepiece/construtor/nivel.ts';
 import { caracteristicasDasHB, dadoDeVidaFinal } from '../../resources/js/app/sistemas/onepiece/construtor/regras.ts';
+import { extrasDeDano, montarDanoDaTecnica } from '../../resources/js/app/sistemas/onepiece/tecnicaBonus.ts';
+import { ptCulturais } from '../../resources/js/app/sistemas/onepiece/treinamentos/regras.ts';
 
 const comHB = (hb, hbOpcoes = {}, extra = {}) => atirador('sniper', { hb, hbOpcoes, ...extra });
 const fichaCompleta = (e, nivel = 1) => {
@@ -497,7 +501,11 @@ test('Habilidades Básicas: as 20 existem, com id único e características marc
     assert.equal(HABILIDADES_BASICAS.length, 20);
     assert.equal(new Set(HABILIDADES_BASICAS.map((h) => h.id)).size, 20);
     for (const h of HABILIDADES_BASICAS) {
-        const tracos = h.tracos({ primario: 'des', opcoes: h.escolha === 'prodigio' ? ['corpo'] : h.escolha === 'quebrador' ? ['forca-arma'] : h.escolha === 'aprimoramento' ? ['ava:for'] : [] });
+        const tracos = h.tracos({
+            primario: 'des',
+            opcoes:
+                h.escolha === 'prodigio' ? ['corpo'] : h.escolha === 'quebrador' ? ['forca-arma'] : h.escolha === 'aprimoramento' ? ['ava:for'] : [],
+        });
         assert.ok(tracos.length > 0 && tracos.every((t) => t.hb === h.id), h.id);
     }
 });
@@ -615,7 +623,7 @@ test('subir de nível: o 3º nível traz a 2ª técnica de combate e o 4º dá A
 test('as etiquetas, os rótulos e as rolagens do catálogo cabem nos limites do servidor', () => {
     const { campos } = camposDaCriacao(comHB('prodigio-do-combate', { 'prodigio-do-combate': ['corpo'] }), { nivel: 20 });
     for (const c of campos.caracteristicas) {
-        for (const t of c.etiquetas ?? []) assert.ok(t.length <= 80, `${c.nome}: etiqueta longa`);
+        for (const t of c.etiquetas ?? []) assert.ok(t.length <= 200, `${c.nome}: etiqueta longa`);
         for (const a of c.acoes ?? []) assert.ok(a.rotulo.length <= 60 && (a.rolagem ?? '').length <= 60, `${c.nome}: ação`);
     }
 });
@@ -740,7 +748,7 @@ test('atributo primário: estilo com dois possíveis exige a escolha; com um só
 });
 
 // --- Antecedentes -------------------------------------------------------------------------------------------------------
-import { ANTECEDENTES, antecedentePorId, comAumentoDeAntecedente } from '../../resources/js/app/sistemas/onepiece/construtor/dados/antecedentes.ts';
+import { antecedentePorId, ANTECEDENTES, comAumentoDeAntecedente } from '../../resources/js/app/sistemas/onepiece/construtor/dados/antecedentes.ts';
 import { ETAPAS, periciasJaProficientes, problemasDoAntecedente } from '../../resources/js/app/sistemas/onepiece/construtor/regras.ts';
 import { ATRIBUTOS as LISTA_ATRIBUTOS, PERICIAS as LISTA_PERICIAS } from '../../resources/js/app/sistemas/onepiece/regras.ts';
 
@@ -982,7 +990,11 @@ test('Brutamontes: 10 Técnicas por nível, Corpo de Criatura +60 PV e Invencibi
     assert.ok(car(6).some((c) => c.nome === 'Corpo de Criatura'));
     assert.ok(car(19).some((c) => c.nome === 'Invencibilidade'));
     // reações defensivas automáticas: Corpo de Criatura (zera o dano) e Yamantaka (reserva 10d8, +2d8 por PP até 20d8)
-    assert.deepEqual(car(6).find((c) => c.nome === 'Corpo de Criatura').reacao, { gatilho: 'ataque_declarado', alcance: 'si', reducao: { zerar: true } });
+    assert.deepEqual(car(6).find((c) => c.nome === 'Corpo de Criatura').reacao, {
+        gatilho: 'ataque_declarado',
+        alcance: 'si',
+        reducao: { zerar: true },
+    });
     const yama = camposDaCriacao(brutamontes(), { nivel: 6 }).campos['tecnicas.lista'].find((t) => t.nome === 'Yamantaka');
     assert.deepEqual(yama.reacao.reducao, { reserva: '10d8', mais: '2d8', maximo: 20 });
     const res = (n) => camposDaCriacao(brutamontes(), { nivel: n }).campos.resistencias;
@@ -1013,7 +1025,11 @@ test('Black Leg: d12, FOR ou DES como primário, salvaguardas FOR e DES e períc
     const e = blackLeg('des');
     assert.deepEqual(problemasDaEtapa(e, 'estilo'), []);
     assert.ok(problemasDaEtapa(blackLeg(null), 'estilo').some((m) => m.includes('atributo primário')));
-    assert.ok(problemasDaEtapa(blackLeg('for', { estilo: { ...e.estilo, pericias: ['atletismo', 'intimidacao'] } }), 'estilo').some((m) => m.includes('permitidas')));
+    assert.ok(
+        problemasDaEtapa(blackLeg('for', { estilo: { ...e.estilo, pericias: ['atletismo', 'intimidacao'] } }), 'estilo').some((m) =>
+            m.includes('permitidas'),
+        ),
+    );
     const { campos } = camposDaCriacao(e);
     assert.equal(campos['dadosVida.tipo'], 'd12');
     assert.equal(campos.atributoPrimario, 'des');
@@ -1023,7 +1039,10 @@ test('Black Leg: d12, FOR ou DES como primário, salvaguardas FOR e DES e períc
 
 test('Black Leg: 10 Técnicas, deslocamento por nível (12/15/18 m) e Parry Shot é reação defensiva de uso único', () => {
     const tecnicas = (n) => camposDaCriacao(blackLeg(), { nivel: n }).campos['tecnicas.lista'];
-    assert.deepEqual(tecnicas(1).map((t) => t.nome), ['Kick Shot', 'Anti-Manner Kick Course']);
+    assert.deepEqual(
+        tecnicas(1).map((t) => t.nome),
+        ['Kick Shot', 'Anti-Manner Kick Course'],
+    );
     assert.equal(tecnicas(20).length, 11); // inclui o Kick Strike (Kick Shot aprimorada no 6º nível)
     assert.deepEqual(tecnicas(6).find((t) => t.nome === 'Parry Shot').reacao.reducao, { reserva: '8d8', mais: '2d8', maximo: 20, unica: true });
     const andar = (n) => {
@@ -1037,7 +1056,16 @@ test('Black Leg: 10 Técnicas, deslocamento por nível (12/15/18 m) e Parry Shot
 // --- estilo de luta: Herói --------------------------------------------------------------------------------------------
 const heroi = (caminho = 'poder-oculto', armaFavorita = 'Corporal', extra = {}) =>
     feito({
-        estilo: { id: 'heroi', nome: 'Herói', dado: 'd8', primario: 'for', caminho, armaFavorita, hbInata: 'perito-em-tecnicas', pericias: ['atletismo', 'sorte'] },
+        estilo: {
+            id: 'heroi',
+            nome: 'Herói',
+            dado: 'd8',
+            primario: 'for',
+            caminho,
+            armaFavorita,
+            hbInata: 'perito-em-tecnicas',
+            pericias: ['atletismo', 'sorte'],
+        },
         especies: ['humano'],
         variantes: [null],
         dinheiro: { estilo: 'heroi', dados: Array(12).fill(5), total: 60, bellys: 60000, fixo: 0, expressao: '12d10', multiplicador: 1000 },
@@ -1054,7 +1082,9 @@ test('Herói: o caminho muda o dado de vida e as armas favoritas; perícias só 
     assert.equal(dado('harem', 'Corporal'), 'd8');
     assert.equal(dado('arma-espada', 'Sabre'), 'd10');
     const e = heroi();
-    assert.ok(problemasDaEtapa({ ...e, estilo: { ...e.estilo, pericias: ['atletismo', 'intimidacao'] } }, 'estilo').some((m) => m.includes('permitidas')));
+    assert.ok(
+        problemasDaEtapa({ ...e, estilo: { ...e.estilo, pericias: ['atletismo', 'intimidacao'] } }, 'estilo').some((m) => m.includes('permitidas')),
+    );
     assert.equal(pvInicial(heroi('poder-oculto')), 12 + 1 + 0 + (fisicoDe(heroi())?.pv ?? 0));
 });
 
@@ -1062,9 +1092,18 @@ test('Herói: sem Técnicas prontas, Dados Heroicos por nível e Ataque Extra po
     const campos = (n, c = 'poder-oculto', a = 'Corporal') => camposDaCriacao(heroi(c, a), { nivel: n }).campos;
     assert.deepEqual(campos(20)['tecnicas.lista'], []);
     const dados = (n, c) => campos(n, c, c === 'harem' ? 'Corporal' : 'Corporal').caracteristicas.find((x) => x.nome === 'Dados Heroicos').usos.max;
-    assert.deepEqual([1, 5, 10, 20].map((n) => dados(n, 'poder-oculto')), [1, 5, 15, 15]); // +5 no Despertar Heroico
-    assert.deepEqual([1, 5, 10, 20].map((n) => dados(n, 'harem')), [1, 5, 10, 10]);
-    const ataques = (n, c, a) => campos(n, c, a).caracteristicas.flatMap((x) => (x.efeitos ?? []).filter((e) => e.alvo === 'ataques.acao').map((e) => [x.nivelMin, x.nivelMax ?? null, e.valor]));
+    assert.deepEqual(
+        [1, 5, 10, 20].map((n) => dados(n, 'poder-oculto')),
+        [1, 5, 15, 15],
+    ); // +5 no Despertar Heroico
+    assert.deepEqual(
+        [1, 5, 10, 20].map((n) => dados(n, 'harem')),
+        [1, 5, 10, 10],
+    );
+    const ataques = (n, c, a) =>
+        campos(n, c, a).caracteristicas.flatMap((x) =>
+            (x.efeitos ?? []).filter((e) => e.alvo === 'ataques.acao').map((e) => [x.nivelMin, x.nivelMax ?? null, e.valor]),
+        );
     assert.deepEqual(ataques(10, 'poder-oculto', 'Corporal'), [[10, null, 1]]);
     assert.ok(ataques(11, 'arma-espada', 'Sabre').some(([min, , v]) => min === 11 && v === 2)); // 3 ataques no 11º
     assert.ok(ataques(10, 'arma-arco', 'Arco').some(([min, , v]) => min === 10 && v === 3)); // 4 no 10º
@@ -1074,8 +1113,16 @@ test('Herói: sem Técnicas prontas, Dados Heroicos por nível e Ataque Extra po
 
 test('Herói: a Virada Heroica e o Escudo são reações defensivas que gastam Dados Heroicos', () => {
     const car = (n, c, a, nome) => camposDaCriacao(heroi(c, a), { nivel: n }).campos.caracteristicas.find((x) => x.nome.includes(nome));
-    assert.deepEqual(car(5, 'poder-oculto', 'Corporal', 'Virada Heroica').reacao.reducao, { zerar: true, gasta: { de: 'Dados Heroicos', qtd: 5 }, pvAbaixoDaMetade: true });
-    assert.deepEqual(car(5, 'arma-escudo', 'Escudo', 'Escudo (5º)').reacao.reducao, { reserva: '3d10', unica: true, gasta: { de: 'Dados Heroicos', qtd: 3 } });
+    assert.deepEqual(car(5, 'poder-oculto', 'Corporal', 'Virada Heroica').reacao.reducao, {
+        zerar: true,
+        gasta: { de: 'Dados Heroicos', qtd: 5 },
+        pvAbaixoDaMetade: true,
+    });
+    assert.deepEqual(car(5, 'arma-escudo', 'Escudo', 'Escudo (5º)').reacao.reducao, {
+        reserva: '3d10',
+        unica: true,
+        gasta: { de: 'Dados Heroicos', qtd: 3 },
+    });
     assert.equal(car(1, 'arma-lanca', 'Lança', 'Lança (1º)').efeitos[0].valor, 1); // +1 na CR
     assert.equal(car(11, 'arma-escudo', 'Escudo', 'Escudo (1º)').efeitos[0].valor, 3); // +3 na CR
 });
@@ -1099,7 +1146,18 @@ test('Aprimoramento de Atributo: opções válidas, +2 ou +1/+1 e nunca acima de
 });
 
 test('Herói: o Aprimoramento de Atributo inato exige a escolha e soma nos atributos da ficha', () => {
-    const e = heroi('poder-oculto', 'Corporal', { estilo: { id: 'heroi', nome: 'Herói', dado: 'd8', primario: 'for', caminho: 'poder-oculto', armaFavorita: 'Corporal', hbInata: 'aprimoramento-de-atributo', pericias: ['atletismo', 'sorte'] } });
+    const e = heroi('poder-oculto', 'Corporal', {
+        estilo: {
+            id: 'heroi',
+            nome: 'Herói',
+            dado: 'd8',
+            primario: 'for',
+            caminho: 'poder-oculto',
+            armaFavorita: 'Corporal',
+            hbInata: 'aprimoramento-de-atributo',
+            pericias: ['atletismo', 'sorte'],
+        },
+    });
     assert.ok(problemasDaEtapa(e, 'estilo').some((m) => m.includes('Aprimoramento de Atributo')));
     const ok = heroi('poder-oculto', 'Corporal', { estilo: { ...e.estilo, hbInataOpcao: 'ava:for' } });
     assert.deepEqual(problemasDaEtapa(ok, 'estilo'), []);
@@ -1111,7 +1169,16 @@ test('Herói: o Aprimoramento de Atributo inato exige a escolha e soma nos atrib
 // --- estilo de luta: Usuário Ínsito -----------------------------------------------------------------------------------
 const insito = (caminho = null, extra = {}) =>
     feito({
-        estilo: { id: 'usuario-insito', nome: 'Usuário Ínsito', dado: 'd10', primario: 'von', caminho, armaFavorita: 'Corporal', hbInata: 'perito-em-tecnicas', pericias: ['atletismo', 'sobrenatural'] },
+        estilo: {
+            id: 'usuario-insito',
+            nome: 'Usuário Ínsito',
+            dado: 'd10',
+            primario: 'von',
+            caminho,
+            armaFavorita: 'Corporal',
+            hbInata: 'perito-em-tecnicas',
+            pericias: ['atletismo', 'sobrenatural'],
+        },
         especies: ['humano'],
         variantes: [null],
         dinheiro: { estilo: 'usuario-insito', dados: Array(12).fill(5), total: 60, bellys: 60000, fixo: 0, expressao: '12d10', multiplicador: 1000 },
@@ -1121,7 +1188,9 @@ const insito = (caminho = null, extra = {}) =>
 test('Usuário Ínsito: d10, perícias da lista, sem Técnicas prontas, PP máx +1 por nível e Ataque Extra no 7º', () => {
     assert.deepEqual(problemasDaEtapa(insito(), 'estilo'), []);
     const e = insito();
-    assert.ok(problemasDaEtapa({ ...e, estilo: { ...e.estilo, pericias: ['atletismo', 'persuasao'] } }, 'estilo').some((m) => m.includes('permitidas')));
+    assert.ok(
+        problemasDaEtapa({ ...e, estilo: { ...e.estilo, pericias: ['atletismo', 'persuasao'] } }, 'estilo').some((m) => m.includes('permitidas')),
+    );
     const c = (n) => camposDaCriacao(insito(), { nivel: n }).campos;
     assert.equal(c(1)['dadosVida.tipo'], 'd10');
     assert.deepEqual(c(20)['tecnicas.lista'], []);
@@ -1140,7 +1209,8 @@ test('Usuário Ínsito: PT da Akuma no Chikara (2 por nível par + categoria) e 
     assert.equal(ptCulturais(ficha(1, { categoria: 'a' })), 4);
     assert.equal(ptCulturais(ficha(1, { categoria: 'b' })), 6);
     assert.equal(ptCulturais(ficha(6, { categoria: 'c' })), 6 + 6); // 3 níveis pares
-    const dado = (n, akuma) => extrasDeDano({ nivel: n, caracteristicas: car(n).map((x) => ({ ...x })), akuma }, 'tecnica', 3, 8).map((e) => e.expressao);
+    const dado = (n, akuma) =>
+        extrasDeDano({ nivel: n, caracteristicas: car(n).map((x) => ({ ...x })), akuma }, 'tecnica', 3, 8).map((e) => e.expressao);
     assert.deepEqual(dado(3, { tipo: 'logia' }), ['1d4']);
     assert.deepEqual(dado(10, { tipo: 'logia' }), ['1d8']);
     assert.deepEqual(dado(3, { tipo: 'zoan', zoan: 'mitica' }), ['1d4']);
@@ -1148,7 +1218,10 @@ test('Usuário Ínsito: PT da Akuma no Chikara (2 por nível par + categoria) e 
     assert.deepEqual(dado(3, { tipo: 'paramecia' }), []);
     // o dano do fruto soma na rolagem principal (sem tipo próprio)
     const f = { nivel: 3, caracteristicas: car(3), akuma: { tipo: 'logia' }, bonusTecnica: {} };
-    assert.equal(montarDanoDaTecnica(f, { nome: 'T', origem: '', custo: 2, alcance: '', efeito: '', descricao: '', rolagem: '2d8' }, 1, '2d8').expressao, '2d8+1d4');
+    assert.equal(
+        montarDanoDaTecnica(f, { nome: 'T', origem: '', custo: 2, alcance: '', efeito: '', descricao: '', rolagem: '2d8' }, 1, '2d8').expressao,
+        '2d8+1d4',
+    );
 });
 
 test('Usuário Ínsito: a Escolha Diabólica é feita ao subir de nível (2º e 11º), sem repetir, e o traço escolhido entra', () => {
@@ -1174,7 +1247,10 @@ test('fruta pronta: ao subir de nível a ficha ganha as Técnicas da fruta que o
     const f = fichaCompleta(comHB('robusto'), 1);
     f.akuma = { ...f.akuma, tipo: 'paramecia', usuario: 'avancado', fruta: 'ito-ito-no-mi' };
     const campos = camposDoNivel(f, { hb: { id: 'sortudo' }, pvGanho: 6 }); // 2º nível
-    assert.deepEqual((campos['akuma.lista'] ?? []).filter((t) => t.builder === 'fruta').map((t) => t.nome), ['Goshikito', 'Sora no Michi']);
+    assert.deepEqual(
+        (campos['akuma.lista'] ?? []).filter((t) => t.builder === 'fruta').map((t) => t.nome),
+        ['Goshikito', 'Sora no Michi'],
+    );
     const f2 = { ...f, nivel: 2, akuma: { ...f.akuma, lista: campos['akuma.lista'] } };
     const campos3 = camposDoNivel(f2, { hb: { id: 'mira-treinada' }, pvGanho: 6 }); // 3º nível: chega o Tamaito
     assert.ok(campos3['akuma.lista'].some((t) => t.nome === 'Tamaito'));
