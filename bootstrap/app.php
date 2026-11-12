@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\LimitePorParticipante;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,6 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // A ficha guarda "" como "" (campo de texto limpo), não como null. Middleware global: a rota ainda
         // não foi resolvida aqui, então a exceção é por caminho.
         $middleware->convertEmptyStringsToNull(except: [fn (Request $request) => $request->is('jogo/*/personagens/*/ficha')]);
+        // Limite de requisições por participante e por rota (o padrão soma a mesa inteira num contador só: ver a classe).
+        $middleware->alias(['throttle' => LimitePorParticipante::class]);
         $middleware->web(append: [
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
