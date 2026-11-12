@@ -19,6 +19,14 @@ export interface Conexao {
     echo: Echo<'reverb'>;
     socketId: () => string | undefined;
     aoReconectar: (cb: () => void) => void;
+    /** O socket está ligado agora? (sem ele, a mesa busca as mudanças de tempos em tempos) */
+    conectado: () => boolean;
+    /**
+     * Vigia a assinatura de um canal privado (`mesa.7`): se a autorização falhar (rede, sessão ainda subindo), tenta de novo com
+     * espera crescente em vez de deixar a aba sem eventos pelo resto da sessão. Ao conseguir depois de uma falha, avisa quem
+     * ouve `aoReconectar`, para a tela buscar o que perdeu.
+     */
+    vigiar: (canal: string) => void;
     fechar: () => void;
 }
 
@@ -81,13 +89,37 @@ export function conectar(mesaId: number, atorId: number): Conexao {
         jaConectou = true;
     });
 
+    let fechado = false;
+    const vigiar = (canal: string) => {
+        const c = pusher?.channel(`private-${canal}`);
+        if (!c) return;
+        let falhas = 0;
+        c.bind('pusher:subscription_error', () => {
+            falhas++;
+            setTimeout(
+                () => {
+                    // desconectado: ao reconectar o próprio Pusher assina de novo
+                    if (!fechado && pusher?.connection.state === 'connected' && !c.subscribed) c.subscribe();
+                },
+                Math.min(30_000, 2000 * falhas),
+            );
+        });
+        c.bind('pusher:subscription_succeeded', () => {
+            if (falhas > 0) for (const cb of ouvintesReconectar) cb();
+            falhas = 0;
+        });
+    };
+
     return {
         echo,
+        conectado: () => pusher?.connection.state === 'connected',
+        vigiar,
         socketId: () => echo.socketId() || undefined,
         aoReconectar: (cb: () => void) => {
             ouvintesReconectar.push(cb);
         },
         fechar: () => {
+            fechado = true;
             if (echoAtivo === echo) echoAtivo = null;
             echo.disconnect();
         },

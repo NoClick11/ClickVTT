@@ -58,8 +58,15 @@ final class Transmitir
             broadcast(new EventoMesa($mesa instanceof Mesa ? $mesa->id : $mesa, $nome, $payload, $canais));
         } catch (Throwable $e) {
             Log::warning("Broadcast '{$nome}' falhou: {$e->getMessage()}");
-            if ($nome === 'ficha') {
-                self::cena($mesa, null, is_int($payload['ator'] ?? null) ? $payload['ator'] : null);
+            // O evento não saiu (payload grande demais, Reverb reiniciando): manda um aviso mínimo de "cena mudou" aos MESMOS canais,
+            // para quem devia recebê-lo recarregar o estado do servidor (fichas, combate, objetos) em vez de ficar desatualizado.
+            if ($nome !== 'cena') {
+                try {
+                    $ator = is_int($payload['ator'] ?? null) ? $payload['ator'] : null;
+                    broadcast(new EventoMesa($mesa instanceof Mesa ? $mesa->id : $mesa, 'cena', ['pagina_id' => null, 'ator' => $ator, 'socket' => $payload['socket'] ?? null], $canais));
+                } catch (Throwable) {
+                    // sem tempo real: os clientes se acertam na próxima recarga
+                }
             }
         }
     }

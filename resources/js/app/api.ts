@@ -50,7 +50,22 @@ async function requisitar<T>(jogadorId: number, metodo: string, url: string, cor
         cabecalhos['Content-Type'] = 'application/json';
         body = JSON.stringify(corpo);
     }
-    const resposta = await fetch(url, { method: metodo, headers: cabecalhos, body, credentials: 'same-origin' });
+    // Tempo limite: uma requisição presa (queda de rede, Wi-Fi trocando) travava a fila de salvamento da ficha para sempre, e as
+    // edições seguintes nunca chegavam ao servidor. Com o limite, ela falha, a tela avisa e volta ao que está salvo.
+    const controle = new AbortController();
+    const limite = setTimeout(() => controle.abort(), corpo instanceof FormData ? 180_000 : 30_000);
+    let resposta: Response;
+    try {
+        resposta = await fetch(url, { method: metodo, headers: cabecalhos, body, credentials: 'same-origin', signal: controle.signal });
+    } catch (e) {
+        throw new ErroApi(
+            controle.signal.aborted ? 'O servidor demorou demais para responder. Confira a conexão.' : 'Sem conexão com o servidor.',
+            0,
+            e,
+        );
+    } finally {
+        clearTimeout(limite);
+    }
     if (!resposta.ok) {
         let mensagem = `Erro ${resposta.status}`;
         let dados: unknown;

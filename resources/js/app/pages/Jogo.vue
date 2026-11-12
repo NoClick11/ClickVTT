@@ -753,8 +753,43 @@ function falhou(e: unknown) {
  * Recarrega só as props pedidas, em segundo plano: sem a barra de progresso do Inertia no topo (que parece recarregar a página), sem cancelar outra
  * recarga em andamento e mantendo estado e rolagem. Todas as recargas da mesa passam por aqui.
  */
-const recarregar = (only: string[], extra: { onSuccess?: () => void } = {}) =>
-    router.reload({ only, showProgress: false, async: true, preserveState: true, preserveScroll: true, ...extra });
+// Uma recarga por vez: duas em paralelo podiam chegar fora de ordem, e a mais velha (com a ficha antiga) apagava a mais nova na tela.
+// O que for pedido durante uma recarga junta-se num único pedido, disparado quando ela termina.
+let recargaEmVoo = false;
+let vigiaDaRecarga: ReturnType<typeof setTimeout> | undefined;
+const recargaPendente = { chaves: new Set<string>(), aoTerminar: [] as (() => void)[] };
+function recarregar(only: string[], extra: { onSuccess?: () => void } = {}) {
+    if (recargaEmVoo) {
+        for (const k of only) recargaPendente.chaves.add(k);
+        if (extra.onSuccess) recargaPendente.aoTerminar.push(extra.onSuccess);
+
+        return;
+    }
+    recargaEmVoo = true;
+    let terminou = false;
+    const terminar = () => {
+        if (terminou) return;
+        terminou = true;
+        clearTimeout(vigiaDaRecarga);
+        recargaEmVoo = false;
+        if (!recargaPendente.chaves.size && !recargaPendente.aoTerminar.length) return;
+        const chaves = [...recargaPendente.chaves];
+        const avisos = recargaPendente.aoTerminar.splice(0);
+        recargaPendente.chaves.clear();
+        recarregar(chaves, { onSuccess: () => avisos.forEach((f) => f()) });
+    };
+    // se a resposta nunca vier (rede caiu no meio), a fila não fica presa
+    vigiaDaRecarga = setTimeout(terminar, 20_000);
+    router.reload({
+        only,
+        showProgress: false,
+        async: true,
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: extra.onSuccess,
+        onFinish: terminar,
+    });
+}
 
 // --- objetos -------------------------------------------------------------------
 
@@ -2761,6 +2796,7 @@ const iniciativasPendentes = computed(() => semIniciativaDe(combate.value, props
 
 let conexao: Conexao | null = null;
 let temporizadorCena: ReturnType<typeof setTimeout> | undefined;
+let sondagem: ReturnType<typeof setInterval> | undefined;
 const meuId = props.jogador.id;
 
 /** Verdadeiro só quando o evento partiu desta mesma aba/conexão (permite sincronizar múltiplos PCs/abas do mesmo jogador ou mestre). */
@@ -2809,7 +2845,20 @@ function aoMudarCena(payload: { ator: number | null; socket?: string | null }) {
     if (deMim(payload)) return;
     clearTimeout(temporizadorCena);
     temporizadorCena = setTimeout(
-        () => recarregar(['objetos', 'pagina', 'paginas', 'pastas', 'diario', 'jogadores', 'personagens', 'meusPersonagens', 'itens', 'mesa']),
+        () =>
+            recarregar([
+                'objetos',
+                'pagina',
+                'paginas',
+                'pastas',
+                'diario',
+                'jogadores',
+                'personagens',
+                'meusPersonagens',
+                'itens',
+                'mesa',
+                'combate',
+            ]),
         120,
     );
 }
@@ -2945,16 +2994,27 @@ onMounted(() => {
                     };
                 })
                 .listen('.combate', (e: { combate: Combate; ator: number }) => (combate.value = normalizarCombate(e.combate)));
-        abrir(conexao.echo.private(base));
-        abrir(conexao.echo.private(`${base}.jogador.${meuId}`));
-        if (props.mestre) abrir(conexao.echo.private(`${base}.mestre`));
+        const canais = [base, `${base}.jogador.${meuId}`, ...(props.mestre ? [`${base}.mestre`] : [])];
+        for (const canal of canais) {
+            abrir(conexao.echo.private(canal));
+            conexao.vigiar(canal); // se a assinatura falhar, tenta de novo (senão a aba ficaria sem eventos a sessão inteira)
+        }
     } catch (e) {
         console.warn('Tempo real indisponível', e);
     }
+    // Rede de segurança: sem o socket ligado (porta bloqueada, queda longa), a mesa busca as mudanças a cada 15 s com a aba visível.
+    sondagem = setInterval(() => {
+        if (document.visibilityState === 'visible' && !conexao?.conectado()) {
+            recarregar(['objetos', 'pagina', 'jogadores', 'personagens', 'meusPersonagens', 'itens', 'mesa', 'combate', 'mensagens']);
+        }
+    }, 15_000);
 });
 onBeforeUnmount(() => {
     document.removeEventListener('visibilitychange', aoVoltarVisibilidade);
     clearTimeout(temporizadorCena);
+    clearInterval(sondagem);
+    clearTimeout(temporizadorConvergir);
+    clearTimeout(vigiaDaRecarga);
     conexao?.fechar();
 });
 
