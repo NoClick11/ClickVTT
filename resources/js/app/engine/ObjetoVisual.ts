@@ -21,6 +21,11 @@ export class ObjetoVisual {
     private bordaToken = new Graphics();
     private mascaraToken: Graphics | null = null;
     private marcador = new Graphics();
+    /**
+     * Barras de vida/PP/CA e ícones de efeito. Ficam FORA do container do token: a cena os põe numa camada acima de todos os
+     * tokens, para a barra de um NPC não sumir atrás de outro token. Acompanha a posição do token em `aplicar()`.
+     */
+    readonly hud = new Container();
     private iconesStatus = new Container();
     private statusDesenhado = '';
     private barras = new Container();
@@ -40,7 +45,8 @@ export class ObjetoVisual {
         private mestre = false,
     ) {
         this.dto = { ...dto };
-        this.container.addChild(this.conteudoRotativo, this.mira, this.marcador, this.caveira, this.barras, this.iconesStatus);
+        this.container.addChild(this.conteudoRotativo, this.mira, this.marcador, this.caveira);
+        this.hud.addChild(this.barras, this.iconesStatus);
         this.conteudoRotativo.addChild(this.fundo, this.bordaToken);
         this.aplicar();
         void this.carregarMidia();
@@ -134,6 +140,13 @@ export class ObjetoVisual {
         this.destruido = true;
         this.liberarMidia();
         this.container.destroy({ children: true });
+        this.hud.destroy({ children: true });
+    }
+
+    /** Mostra ou esconde o objeto inteiro (o token e as barras, que vivem em outra camada). */
+    definirVisivel(visivel: boolean): void {
+        this.container.visible = visivel;
+        this.hud.visible = visivel;
     }
 
     // -------------------------------------------------------------------------
@@ -145,6 +158,7 @@ export class ObjetoVisual {
     private aplicar(): void {
         const { x, y, largura, altura, camada, dados } = this.dto;
         this.container.position.set(x, y);
+        this.hud.position.set(x, y);
         const rot = dados?.rotacao ?? 0;
         const cx = largura / 2;
         const cy = altura / 2;

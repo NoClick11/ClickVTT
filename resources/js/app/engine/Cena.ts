@@ -56,6 +56,8 @@ export class Cena {
     private grade = new Graphics();
     private camadas = new Map<Camada, Container>();
     private overlay = new Container();
+    /** Barras de vida e ícones de efeito de todos os tokens, acima das camadas de tokens (ver `ObjetoVisual.hud`). */
+    private hudTokens = new Container();
     private iluminacao!: Iluminacao;
     private iluminacaoPendente = false;
     private animacoesTokens = new Map<number, AnimacaoToken>();
@@ -152,6 +154,8 @@ export class Cena {
             const c = new Container();
             c.label = id;
             this.camadas.set(id, c);
+            // Barras de vida e efeitos: acima de TODOS os tokens (mestre e jogadores), mas ainda sob a escuridão.
+            if (id === 'iluminacao') this.mundo.addChild(this.hudTokens);
             if (id === 'iluminacao') this.mundo.addChild(this.iluminacao.container); // a escuridão cobre o jogo, não os controles do mestre
             this.mundo.addChild(c);
             if (id === 'mapa') this.mundo.addChild(this.grade);
@@ -240,6 +244,7 @@ export class Cena {
                 v.definirEnfase(this.camadaAtiva === 'iluminacao');
                 this.visuais.set(dto.id, v);
                 this.camadas.get(dto.camada)?.addChild(v.container);
+                this.hudTokens.addChild(v.hud);
             }
         }
         for (const [id, v] of this.visuais) {
@@ -826,6 +831,19 @@ export class Cena {
                 return (va?.dto.z ?? 0) - (vb?.dto.z ?? 0) || (va?.dto.id ?? 0) - (vb?.dto.id ?? 0);
             });
         }
+        // as barras seguem a mesma ordem dos tokens (camada, depois z e id), para duas barras sobrepostas não trocarem de lugar
+        const ordemDaCamada = new Map(CAMADAS.map((c, i) => [c.id as Camada, i]));
+        const porHud = new Map([...this.visuais.values()].map((v) => [v.hud as Container, v]));
+        this.hudTokens.children.sort((a, b) => {
+            const va = porHud.get(a as Container);
+            const vb = porHud.get(b as Container);
+
+            return (
+                (ordemDaCamada.get(va?.dto.camada as Camada) ?? 0) - (ordemDaCamada.get(vb?.dto.camada as Camada) ?? 0) ||
+                (va?.dto.z ?? 0) - (vb?.dto.z ?? 0) ||
+                (va?.dto.id ?? 0) - (vb?.dto.id ?? 0)
+            );
+        });
     }
 
     /** Mestre interage só com a camada ativa; jogador só com o próprio token. */
@@ -959,10 +977,10 @@ export class Cena {
             const o = v.dto;
             if (o.tipo === 'luz') v.definirLuzDinamica(ativa);
             if (this.opcoes.mestre) continue;
-            if (o.tipo === 'parede') v.container.visible = this.controleVisivel(v, r?.visao ?? []);
+            if (o.tipo === 'parede') v.definirVisivel(this.controleVisivel(v, r?.visao ?? []));
             // O que o jogador não enxerga agora (fora da linha de visão ou no escuro) some: token e loot dos outros não aparecem na penumbra.
             else if ((o.tipo === 'token' && !meus(o)) || o.tipo === 'loot')
-                v.container.visible = !r || r.pontoVisivel(o.x + o.largura / 2, o.y + o.altura / 2);
+                v.definirVisivel(!r || r.pontoVisivel(o.x + o.largura / 2, o.y + o.altura / 2));
         }
     }
 
