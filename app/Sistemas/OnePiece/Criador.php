@@ -673,6 +673,9 @@ class Criador
                 }
             }
             $slots = ['combate' => [], 'auxiliar' => 0, 'mp' => 0, 'aspecto' => 0, 'genialidade' => [], 'aperfeicoada' => [], 'point' => []];
+            // Os espaços só são conferidos quando esta gravação cria ou altera uma técnica do Criador: as que já estavam na ficha
+            // (inclusive as que o mestre criou fora das regras do jogador) não barram gastar PP, descansar nem editar outro campo.
+            $mudou = false;
             foreach ($lista as $t) {
                 $nome = (string) ($t['nome'] ?? '');
                 if (! isset($t['criador'])) {
@@ -685,6 +688,7 @@ class Criador
                 $e = $t['criador'];
                 $inalterada = isset($antigas[$nome]) && $antigas[$nome]['criador'] == $e && ($antigas[$nome]['custo'] ?? null) === ($t['custo'] ?? null);
                 if (! $inalterada) {
+                    $mudou = true;
                     $problemas = self::problemas($e, $ctx);
                     if ($problemas) {
                         throw ValidationException::withMessages([$campo => "Técnica \"{$nome}\": {$problemas[0]}"]);
@@ -696,7 +700,9 @@ class Criador
                 }
                 self::contar($slots, $e);
             }
-            self::conferirEspacos($slots, $ctx, $akuma, $campo);
+            if ($mudou) {
+                self::conferirEspacos($slots, $ctx, $akuma, $campo);
+            }
         }
     }
 
@@ -794,8 +800,15 @@ class Criador
     }
 
     /** As Genialidades Inusitadas usadas (técnicas e Points; cada uma, uma vez só). */
-    public static function conferirGenialidades(array $depois): void
+    public static function conferirGenialidades(array $depois, ?array $antes = null): void
     {
+        // Só quando as técnicas ou os Points mudam: uma ficha que já estava assim não trava as outras gravações.
+        if ($antes !== null
+            && ($antes['tecnicas']['lista'] ?? []) == ($depois['tecnicas']['lista'] ?? [])
+            && ($antes['akuma']['lista'] ?? []) == ($depois['akuma']['lista'] ?? [])
+            && ($antes['akuma']['points'] ?? []) == ($depois['akuma']['points'] ?? [])) {
+            return;
+        }
         $usadas = [];
         foreach (['tecnicas', 'akuma'] as $chave) {
             foreach ((array) ($depois[$chave]['lista'] ?? []) as $t) {

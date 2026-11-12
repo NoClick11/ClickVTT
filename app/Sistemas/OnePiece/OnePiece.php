@@ -2,11 +2,14 @@
 
 namespace App\Sistemas\OnePiece;
 
+use App\Models\Mesa;
+use App\Nucleo\Combate\Dano;
 use App\Nucleo\Combate\SistemaDeCombate;
 use App\Nucleo\Efeitos\Formula;
 use App\Nucleo\Rolagem\Rolador;
 use App\Nucleo\Sistemas\Sistema;
 use App\Nucleo\Sistemas\SistemaComLoja;
+use Illuminate\Validation\ValidationException;
 
 /** Módulo de One Piece: parte das regras do D&D 5e, com atributos, perícias, técnicas e pontos de poder próprios. */
 class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
@@ -29,7 +32,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
     }
 
     /** Ao concluir a criação: o inventário inicial (profissão e estilo) e os Bellys entram na ficha (ver `ItensIniciais`). @param array<string, mixed> $ficha */
-    public function entregarItensIniciais(\App\Models\Mesa $mesa, array $ficha, ?array $criacao = null): array
+    public function entregarItensIniciais(Mesa $mesa, array $ficha, ?array $criacao = null): array
     {
         return ItensIniciais::entregar($mesa, $this, $ficha, $criacao);
     }
@@ -390,7 +393,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
      */
     public function escudoResiste(array $ficha, ?string $tipo): bool
     {
-        $tipo = \App\Nucleo\Combate\Dano::normalizar($tipo);
+        $tipo = Dano::normalizar($tipo);
         if ($tipo === 'verdadeiro') {
             return false;
         }
@@ -425,6 +428,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
                 if ($antigos[$chave($p)] !== (int) $p['dias']) {
                     abort(403, 'Só o mestre marca os dias de treino.');
                 }
+
                 continue;
             }
             if ((int) $p['dias'] !== 0) {
@@ -432,7 +436,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
             }
             $problemas = Treinamentos::problemasDoPedido($corrente, $p['id'], $p['opcao'] ?? null);
             if ($problemas) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['campos.treinamento.pedidos' => $problemas[0]]);
+                throw ValidationException::withMessages(['campos.treinamento.pedidos' => $problemas[0]]);
             }
             $corrente['treinamento'] = [...$a, 'pedidos' => [...($corrente['treinamento']['pedidos'] ?? []), $p]];
         }
@@ -490,7 +494,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         }
         Akuma::conferir($antes, $depois);
         Individualidades::conferir($antes, $depois, $mestre);
-        Criador::conferirGenialidades($depois);
+        Criador::conferirGenialidades($depois, $antes);
         Criador::conferir($antes, $depois);
         $a = array_replace_recursive(Haki::padrao(), $antes['haki'] ?? []);
         $d = array_replace_recursive(Haki::padrao(), $depois['haki'] ?? []);
@@ -511,7 +515,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         }
         $problemas = Haki::problemas($depois);
         if ($problemas) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['campos.haki.talentos' => $problemas[0]]);
+            throw ValidationException::withMessages(['campos.haki.talentos' => $problemas[0]]);
         }
     }
 
