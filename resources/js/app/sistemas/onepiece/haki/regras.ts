@@ -47,8 +47,11 @@ const nivelDe = (n: number | string): number => Math.max(1, Math.floor(Number(n)
 /** O personagem despertou o Haki: no 8º nível, ou quando o mestre liberou. */
 export const hakiDesperto = (h: HakiFicha, nivel: number): boolean => nivelDe(nivel) >= NIVEL_DO_HAKI || h.liberado;
 
-/** A aba é do jogador? O mestre a vê sempre. */
-export const abaDoHakiVisivel = (h: HakiFicha, nivel: number, mestre: boolean): boolean => mestre || hakiDesperto(h, nivel);
+/** Talentos da Observação que a Singularidade "Haki da Observação Inato" dá de graça (forma base, fora de batalha). */
+export const TALENTOS_DO_HAKI_INATO = ['perceber-emocoes', 'perceber-presenca', 'perceber-desafio'];
+
+/** A aba é do jogador? O mestre a vê sempre; com o Haki da Observação Inato ela aparece antes do despertar (só a Observação). */
+export const abaDoHakiVisivel = (h: HakiFicha, nivel: number, mestre: boolean, inato = false): boolean => mestre || inato || hakiDesperto(h, nivel);
 
 /** PA pelo nível: 5 no 8º e +12 por nível depois. */
 export const paPorNivel = (nivel: number): number =>

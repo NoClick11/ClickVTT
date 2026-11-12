@@ -8,7 +8,16 @@ import { podeComprar, type HakiFicha } from '../../haki/regras';
  * corrente à esquerda, nós com a estrela ☆ (Forma Dominada) e ★ (Forma Avançada) e o custo em PA. Mostra e emite: quem
  * compra e salva é `AbaHaki`. O nó comprado fica aceso e a corda entre dois talentos comprados também.
  */
-const props = defineProps<{ tipo: TipoHaki; haki: HakiFicha; nivel: number; selecionado: string | null; bonus?: number; ajustar?: boolean }>();
+const props = defineProps<{
+    tipo: TipoHaki;
+    haki: HakiFicha;
+    nivel: number;
+    selecionado: string | null;
+    bonus?: number;
+    ajustar?: boolean;
+    /** Talentos que o personagem tem de graça (Haki da Observação Inato): acesos na árvore mesmo sem compra. */
+    inatos?: string[];
+}>();
 const emit = defineEmits<{ selecionar: [id: string] }>();
 
 const PALETA: Record<TipoHaki, { faixas: [string, string, string]; corda: string; cordaClara: string; destaque: string; texto: string }> = {
@@ -38,7 +47,8 @@ const larguraSvg = computed(() => {
     return Math.max(280, Math.floor(d.value.largura * escala * zoom.value));
 });
 
-const formas = (id: string) => props.haki.talentos.find((t) => t.id === id)?.formas ?? (id === 'rei' && props.haki.rei ? 1 : 0);
+const formas = (id: string) =>
+    props.haki.talentos.find((t) => t.id === id)?.formas ?? ((id === 'rei' && props.haki.rei) || props.inatos?.includes(id) ? 1 : 0);
 const comprado = (id: string) => formas(id) >= 1;
 const posDe = (id: string) => talentoPorId(id)!.pos;
 

@@ -5,6 +5,7 @@ import type { AbrirEditorItem, PersonagemFicha } from '../../../nucleo/sistemas/
 import type { ItemDto } from '../../../tipos-mesa';
 import { CHAVE_FICHA, type DanoDaTecnica, type EfeitoSecundario, type PermissoesDaMesa, type ServicosDaFicha, type UsoDeTecnica } from '../contexto';
 import { abaDoHakiVisivel } from '../haki/regras';
+import { temSingularidade } from '../individualidades/regras';
 import { analisar, armasAtivas, modoDaRolagem, type AcaoCaracteristica, type FichaOnePiece } from '../regras';
 import AbaAkuma from './abas/AbaAkuma.vue';
 import AbaCaracteristicas from './abas/AbaCaracteristicas.vue';
@@ -173,9 +174,13 @@ const todasAsAbas: { id: AbaId; rotulo: string; icone: Component }[] = [
     { id: 'individualidades', rotulo: 'Singularidades', icone: Sparkles },
     { id: 'recompensa', rotulo: 'Recompensa', icone: Skull },
 ];
-/** A aba Haki só aparece ao jogador depois do despertar (8º nível ou liberada pelo mestre); o mestre a vê sempre. */
+/** A aba Haki só aparece ao jogador depois do despertar (8º nível ou liberada pelo mestre) ou com o Haki da Observação Inato; o mestre a vê sempre. */
 const abas = computed(() =>
-    todasAsAbas.filter((a) => a.id !== 'haki' || abaDoHakiVisivel(props.ficha.haki, Number(props.ficha.nivel), props.mestre)),
+    todasAsAbas.filter(
+        (a) =>
+            a.id !== 'haki' ||
+            abaDoHakiVisivel(props.ficha.haki, Number(props.ficha.nivel), props.mestre, temSingularidade(props.ficha, 'haki-observacao-inato')),
+    ),
 );
 const aba = ref<AbaId>('detalhes');
 const conteudo: Record<AbaId, Component> = {

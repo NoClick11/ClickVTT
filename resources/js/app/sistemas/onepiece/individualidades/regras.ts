@@ -2,7 +2,7 @@
 // espaços, Defeitos de mesmo nível (ou variáveis), validação e as características geradas na ficha.
 import { caracteristicaDe } from '../construtor/regras.ts';
 import { talentoPorId } from '../haki/dados.ts';
-import { hakiDesperto, tracoDoTalento } from '../haki/regras.ts';
+import { TALENTOS_DO_HAKI_INATO, hakiDesperto, tracoDoTalento } from '../haki/regras.ts';
 import type { Caracteristica, FichaOnePiece } from '../regras.ts';
 import {
     ESPACOS_INICIAIS,
@@ -163,7 +163,7 @@ export function caracteristicasDasIndividualidades(f: { individualidades?: Parti
             saida.push(c);
             // Haki da Observação Inato: as três percepções valem fora de batalha, mesmo sem comprar o talento.
             if (d.id === 'haki-observacao-inato') {
-                for (const id of ['perceber-emocoes', 'perceber-presenca', 'perceber-desafio']) {
+                for (const id of TALENTOS_DO_HAKI_INATO) {
                     const t = talentoPorId(id);
                     if (!t) continue;
                     saida.push({
