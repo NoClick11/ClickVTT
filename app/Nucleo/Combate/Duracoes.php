@@ -147,8 +147,7 @@ final class Duracoes
      */
     public static function transmitir(Mesa $mesa, Personagem $p, array $campos, bool $status = false): void
     {
-        $canais = ['mestre', ...$p->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
-        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => $campos, 'ator' => 0], $canais);
+        Transmitir::enviar($mesa, 'ficha', ['personagem_id' => $p->id, 'campos' => $campos, 'ator' => 0], $p->canaisDaFicha());
         $mudouPvNpc = ($p->ficha['npc'] ?? false)
             && collect(array_keys($campos))->contains(fn ($k) => $k === 'pv' || str_starts_with((string) $k, 'pv.'));
         if ($status || $mudouPvNpc) {

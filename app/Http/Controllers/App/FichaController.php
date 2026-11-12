@@ -76,8 +76,8 @@ class FichaController extends Controller
             return $p;
         });
 
-        // Quem vê a ficha: o mestre e os jogadores do personagem (nunca o canal aberto da mesa).
-        $canais = ['mestre', ...$atual->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
+        // Quem vê a ficha: o mestre e os jogadores do personagem (nunca o canal aberto da mesa); a do navio é de todos.
+        $canais = $atual->canaisDaFicha();
         Transmitir::enviar($mesa, 'ficha', [
             'personagem_id' => $atual->id, 'campos' => $campos, 'ator' => $acesso->jogador->id,
         ], $canais);

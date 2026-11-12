@@ -1,0 +1,990 @@
+{
+ "tamanhos": [
+  {
+   "id": "pequeno",
+   "ordem": 0,
+   "deques": 1,
+   "comodos": 4,
+   "tripulantes": 20,
+   "canhoes": 3,
+   "pv": 150,
+   "peso": 2,
+   "mastros": 1,
+   "pecasMadeira": 200,
+   "pecasFortificacao": 40,
+   "diasConstrucao": 12,
+   "diasFortificacao": 15,
+   "kairoseki": {
+    "pecas": 100,
+    "dias": 12,
+    "adicional": 1500000
+   },
+   "efetivo": {
+    "navegacao": [
+     1,
+     2
+    ],
+    "limpeza": [
+     1,
+     2
+    ],
+    "vigilancia": [
+     2,
+     4
+    ]
+   }
+  },
+  {
+   "id": "medio",
+   "ordem": 1,
+   "deques": 2,
+   "comodos": 10,
+   "tripulantes": 50,
+   "canhoes": 10,
+   "pv": 300,
+   "peso": 10,
+   "mastros": 2,
+   "pecasMadeira": 300,
+   "pecasFortificacao": 60,
+   "diasConstrucao": 18,
+   "diasFortificacao": 15,
+   "kairoseki": {
+    "pecas": 150,
+    "dias": 18,
+    "adicional": 2000000
+   },
+   "efetivo": {
+    "navegacao": [
+     2,
+     3
+    ],
+    "limpeza": [
+     2,
+     3
+    ],
+    "vigilancia": [
+     2,
+     4
+    ]
+   }
+  },
+  {
+   "id": "grande",
+   "ordem": 2,
+   "deques": 3,
+   "comodos": 26,
+   "tripulantes": 130,
+   "canhoes": 15,
+   "pv": 500,
+   "peso": 20,
+   "mastros": 2,
+   "pecasMadeira": 500,
+   "pecasFortificacao": 80,
+   "diasConstrucao": 25,
+   "diasFortificacao": 15,
+   "kairoseki": {
+    "pecas": 200,
+    "dias": 25,
+    "adicional": 3000000
+   },
+   "efetivo": {
+    "navegacao": [
+     3,
+     5
+    ],
+    "limpeza": [
+     4,
+     6
+    ],
+    "vigilancia": [
+     5,
+     7
+    ]
+   }
+  },
+  {
+   "id": "enorme",
+   "ordem": 3,
+   "deques": 4,
+   "comodos": 48,
+   "tripulantes": 240,
+   "canhoes": 25,
+   "pv": 750,
+   "peso": 30,
+   "mastros": 3,
+   "pecasMadeira": 600,
+   "pecasFortificacao": 120,
+   "diasConstrucao": 30,
+   "diasFortificacao": 30,
+   "kairoseki": {
+    "pecas": 300,
+    "dias": 30,
+    "adicional": 3500000
+   },
+   "efetivo": {
+    "navegacao": [
+     7,
+     10
+    ],
+    "limpeza": [
+     15,
+     20
+    ],
+    "vigilancia": [
+     5,
+     7
+    ]
+   }
+  },
+  {
+   "id": "colossal",
+   "ordem": 4,
+   "deques": 5,
+   "comodos": 90,
+   "tripulantes": 450,
+   "canhoes": 45,
+   "pv": 1000,
+   "peso": 40,
+   "mastros": 3,
+   "pecasMadeira": 800,
+   "pecasFortificacao": 160,
+   "diasConstrucao": 40,
+   "diasFortificacao": 30,
+   "kairoseki": {
+    "pecas": 400,
+    "dias": 40,
+    "adicional": 4500000
+   },
+   "efetivo": {
+    "navegacao": [
+     12,
+     15
+    ],
+    "limpeza": [
+     30,
+     50
+    ],
+    "vigilancia": [
+     7,
+     10
+    ]
+   }
+  }
+ ],
+ "madeiras": [
+  {
+   "id": "cedro",
+   "precoPorPeca": 30000,
+   "cr": 10,
+   "br": 5,
+   "consertoPorPv": 40000
+  },
+  {
+   "id": "carvalho",
+   "precoPorPeca": 80000,
+   "cr": 12,
+   "br": 10,
+   "consertoPorPv": 100000
+  },
+  {
+   "id": "cerejeira",
+   "precoPorPeca": 150000,
+   "cr": 15,
+   "br": 15,
+   "consertoPorPv": 190000
+  },
+  {
+   "id": "adam",
+   "precoPorPeca": 400000,
+   "cr": 18,
+   "br": 30,
+   "consertoPorPv": 500000
+  }
+ ],
+ "fortificacoes": [
+  {
+   "id": "aco",
+   "precoPorPeca": 450000,
+   "adicional": 900000,
+   "cr": 1
+  },
+  {
+   "id": "aco-temperado",
+   "precoPorPeca": 600000,
+   "adicional": 900000,
+   "cr": 2
+  }
+ ],
+ "kairoseki": {
+  "precoPorPeca": 10000000,
+  "cr": 1
+ },
+ "ancoras": [
+  {
+   "id": "normal",
+   "preco": 800000,
+   "custo": 600000,
+   "dias": 3,
+   "nos": null,
+   "ordemMinima": null,
+   "ordemMaxima": 2
+  },
+  {
+   "id": "robusta",
+   "preco": 1200000,
+   "custo": 900000,
+   "dias": 6,
+   "nos": null,
+   "ordemMinima": 3,
+   "ordemMaxima": null
+  }
+ ],
+ "lemes": [
+  {
+   "id": "tora",
+   "preco": 40000,
+   "custo": 25000,
+   "dias": 0,
+   "nos": null,
+   "ordemMinima": null,
+   "ordemMaxima": 1
+  },
+  {
+   "id": "circular",
+   "preco": 70000,
+   "custo": 55000,
+   "dias": 0,
+   "nos": null,
+   "ordemMinima": null,
+   "ordemMaxima": null
+  }
+ ],
+ "mastros": [
+  {
+   "id": "simples",
+   "preco": 200000,
+   "custo": 160000,
+   "dias": 1,
+   "nos": 8,
+   "ordemMinima": null,
+   "ordemMaxima": null
+  },
+  {
+   "id": "composto",
+   "preco": 400000,
+   "custo": 320000,
+   "dias": 1,
+   "nos": 12,
+   "ordemMinima": null,
+   "ordemMaxima": null
+  },
+  {
+   "id": "multiplo",
+   "preco": 600000,
+   "custo": 480000,
+   "dias": 2,
+   "nos": 16,
+   "ordemMinima": null,
+   "ordemMaxima": null
+  }
+ ],
+ "motores": [
+  {
+   "id": "manual",
+   "preco": 2000000,
+   "custo": 1600000,
+   "dias": 3,
+   "nos": 4,
+   "ordemMinima": null,
+   "ordemMaxima": null
+  },
+  {
+   "id": "vapor",
+   "preco": 25000000,
+   "custo": 20000000,
+   "dias": 5,
+   "nos": 6,
+   "ordemMinima": 2,
+   "ordemMaxima": null
+  },
+  {
+   "id": "combustao",
+   "preco": 60000000,
+   "custo": 48000000,
+   "dias": 15,
+   "nos": 8,
+   "ordemMinima": 2,
+   "ordemMaxima": null
+  },
+  {
+   "id": "turbina",
+   "preco": 300000000,
+   "custo": 100000000,
+   "dias": 20,
+   "nos": 8,
+   "ordemMinima": 2,
+   "ordemMaxima": null
+  },
+  {
+   "id": "jato",
+   "preco": null,
+   "custo": 1200000000,
+   "dias": 45,
+   "nos": null,
+   "ordemMinima": 2,
+   "ordemMaxima": null
+  }
+ ],
+ "motoresSobDemanda": [
+  "turbina",
+  "jato"
+ ],
+ "motoresComSala": [
+  "vapor",
+  "combustao"
+ ],
+ "canhoes": [
+  {
+   "id": "comum",
+   "preco": 1500000,
+   "custo": 900000,
+   "dias": 10,
+   "ordemMinima": null,
+   "ordemMaxima": null,
+   "nos": null
+  },
+  {
+   "id": "aprimorado",
+   "preco": 2000000,
+   "custo": 1200000,
+   "dias": 12,
+   "ordemMinima": null,
+   "ordemMaxima": null,
+   "nos": null
+  },
+  {
+   "id": "superior",
+   "preco": 5000000,
+   "custo": 3000000,
+   "dias": 18,
+   "ordemMinima": null,
+   "ordemMaxima": null,
+   "nos": null
+  },
+  {
+   "id": "longo",
+   "preco": 10000000,
+   "custo": 6000000,
+   "dias": 30,
+   "ordemMinima": null,
+   "ordemMaxima": null,
+   "nos": null
+  },
+  {
+   "id": "arpao",
+   "preco": 2500000,
+   "custo": 1500000,
+   "dias": 25,
+   "ordemMinima": null,
+   "ordemMaxima": null,
+   "nos": null
+  },
+  {
+   "id": "energia",
+   "preco": null,
+   "custo": 3000000000,
+   "dias": 40,
+   "ordemMinima": 2,
+   "ordemMaxima": null,
+   "nos": null
+  }
+ ],
+ "comodos": [
+  {
+   "id": "aposento-capitao",
+   "custo": 150000,
+   "dias": 1,
+   "despesa": 10000,
+   "espacos": 1,
+   "unico": true
+  },
+  {
+   "id": "biblioteca",
+   "custo": 200000,
+   "dias": 3,
+   "despesa": 25000,
+   "espacos": 1,
+   "unico": false
+  },
+  {
+   "id": "cela",
+   "custo": 220000,
+   "dias": 1,
+   "despesa": 5000,
+   "espacos": 1,
+   "unico": false
+  },
+  {
+   "id": "cozinha",
+   "custo": 300000,
+   "dias": 3,
+   "despesa": 25000,
+   "espacos": 1,
+   "unico": true
+  },
+  {
+   "id": "despensa",
+   "custo": 150000,
+   "dias": 1,
+   "despesa": 10000,
+   "espacos": 1,
+   "unico": false
+  },
+  {
+   "id": "dormitorio",
+   "custo": 100000,
+   "dias": 2,
+   "despesa": 10000,
+   "espacos": 1,
+   "unico": false
+  },
+  {
+   "id": "enfermaria",
+   "custo": 350000,
+   "dias": 3,
+   "despesa": 40000,
+   "espacos": 1,
+   "unico": false
+  },
+  {
+   "id": "gerador",
+   "custo": 700000000,
+   "dias": 15,
+   "despesa": 200000,
+   "espacos": 2,
+   "unico": true
+  },
+  {
+   "id": "laboratorio",
+   "custo": 400000,
+   "dias": 4,
+   "despesa": 35000,
+   "espacos": 1,
+   "unico": false
+  },
+  {
+   "id": "quarto-vigilancia",
+   "custo": 250000,
+   "dias": 9,
+   "despesa": 5000,
+   "espacos": 0,
+   "unico": true
+  },
+  {
+   "id": "refeitorio",
+   "custo": 200000,
+   "dias": 2,
+   "despesa": 10000,
+   "espacos": 1,
+   "unico": false
+  },
+  {
+   "id": "sala-maquinas",
+   "custo": 500000,
+   "dias": 6,
+   "despesa": 20000,
+   "espacos": 3,
+   "unico": false
+  },
+  {
+   "id": "sala-ferramentas",
+   "custo": 200000,
+   "dias": 2,
+   "despesa": 15000,
+   "espacos": 1,
+   "unico": false
+  },
+  {
+   "id": "sala-treinamento",
+   "custo": 450000,
+   "dias": 3,
+   "despesa": 30000,
+   "espacos": 3,
+   "unico": false
+  },
+  {
+   "id": "sala-tesouro",
+   "custo": 600000,
+   "dias": 4,
+   "despesa": 10000,
+   "espacos": 1,
+   "unico": false
+  }
+ ],
+ "condicoes": [
+  {
+   "id": "irreparavel",
+   "ate": 5,
+   "reducao": 20,
+   "estaleiro": null,
+   "carpinteiro": null
+  },
+  {
+   "id": "muito-danificado",
+   "ate": 50,
+   "reducao": 8,
+   "estaleiro": {
+    "dias": 50,
+    "teto": 100
+   },
+   "carpinteiro": {
+    "fixo": 300000,
+    "dias": "4d6",
+    "maximo": 24
+   }
+  },
+  {
+   "id": "avariado",
+   "ate": 80,
+   "reducao": 4,
+   "estaleiro": {
+    "dias": 12,
+    "teto": 45
+   },
+   "carpinteiro": {
+    "fixo": 100000,
+    "dias": "2d6",
+    "maximo": 12
+   }
+  },
+  {
+   "id": "danificado",
+   "ate": 99,
+   "reducao": 0,
+   "estaleiro": {
+    "dias": 5,
+    "teto": 20
+   },
+   "carpinteiro": {
+    "fixo": 15000,
+    "dias": "1d6",
+    "maximo": 6
+   }
+  },
+  {
+   "id": "integro",
+   "ate": 100,
+   "reducao": 0,
+   "estaleiro": null,
+   "carpinteiro": null
+  }
+ ],
+ "velocidadeMinimaPorDano": 8,
+ "funcoes": [
+  {
+   "id": "capitao",
+   "grupo": "comando"
+  },
+  {
+   "id": "imediato",
+   "grupo": "comando"
+  },
+  {
+   "id": "comandante",
+   "grupo": "comando"
+  },
+  {
+   "id": "navegacao",
+   "grupo": "navegacao"
+  },
+  {
+   "id": "artilheiro",
+   "grupo": "combate"
+  },
+  {
+   "id": "combatente",
+   "grupo": "combate"
+  },
+  {
+   "id": "homem-das-armas",
+   "grupo": "combate"
+  },
+  {
+   "id": "cozinheiro",
+   "grupo": "manutencao"
+  },
+  {
+   "id": "cozinheiro-ajudante",
+   "grupo": "manutencao"
+  },
+  {
+   "id": "criado-de-bordo",
+   "grupo": "manutencao"
+  },
+  {
+   "id": "mecanico",
+   "grupo": "manutencao"
+  },
+  {
+   "id": "mestre-do-navio",
+   "grupo": "manutencao"
+  },
+  {
+   "id": "monitor",
+   "grupo": "manutencao"
+  },
+  {
+   "id": "rapaz-da-polvora",
+   "grupo": "manutencao"
+  },
+  {
+   "id": "sentinela",
+   "grupo": "manutencao"
+  }
+ ],
+ "maxFuncoes": 3,
+ "profissoes": {
+  "carpinteiro": {
+   "desconto": 40,
+   "nos": 12,
+   "cr": 3
+  },
+  "timoneiro": {
+   "efetivoMinimo": 10
+  }
+ },
+ "bateriasDoGerador": 3,
+ "autoReparo": 50,
+ "diasDaManutencao": 7,
+ "modelos": [
+  {
+   "id": "pequeno",
+   "tamanho": "pequeno",
+   "preco": 10000000,
+   "madeira": "cedro",
+   "fortificacao": null,
+   "leme": "tora",
+   "ancora": "normal",
+   "mastros": [
+    "composto"
+   ],
+   "motores": [],
+   "canhoes": [
+    "comum"
+   ],
+   "lotacao": null,
+   "comodos": []
+  },
+  {
+   "id": "medio",
+   "tamanho": "medio",
+   "preco": 30000000,
+   "madeira": "carvalho",
+   "fortificacao": null,
+   "leme": "tora",
+   "ancora": "normal",
+   "mastros": [
+    "composto",
+    "composto"
+   ],
+   "motores": [],
+   "canhoes": [
+    "comum",
+    "comum",
+    "comum"
+   ],
+   "lotacao": null,
+   "comodos": []
+  },
+  {
+   "id": "grande",
+   "tamanho": "grande",
+   "preco": 100000000,
+   "madeira": "cerejeira",
+   "fortificacao": null,
+   "leme": "circular",
+   "ancora": "normal",
+   "mastros": [
+    "multiplo",
+    "multiplo"
+   ],
+   "motores": [],
+   "canhoes": [
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado"
+   ],
+   "lotacao": null,
+   "comodos": []
+  },
+  {
+   "id": "enorme",
+   "tamanho": "enorme",
+   "preco": 150000000,
+   "madeira": "cerejeira",
+   "fortificacao": null,
+   "leme": "circular",
+   "ancora": "robusta",
+   "mastros": [
+    "multiplo",
+    "multiplo",
+    "multiplo"
+   ],
+   "motores": [
+    "vapor"
+   ],
+   "canhoes": [
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado"
+   ],
+   "comodos": [
+    "sala-maquinas"
+   ],
+   "lotacao": null
+  },
+  {
+   "id": "colossal",
+   "tamanho": "colossal",
+   "preco": 200000000,
+   "madeira": "cerejeira",
+   "fortificacao": "aco",
+   "leme": "circular",
+   "ancora": "robusta",
+   "mastros": [
+    "multiplo",
+    "multiplo",
+    "multiplo"
+   ],
+   "motores": [
+    "combustao"
+   ],
+   "canhoes": [
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado"
+   ],
+   "comodos": [
+    "sala-maquinas"
+   ],
+   "lotacao": null
+  },
+  {
+   "id": "marinha-padrao",
+   "tamanho": "grande",
+   "preco": null,
+   "madeira": "cerejeira",
+   "fortificacao": "aco-temperado",
+   "leme": "circular",
+   "ancora": "normal",
+   "mastros": [
+    "multiplo",
+    "multiplo"
+   ],
+   "motores": [
+    "combustao"
+   ],
+   "canhoes": [
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado"
+   ],
+   "comodos": [
+    "sala-maquinas"
+   ],
+   "lotacao": null
+  },
+  {
+   "id": "marinha-batedor",
+   "tamanho": "medio",
+   "preco": null,
+   "madeira": "cerejeira",
+   "fortificacao": null,
+   "leme": "circular",
+   "ancora": "normal",
+   "mastros": [
+    "multiplo",
+    "multiplo"
+   ],
+   "motores": [
+    "combustao"
+   ],
+   "canhoes": [
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado"
+   ],
+   "lotacao": 30,
+   "comodos": [
+    "sala-maquinas"
+   ]
+  },
+  {
+   "id": "marinha-prisao",
+   "tamanho": "enorme",
+   "preco": null,
+   "madeira": "cerejeira",
+   "fortificacao": "aco-temperado",
+   "leme": "circular",
+   "ancora": "robusta",
+   "mastros": [
+    "multiplo",
+    "multiplo",
+    "multiplo"
+   ],
+   "motores": [
+    "combustao"
+   ],
+   "canhoes": [
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior"
+   ],
+   "lotacao": 800,
+   "comodos": [
+    "sala-maquinas"
+   ]
+  },
+  {
+   "id": "marinha-batalha",
+   "tamanho": "colossal",
+   "preco": null,
+   "madeira": "cerejeira",
+   "fortificacao": "aco-temperado",
+   "leme": "circular",
+   "ancora": "robusta",
+   "mastros": [
+    "multiplo",
+    "multiplo",
+    "multiplo"
+   ],
+   "motores": [
+    "combustao"
+   ],
+   "canhoes": [
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "aprimorado",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "superior",
+    "longo",
+    "longo",
+    "longo",
+    "longo",
+    "longo",
+    "longo",
+    "longo",
+    "longo",
+    "longo",
+    "longo"
+   ],
+   "lotacao": 1000,
+   "comodos": [
+    "sala-maquinas",
+    "sala-maquinas"
+   ]
+  }
+ ]
+}

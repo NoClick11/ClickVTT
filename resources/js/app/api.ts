@@ -196,6 +196,16 @@ export function apiMesa(mesaId: number, atorId: number) {
             requisitar<{ ok: true }>(atorId, 'PATCH', r('jogo.personagens.pasta', id), { pasta_id: pastaId }),
         /** Só o mestre: guarda um NPC (do catálogo ou em branco) com a ficha já montada pelo módulo do sistema. */
         criarNpc: (nome: string, campos: Record<string, unknown>) => requisitar<Personagem>(atorId, 'POST', r('jogo.npcs.store'), { nome, campos }),
+        /** Só o mestre: cria um navio de um modelo do livro (`modelo`) ou em branco (`tamanho` + `madeira`). */
+        criarNavio: (dados: { nome: string; modelo?: string | null; tamanho?: string; madeira?: string }) =>
+            requisitar<Personagem>(atorId, 'POST', r('jogo.navios.store'), dados),
+        /** Ação na ficha do navio (obras, tesouro, carga, tripulação, PV): devolve os campos do navio e os do personagem que mudou junto. */
+        acaoDoNavio: (navioId: number, acao: string, dados: Record<string, unknown> = {}) =>
+            requisitar<{
+                personagem_id: number;
+                campos: Record<string, unknown>;
+                outro: { personagem_id: number; campos: Record<string, unknown> } | null;
+            }>(atorId, 'POST', r('jogo.navios.acao', navioId), { acao, ...dados }),
         /** Só o mestre: a cópia do NPC que vira o token no mapa (PV, PP e usos próprios, nome numerado). */
         instanciarNpc: (personagemId: number) => requisitar<Personagem>(atorId, 'POST', r('jogo.personagens.instanciar', personagemId)),
         atribuirJogadores: (personagemId: number, jogadores: number[]) =>

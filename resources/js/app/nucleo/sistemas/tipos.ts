@@ -147,6 +147,13 @@ export interface ModuloSistema {
     /** Ficha de NPC de uma tela só (usada quando a ficha do personagem traz o bloco `npc`) e o seletor do catálogo de NPCs. */
     FichaDeNpc?: Component;
     NovoNpcDialog?: Component;
+    /**
+     * Ficha de navio (usada quando a ficha traz o bloco `navio`) e o diálogo de criação. A ficha do navio é de toda a mesa: recebe
+     * `personagem`, `ficha`, `itens`, `mestre`, `dia` (do calendário), `personagens` (os que este participante controla, com a ficha) e
+     * `acao(nome, dados)`, que devolve uma promessa; emite `renomear`. O diálogo recebe `open` e emite `update:open` e `criar(dados)`.
+     */
+    FichaDeNavio?: Component;
+    NovoNavioDialog?: Component;
     /** Loja do jogador (painel flutuante, opcional): catálogo do sistema para comprar e arrastar para a ficha. */
     Loja?: Component;
     /** Categorias, raridades e moeda da loja do sistema (alimenta o editor de itens do catálogo). */

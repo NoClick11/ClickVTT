@@ -73,7 +73,7 @@ class JogoController extends Controller
             'jogadores' => $mesa->jogadores()->orderByRaw("papel = 'mestre' desc")->orderBy('nome')->get()
                 ->map(fn ($j) => $mestre ? $j->paraFront() : $j->publico())->values(),
             // A ficha em si só vai ao mestre e aos jogadores do personagem.
-            'personagens' => $personagens->map(fn ($p) => $p->paraFront($acesso->podeControlar($p->id), $sistemas->resolver($mesa->sistema->slug)))->values(),
+            'personagens' => $personagens->map(fn ($p) => $p->paraFront($acesso->podeControlar($p->id) || $p->ehNavio(), $sistemas->resolver($mesa->sistema->slug)))->values(),
             // Personagens que ESTE jogador controla (o mestre controla todos): tokens que ele pode mover e "falar como".
             'meusPersonagens' => $acesso->personagensPermitidos(),
             // Itens da mesa: o mestre vê todos; o jogador só os que aparecem nas fichas que ele controla.
@@ -132,7 +132,7 @@ class JogoController extends Controller
         }
         $sistema = $sistemas->resolver($mesa->sistema->slug);
         $ids = $sistema
-            ? $personagens->filter(fn ($p) => $p->ficha && $acesso->podeControlar($p->id))->flatMap(fn ($p) => $sistema->itensReferenciados($p->ficha))->unique()->values()->all()
+            ? $personagens->filter(fn ($p) => $p->ficha && ($acesso->podeControlar($p->id) || $p->ehNavio()))->flatMap(fn ($p) => $sistema->itensReferenciados($p->ficha))->unique()->values()->all()
             : [];
 
         return $ids ? $mesa->itens()->whereIn('id', $ids)->orderBy('nome')->get()->map->paraFront()->values() : collect();

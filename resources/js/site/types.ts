@@ -57,6 +57,8 @@ export interface Personagem {
     aliado?: boolean;
     /** NPC com 0 de vida: indicador de morte ativo e não pode ser alvo. */
     morto?: boolean;
+    /** Navio: a ficha vem para TODOS os jogadores da mesa (construção, tesouro e carga compartilhados). */
+    navio?: boolean;
     jogadores: DonoPersonagem[];
     /** Dados da ficha (formato do sistema da mesa): só vêm para o mestre e para os jogadores do personagem. */
     ficha?: Record<string, unknown> | null;

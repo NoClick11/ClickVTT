@@ -39,6 +39,14 @@ O foco atual é o sistema **One Piece** (`one-piece`), derivado do D&D 5e.
 - Mira: tecla **T** (ou ferramenta Mirar) trava o alvo; todo ataque vai contra ele e rola contra a CA.
 - NPC com 0 de vida: o token fica esmaecido com X vermelho e caveira (só o mestre vê, pois só ele recebe a ficha do NPC).
 
+## Navios (cap. 13 e 14)
+
+- Navio = `Personagem` sem jogadores com o bloco `ficha.navio`; PV em `ficha.pv` (PV paralelos = `pv.temp`), tesouro em `ficha.belly`, carga em `ficha.inventario`. A ficha vai para **todos** os jogadores (`Personagem::ehNavio`, `canaisDaFicha`).
+- Jogadores não "controlam" o navio: tudo passa por `POST navios/{id}/acao` (`NavioService::operar`), que valida, debita e move no servidor. PV, ajustes e concluir obra são do mestre.
+- Dados em `sistemas/onepiece/navios/dados.ts`, regras em `regras.ts`, espelho em `app/Sistemas/OnePiece/Navios.php`. Ao mudar dados ou regras: `node tests/paridade/gerar-navios.mjs` (regenera `navios.json` e os casos de paridade).
+- Obra: peça com `pronto_dia` ainda não vale; o calendário (`TempoController` → `NavioService::aoAvancarTempo`) conclui obras e consertos, cobra as despesas semanais, faz o auto-reparo e recarrega as baterias.
+- Escopo: só construção, PV/CR/BR, velocidade, tripulação/efetivo, despesas, carga e tesouro. Combate naval, manobras, colisão, correnteza e submarinos ficam fora.
+
 ## Interação no mapa
 
 - **Um clique** num token o torna o personagem **ativo** (chat, rolagens e barra de atalhos passam a ser dele); **duplo clique** abre a ficha. Vale para mestre (NPCs e os que controla) e jogadores (os deles).

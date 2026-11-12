@@ -1313,6 +1313,8 @@ const tamanhoFicha = (npc = false) =>
         : { largura: Math.min(940, window.innerWidth - 32), altura: Math.min(700, window.innerHeight - 76) };
 /** A ficha é de um NPC (tem o bloco `npc`) e o sistema tem a tela de uma tela só dele. */
 const ehNpc = (id: number) => !!moduloSistema?.FichaDeNpc && !!fichas.value[id]?.npc;
+/** A ficha é de um navio (tem o bloco `navio`): janela própria, que toda a mesa abre. */
+const ehNavio = (id: number) => !!moduloSistema?.FichaDeNavio && !!fichas.value[id]?.navio;
 function focarFicha(id: number) {
     const i = fichasAbertas.value.findIndex((f) => f.id === id);
     if (i >= 0 && i < fichasAbertas.value.length - 1) fichasAbertas.value.push(...fichasAbertas.value.splice(i, 1));
@@ -1445,6 +1447,8 @@ function aoMudarFicha(e: { personagem_id: number; campos: Record<string, unknown
     if (deMim(e) || !ficha) return;
     for (const [caminho, valor] of Object.entries(e.campos)) definirCaminho(ficha, caminho, copia(valor));
     rastrearPvPersonagem(e.personagem_id, ficha);
+    // a carga do navio é de todos: um item que alguém guardou pode ser novo para este jogador
+    if (ficha.navio && 'inventario' in e.campos) recarregar(['itens']);
 }
 // --- itens da mesa -------------------------------------------------------------
 // Um item salvo agora vale aqui até a recarga do servidor trazê-lo (evita piscar "item removido" ou o valor antigo).
@@ -2297,7 +2301,7 @@ async function comprarNaLoja(dados: { personagem_id: number; item: string; qtd: 
 }
 const meusPersonagensDaLoja = computed(() =>
     props.personagens
-        .filter((p) => !p.ficha?.npc && !fichas.value[p.id]?.npc && props.meusPersonagens.includes(p.id))
+        .filter((p) => !p.navio && !p.ficha?.npc && !fichas.value[p.id]?.npc && props.meusPersonagens.includes(p.id))
         .map((p) => ({ id: p.id, nome: p.nome })),
 );
 
@@ -2419,6 +2423,43 @@ async function criarNpc(nome: string, campos: Record<string, unknown>) {
         avisar(mensagemDe(e));
     }
 }
+// --- navios (ficha de toda a mesa: obras, tesouro, carga e tripulação) ------------------------------------------------
+const novoNavioAberto = ref(false);
+async function criarNavio(dados: { nome: string; modelo?: string | null; tamanho?: string; madeira?: string }) {
+    try {
+        const p = await api.criarNavio(dados);
+        novoNavioAberto.value = false;
+        if (p.ficha) fichas.value[p.id] = copia(p.ficha);
+        recarregar(['personagens', 'meusPersonagens'], { onSuccess: () => abrirPersonagem(p.id) });
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+/**
+ * Ação na ficha do navio: o servidor valida, debita e move; aqui só se aplica o que voltou (no navio e no personagem que mudou
+ * junto). Devolve o motivo quando o servidor recusa, para a ficha mostrar ao lado do botão.
+ */
+async function acaoDoNavio(navioId: number, nome: string, dados: Record<string, unknown> = {}): Promise<string | null> {
+    try {
+        const r = await api.acaoDoNavio(navioId, nome, dados);
+        aplicarNaFicha(r.personagem_id, r.campos);
+        if (r.outro) aplicarNaFicha(r.outro.personagem_id, r.outro.campos);
+        if (nome === 'guardar' || nome === 'retirar') recarregar(['itens']);
+
+        return null;
+    } catch (e) {
+        return mensagemDe(e);
+    }
+}
+/** Os personagens que este participante pode usar na carga e no tesouro do navio (os dele; o mestre, os dos jogadores). */
+const personagensParaONavio = computed(() =>
+    props.personagens
+        .filter((p) => !p.navio && !fichas.value[p.id]?.npc && fichas.value[p.id] && props.meusPersonagens.includes(p.id) && p.jogadores.length > 0)
+        .map((p) => ({ id: p.id, nome: p.nome, ficha: fichas.value[p.id] })),
+);
+/** Quem pode entrar na tripulação ligado a um personagem da mesa (todos os personagens de jogador, pelo nome). */
+const tripulaveis = computed(() => props.personagens.filter((p) => !p.navio && p.jogadores.length > 0).map((p) => ({ id: p.id, nome: p.nome })));
+
 /** O NPC que serve de modelo (as cópias do mapa têm `instancia_de`). */
 const ehModeloDeNpc = (p: Personagem) => !!(p.ficha?.npc && !(p.ficha.npc as { instancia_de?: number }).instancia_de);
 
@@ -3270,6 +3311,7 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                             @atribuir="pedirAtribuicao"
                             @criar="novoPersonagemAberto = true"
                             @novo-npc="novoNpcAberto = true"
+                            @novo-navio="novoNavioAberto = true"
                             :diario="diario"
                             @nova-pasta="pastaDialog = { id: null }"
                             @novo-folheto="novoFolhetoAberto = true"
@@ -3366,8 +3408,8 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
             :cor="f.personagem!.cor"
             :x="f.x"
             :y="f.y"
-            :largura="tamanhoFicha(ehNpc(f.id)).largura"
-            :altura="tamanhoFicha(ehNpc(f.id)).altura"
+            :largura="tamanhoFicha(ehNpc(f.id) && !ehNavio(f.id)).largura"
+            :altura="tamanhoFicha(ehNpc(f.id) && !ehNavio(f.id)).altura"
             :z="f.z"
             :class="fichaSobre === f.id ? 'ring-2 ring-ouro-300' : ''"
             @focar="focarFicha(f.id)"
@@ -3385,6 +3427,19 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                 Solte para entregar o item a {{ f.personagem!.nome }}
             </div>
             <FichaNaoImplementada v-if="!moduloSistema" :personagem="f.personagem!" :sistema="sistema.nome" />
+            <component
+                :is="moduloSistema.FichaDeNavio"
+                v-else-if="ehNavio(f.id)"
+                :personagem="f.personagem!"
+                :ficha="fichas[f.id]"
+                :itens="itensDaMesa"
+                :mestre="mestre"
+                :dia="tempoMesa.dia"
+                :personagens="personagensParaONavio"
+                :tripulaveis="tripulaveis"
+                :acao="(nome: string, dados?: Record<string, unknown>) => acaoDoNavio(f.id, nome, dados)"
+                @renomear="(nome: string) => renomearPersonagem(f.id, nome)"
+            />
             <component
                 :is="moduloSistema.FichaDeNpc"
                 v-else-if="ehNpc(f.id)"
@@ -3565,6 +3620,12 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                 v-model:open="novoNpcAberto"
                 @escolher="criarNpc"
             />
+            <component
+                :is="moduloSistema.NovoNavioDialog"
+                v-if="mestre && moduloSistema?.NovoNavioDialog"
+                v-model:open="novoNavioAberto"
+                @criar="criarNavio"
+            />
             <NovoPersonagemDialog v-model:open="novoPersonagemAberto" :jogadores="jogadores" :criar="criarPersonagem" @criado="aoCriarPersonagem" />
             <AtribuirJogadoresDialog v-model:open="atribuicaoAberta" :personagem="atribuindo" :jogadores="jogadores" @salvar="salvarAtribuicao" />
             <component
@@ -3574,7 +3635,9 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                 :jogadores="jogadoresDaLoja"
                 :lojas="lojas"
                 :proprios="catalogoDoMestre ?? []"
-                :personagens="props.personagens.filter((p) => !p.ficha?.npc && !fichas[p.id]?.npc).map((p) => ({ id: p.id, nome: p.nome }))"
+                :personagens="
+                    props.personagens.filter((p) => !p.navio && !p.ficha?.npc && !fichas[p.id]?.npc).map((p) => ({ id: p.id, nome: p.nome }))
+                "
                 :entregar="entregarDoCatalogo"
                 :abrir-loja="abrirLoja"
                 :fechar-loja="fecharLoja"

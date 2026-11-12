@@ -15,6 +15,7 @@ use App\Http\Controllers\App\JogoController;
 use App\Http\Controllers\App\LojaController;
 use App\Http\Controllers\App\LootController;
 use App\Http\Controllers\App\MusicaController;
+use App\Http\Controllers\App\NavioController;
 use App\Http\Controllers\App\NpcController;
 use App\Http\Controllers\App\ObjetoController;
 use App\Http\Controllers\App\PaginaController;
@@ -73,6 +74,9 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
         ->middleware('throttle:20,1')->name('personagens.dinheiro-rolado');
     Route::post('personagens/{personagem}/criacao/atributos-rolados', [FichaController::class, 'rolarAtributos'])
         ->middleware('throttle:20,1')->name('personagens.atributos-rolados');
+    // Navios: o mestre cria; todos os jogadores agem na ficha (obras, tesouro, carga, tripulação) por `acao`.
+    Route::post('navios', [NavioController::class, 'criar'])->middleware('throttle:30,1')->name('navios.store');
+    Route::post('navios/{personagem}/acao', [NavioController::class, 'acao'])->middleware('throttle:120,1')->name('navios.acao');
     Route::post('npcs', [NpcController::class, 'criar'])->middleware('throttle:60,1')->name('npcs.store');
     Route::post('personagens/{personagem}/instanciar', [NpcController::class, 'instanciar'])->middleware('throttle:120,1')->name('personagens.instanciar');
     Route::post('personagens', [PersonagemDoJogoController::class, 'criar'])->middleware('throttle:30,1')->name('personagens.store');

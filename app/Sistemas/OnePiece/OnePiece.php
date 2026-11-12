@@ -85,6 +85,11 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
 
     public function variaveisDeRolagem(array $ficha, array $itens = []): array
     {
+        // Navio: os ataques rolam contra a Classe de Resistência (madeira, fortificação, kairoseki)
+        if (is_array($ficha['navio'] ?? null)) {
+            return [...Regras::calcular($ficha, $itens), 'ca' => Navios::calcular($ficha['navio'], (int) ($ficha['pv']['atual'] ?? 0))['cr']];
+        }
+
         return Regras::calcular($ficha, $itens);
     }
 
@@ -326,6 +331,12 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         $tem = fn (string $nome): bool => Regras::temCaracteristica($ficha, $nome);
         $origem = $contexto['origem'] ?? null;
         $atributo = $contexto['atributo'] ?? null;
+        // Navio: todo dano recebido é reduzido pelo Bônus de Resistência da madeira
+        if ($dano > 0 && is_array($ficha['navio'] ?? null)) {
+            $reduzido = Navios::dano($ficha['navio'], $dano);
+            $avisos[] = 'Bônus de Resistência do navio: −'.($dano - $reduzido);
+            $dano = $reduzido;
+        }
         // Características passivas do estilo que mudam o dano que o personagem sofre
         // Plot Armor (Herói, ligada): nenhum tipo de dano, nem Verdadeiro, durante o efeito
         if ($dano > 0 && $tem('Plot Armor')) {
@@ -479,6 +490,9 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
         }
         if ((bool) ($antes['aliado'] ?? false) !== (bool) ($depois['aliado'] ?? false)) {
             abort(403, 'Só o mestre marca um NPC como aliado.');
+        }
+        if (($antes['navio'] ?? null) != ($depois['navio'] ?? null)) {
+            abort(403, 'O navio só muda pelas ações da ficha do navio.');
         }
         if (($antes['npc'] ?? null) != ($depois['npc'] ?? null)) {
             abort(403, 'Só o mestre edita a ficha de um NPC.');

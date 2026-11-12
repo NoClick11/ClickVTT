@@ -32,6 +32,32 @@ class Personagem extends Model
         return array_replace_recursive($sistema->fichaPadrao(), $this->ficha ?? []);
     }
 
+    /**
+     * Só os navios (ou, com `false`, só quem não é navio). `->>` devolve NULL de SQL tanto para a chave ausente quanto para o
+     * `null` do JSON (a ficha padrão guarda `navio: null`).
+     */
+    public function scopeNavios($query, bool $sim = true)
+    {
+        return $query->whereRaw("(ficha::jsonb ->> 'navio') is ".($sim ? 'not null' : 'null'));
+    }
+
+    public function ehNavio(): bool
+    {
+        return is_array($this->ficha['navio'] ?? null);
+    }
+
+    /**
+     * Quem recebe as mudanças desta ficha em tempo real: o mestre e os jogadores do personagem; a do navio, a mesa inteira.
+     *
+     * @return list<string>
+     */
+    public function canaisDaFicha(): array
+    {
+        return $this->ehNavio()
+            ? ['mesa']
+            : ['mestre', ...$this->jogadores()->pluck('jogadores.id')->map(fn ($id) => "jogador.{$id}")->all()];
+    }
+
     public function mesa(): BelongsTo
     {
         return $this->belongsTo(Mesa::class);
@@ -63,6 +89,8 @@ class Personagem extends Model
             'aliado' => (bool) ($this->ficha['aliado'] ?? false),
             // NPC com 0 de vida: morto, recebe indicador e não pode ser alvo
             'morto' => (bool) (($this->ficha['npc'] ?? false) && ((int) ($this->ficha['pv']['atual'] ?? 1) <= 0)),
+            // Navio: a ficha é de toda a mesa (construção, tesouro e carga compartilhados)
+            'navio' => $this->ehNavio(),
             'jogadores' => $this->jogadores->map(fn (Jogador $j) => ['id' => $j->id, 'nome' => $j->nome, 'cor' => $j->cor])->values(),
         ];
     }

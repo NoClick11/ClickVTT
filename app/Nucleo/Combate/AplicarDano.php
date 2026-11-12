@@ -8,6 +8,7 @@ use App\Nucleo\Sistemas\FichaCampos;
 use App\Nucleo\Sistemas\Sistema;
 use App\Support\AcessoMesa;
 use App\Support\EntregarMensagem;
+use App\Support\Transmitir;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -113,7 +114,7 @@ final class AplicarDano
     /** As chaves de "1 vez por rodada" que o personagem já gastou nesta rodada (ex.: `rompante`), guardadas no item dele no combate. */
     private function usadosNaRodada(Mesa $mesa, int $personagemId): array
     {
-        $c = \App\Nucleo\Combate\CombateService::normalizar(Mesa::query()->whereKey($mesa->id)->first()?->combate);
+        $c = CombateService::normalizar(Mesa::query()->whereKey($mesa->id)->first()?->combate);
         $item = collect($c['itens'])->firstWhere('personagem_id', $personagemId);
 
         return $c['fase'] === 'em_curso' && $item ? array_keys(array_filter($item['acoes'] ?? [], fn ($v) => (int) $v > 0)) : [];
@@ -122,7 +123,7 @@ final class AplicarDano
     private function marcarNaRodada(Mesa $mesa, int $personagemId, string $chave): void
     {
         $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
-        $c = \App\Nucleo\Combate\CombateService::normalizar($m->combate);
+        $c = CombateService::normalizar($m->combate);
         if ($c['fase'] !== 'em_curso') {
             return;
         }
@@ -130,7 +131,7 @@ final class AplicarDano
             if ($item['personagem_id'] === $personagemId) {
                 $c['itens'][$i]['acoes'][$chave] = 1;
                 $m->forceFill(['combate' => $c])->save();
-                \App\Support\Transmitir::enviar($m, 'combate', ['combate' => $c, 'ator' => 0], ['mesa']);
+                Transmitir::enviar($m, 'combate', ['combate' => $c, 'ator' => 0], ['mesa']);
 
                 return;
             }
@@ -145,7 +146,7 @@ final class AplicarDano
         Duracoes::transmitir($mesa, $alvo, $r['campos'], $r['acabaram'] !== []);
         $danoFinal = (int) ($r['calculo']['final'] ?? 0);
         if ($danoFinal > 0) {
-            \App\Support\Transmitir::enviar($mesa, 'combate-efeito', [
+            Transmitir::enviar($mesa, 'combate-efeito', [
                 'personagem_id' => $alvo->id,
                 'delta' => -$danoFinal,
                 'tipo' => 'dano',
@@ -158,7 +159,7 @@ final class AplicarDano
         foreach ($r['hospedes'] as [$hospede, $camposHospede, $parte]) {
             Duracoes::transmitir($mesa, $hospede, $camposHospede);
             if ($parte > 0) {
-                \App\Support\Transmitir::enviar($mesa, 'combate-efeito', [
+                Transmitir::enviar($mesa, 'combate-efeito', [
                     'personagem_id' => $hospede->id,
                     'delta' => -$parte,
                     'tipo' => 'dano',
@@ -186,7 +187,7 @@ final class AplicarDano
     {
         /** @var Personagem $alvo */
         $alvo = $r['p'];
-        if (! empty($alvo->ficha['npc'])) {
+        if (! empty($alvo->ficha['npc']) || ! empty($alvo->ficha['navio'])) {
             return;
         }
 
@@ -232,7 +233,7 @@ final class AplicarDano
 
         $paraMestre = $mestreJogador ? $msg->para($mestreJogador) : $msg->para($acesso->jogador);
         if ($paraMestre) {
-            \App\Support\Transmitir::enviar($mesa, 'mensagem', [
+            Transmitir::enviar($mesa, 'mensagem', [
                 'mensagem' => $paraMestre,
                 'ator' => 0,
             ], ['mestre']);

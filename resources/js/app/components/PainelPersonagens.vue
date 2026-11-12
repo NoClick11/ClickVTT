@@ -16,6 +16,7 @@ import {
     Pencil,
     Plus,
     Presentation,
+    Ship,
     Skull,
     Trash2,
     Users,
@@ -88,9 +89,12 @@ const ehNpc = (p: Personagem): boolean => {
 
 /** O jogador só vê a lista com os personagens dele; o mestre vê todos (exceto as cópias de token dos NPCs). */
 const visiveis = computed(() => {
-    const lista = props.personagens.filter((p) => !ehCopiaDeNpc(p));
+    const lista = props.personagens.filter((p) => !ehCopiaDeNpc(p) && !p.navio);
     return props.mestre ? lista : lista.filter((p) => props.meusPersonagens.includes(p.id));
 });
+
+/** Navios: seção própria no fim da lista, visível a todos (a ficha do navio é da mesa inteira). */
+const navios = computed(() => props.personagens.filter((p) => p.navio));
 
 const emit = defineEmits<{
     abrir: [personagemId: number];
@@ -101,6 +105,7 @@ const emit = defineEmits<{
     novoFolheto: [];
     /** Reservado: o NPC ainda não tem função. */
     novoNpc: [];
+    novoNavio: [];
     moverPersonagem: [id: number, pastaId: number | null];
     moverFolheto: [id: number, pastaId: number | null];
     moverPasta: [id: number, paiId: number | null];
@@ -181,6 +186,7 @@ const vazio = computed(() => !visiveis.value.length && !props.diario.folhetos.le
                         <DropdownMenuItem @select="$emit('novaPasta')"><FolderPlus class="size-4" /> Nova pasta</DropdownMenuItem>
                         <DropdownMenuItem @select="$emit('novoFolheto')"><FileImage class="size-4" /> Novo folheto</DropdownMenuItem>
                         <DropdownMenuItem @select="$emit('novoNpc')"><Skull class="size-4" /> Novo NPC</DropdownMenuItem>
+                        <DropdownMenuItem @select="$emit('novoNavio')"><Ship class="size-4" /> Novo navio</DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem @select="$emit('criar')"><Users class="size-4" /> Novo personagem</DropdownMenuItem>
                     </DropdownMenuContent>
@@ -385,6 +391,51 @@ const vazio = computed(() => !visiveis.value.length && !props.diario.folhetos.le
                         : 'Você ainda não tem um personagem nesta mesa. O mestre atribui os personagens.'
                 }}
             </p>
+        </section>
+
+        <section v-if="navios.length" class="mb-4" aria-label="Navios">
+            <h3 class="mb-1.5 px-0.5 text-[11px] font-semibold uppercase tracking-wider text-preto-400">Navios</h3>
+            <ul class="grid gap-1.5">
+                <li
+                    v-for="n in navios"
+                    :key="n.id"
+                    class="flex items-center gap-1 rounded-md border border-transparent bg-preto-900/70 pr-1.5 transition hover:border-preto-700"
+                    :draggable="mestre"
+                    :title="mestre ? 'Arraste para o mapa para posicionar o navio; clique para abrir a ficha' : 'Clique para abrir a ficha do navio'"
+                    @dragstart.stop="mestre && arrastar($event, 'personagem', n.id)"
+                    @dragend="((arrastando = null), (sobre = null))"
+                    @contextmenu="mestre && ($event.preventDefault(), $emit('menu', n.id, { x: $event.clientX, y: $event.clientY }))"
+                >
+                    <button
+                        type="button"
+                        class="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                        :aria-label="`Abrir a ficha do navio ${n.nome}`"
+                        @click="$emit('abrir', n.id)"
+                    >
+                        <img
+                            v-if="fotoDoPersonagem(n)"
+                            :src="fotoDoPersonagem(n)!"
+                            alt=""
+                            class="size-9 shrink-0 rounded-full object-cover"
+                            loading="lazy"
+                        />
+                        <span v-else class="flex size-9 shrink-0 items-center justify-center rounded-full bg-preto-800 text-ouro-300">
+                            <Ship class="size-4" aria-hidden="true" />
+                        </span>
+                        <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ n.nome }}</span>
+                    </button>
+                    <Button
+                        v-if="comToken.includes(n.id)"
+                        size="icon"
+                        variant="ghost"
+                        class="size-8 shrink-0 text-preto-300 hover:text-ouro-200"
+                        :aria-label="`Ir até o navio ${n.nome} no mapa`"
+                        title="Ir até o token no mapa"
+                        @click="$emit('focar', n.id)"
+                        ><Crosshair class="size-4"
+                    /></Button>
+                </li>
+            </ul>
         </section>
 
         <section>

@@ -83,6 +83,8 @@ final class FichaOnePiece
             'aliado' => false,
             // NPC: os dados da ficha de uma tela só (ataques, técnicas, características e usos). null = personagem comum.
             'npc' => null,
+            // Navio (cap. 14): o bloco da embarcação; quem o altera é o `NavioService` (ver `Navios`)
+            'navio' => null,
             'itensIniciais' => [],
             'dinheiroInicial' => 0,
             // Primeiros Socorros: esta criatura já recebeu o tratamento (volta no descanso longo)
@@ -175,6 +177,7 @@ final class FichaOnePiece
         // NPC aliado dos jogadores (só o mestre muda): os jogadores não o atingem
         $r['aliado'] = ['boolean:strict'];
         $r['npc'] = ['nullable', 'array'];
+        $r['navio'] = ['nullable', 'array'];
         // O que a criação entregou do inventário inicial (só o servidor mexe: refazer a criação não duplica os itens)
         $r['dinheiroInicial'] = ['integer:strict', 'between:0,1000000000000'];
         $r['itensIniciais'] = ['array', 'max:60'];
