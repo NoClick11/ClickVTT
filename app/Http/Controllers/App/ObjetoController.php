@@ -11,6 +11,7 @@ use App\Nucleo\Cena\Paredes;
 use App\Nucleo\Combate\CombateService;
 use App\Nucleo\Combate\TecnicasAtivas;
 use App\Support\AcessoMesa;
+use App\Support\OtimizarImagem;
 use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -63,6 +64,7 @@ class ObjetoController extends Controller
             'dados.angulo' => ['nullable', 'numeric', 'min:1', 'max:360'],
             'dados.direcao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
             'dados.atravessa' => ['nullable', 'boolean'],
+            'dados.rotacao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
             'dados.destino_pagina_id' => ['nullable', 'integer'],
             'dados.destino_objeto_id' => ['nullable', 'integer'],
             'dados.destino_nome' => ['nullable', 'string', 'max:80'],
@@ -97,14 +99,20 @@ class ObjetoController extends Controller
         unset($dados['arquivo']);
         if ($arquivo) {
             abort_unless($acesso->ehMestre(), 403);
-            $dados['arquivo'] = $arquivo->store('cenas', 'public');
-            $dados['arquivo_tipo'] = $this->tipoDoArquivo($arquivo->getClientOriginalExtension());
+            $caminho = OtimizarImagem::armazenar($arquivo, 'cenas');
+            $dados['arquivo'] = $caminho;
+            $dados['arquivo_tipo'] = $this->tipoDoArquivo(pathinfo($caminho, PATHINFO_EXTENSION));
         } elseif (! empty($dados['personagem_id'])) {
             $p = Personagem::find($dados['personagem_id']);
             $fotoToken = $p?->ficha['foto_token'] ?? $p?->ficha['foto'] ?? null;
-            if (! empty($fotoToken) && str_starts_with($fotoToken, '/storage/')) {
-                $dados['arquivo'] = substr($fotoToken, 9);
-                $dados['arquivo_tipo'] = $this->tipoDoArquivo(pathinfo($dados['arquivo'], PATHINFO_EXTENSION));
+            if (empty($fotoToken) && ! empty($p?->ficha['npc']['instancia_de'])) {
+                $origem = Personagem::find($p->ficha['npc']['instancia_de']);
+                $fotoToken = $origem?->ficha['foto_token'] ?? $origem?->ficha['foto'] ?? null;
+            }
+            if (! empty($fotoToken)) {
+                $dados['arquivo'] = str_starts_with($fotoToken, '/storage/') ? substr($fotoToken, 9) : $fotoToken;
+                $ext = pathinfo($dados['arquivo'], PATHINFO_EXTENSION);
+                $dados['arquivo_tipo'] = $ext ? $this->tipoDoArquivo($ext) : 'imagem';
             }
         }
 
@@ -150,7 +158,8 @@ class ObjetoController extends Controller
                 'dados.angulo' => ['nullable', 'numeric', 'min:1', 'max:360'],
                 'dados.direcao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
                 'dados.atravessa' => ['nullable', 'boolean'],
-                'dados.destino_pagina_id' => ['nullable', 'integer'],
+                'dados.rotacao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
+            'dados.destino_pagina_id' => ['nullable', 'integer'],
                 'dados.destino_objeto_id' => ['nullable', 'integer'],
                 'dados.destino_nome' => ['nullable', 'string', 'max:80'],
                 'reverter_movimento' => ['sometimes', 'boolean'],
@@ -171,15 +180,20 @@ class ObjetoController extends Controller
                 403,
             );
             // Em combate, só o token de quem está no turno se move (o mestre ignora).
-            if ($objeto->tipo === 'token' && CombateService::emCurso($mesa)) {
+            if ($objeto->tipo === 'token' && CombateService::emCurso($mesa) && ($request->has('x') || $request->has('y'))) {
                 $atual = CombateService::itemAtual(CombateService::normalizar($mesa->combate));
                 abort_unless($atual !== null && $atual['personagem_id'] !== null && $atual['personagem_id'] === $objeto->personagem_id, 403, 'Não é o turno deste personagem.');
             }
             $dados = $request->validate([
-                'x' => ['required', 'numeric'],
-                'y' => ['required', 'numeric'],
+                'x' => ['sometimes', 'numeric'],
+                'y' => ['sometimes', 'numeric'],
+                'dados' => ['sometimes', 'nullable', 'array'],
+                'dados.rotacao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
                 'reverter_movimento' => ['sometimes', 'boolean'],
             ]);
+            if (array_key_exists('dados', $dados) && is_array($dados['dados'])) {
+                $dados['dados'] = array_merge($objeto->dados ?? [], array_filter($dados['dados'], fn ($k) => $k === 'rotacao', ARRAY_FILTER_USE_KEY));
+            }
         }
 
         $reverter = (bool) ($dados['reverter_movimento'] ?? false);

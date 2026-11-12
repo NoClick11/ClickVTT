@@ -9,6 +9,7 @@ export class ObjetoVisual {
     readonly container = new Container();
     dto: ObjetoDto;
 
+    private conteudoRotativo = new Container();
     private fundo = new Graphics();
     private midia: Container | null = null;
     private video: HTMLVideoElement | null = null;
@@ -39,7 +40,8 @@ export class ObjetoVisual {
         private mestre = false,
     ) {
         this.dto = { ...dto };
-        this.container.addChild(this.fundo, this.bordaToken, this.mira, this.marcador, this.caveira, this.barras, this.iconesStatus);
+        this.container.addChild(this.conteudoRotativo, this.mira, this.marcador, this.caveira, this.barras, this.iconesStatus);
+        this.conteudoRotativo.addChild(this.fundo, this.bordaToken);
         this.aplicar();
         void this.carregarMidia();
     }
@@ -49,6 +51,12 @@ export class ObjetoVisual {
         this.dto = { ...dto };
         this.aplicar();
         if (arquivoMudou) void this.carregarMidia();
+    }
+
+    /** Atualiza os dados arbitrários (rotação, luz, etc.) */
+    definirDados(dados: NonNullable<ObjetoDto['dados']>): void {
+        this.dto.dados = { ...(this.dto.dados ?? {}), ...dados };
+        this.aplicar();
     }
 
     /** Atualiza só a geometria (arrasto local, sem tocar no resto). */
@@ -135,8 +143,14 @@ export class ObjetoVisual {
     }
 
     private aplicar(): void {
-        const { x, y, largura, altura, camada } = this.dto;
+        const { x, y, largura, altura, camada, dados } = this.dto;
         this.container.position.set(x, y);
+        const rot = dados?.rotacao ?? 0;
+        const cx = largura / 2;
+        const cy = altura / 2;
+        this.conteudoRotativo.position.set(cx, cy);
+        this.conteudoRotativo.pivot.set(cx, cy);
+        this.conteudoRotativo.rotation = (rot * Math.PI) / 180;
         // Objetos da camada do mestre aparecem esmaecidos: o jogador não os vê.
         this.container.alpha =
             this.ehToken && this.dto.morto ? 0.55 : camada === 'mestre' ? 0.6 : this.dto.tipo === 'parede' && this.mestre && !this.enfase ? 0.25 : 1;
@@ -777,7 +791,7 @@ export class ObjetoVisual {
         if (this.ehToken) {
             if (!this.mascaraToken) {
                 this.mascaraToken = new Graphics();
-                this.container.addChild(this.mascaraToken);
+                this.conteudoRotativo.addChild(this.mascaraToken);
             }
             this.mascaraToken
                 .clear()
@@ -816,8 +830,8 @@ export class ObjetoVisual {
         if (midia) {
             this.midia = midia;
             this.arquivoCarregado = arquivo;
-            const indexBorda = this.container.getChildIndex(this.bordaToken);
-            this.container.addChildAt(midia, Math.max(1, indexBorda));
+            const indexBorda = this.conteudoRotativo.getChildIndex(this.bordaToken);
+            this.conteudoRotativo.addChildAt(midia, Math.max(0, indexBorda));
         }
         this.aplicar();
     }

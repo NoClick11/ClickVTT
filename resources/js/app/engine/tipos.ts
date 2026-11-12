@@ -63,6 +63,8 @@ export interface ObjetoDto {
         altura_original?: number;
         texto?: string;
         tamanho?: number;
+        /** token/imagem: rotação em graus (0 a 360). */
+        rotacao?: number;
         /** porta/janela: só o mestre abre uma trancada. */
         trancada?: boolean;
         /** token: quantos quadrados enxerga no escuro (vazio = o padrão da página). */
@@ -119,11 +121,15 @@ export interface PaginaDto {
     usar_visao: boolean;
     /** O que o jogador já viu fica no mapa, esmaecido. */
     memoria_ativa: boolean;
+    /** Imagem de fundo/mapa da página para miniatura (estilo Roll20). */
+    miniatura?: string | null;
 }
 
 export type AlcaRedimensionar = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
-export type CamposGeometria = Partial<Pick<ObjetoDto, 'x' | 'y' | 'largura' | 'altura'>>;
+export type CamposGeometria = Partial<Pick<ObjetoDto, 'x' | 'y' | 'largura' | 'altura'>> & {
+    dados?: Partial<NonNullable<ObjetoDto['dados']>>;
+};
 
 export interface CenaEventos {
     /** O objeto selecionado quando há um só (o inspetor usa); `null` com nenhum ou vários. */

@@ -60,6 +60,7 @@ import { emCurso, itemAtual, normalizar as normalizarCombate, podeAgirAgora, rod
 import { fatorParaMetros, totalDoTurno } from '../nucleo/combate/movimento';
 import { comResumo, semOfertasDe, type OfertaDeReacao, type ResumoEvento } from '../nucleo/combate/reacoes';
 import { definirCaminho } from '../nucleo/ficha/caminho';
+import { converterParaWebp } from '../nucleo/imagens/webp';
 import { arrastandoDaLoja, arrastandoItem, arrastandoPersonagem, itemDaLojaSolto, itemSolto, personagemSolto } from '../nucleo/itens/arrastar';
 import EditorItemDialog from '../nucleo/itens/EditorItemDialog.vue';
 import PainelItens from '../nucleo/itens/PainelItens.vue';
@@ -155,6 +156,7 @@ const canvas = ref<InstanceType<typeof CenaCanvas> | null>(null);
 
 const menuAberto = ref(false);
 const configAberta = ref(false);
+const reabrirMenuAoFecharConfig = ref(false);
 const configPagina = ref<PaginaDto | null>(null);
 const configErro = ref<string | undefined>();
 const painelDados = ref(false);
@@ -564,7 +566,24 @@ const objetosDaCena = computed(() =>
         const ehNpc = !p?.jogadores?.length || !!p?.ficha?.npc || !!ficha?.npc;
         const npcMorto = !!p?.morto || (!!ficha?.npc && Number((ficha.pv as { atual?: number } | undefined)?.atual ?? 1) <= 0);
 
-        return { ...o, status: statusPorPersonagem.value[o.personagem_id] ?? [], barras, morto: npcMorto, npc: ehNpc };
+        // Se o token não tiver arquivo próprio definido, usa a foto_token do personagem (ou do modelo de NPC)
+        let arquivo = o.arquivo;
+        if (!arquivo && p) {
+            const instanciaDe = (ficha?.npc as any)?.instancia_de ?? (p.ficha?.npc as any)?.instancia_de;
+            const modelo = instanciaDe ? props.personagens.find((m) => m.id === instanciaDe) : null;
+            arquivo =
+                p.foto_token ||
+                p.foto ||
+                (ficha as any)?.foto_token ||
+                (ficha as any)?.foto ||
+                modelo?.foto_token ||
+                modelo?.foto ||
+                (modelo?.ficha as any)?.foto_token ||
+                (modelo?.ficha as any)?.foto ||
+                null;
+        }
+
+        return { ...o, arquivo, status: statusPorPersonagem.value[o.personagem_id] ?? [], barras, morto: npcMorto, npc: ehNpc };
     }),
 );
 watch(
@@ -736,6 +755,9 @@ const historicoMovimentos = ref<MovimentoHistorico[]>([]);
 function aoAlterar(id: number, campos: CamposGeometria, final: boolean, origem?: { x: number; y: number }) {
     const o = objetos.value.find((x) => x.id === id);
     if (!o) return;
+    if (campos.dados) {
+        campos.dados = { ...(o.dados ?? {}), ...campos.dados };
+    }
     Object.assign(o, campos);
     if (!final) return;
 
@@ -1034,18 +1056,25 @@ const camadaDeDestino = (): Camada => (camada.value === 'iluminacao' ? 'jogadore
 async function enviarMapa(arquivo: File | undefined) {
     if (!arquivo || !props.pagina) return;
     try {
-        const { largura, altura } = await medirArquivo(arquivo);
+        const arquivoFinal = await converterParaWebp(arquivo);
+        const { largura, altura } = await medirArquivo(arquivoFinal);
         const larguraPagina = props.pagina.colunas * props.pagina.tamanho_quadrado;
         const dados = new FormData();
         dados.append('camada', camadaDeDestino());
         dados.append('tipo', 'imagem');
-        dados.append('nome', arquivo.name.replace(/\.[^.]+$/, ''));
+        dados.append('nome', arquivoFinal.name.replace(/\.[^.]+$/, ''));
         dados.append('x', '0');
         dados.append('y', '0');
         dados.append('largura', String(larguraPagina));
         dados.append('altura', String(Math.round((larguraPagina * altura) / largura)));
-        dados.append('arquivo', arquivo);
-        incluirObjeto(await api.criarObjeto(props.pagina.id, dados));
+        dados.append('arquivo', arquivoFinal);
+        const novoObj = await api.criarObjeto(props.pagina.id, dados);
+        incluirObjeto(novoObj);
+        if (novoObj.arquivo && props.pagina) {
+            props.pagina.miniatura = novoObj.arquivo;
+            const pg = props.paginas.find((p) => p.id === props.pagina?.id);
+            if (pg) pg.miniatura = novoObj.arquivo;
+        }
         avisar(`Imagem adicionada na camada ${CAMADAS.find((c) => c.id === camadaDeDestino())?.nome}. Botão direito nela para trocar de camada.`);
     } catch (err) {
         avisar(mensagemDe(err));
@@ -1101,8 +1130,11 @@ async function soltarNoMapa(e: DragEvent) {
     if (!props.pagina) return;
     if (props.mestre && arrastandoArquivo(e)) {
         e.preventDefault();
-
-        return enviarMapa(e.dataTransfer?.files[0]);
+        const arquivos = Array.from(e.dataTransfer?.files ?? []);
+        for (const arquivo of arquivos) {
+            await enviarMapa(arquivo);
+        }
+        return;
     }
     if (!arrastandoPersonagem(e)) return;
     e.preventDefault();
@@ -1154,6 +1186,8 @@ async function novaPagina(pastaId: number | null) {
         recarregar(['paginas']);
         configErro.value = undefined;
         configPagina.value = criada;
+        reabrirMenuAoFecharConfig.value = menuAberto.value;
+        menuAberto.value = false;
         configAberta.value = true;
     } catch (e) {
         avisar(mensagemDe(e));
@@ -1161,6 +1195,8 @@ async function novaPagina(pastaId: number | null) {
 }
 
 function configurar(id: number) {
+    reabrirMenuAoFecharConfig.value = menuAberto.value;
+    menuAberto.value = false;
     configPagina.value = props.paginas.find((p) => p.id === id) ?? props.pagina;
     configErro.value = undefined;
     configAberta.value = true;
@@ -1179,6 +1215,10 @@ async function salvarConfig(id: number, campos: Partial<PaginaDto>) {
     try {
         await api.atualizarPagina(id, campos);
         configAberta.value = false;
+        if (reabrirMenuAoFecharConfig.value) {
+            reabrirMenuAoFecharConfig.value = false;
+            menuAberto.value = true;
+        }
         recarregar(['paginas', 'pagina']);
     } catch (e) {
         configErro.value = mensagemDe(e);
@@ -2423,6 +2463,41 @@ async function excluirPersonagem() {
     }
 }
 
+const renomearPersonagemDialog = ref<number | null>(null);
+const nomeDoPersonagemARenomear = computed(() => {
+    if (renomearPersonagemDialog.value === null) return '';
+    return props.personagens.find((p) => p.id === renomearPersonagemDialog.value)?.nome ?? '';
+});
+
+function abrirRenomearPersonagem(id: number) {
+    renomearPersonagemDialog.value = id;
+}
+
+async function salvarNovoNomePersonagem(novoNome: string) {
+    if (renomearPersonagemDialog.value === null) return;
+    const id = renomearPersonagemDialog.value;
+    renomearPersonagemDialog.value = null;
+    await renomearPersonagem(id, novoNome);
+}
+
+async function renomearPersonagem(id: number, novoNome: string) {
+    const nomeLimpo = novoNome.trim();
+    if (!nomeLimpo) return;
+    try {
+        await api.renomearPersonagem(id, nomeLimpo);
+        const p = props.personagens.find((x) => x.id === id);
+        if (p) p.nome = nomeLimpo;
+        for (const obj of objetos.value) {
+            if (obj.tipo === 'token' && obj.personagem_id === id) {
+                obj.nome = nomeLimpo;
+            }
+        }
+        recarregar(['personagens', 'meusPersonagens', 'diario', 'objetos']);
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+
 async function salvarAtribuicao(personagemId: number, jogadores: number[]) {
     try {
         await api.atribuirJogadores(personagemId, jogadores);
@@ -2465,12 +2540,21 @@ async function salvarFotoPersonagem(dados: {
             p.ficha.foto_token = fotoToken;
         }
     }
+    // Se for NPC modelo ou instância de NPC, atualiza também os tokens relacionados
+    const instanciaDe = (p?.ficha?.npc as any)?.instancia_de;
     for (const obj of objetos.value) {
-        if (obj.tipo === 'token' && obj.personagem_id === personagemId) {
-            obj.arquivo = fotoToken;
+        if (obj.tipo === 'token') {
+            const ehMesmo = obj.personagem_id === personagemId;
+            const outroP = props.personagens.find((x) => x.id === obj.personagem_id);
+            const ehFilho = (outroP?.ficha?.npc as any)?.instancia_de === personagemId;
+            const ehIrmao = instanciaDe && (outroP?.ficha?.npc as any)?.instancia_de === instanciaDe;
+            const ehPai = instanciaDe && obj.personagem_id === instanciaDe;
+            if (ehMesmo || ehFilho || ehIrmao || ehPai) {
+                obj.arquivo = fotoToken;
+            }
         }
     }
-    recarregar(['personagens']);
+    recarregar(['personagens', 'objetos']);
 }
 
 // --- pintar e texto ----------------------------------------------------------------
@@ -2734,9 +2818,17 @@ onMounted(() => {
                             p.ficha.foto_token = fotoToken;
                         }
                     }
+                    const instanciaDe = (p?.ficha?.npc as any)?.instancia_de;
                     for (const obj of objetos.value) {
-                        if (obj.tipo === 'token' && obj.personagem_id === e.personagem_id) {
-                            obj.arquivo = fotoToken;
+                        if (obj.tipo === 'token') {
+                            const ehMesmo = obj.personagem_id === e.personagem_id;
+                            const outroP = props.personagens.find((x) => x.id === obj.personagem_id);
+                            const ehFilho = (outroP?.ficha?.npc as any)?.instancia_de === e.personagem_id;
+                            const ehIrmao = instanciaDe && (outroP?.ficha?.npc as any)?.instancia_de === instanciaDe;
+                            const ehPai = instanciaDe && obj.personagem_id === instanciaDe;
+                            if (ehMesmo || ehFilho || ehIrmao || ehPai) {
+                                obj.arquivo = fotoToken;
+                            }
                         }
                     }
                 })
@@ -3125,6 +3217,7 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                             :com-token="comToken"
                             @abrir="abrirPersonagem"
                             @menu="(id, tela) => (menuPersonagem = { id, ...tela })"
+                            @renomear="abrirRenomearPersonagem"
                             @focar="focarPersonagem"
                             @atribuir="pedirAtribuicao"
                             @criar="novoPersonagemAberto = true"
@@ -3251,6 +3344,7 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                 :ficha="fichas[f.id]"
                 :mestre="mestre"
                 :pode-editar="mestre || meusPersonagens.includes(f.id)"
+                @renomear="(nome: string) => renomearPersonagem(f.id, nome)"
                 @salvar="(campos: Record<string, unknown>) => salvarFicha(f.id, campos)"
                 @rolar="(...a: RolagemDaFicha) => rolarDaFicha(f.id, ...a)"
                 @usar-tecnica="(uso: UsoDeTecnica) => usarTecnicaDaFicha(f.id, uso)"
@@ -3298,6 +3392,10 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
             :x="menuPersonagem.x"
             :y="menuPersonagem.y"
             @fechar="menuPersonagem = null"
+            @renomear="
+                abrirRenomearPersonagem(menuPersonagem.id);
+                menuPersonagem = null;
+            "
             @excluir="
                 excluindoId = menuPersonagem.id;
                 menuPersonagem = null;
@@ -3382,9 +3480,18 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                 @excluir-pasta="(id) => acao(() => api.removerPasta(id), ['pastas', 'paginas'])()"
             />
             <ConfigPaginaDialog
-                v-model:open="configAberta"
+                :open="configAberta"
                 :pagina="configPagina"
                 :erro="configErro"
+                @update:open="
+                    (v: boolean) => {
+                        configAberta = v;
+                        if (!v && reabrirMenuAoFecharConfig) {
+                            reabrirMenuAoFecharConfig = false;
+                            menuAberto = true;
+                        }
+                    }
+                "
                 @salvar="salvarConfig"
                 @limpar-memoria="limparMemoriaDaPagina"
             />
@@ -3395,6 +3502,13 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                 :inicial="nomeDaPasta"
                 @update:open="(v: boolean) => !v && (pastaDialog = null)"
                 @salvar="salvarPasta"
+            />
+            <NomeDialog
+                :open="renomearPersonagemDialog !== null"
+                titulo="Renomear NPC / Personagem"
+                :inicial="nomeDoPersonagemARenomear"
+                @update:open="(v: boolean) => !v && (renomearPersonagemDialog = null)"
+                @salvar="salvarNovoNomePersonagem"
             />
             <NovoFolhetoDialog v-model:open="novoFolhetoAberto" :criar="criarFolheto" />
             <component

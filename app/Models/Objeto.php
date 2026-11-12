@@ -78,7 +78,11 @@ class Objeto extends Model
             'x' => $this->x, 'y' => $this->y,
             'largura' => $this->largura, 'altura' => $this->altura,
             'z' => $this->z,
-            'arquivo' => $this->arquivo ? '/storage/'.$this->arquivo : null,
+            'arquivo' => $this->arquivo
+                ? (str_starts_with($this->arquivo, 'http://') || str_starts_with($this->arquivo, 'https://') || str_starts_with($this->arquivo, '/storage/')
+                    ? $this->arquivo
+                    : '/storage/'.$this->arquivo)
+                : null,
             'arquivo_tipo' => $this->arquivo_tipo,
             'dados' => $this->dados,
         ];

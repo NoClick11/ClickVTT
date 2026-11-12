@@ -24,7 +24,7 @@ const TAMANHO_ALCA = 8; // px na tela
 const MARGEM_TOPO = 48; // altura da barra superior
 const ALCAS: AlcaRedimensionar[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
-type Modo = 'nenhum' | 'pan' | 'mover' | 'redimensionar' | 'regua' | 'desenhar' | 'pintar' | 'laco';
+type Modo = 'nenhum' | 'pan' | 'mover' | 'redimensionar' | 'rotacionar' | 'regua' | 'desenhar' | 'pintar' | 'laco';
 
 interface AnimacaoToken {
     objetoId: number;
@@ -107,6 +107,7 @@ export class Cena {
     private inicioTela = { x: 0, y: 0 };
     /** Onde o botão foi apertado (não muda durante o arrasto): distingue clique de arrasto no botão direito. */
     private pressTela = { x: 0, y: 0 };
+    private eraArrasto = false;
     private inicioMundo = { x: 0, y: 0 };
     private inicioObjeto: CamposGeometria = {};
     private alca: AlcaRedimensionar | null = null;
@@ -1116,30 +1117,101 @@ export class Cena {
             g.moveTo(pts[0], pts[1]).lineTo(pts[2], pts[3]).stroke({ color: 0xd4a843, width: 14, alpha: 0.35, cap: 'round' });
             return; // paredes não se movem nem se redimensionam: exclua e desenhe de novo
         }
-        g.rect(x, y, largura, altura).stroke({ color: 0xd4a843, width: 1.5, alpha: 0.95, pixelLine: true });
+        const rot = v.dto.dados?.rotacao ?? 0;
+        const rad = (rot * Math.PI) / 180;
+        const cx = x + largura / 2;
+        const cy = y + altura / 2;
+        const hw = largura / 2;
+        const hh = altura / 2;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+
+        // 4 cantos da caixa delimitadora rotacionada
+        const p0 = { x: cx + (-hw * cos - -hh * sin), y: cy + (-hw * sin + -hh * cos) };
+        const p1 = { x: cx + (hw * cos - -hh * sin), y: cy + (hw * sin + -hh * cos) };
+        const p2 = { x: cx + (hw * cos - hh * sin), y: cy + (hw * sin + hh * cos) };
+        const p3 = { x: cx + (-hw * cos - hh * sin), y: cy + (-hw * sin + hh * cos) };
+
+        g.poly([p0.x, p0.y, p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, p0.x, p0.y]).stroke({
+            color: 0xd4a843,
+            width: 1.5,
+            alpha: 0.95,
+            pixelLine: true,
+        });
+
         const guia = this.alvoEncaixe;
         if (guia && this.modo === 'redimensionar') {
             g.rect(guia.x!, guia.y!, guia.largura!, guia.altura!)
                 .fill({ color: 0xd4a843, alpha: 0.12 })
                 .stroke({ color: 0xf4e0a0, width: 1.5, alpha: 0.9, pixelLine: true });
         }
+
+        // Alça de rotação estilo Roll20 (no topo do token/imagem, perpendicular à borda superior)
+        const podeRotacionar = (v.dto.tipo === 'token' || (this.opcoes.mestre && v.dto.tipo === 'imagem')) && this.podeInteragir(v);
+        if (podeRotacionar) {
+            const distHaste = 24 / this.mundo.scale.x;
+            const stemBase = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+            const stemEnd = { x: stemBase.x + sin * distHaste, y: stemBase.y - cos * distHaste };
+            const rAlca = 6.5 / this.mundo.scale.x;
+
+            // Haste
+            g.moveTo(stemBase.x, stemBase.y).lineTo(stemEnd.x, stemEnd.y).stroke({ color: 0xd4a843, width: 1.5, pixelLine: true });
+
+            // Alça circular externa e miolo
+            g.circle(stemEnd.x, stemEnd.y, rAlca).fill(0x0d0a12).stroke({ color: 0xd4a843, width: 2 });
+            g.circle(stemEnd.x, stemEnd.y, rAlca * 0.45).fill(0xd4a843);
+        }
+
         if (!this.opcoes.mestre || v.dto.tipo === 'texto') return;
         const s = TAMANHO_ALCA / this.mundo.scale.x;
         for (const a of this.alcasVisiveis(largura, altura)) {
-            const p = this.posicaoAlca(a, x, y, largura, altura);
+            const p = this.posicaoAlca(a, x, y, largura, altura, rot);
             g.rect(p.x - s / 2, p.y - s / 2, s, s)
                 .fill(0x0d0a12)
                 .stroke({ color: 0xd4a843, width: 1.5, pixelLine: true });
         }
     }
 
-    /** Alças ficam FORA da borda (não cobrem a imagem); alças de aresta somem quando a aresta é curta na tela. */
-    private posicaoAlca(a: AlcaRedimensionar, x: number, y: number, w: number, h: number): { x: number; y: number } {
-        const fora = TAMANHO_ALCA / this.mundo.scale.x / 2 + 1 / this.mundo.scale.x;
-        const cx = a.includes('w') ? x - fora : a.includes('e') ? x + w + fora : x + w / 2;
-        const cy = a.includes('n') ? y - fora : a.includes('s') ? y + h + fora : y + h / 2;
+    private posicaoAlcaRotacao(v: ObjetoVisual): { x: number; y: number } {
+        const { x, y, largura, altura } = v.dto;
+        const cx = x + largura / 2;
+        const cy = y + altura / 2;
+        const hh = altura / 2;
+        const rot = v.dto.dados?.rotacao ?? 0;
+        const rad = (rot * Math.PI) / 180;
+        const sin = Math.sin(rad);
+        const cos = Math.cos(rad);
+        const distHaste = 24 / this.mundo.scale.x;
 
-        return { x: cx, y: cy };
+        return { x: cx + sin * (hh + distHaste), y: cy - cos * (hh + distHaste) };
+    }
+
+    private alcaRotacaoEm(px: number, py: number): boolean {
+        const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
+        if (!v || !this.podeInteragir(v)) return false;
+        if (v.dto.tipo !== 'token' && !(this.opcoes.mestre && v.dto.tipo === 'imagem')) return false;
+        const p = this.posicaoAlcaRotacao(v);
+        const tol = (TAMANHO_ALCA * 1.3) / this.mundo.scale.x;
+
+        return Math.hypot(px - p.x, py - p.y) <= tol;
+    }
+
+    /** Alças ficam FORA da borda (não cobrem a imagem); alças de aresta somem quando a aresta é curta na tela. */
+    private posicaoAlca(a: AlcaRedimensionar, x: number, y: number, w: number, h: number, rot = 0): { x: number; y: number } {
+        const fora = TAMANHO_ALCA / this.mundo.scale.x / 2 + 1 / this.mundo.scale.x;
+        const cx0 = a.includes('w') ? x - fora : a.includes('e') ? x + w + fora : x + w / 2;
+        const cy0 = a.includes('n') ? y - fora : a.includes('s') ? y + h + fora : y + h / 2;
+        if (!rot) return { x: cx0, y: cy0 };
+
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        const rad = (rot * Math.PI) / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        const dx = cx0 - cx;
+        const dy = cy0 - cy;
+
+        return { x: cx + dx * cos - dy * sin, y: cy + dx * sin + dy * cos };
     }
 
     private alcasVisiveis(w: number, h: number): AlcaRedimensionar[] {
@@ -1155,8 +1227,9 @@ export class Cena {
         if (!v || !this.opcoes.mestre || v.dto.tipo === 'parede' || v.dto.tipo === 'texto') return null;
         const tol = (TAMANHO_ALCA * 0.9) / this.mundo.scale.x;
         const { x, y, largura, altura } = v.dto;
+        const rot = v.dto.dados?.rotacao ?? 0;
         for (const a of this.alcasVisiveis(largura, altura)) {
-            const p = this.posicaoAlca(a, x, y, largura, altura);
+            const p = this.posicaoAlca(a, x, y, largura, altura, rot);
             if (Math.abs(px - p.x) <= tol && Math.abs(py - p.y) <= tol) return a;
         }
 
@@ -1245,7 +1318,10 @@ export class Cena {
             this.removerListeners.push(() => window.removeEventListener(tipo, fn as EventListener));
         };
 
-        ouvir(canvas, 'contextmenu', (e) => e.preventDefault());
+        ouvir(canvas, 'contextmenu', (e) => {
+            e.preventDefault();
+            this.aoContextMenu(e);
+        });
         ouvir(
             canvas,
             'wheel',
@@ -1290,6 +1366,22 @@ export class Cena {
                 this.teclaMirar = true;
                 this.atualizarCursor();
             }
+            // Teclas E e R: rotacionam o token selecionado (como no Roll20)
+            if ((e.code === 'KeyE' || e.code === 'KeyR') && !e.ctrlKey && !e.metaKey) {
+                const sel = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
+                if (sel && (sel.dto.tipo === 'token' || (this.opcoes.mestre && sel.dto.tipo === 'imagem')) && this.podeInteragir(sel)) {
+                    e.preventDefault();
+                    const passo = e.altKey || e.shiftKey ? 15 : 45;
+                    const direcao = e.code === 'KeyE' ? 1 : -1;
+                    const atual = sel.dto.dados?.rotacao ?? 0;
+                    let novo = Math.round((atual + direcao * passo) / passo) * passo;
+                    novo = ((novo % 360) + 360) % 360;
+                    const novosDados = { ...(sel.dto.dados ?? {}), rotacao: novo };
+                    sel.definirDados(novosDados);
+                    this.desenharSelecao();
+                    this.opcoes.eventos.alterar(sel.dto.id, { dados: novosDados }, true);
+                }
+            }
             if (e.key === 'Escape') {
                 if (this.gabarito) this.opcoes.eventos.gabarito(null, null);
                 if (this.ponto) this.opcoes.eventos.ponto(null);
@@ -1318,6 +1410,7 @@ export class Cena {
         this.pressTela = tela;
         this.inicioMundo = p;
         this.iniciou = false;
+        this.eraArrasto = false;
         this.limparRegua();
 
         const emPan = e.button === 1 || e.button === 2 || this.espaco || this.ferramenta === 'mover';
@@ -1406,9 +1499,15 @@ export class Cena {
             }
         }
 
-        // Ferramenta "selecionar": alça > vida > objeto > vazio.
-        const alca = this.alcaEm(p.x, p.y);
+        // Ferramenta "selecionar": alça rotação > alça redimensionar > vida > objeto > vazio.
         const sel = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
+        if (sel && this.extras.size === 0 && this.alcaRotacaoEm(p.x, p.y)) {
+            this.modo = 'rotacionar';
+            this.atualizarCursor('crosshair');
+            return;
+        }
+
+        const alca = this.alcaEm(p.x, p.y);
         if (alca && sel && this.extras.size === 0) {
             this.modo = 'redimensionar';
             this.alca = alca;
@@ -1481,6 +1580,9 @@ export class Cena {
         }
 
         if (this.modo === 'pan') {
+            if (Math.hypot(tela.x - this.pressTela.x, tela.y - this.pressTela.y) > 6) {
+                this.eraArrasto = true;
+            }
             this.mundo.position.set(this.mundo.x + (tela.x - this.inicioTela.x), this.mundo.y + (tela.y - this.inicioTela.y));
             this.inicioTela = tela;
             this.desenharSelecao();
@@ -1552,6 +1654,22 @@ export class Cena {
             return;
         }
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
+        if (this.modo === 'rotacionar' && v) {
+            const cx = v.dto.x + v.dto.largura / 2;
+            const cy = v.dto.y + v.dto.altura / 2;
+            const rad = Math.atan2(p.y - cy, p.x - cx) + Math.PI / 2;
+            let graus = (rad * 180) / Math.PI;
+            graus = ((graus % 360) + 360) % 360;
+            graus = e.altKey ? Math.round(graus) : Math.round(graus / 45) * 45;
+            graus = graus % 360;
+            if (graus !== (v.dto.dados?.rotacao ?? 0)) {
+                const novosDados = { ...(v.dto.dados ?? {}), rotacao: graus };
+                v.definirDados(novosDados);
+                this.desenharSelecao();
+                this.opcoes.eventos.alterar(v.dto.id, { dados: novosDados }, false);
+            }
+            return;
+        }
         if (this.modo === 'mover' && v && v.dto.tipo !== 'parede') {
             // Só começa a arrastar após alguns px, para que um clique não mova o objeto.
             if (!this.iniciou && Math.hypot(tela.x - this.inicioTela.x, tela.y - this.inicioTela.y) < 3) return;
@@ -1585,9 +1703,10 @@ export class Cena {
         }
         // Cursor de alça ou cursor de ponteiro ao passar por cima de porta/janela ou viagem.
         const alca = this.modo === 'nenhum' ? this.alcaEm(p.x, p.y) : null;
-        const sobrePorta = this.modo === 'nenhum' && !alca && !!this.portaEm(p.x, p.y);
-        const sobreViagem = this.modo === 'nenhum' && !alca && !sobrePorta && !!this.viagemEm(p.x, p.y);
-        const stHover = this.modo === 'nenhum' && !alca ? this.statusEm(p.x, p.y) : null;
+        const sobreRotacao = this.modo === 'nenhum' && !alca && this.alcaRotacaoEm(p.x, p.y);
+        const sobrePorta = this.modo === 'nenhum' && !alca && !sobreRotacao && !!this.portaEm(p.x, p.y);
+        const sobreViagem = this.modo === 'nenhum' && !alca && !sobreRotacao && !sobrePorta && !!this.viagemEm(p.x, p.y);
+        const stHover = this.modo === 'nenhum' && !alca && !sobreRotacao ? this.statusEm(p.x, p.y) : null;
         if (stHover) {
             this.opcoes.eventos.hoverStatus?.({
                 tokenNome: stHover.visual.dto.nome ?? 'Personagem',
@@ -1597,7 +1716,17 @@ export class Cena {
         } else if (this.modo === 'nenhum') {
             this.opcoes.eventos.hoverStatus?.(null);
         }
-        this.atualizarCursor(alca ? cursorDaAlca(alca) : sobrePorta || sobreViagem || stHover ? 'pointer' : undefined);
+        this.atualizarCursor(
+            this.modo === 'rotacionar'
+                ? 'crosshair'
+                : alca
+                  ? cursorDaAlca(alca)
+                  : sobreRotacao
+                    ? 'crosshair'
+                    : sobrePorta || sobreViagem || stHover
+                      ? 'pointer'
+                      : undefined,
+        );
     }
 
     /**
@@ -1756,22 +1885,33 @@ export class Cena {
         this.atualizarIluminacao();
     }
 
+    private aoContextMenu(e: MouseEvent): void {
+        e.preventDefault();
+        if (this.eraArrasto) {
+            this.eraArrasto = false;
+            return;
+        }
+
+        const tela = this.posTela(e);
+        if (Math.hypot(tela.x - this.pressTela.x, tela.y - this.pressTela.y) > 6) {
+            return;
+        }
+
+        const p = this.paraMundo(tela.x, tela.y);
+        const alvo = this.opcoes.mestre ? this.objetoDeQualquerCamadaEm(p.x, p.y) : null;
+        // Se for um objeto real da cena (e NÃO a imagem de fundo do mapa):
+        if (alvo && !(alvo.dto.camada === 'mapa' && alvo.dto.tipo === 'imagem')) {
+            this.opcoes.eventos.menuObjeto(alvo.dto.id, { x: e.clientX, y: e.clientY });
+        } else {
+            this.opcoes.eventos.menuPing?.({ x: p.x, y: p.y }, { x: e.clientX, y: e.clientY });
+        }
+    }
+
     private aoSoltarBase(e: PointerEvent): void {
         if (this.app.canvas.hasPointerCapture(e.pointerId)) this.app.canvas.releasePointerCapture(e.pointerId);
-        // Botão direito sem arrastar:
-        // - Se for sobre um objeto e for mestre: abre o menu do objeto
-        // - Se for no mapa: abre o menu de opções de ping (ping normal e ping com foco)
-        if (e.type === 'pointerup' && e.button === 2 && this.modo === 'pan') {
-            const tela = this.posTela(e);
-            if (Math.hypot(tela.x - this.pressTela.x, tela.y - this.pressTela.y) < 4) {
-                const p = this.paraMundo(tela.x, tela.y);
-                const alvo = this.opcoes.mestre ? this.objetoDeQualquerCamadaEm(p.x, p.y) : null;
-                if (alvo) {
-                    this.opcoes.eventos.menuObjeto(alvo.dto.id, { x: e.clientX, y: e.clientY });
-                } else {
-                    this.opcoes.eventos.menuPing?.({ x: p.x, y: p.y }, { x: e.clientX, y: e.clientY });
-                }
-            }
+        if (this.modo === 'pan') {
+            this.modo = 'nenhum';
+            this.atualizarCursor();
         }
         if (this.modo === 'pintar') {
             this.desenhoG.clear();
@@ -1862,6 +2002,11 @@ export class Cena {
                 const { x, y } = v.dto;
                 this.opcoes.eventos.alterar(v.dto.id, { x, y }, true);
             }
+        } else if (modo === 'rotacionar') {
+            const rot = v.dto.dados?.rotacao ?? 0;
+            const novosDados = { ...(v.dto.dados ?? {}), rotacao: rot };
+            this.opcoes.eventos.alterar(v.dto.id, { dados: novosDados }, true);
+            this.desenharSelecao();
         } else if (modo === 'redimensionar') {
             const alvo = this.alvoEncaixe;
             this.alvoEncaixe = null;
