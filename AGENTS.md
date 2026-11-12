@@ -7,11 +7,12 @@ O foco atual é o sistema **One Piece** (`one-piece`), derivado do D&D 5e.
 
 - Servidor: `app/Sistemas/OnePiece/` (regras, dados JSON, `OnePiece::conferirFicha` etc.), `app/Nucleo/` (combate, rolagem, efeitos).
 - Cliente: `resources/js/app/` — `pages/Jogo.vue` (tela da mesa), `engine/` (mapa em Pixi), `components/`, `nucleo/` (genérico, não importa sistema), `sistemas/onepiece/` (módulo do sistema; o núcleo só o acessa pelo registro/`ModuloSistema`).
-- Regras duplicadas em PHP e TS precisam ficar em paridade: `npm run test:regras` (`tests/paridade/`).
+- Regras duplicadas em PHP e TS precisam ficar em paridade (ao testar, rode apenas o teste específico do que mexeu em `tests/paridade/`, nunca a suíte toda).
 
 ## Como trabalhar
 
 - **O usuário testa tudo sozinho: não abra navegador para testar.** Valide com `npx vue-tsc --noEmit` (filtre por `resources/js/app`; os erros de `types`/`vue/tsx` são do ambiente) e com um build de verificação.
+- **Nunca rode todos os testes:** se precisar rodar testes, rode estritamente o que você mexeu (ex.: arquivo específico em `node --test tests/paridade/...` ou filtro específico no PHPUnit), jamais a suíte inteira.
 - `public/build` e `storage/framework/testing` não são graváveis: faça o build em outra pasta (`npx vite build --outDir <pasta temporária> --emptyOutDir`) e rode o ESLint apontando só para arquivos específicos.
 - Formate com `npx prettier --write <arquivos alterados>` (nunca em `resources/` inteiro: reformata arquivos que você não tocou).
 - Não faça commit sem o usuário pedir.
