@@ -1360,13 +1360,35 @@ function rastrearPvPersonagem(personagemId: number, ficha: Record<string, unknow
 // O servidor só envia a ficha a quem controla o personagem (mestre e donos). Aqui fica uma cópia local:
 // edições são aplicadas na hora (otimista), enviadas campo a campo e, se falharem, a tela volta ao estado do servidor.
 const fichas = ref<Record<number, Record<string, unknown>>>({});
+/**
+ * Edições locais ainda a caminho do servidor (ou recém-confirmadas). Uma recarga de `personagens` pedida ANTES de o salvamento
+ * terminar traz a ficha velha: sem isto ela desfazia na tela o que o jogador acabou de mudar (PP gasto, descanso, campo editado).
+ * Enquanto a edição é recente, ela é reaplicada por cima do que a recarga trouxe.
+ */
+const edicoesRecentes = new Map<number, { campos: Record<string, unknown>; fim: number | null }[]>();
+const VALIDADE_DA_EDICAO = 4000;
+let temporizadorConvergir: ReturnType<typeof setTimeout> | undefined;
 function sincronizarFichas() {
     const novas: Record<number, Record<string, unknown>> = {};
+    const agora = Date.now();
+    let reaplicou = false;
     for (const p of props.personagens) {
         if (p.ficha) {
             novas[p.id] = copia(p.ficha);
-            rastrearPvPersonagem(p.id, p.ficha);
+            const recentes = (edicoesRecentes.get(p.id) ?? []).filter((e) => e.fim === null || agora - e.fim < VALIDADE_DA_EDICAO);
+            if (recentes.length) edicoesRecentes.set(p.id, recentes);
+            else edicoesRecentes.delete(p.id);
+            for (const e of recentes) {
+                for (const [caminho, valor] of Object.entries(e.campos)) definirCaminho(novas[p.id], caminho, copia(valor));
+                reaplicou = true;
+            }
+            rastrearPvPersonagem(p.id, novas[p.id]);
         }
+    }
+    // a recarga pode ter vindo de antes do salvamento: depois que as edições assentarem, busca o estado final do servidor
+    if (reaplicou) {
+        clearTimeout(temporizadorConvergir);
+        temporizadorConvergir = setTimeout(() => recarregar(['personagens']), VALIDADE_DA_EDICAO + 1500);
     }
     sincronizarPorId(fichas.value, novas); // só as fichas que mudaram de verdade são trocadas: as janelas abertas não piscam a cada recarga
 }
@@ -1381,14 +1403,22 @@ function salvarFicha(personagemId: number, campos: Record<string, unknown>) {
     for (const [caminho, valor] of Object.entries(campos)) definirCaminho(ficha, caminho, copia(valor));
     if ('condicoes' in campos) statusPorPersonagem.value[personagemId] = [...((campos.condicoes as string[] | null) ?? [])];
     rastrearPvPersonagem(personagemId, ficha);
+    const edicao = { campos: copia(campos), fim: null as number | null };
+    edicoesRecentes.set(personagemId, [...(edicoesRecentes.get(personagemId) ?? []), edicao]);
     const fila = (filasFicha.get(personagemId) ?? Promise.resolve())
         .then(() => api.salvarFicha(personagemId, campos))
         .then(() => {
+            edicao.fim = Date.now();
             // o "aliado" do NPC é público (a área dos jogadores o consulta): traz a lista de personagens de volta
             if ('aliado' in campos) recarregar(['personagens']);
         })
         .catch((e) => {
-            avisar(mensagemDe(e));
+            // o servidor recusou: a edição sai da frente e a tela volta ao que está salvo, com o motivo no aviso
+            edicoesRecentes.set(
+                personagemId,
+                (edicoesRecentes.get(personagemId) ?? []).filter((x) => x !== edicao),
+            );
+            avisar(`Não foi possível salvar a ficha: ${mensagemDe(e)}`);
             recarregar(['personagens']);
         });
     filasFicha.set(personagemId, fila);
