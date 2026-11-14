@@ -89,9 +89,26 @@ class Personagem extends Model
             'aliado' => (bool) ($this->ficha['aliado'] ?? false),
             // NPC com 0 de vida: morto, recebe indicador e não pode ser alvo
             'morto' => (bool) (($this->ficha['npc'] ?? false) && ((int) ($this->ficha['pv']['atual'] ?? 1) <= 0)),
+            // Fração de vida perdida do NPC (0 a 1): o token mostra sangue conforme ela sobe
+            'ferimento' => self::ferimentoDe($this->ficha ?? []),
             // Navio: a ficha é de toda a mesa (construção, tesouro e carga compartilhados)
             'navio' => $this->ehNavio(),
             'jogadores' => $this->jogadores->map(fn (Jogador $j) => ['id' => $j->id, 'nome' => $j->nome, 'cor' => $j->cor])->values(),
         ];
+    }
+
+    /** Fração de vida perdida (0 a 1) de um NPC; 0 para quem não é NPC. Pública porque o token a mostra à mesa toda. */
+    public static function ferimentoDe(array $ficha): float
+    {
+        if (! ($ficha['npc'] ?? false)) {
+            return 0.0;
+        }
+        $max = (int) ($ficha['pv']['max'] ?? 0);
+        if ($max <= 0) {
+            return 0.0;
+        }
+        $atual = max(0, min($max, (int) ($ficha['pv']['atual'] ?? $max)));
+
+        return round(1 - $atual / $max, 2);
     }
 }

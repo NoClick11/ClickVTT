@@ -39,6 +39,8 @@ export interface ObjetoDto {
     barras?: BarraDoToken[];
     /** token: o personagem está com 0 de vida (NPC): o token é desenhado esmaecido com uma caveira. */
     morto?: boolean;
+    /** token: fração de vida perdida do NPC (0 a 1); o token ganha manchas de sangue conforme sobe. */
+    ferimento?: number;
     /** token: se é um NPC (para estilização de borda etc.) */
     npc?: boolean;
     /** jogador que fez (traço/texto) */

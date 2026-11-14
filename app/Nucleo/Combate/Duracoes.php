@@ -155,6 +155,7 @@ final class Duracoes
                 'personagem_id' => $p->id,
                 'status' => array_values($p->ficha['condicoes'] ?? []),
                 'morto' => (bool) (($p->ficha['npc'] ?? false) && ((int) ($p->ficha['pv']['atual'] ?? 1) <= 0)),
+                'ferimento' => \App\Models\Personagem::ferimentoDe($p->ficha ?? []),
                 'aliado' => (bool) ($p->ficha['aliado'] ?? false),
             ], ['mesa']);
         }

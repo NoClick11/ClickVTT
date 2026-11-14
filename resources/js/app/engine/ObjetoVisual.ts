@@ -31,6 +31,9 @@ export class ObjetoVisual {
     private barras = new Container();
     private barrasDesenhadas = '';
     private mira = new Graphics();
+    private sangue = new Container();
+    private mascaraSangue = new Graphics();
+    private sangueDesenhado = '';
     private caveira = new Container();
     private caveiraDesenhada = '';
     private miraLigada = false;
@@ -47,7 +50,8 @@ export class ObjetoVisual {
         this.dto = { ...dto };
         this.container.addChild(this.conteudoRotativo, this.mira, this.marcador, this.caveira);
         this.hud.addChild(this.barras, this.iconesStatus);
-        this.conteudoRotativo.addChild(this.fundo, this.bordaToken);
+        this.sangue.mask = this.mascaraSangue;
+        this.conteudoRotativo.addChild(this.fundo, this.sangue, this.mascaraSangue, this.bordaToken);
         this.aplicar();
         void this.carregarMidia();
     }
@@ -171,6 +175,7 @@ export class ObjetoVisual {
         this.desenharFundo();
         this.desenharBordaToken();
         this.desenharMarcador();
+        this.desenharSangue();
         this.desenharCaveira();
         this.desenharBarras();
         this.desenharStatus();
@@ -597,6 +602,72 @@ export class ObjetoVisual {
         });
     }
 
+    /**
+     * Desgaste do token de NPC, como o Blood n Guts do Foundry: o sangue começa quando a vida cai para metade ("ensanguentado")
+     * e a quantidade e o tamanho das manchas crescem com o dano. As manchas são irregulares e ficam em posições fixas por token
+     * (semente = id): só se somam com o dano, nada pula de lugar a cada golpe.
+     */
+    private desenharSangue(): void {
+        const f = this.ehToken && this.dto.npc ? Math.min(1, Math.max(0, this.dto.ferimento ?? 0)) : 0;
+        const { largura, altura, id } = this.dto;
+        // 0 a 1 entre "metade da vida" e "zerado"
+        const t = f < 0.5 ? 0 : (f - 0.5) / 0.5;
+        const manchas = f < 0.5 ? 0 : 2 + Math.round(t * 10);
+        const tamanho = Math.round((0.7 + t * 0.6) * 10);
+        const chave = `${manchas}|${tamanho}|${Math.round(largura)}|${Math.round(altura)}`;
+        if (chave === this.sangueDesenhado) return;
+        this.sangueDesenhado = chave;
+        for (const filho of this.sangue.removeChildren()) filho.destroy({ children: true });
+        this.mascaraSangue.clear();
+        if (manchas === 0) return;
+        this.mascaraSangue.ellipse(largura / 2, altura / 2, largura / 2, altura / 2).fill(0xffffff);
+        let semente = (id * 2654435761) >>> 0 || 1;
+        const rnd = (): number => {
+            semente = (semente * 1664525 + 1013904223) >>> 0;
+            return semente / 4294967296;
+        };
+        const lado = Math.min(largura, altura);
+        const escala = tamanho / 10;
+        const g = new Graphics();
+        for (let i = 0; i < manchas; i++) {
+            const ang = rnd() * Math.PI * 2;
+            const dist = (0.1 + rnd() * 0.85) * (lado / 2);
+            const cx = largura / 2 + Math.cos(ang) * dist;
+            const cy = altura / 2 + Math.sin(ang) * dist;
+            const raio = lado * (0.07 + rnd() * 0.08) * escala;
+            const alpha = 0.55 + rnd() * 0.3;
+            const cor = rnd() < 0.5 ? 0x8a0b0b : 0x5e0505;
+            // mancha irregular: vários círculos sobrepostos em volta do centro, mais gotas soltas
+            const lobos = 4 + Math.floor(rnd() * 4);
+            for (let k = 0; k < lobos; k++) {
+                const a = rnd() * Math.PI * 2;
+                const d = raio * rnd() * 0.8;
+                g.circle(cx + Math.cos(a) * d, cy + Math.sin(a) * d, raio * (0.45 + rnd() * 0.5)).fill({ color: cor, alpha });
+            }
+            const gotas = 3 + Math.floor(rnd() * 5);
+            for (let k = 0; k < gotas; k++) {
+                const a = rnd() * Math.PI * 2;
+                const d = raio * (1.3 + rnd() * 1.8);
+                g.circle(cx + Math.cos(a) * d, cy + Math.sin(a) * d, raio * (0.1 + rnd() * 0.22)).fill({ color: cor, alpha });
+            }
+            if (rnd() < 0.4) {
+                // respingo comprido
+                const a = rnd() * Math.PI * 2;
+                const c = lado * (0.12 + rnd() * 0.18) * escala;
+                g.moveTo(cx, cy)
+                    .lineTo(cx + Math.cos(a) * c, cy + Math.sin(a) * c)
+                    .stroke({ color: cor, width: raio * 0.3, alpha: alpha * 0.8, cap: 'round' });
+            }
+        }
+        this.sangue.addChild(g);
+        // quase sem vida: borda interna avermelhada
+        if (t >= 0.5) {
+            const v = new Graphics();
+            v.ellipse(largura / 2, altura / 2, largura / 2, altura / 2).stroke({ color: 0x7f0000, width: lado * 0.12 * t, alpha: 0.4 });
+            this.sangue.addChild(v);
+        }
+    }
+
     /** Token de NPC com 0 de vida: um X vermelho e uma caveira por cima (o token fica esmaecido). */
     private desenharCaveira(): void {
         const morto = this.ehToken && !!this.dto.morto;
@@ -844,7 +915,7 @@ export class ObjetoVisual {
         if (midia) {
             this.midia = midia;
             this.arquivoCarregado = arquivo;
-            const indexBorda = this.conteudoRotativo.getChildIndex(this.bordaToken);
+            const indexBorda = this.conteudoRotativo.getChildIndex(this.sangue);
             this.conteudoRotativo.addChildAt(midia, Math.max(0, indexBorda));
         }
         this.aplicar();

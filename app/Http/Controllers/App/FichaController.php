@@ -97,6 +97,7 @@ class FichaController extends Controller
                 'personagem_id' => $atual->id,
                 'status' => array_values($atual->ficha['condicoes'] ?? []),
                 'morto' => (bool) (($atual->ficha['npc'] ?? false) && ((int) ($atual->ficha['pv']['atual'] ?? 1) <= 0)),
+                'ferimento' => \App\Models\Personagem::ferimentoDe($atual->ficha ?? []),
                 'aliado' => (bool) ($atual->ficha['aliado'] ?? false),
             ], ['mesa']);
         }

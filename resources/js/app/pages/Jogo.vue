@@ -584,7 +584,14 @@ const objetosDaCena = computed(() =>
                 null;
         }
 
-        return { ...o, arquivo, status: statusPorPersonagem.value[o.personagem_id] ?? [], barras, morto: npcMorto, npc: ehNpc };
+        // sangue só em NPC: a fração vem pública do servidor; a ficha local (mestre) tem prioridade por estar sempre atualizada
+        let ferimento = 0;
+        if (ehNpc) {
+            const pv = ficha?.npc ? (ficha.pv as { atual?: number; max?: number } | undefined) : undefined;
+            ferimento = pv && Number(pv.max) > 0 ? Math.min(1, Math.max(0, 1 - Number(pv.atual ?? pv.max) / Number(pv.max))) : (p?.ferimento ?? 0);
+        }
+
+        return { ...o, arquivo, status: statusPorPersonagem.value[o.personagem_id] ?? [], barras, morto: npcMorto, npc: ehNpc, ferimento };
     }),
 );
 watch(
@@ -2930,11 +2937,12 @@ onMounted(() => {
                     janelasDeReacao.value = comResumo(janelasDeReacao.value, e);
                     if (e.estado === 'resolvido') ofertasDeReacao.value = semOfertasDe(ofertasDeReacao.value, e.id);
                 })
-                .listen('.status', (e: { personagem_id: number; status: string[]; morto?: boolean; aliado?: boolean }) => {
+                .listen('.status', (e: { personagem_id: number; status: string[]; morto?: boolean; ferimento?: number; aliado?: boolean }) => {
                     statusPorPersonagem.value[e.personagem_id] = e.status;
                     const p = props.personagens.find((x) => x.id === e.personagem_id);
                     if (p) {
                         if (e.morto !== undefined) p.morto = e.morto;
+                        if (e.ferimento !== undefined) p.ferimento = e.ferimento;
                         if (e.aliado !== undefined) p.aliado = e.aliado;
                     }
                 })
