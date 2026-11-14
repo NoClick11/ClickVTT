@@ -101,11 +101,11 @@ class LootController extends Controller
 
         try {
             if (! empty($d['dinheiro'])) {
-                $r = $servico->pegarDinheiro($mesa, $sistema, $loot->id, $d['personagem_id'], $qtd, $tudo);
+                $r = $servico->pegarDinheiro($mesa, $sistema, $loot->id, $d['personagem_id'], $qtd, $tudo, ! $acesso->ehMestre());
                 $campos = [$sistema->moedaDaLoja()['campo'] => $r['saldo']];
                 $texto = sprintf('%s %s', $sistema->moedaDaLoja()['simbolo'], number_format($r['qtd'], 0, ',', '.'));
             } else {
-                $r = $servico->pegarItem($mesa, $sistema, $loot->id, (int) $d['loot_item_id'], $d['personagem_id'], $qtd, $tudo);
+                $r = $servico->pegarItem($mesa, $sistema, $loot->id, (int) $d['loot_item_id'], $d['personagem_id'], $qtd, $tudo, ! $acesso->ehMestre());
                 $campos = ['inventario' => $r['personagem']->ficha['inventario']];
                 $texto = "{$r['qtd']}× {$r['item']->nome}";
             }
@@ -171,11 +171,17 @@ class LootController extends Controller
             'nome' => ['sometimes', 'string', 'max:80'],
             'tesouro' => ['sometimes', 'boolean'],
             'jogador_id' => ['sometimes', 'nullable', 'integer'],
+            'aberto' => ['sometimes', 'boolean'],
         ]);
         if (array_key_exists('jogador_id', $d) && $d['jogador_id'] !== null) {
             abort_unless($mesa->jogadores()->where('papel', '!=', 'mestre')->whereKey($d['jogador_id'])->exists(), 422, 'Jogador inválido.');
         }
-        $loot->update(collect($d)->only(['tesouro', 'jogador_id'])->all());
+        $estavaAberto = (bool) $loot->aberto;
+        $loot->update(collect($d)->only(['tesouro', 'jogador_id', 'aberto'])->all());
+        if ($estavaAberto && ! $loot->aberto) {
+            // Fechou com jogador olhando: a janela dele fecha na hora (o conteúdo não vai a ninguém além do mestre)
+            Transmitir::enviar($mesa, 'loot-fechado', ['objeto_id' => $objeto->id, 'nome' => $objeto->nome, 'ator' => $acesso->jogador->id], ['mesa']);
+        }
         if (isset($d['dinheiro'])) {
             app(LootService::class)->definirDinheiro($loot->id, $d['dinheiro']);
         }
@@ -236,7 +242,7 @@ class LootController extends Controller
     /** O estado novo para quem está com o loot aberto (no loot da camada Mestre, só o mestre). */
     private function avisar(Mesa $mesa, Objeto $objeto, array $estado, ?string $aviso = null, ?int $ator = null): void
     {
-        $canais = $objeto->camada === 'mestre' ? ['mestre'] : ['mesa'];
+        $canais = $objeto->camada === 'mestre' || ! ($estado['aberto'] ?? false) ? ['mestre'] : ['mesa'];
         Transmitir::enviar($mesa, 'loot', ['loot' => $estado, 'aviso' => $aviso, 'ator' => $ator], $canais);
     }
 
@@ -255,8 +261,10 @@ class LootController extends Controller
         }
         $pagina = $acesso->jogador->pagina_id ?? $mesa->paginas()->value('id');
         abort_unless($objeto->camada === 'jogadores' && $objeto->pagina_id === $pagina, 404);
-        // Baú travado para um jogador: só ele (e o mestre) abre.
         $loot ??= Loot::query()->where('objeto_id', $objeto->id)->first();
+        // Loot fechado: só o mestre entra (ele monta em paz; ao abrir, os jogadores passam a ver).
+        abort_unless($loot?->aberto, 403, 'Está fechado: o mestre ainda não abriu.');
+        // Baú travado para um jogador: só ele (e o mestre) abre.
         abort_if($loot?->jogador_id && $loot->jogador_id !== $acesso->jogador->id, 403, 'Este baú está travado para outro jogador.');
     }
 

@@ -2945,6 +2945,14 @@ onMounted(() => {
                     aplicarLoot(e.loot);
                     if (e.aviso && !deMim(e)) avisar(e.aviso);
                 })
+                .listen('.loot-fechado', (e: { objeto_id: number; nome: string | null }) => {
+                    // O mestre fechou o loot: quem estava com ele aberto (jogador) é tirado dali na hora
+                    if (!props.mestre && e.objeto_id === lootObjetoId.value) {
+                        lootObjetoId.value = null;
+                        lootEstado.value = null;
+                        avisar(`${e.nome || 'O loot'} foi fechado pelo mestre.`);
+                    }
+                })
                 .listen('.exploracao', (e: { pagina_id: number }) => {
                     if (e.pagina_id === props.pagina?.id) canvas.value?.limparMemoria();
                 })

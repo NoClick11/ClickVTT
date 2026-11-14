@@ -107,6 +107,8 @@ export interface PontoDeViagem {
 export interface LootDto {
     objeto_id: number;
     nome: string | null;
+    /** Fechado: só o mestre entra (ele monta em paz); o loot novo nasce fechado e o mestre abre quando quiser. */
+    aberto: boolean;
     dinheiro: number;
     /** Baú do tesouro: sorteia o conteúdo (d100); `jogador_id` trava a abertura para um jogador (além do mestre). */
     tesouro: boolean;

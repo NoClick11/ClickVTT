@@ -24,10 +24,11 @@ final class LootService
      *
      * @return array{personagem: Personagem, item: Item, qtd: int}
      */
-    public function pegarItem(Mesa $mesa, SistemaComLoja $sistema, int $lootId, int $lootItemId, int $personagemId, int $qtd, bool $tudo): array
+    public function pegarItem(Mesa $mesa, SistemaComLoja $sistema, int $lootId, int $lootItemId, int $personagemId, int $qtd, bool $tudo, bool $exigirAberto = false): array
     {
-        return DB::transaction(function () use ($mesa, $sistema, $lootId, $lootItemId, $personagemId, $qtd, $tudo) {
+        return DB::transaction(function () use ($mesa, $sistema, $lootId, $lootItemId, $personagemId, $qtd, $tudo, $exigirAberto) {
             $loot = Loot::query()->where('mesa_id', $mesa->id)->whereKey($lootId)->lockForUpdate()->firstOrFail();
+            $this->exigirAberto($loot, $exigirAberto);
             $linha = $loot->itens()->whereKey($lootItemId)->lockForUpdate()->first();
             if (! $linha) {
                 throw new LootIndisponivel('Esse item já foi levado.');
@@ -58,10 +59,11 @@ final class LootService
      *
      * @return array{personagem: Personagem, qtd: int, saldo: int}
      */
-    public function pegarDinheiro(Mesa $mesa, SistemaComLoja $sistema, int $lootId, int $personagemId, int $qtd, bool $tudo): array
+    public function pegarDinheiro(Mesa $mesa, SistemaComLoja $sistema, int $lootId, int $personagemId, int $qtd, bool $tudo, bool $exigirAberto = false): array
     {
-        return DB::transaction(function () use ($mesa, $sistema, $lootId, $personagemId, $qtd, $tudo) {
+        return DB::transaction(function () use ($mesa, $sistema, $lootId, $personagemId, $qtd, $tudo, $exigirAberto) {
             $loot = Loot::query()->where('mesa_id', $mesa->id)->whereKey($lootId)->lockForUpdate()->firstOrFail();
+            $this->exigirAberto($loot, $exigirAberto);
             if ($loot->dinheiro < 1) {
                 throw new LootIndisponivel('O dinheiro já foi levado.');
             }
@@ -83,6 +85,14 @@ final class LootService
 
             return ['personagem' => $p, 'qtd' => $qtd, 'saldo' => $saldo];
         });
+    }
+
+    /** Fechado: só o mestre mexe. Quem chegou na hora em que o mestre fechou recebe a recusa (a trava do loot ordena os dois). */
+    private function exigirAberto(Loot $loot, bool $exigir): void
+    {
+        if ($exigir && ! $loot->aberto) {
+            throw new LootIndisponivel('Está fechado: o mestre ainda não abriu.');
+        }
     }
 
     /** O mestre põe `$qtd` unidades de um item no loot (soma à linha existente). */
@@ -127,6 +137,7 @@ final class LootService
     {
         DB::transaction(function () use ($lootId, $d100, $roll, $itens, $mestre) {
             $loot = Loot::query()->whereKey($lootId)->lockForUpdate()->firstOrFail();
+            $this->exigirAberto($loot, ! $mestre);
             if (! $loot->tesouro) {
                 throw new LootIndisponivel('Este loot não é um baú do tesouro.');
             }

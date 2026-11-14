@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Coins, Dices, Package, Trash2 } from 'lucide-vue-next';
+import { Coins, Dices, Lock, LockOpen, Package, Trash2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import type { LootDto } from '../engine/tipos';
 
@@ -34,7 +34,7 @@ const props = defineProps<{
     /** Jogadores (sem o mestre) para travar o baú do tesouro. */
     jogadores: { id: number; nome: string }[];
     sortear: () => Promise<unknown>;
-    configurarBau: (campos: { tesouro?: boolean; jogador_id?: number | null }) => Promise<unknown>;
+    configurarBau: (campos: { tesouro?: boolean; jogador_id?: number | null; aberto?: boolean }) => Promise<unknown>;
     carregarCatalogo: () => Promise<{ ref: string; nome: string; categoria: string; raridade: string | null }[]>;
 }>();
 const emit = defineEmits<{ 'update:open': [boolean] }>();
@@ -151,6 +151,38 @@ const campo =
                 <p v-else-if="!personagens.length" class="rounded-md border border-ouro-500/30 bg-ouro-500/10 px-3 py-2 text-sm text-ouro-100">
                     Você não tem personagem para receber.
                 </p>
+
+                <section
+                    v-if="mestre"
+                    class="flex items-center gap-3 rounded-md border px-3 py-2"
+                    :class="loot.aberto ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-ouro-500/30 bg-ouro-500/10'"
+                    aria-label="Estado do loot"
+                >
+                    <component
+                        :is="loot.aberto ? LockOpen : Lock"
+                        class="size-4 shrink-0"
+                        :class="loot.aberto ? 'text-emerald-300' : 'text-ouro-400'"
+                        aria-hidden="true"
+                    />
+                    <span class="flex-1 text-sm">
+                        <b>{{ loot.aberto ? 'Aberto' : 'Fechado' }}</b>
+                        <span class="text-preto-300">
+                            {{
+                                loot.aberto
+                                    ? ': os jogadores podem abrir e pegar.'
+                                    : ': os jogadores não conseguem abrir. Monte em paz e abra quando quiser.'
+                            }}
+                        </span>
+                    </span>
+                    <Button
+                        size="sm"
+                        :variant="loot.aberto ? 'secondary' : 'default'"
+                        :disabled="ocupado"
+                        @click="executar(() => configurarBau({ aberto: !loot!.aberto }))"
+                    >
+                        {{ loot.aberto ? 'Fechar' : 'Abrir para os jogadores' }}
+                    </Button>
+                </section>
 
                 <section v-if="loot.tesouro" class="space-y-2 rounded-md border border-ouro-500/30 bg-ouro-500/5 px-3 py-2" aria-label="Tesouro">
                     <div class="flex items-center gap-2">

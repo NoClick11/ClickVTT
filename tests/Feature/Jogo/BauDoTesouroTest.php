@@ -39,7 +39,7 @@ class BauDoTesouroTest extends TestCase
         $como = fn ($j) => $this->withSession(['acesso_mesas' => [$j->mesa_id => [$j->id => true]]])->withHeader('X-Jogador', (string) $j->id);
 
         $id = $como($mestre)->postJson(route('jogo.loot.criar', [$mesa->id, $pagina->id]), ['camada' => 'jogadores', 'x' => 0, 'y' => 0])->json('objeto.id');
-        $como($mestre)->patchJson(route('jogo.loot.update', [$mesa->id, $id]), ['tesouro' => true, 'jogador_id' => $ana->id])->assertOk()->assertJsonPath('tesouro', true);
+        $como($mestre)->patchJson(route('jogo.loot.update', [$mesa->id, $id]), ['tesouro' => true, 'jogador_id' => $ana->id, 'aberto' => true])->assertOk()->assertJsonPath('tesouro', true);
 
         $como($bia)->getJson(route('jogo.loot.mostrar', [$mesa->id, $id]))->assertForbidden();
         $como($bia)->postJson(route('jogo.loot.sortear', [$mesa->id, $id]))->assertForbidden();

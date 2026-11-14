@@ -40,12 +40,12 @@ class LootTest extends TestCase
     }
 
     /** Loot na camada dada, com `$qtd` de uma Poção e `$dinheiro`; devolve [objeto_id, loot_item_id]. */
-    private function loot($c, string $camada = 'jogadores', int $qtd = 3, int $dinheiro = 100): array
+    private function loot($c, string $camada = 'jogadores', int $qtd = 3, int $dinheiro = 100, bool $aberto = true): array
     {
         $r = $this->como($c->mestre)->postJson(route('jogo.loot.criar', [$c->mesa->id, $c->pagina->id]), ['nome' => 'Baú', 'camada' => $camada, 'x' => 0, 'y' => 0])->assertCreated();
         $id = $r->json('objeto.id');
         $e = $this->como($c->mestre)->postJson(route('jogo.loot.itens.store', [$c->mesa->id, $id]), ['origem' => 'novo', 'nome' => 'Poção', 'qtd' => $qtd])->assertOk();
-        $this->como($c->mestre)->patchJson(route('jogo.loot.update', [$c->mesa->id, $id]), ['dinheiro' => $dinheiro])->assertOk();
+        $this->como($c->mestre)->patchJson(route('jogo.loot.update', [$c->mesa->id, $id]), ['dinheiro' => $dinheiro, 'aberto' => $aberto])->assertOk();
 
         return [$id, $e->json('itens.0.id')];
     }
@@ -73,7 +73,25 @@ class LootTest extends TestCase
     {
         $c = $this->cenario();
         $this->como($c->mestre)->postJson(route('jogo.loot.criar', [$c->mesa->id, $c->pagina->id]), ['camada' => 'mestre', 'x' => 0, 'y' => 0])
-            ->assertCreated()->assertJsonPath('loot.dinheiro', 0)->assertJsonPath('loot.itens', []);
+            ->assertCreated()->assertJsonPath('loot.dinheiro', 0)->assertJsonPath('loot.itens', [])->assertJsonPath('loot.aberto', false);
+    }
+
+    public function test_loot_fechado_so_o_mestre_entra_e_abrir_ou_fechar_vale_na_hora(): void
+    {
+        $c = $this->cenario();
+        [$id] = $this->loot($c, 'jogadores', 3, 100, false);
+        $corpo = ['personagem_id' => $c->aria->id, 'dinheiro' => true, 'tudo' => true];
+        $this->como($c->ana)->getJson(route('jogo.loot.mostrar', [$c->mesa->id, $id]))->assertForbidden();
+        $this->pegar($c, $c->ana, $c->aria, $id, $corpo)->assertForbidden();
+        $this->como($c->mestre)->getJson(route('jogo.loot.mostrar', [$c->mesa->id, $id]))->assertOk()->assertJsonPath('aberto', false);
+        $this->como($c->ana)->patchJson(route('jogo.loot.update', [$c->mesa->id, $id]), ['aberto' => true])->assertForbidden();
+
+        $this->como($c->mestre)->patchJson(route('jogo.loot.update', [$c->mesa->id, $id]), ['aberto' => true])->assertOk()->assertJsonPath('aberto', true);
+        $this->como($c->ana)->getJson(route('jogo.loot.mostrar', [$c->mesa->id, $id]))->assertOk();
+
+        $this->como($c->mestre)->patchJson(route('jogo.loot.update', [$c->mesa->id, $id]), ['aberto' => false])->assertOk();
+        $this->pegar($c, $c->ana, $c->aria, $id, $corpo)->assertForbidden();
+        $this->assertSame(100, Loot::first()->dinheiro); // nada saiu
     }
 
     public function test_so_o_mestre_cria_e_monta_o_loot(): void
