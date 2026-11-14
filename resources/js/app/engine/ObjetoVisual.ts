@@ -210,7 +210,7 @@ export class ObjetoVisual {
         void nome;
     }
 
-    /** Loot: um saco simples (corpo redondo, pescoço amarrado e a boca franzida no topo), numa cor só com contorno escuro. */
+    /** Loot: um baú de tesouro (tampa arredondada, cintas de metal e fechadura), no estilo do ícone do Foundry. */
     private desenharLoot(g: Graphics): void {
         const { largura: w, altura: h } = this.dto;
         const s = Math.min(w, h);
@@ -218,21 +218,37 @@ export class ObjetoVisual {
         const oy = (h - s) / 2;
         const px = (v: number) => ox + v * s;
         const py = (v: number) => oy + v * s;
-        const cor = 0xb08850;
+        const madeira = 0x9a6a38;
+        const tampa = 0xb98147;
+        const metal = 0xd4a843;
         const contorno = { color: 0x0d0a12, width: 3 };
-        // boca franzida
-        g.poly([px(0.36), py(0.16), px(0.5), py(0.28), px(0.64), py(0.16), px(0.6), py(0.34), px(0.4), py(0.34)])
-            .fill(cor)
-            .stroke(contorno);
+        const fino = { color: 0x0d0a12, width: 2 };
         // corpo
-        g.ellipse(px(0.5), py(0.64), s * 0.3, s * 0.27)
-            .fill(cor)
+        g.roundRect(px(0.14), py(0.46), s * 0.72, s * 0.38, s * 0.04)
+            .fill(madeira)
             .stroke(contorno);
-        // pescoço e laço
-        g.poly([px(0.41), py(0.34), px(0.59), py(0.34), px(0.57), py(0.43), px(0.43), py(0.43)]).fill(cor);
-        g.roundRect(px(0.4), py(0.37), s * 0.2, s * 0.05, s * 0.025)
-            .fill(0xd4a843)
-            .stroke({ color: 0x0d0a12, width: 2 });
+        // tampa abaulada
+        g.moveTo(px(0.14), py(0.46))
+            .lineTo(px(0.14), py(0.38))
+            .bezierCurveTo(px(0.14), py(0.14), px(0.86), py(0.14), px(0.86), py(0.38))
+            .lineTo(px(0.86), py(0.46))
+            .closePath()
+            .fill(tampa)
+            .stroke(contorno);
+        // cintas de metal
+        for (const x of [0.26, 0.68]) {
+            g.rect(px(x), py(0.46), s * 0.06, s * 0.38)
+                .fill(metal)
+                .stroke(fino);
+            g.rect(px(x), py(0.2), s * 0.06, s * 0.26)
+                .fill(metal)
+                .stroke(fino);
+        }
+        // fechadura
+        g.roundRect(px(0.45), py(0.4), s * 0.1, s * 0.14, s * 0.02)
+            .fill(metal)
+            .stroke(fino);
+        g.circle(px(0.5), py(0.46), s * 0.016).fill(0x0d0a12);
     }
 
     /** Traço livre: pontos relativos ao objeto; esticar o objeto estica o desenho. */
