@@ -8,7 +8,7 @@ use App\Models\Pagina;
 /**
  * As paredes como barreira. O servidor decide o que um token pode atravessar e quem alcança uma porta: o cliente só antecipa para a
  * tela não "pular". Cada parede (porta ou janela) pode bloquear movimento, visão e luz separadamente (`dados.bloqueio`); aberta, deixa
- * tudo passar. Espelha `resources/js/app/engine/visao.ts`.
+ * tudo passar. Há ainda a parede etérea (só barra o movimento) e a ilusória (só barra a visão e a luz). Espelha `resources/js/app/engine/visao.ts`.
  */
 final class Paredes
 {
@@ -17,6 +17,9 @@ final class Paredes
         'parede' => ['movimento' => true, 'visao' => true, 'luz' => true],
         'porta' => ['movimento' => true, 'visao' => true, 'luz' => true],
         'janela' => ['movimento' => true, 'visao' => false, 'luz' => false],
+        // etérea: barra o corpo mas não a vista nem a luz (um fosso, um precipício); ilusória: barra a vista e a luz mas não o corpo (fumaça densa)
+        'etereo' => ['movimento' => true, 'visao' => false, 'luz' => false],
+        'ilusoria' => ['movimento' => false, 'visao' => true, 'luz' => true],
     ];
 
     /** @return array{0: float, 1: float, 2: float, 3: float}|null */
@@ -30,7 +33,7 @@ final class Paredes
     public static function bloqueia(Objeto $o, string $canal): bool
     {
         $tipo = $o->dados['tipo'] ?? 'parede';
-        if ($tipo !== 'parede' && ($o->dados['aberta'] ?? false)) {
+        if (in_array($tipo, ['porta', 'janela'], true) && ($o->dados['aberta'] ?? false)) {
             return false;
         }
 

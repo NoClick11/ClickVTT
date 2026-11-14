@@ -1470,7 +1470,7 @@ export class Cena {
             this.opcoes.eventos.criarTexto(p.x, p.y, tela);
             return;
         }
-        if (this.ferramenta === 'parede' || this.ferramenta === 'porta' || this.ferramenta === 'janela') {
+        if (['parede', 'porta', 'janela', 'etereo', 'ilusoria'].includes(this.ferramenta)) {
             if (!this.opcoes.mestre) return;
             this.modo = 'desenhar';
             this.desenhoInicio = { x: this.snap(p.x), y: this.snap(p.y) };
@@ -1956,7 +1956,7 @@ export class Cena {
             const fim = { x: this.snap(p.x), y: this.snap(p.y) };
             this.desenhoG.clear();
             if (Math.hypot(fim.x - this.desenhoInicio.x, fim.y - this.desenhoInicio.y) * this.mundo.scale.x > 8) {
-                const tipo = this.ferramenta === 'porta' ? 'porta' : this.ferramenta === 'janela' ? 'janela' : 'parede';
+                const tipo = (['porta', 'janela', 'etereo', 'ilusoria'] as const).find((t) => t === this.ferramenta) ?? 'parede';
                 this.opcoes.eventos.criarParede([this.desenhoInicio.x, this.desenhoInicio.y, fim.x, fim.y], tipo);
             }
         }
@@ -2087,7 +2087,7 @@ export class Cena {
             this.teclaMirar ||
             this.gabarito ||
             this.ponto ||
-            ['mirar', 'regua', 'loot', 'viagem', 'luz', 'parede', 'porta', 'janela', 'pintar'].includes(this.ferramenta)
+            ['mirar', 'regua', 'loot', 'viagem', 'luz', 'parede', 'porta', 'janela', 'etereo', 'ilusoria', 'pintar'].includes(this.ferramenta)
                 ? 'crosshair'
                 : this.ferramenta === 'texto'
                   ? 'text'

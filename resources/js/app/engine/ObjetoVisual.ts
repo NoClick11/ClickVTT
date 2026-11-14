@@ -436,18 +436,45 @@ export class ObjetoVisual {
         const tipo = this.dto.dados?.tipo ?? 'parede';
         const aberta = !!this.dto.dados?.aberta;
         if (!this.mestre) return this.desenharControle(g, pts, tipo, aberta);
-        const cor = tipo === 'porta' ? 0x38bdf8 : tipo === 'janela' ? 0x67e8f9 : 0xf4e0a0;
+        const cor = { porta: 0x38bdf8, janela: 0x67e8f9, etereo: 0xc4b5fd, ilusoria: 0x94a3b8 }[tipo] ?? 0xf4e0a0;
         const [ox, oy] = [this.dto.x, this.dto.y];
         const a = { x: pts[0] - ox, y: pts[1] - oy };
         const b = { x: pts[2] - ox, y: pts[3] - oy };
-        g.moveTo(a.x, a.y)
-            .lineTo(b.x, b.y)
-            .stroke({ color: cor, width: tipo === 'janela' ? 6 : 9, alpha: tipo === 'porta' && aberta ? 0.35 : 0.95, cap: 'round' });
+        if (tipo === 'etereo' || tipo === 'ilusoria') {
+            // Tracejadas, para o mestre ver de relance que não são paredes comuns: a etérea em traços finos e longos (violeta), a ilusória
+            // em traços curtos e grossos que lembram fumaça (cinza-azulado).
+            this.desenharTracejada(g, a, b, cor, tipo === 'etereo' ? { traco: 16, vao: 9, largura: 5 } : { traco: 7, vao: 7, largura: 10 });
+        } else {
+            g.moveTo(a.x, a.y)
+                .lineTo(b.x, b.y)
+                .stroke({ color: cor, width: tipo === 'janela' ? 6 : 9, alpha: tipo === 'porta' && aberta ? 0.35 : 0.95, cap: 'round' });
+        }
         g.circle(a.x, a.y, 7).fill(0x0d0a12).stroke({ color: cor, width: 2 });
         g.circle(b.x, b.y, 7).fill(0x0d0a12).stroke({ color: cor, width: 2 });
         if (tipo === 'porta' || tipo === 'janela') {
             this.desenharControle(g, pts, tipo, aberta);
         }
+    }
+
+    /** Linha tracejada de `a` a `b` (para as paredes etérea e ilusória). */
+    private desenharTracejada(
+        g: Graphics,
+        a: { x: number; y: number },
+        b: { x: number; y: number },
+        cor: number,
+        { traco, vao, largura }: { traco: number; vao: number; largura: number },
+    ): void {
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const comprimento = Math.hypot(dx, dy);
+        if (comprimento < 1) return;
+        const ux = dx / comprimento;
+        const uy = dy / comprimento;
+        for (let d = 0; d < comprimento; d += traco + vao) {
+            const fim = Math.min(d + traco, comprimento);
+            g.moveTo(a.x + ux * d, a.y + uy * d).lineTo(a.x + ux * fim, a.y + uy * fim);
+        }
+        g.stroke({ color: cor, width: largura, alpha: 0.9, cap: 'round' });
     }
 
     /**

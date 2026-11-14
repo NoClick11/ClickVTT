@@ -35,12 +35,15 @@ export const BLOQUEIO_PADRAO: Record<string, Record<CanalDeBloqueio, boolean>> =
     parede: { movimento: true, visao: true, luz: true },
     porta: { movimento: true, visao: true, luz: true },
     janela: { movimento: true, visao: false, luz: false },
+    // etérea: barra o corpo mas não a vista nem a luz (fosso, precipício); ilusória: barra a vista e a luz mas não o corpo (fumaça densa)
+    etereo: { movimento: true, visao: false, luz: false },
+    ilusoria: { movimento: false, visao: true, luz: true },
 };
 
 /** Esta parede (porta, janela) barra o canal agora? Porta e janela abertas deixam tudo passar. */
 export function bloqueia(o: ParedeLike, canal: CanalDeBloqueio): boolean {
     const tipo = o.dados?.tipo ?? 'parede';
-    if (tipo !== 'parede' && o.dados?.aberta) return false;
+    if ((tipo === 'porta' || tipo === 'janela') && o.dados?.aberta) return false;
 
     return o.dados?.bloqueio?.[canal] ?? BLOQUEIO_PADRAO[tipo]?.[canal] ?? true;
 }

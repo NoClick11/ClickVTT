@@ -3,10 +3,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
     AppWindow,
     BrickWall,
+    CloudFog,
     Crosshair,
     Dices,
     DoorClosed,
     DoorOpen,
+    Ghost,
     Hand,
     Lightbulb,
     ListOrdered,
@@ -51,6 +53,8 @@ const ferramentas: Item[] = [
     { id: 'parede', rotulo: 'Parede', icone: BrickWall, mestre: true, iluminacao: true },
     { id: 'porta', rotulo: 'Porta', icone: DoorClosed, mestre: true, iluminacao: true },
     { id: 'janela', rotulo: 'Janela', icone: AppWindow, mestre: true, iluminacao: true },
+    { id: 'etereo', rotulo: 'Parede etérea: barra o movimento, mas não a visão (fosso, precipício)', icone: Ghost, mestre: true, iluminacao: true },
+    { id: 'ilusoria', rotulo: 'Parede ilusória: barra a visão, mas não o movimento (fumaça densa)', icone: CloudFog, mestre: true, iluminacao: true },
 ];
 const visiveis = (f: Item) =>
     (!f.mestre || props.mestre) && (!f.iluminacao || props.camadaIluminacao) && (!f.foraIluminacao || !props.camadaIluminacao);

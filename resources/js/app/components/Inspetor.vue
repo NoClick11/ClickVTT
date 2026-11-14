@@ -47,6 +47,8 @@ function raioTotal(e: Event) {
 
 // --- parede ---
 const tipoDaParede = computed(() => props.objeto.dados?.tipo ?? 'parede');
+/** Porta e janela abrem e fecham; as demais paredes estão sempre "fechadas". */
+const abre = computed(() => tipoDaParede.value === 'porta' || tipoDaParede.value === 'janela');
 const bloqueios = [
     { id: 'movimento', rotulo: 'Barra o movimento' },
     { id: 'visao', rotulo: 'Barra a visão' },
@@ -158,6 +160,8 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
                         <option value="parede">Parede</option>
                         <option value="porta">Porta</option>
                         <option value="janela">Janela</option>
+                        <option value="etereo">Parede etérea (só barra o movimento)</option>
+                        <option value="ilusoria">Parede ilusória (só barra a visão)</option>
                     </select>
                 </label>
                 <template v-if="objeto.dados?.tipo === 'porta' || objeto.dados?.tipo === 'janela'">
@@ -181,7 +185,7 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
                     </label>
                 </template>
                 <fieldset class="grid gap-1.5 rounded-md border border-ouro-500/20 p-2">
-                    <legend class="px-1 text-xs text-preto-300">Quando fechada</legend>
+                    <legend class="px-1 text-xs text-preto-300">{{ abre ? 'Quando fechada' : 'O que barra' }}</legend>
                     <label v-for="b in bloqueios" :key="b.id" class="flex items-center gap-2">
                         <input
                             type="checkbox"
@@ -192,7 +196,15 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
                         <span>{{ b.rotulo }}</span>
                     </label>
                     <p class="text-[11px] text-preto-400">
-                        Aberta, porta e janela deixam tudo passar. A janela é vidro: barra o corpo, mas deixa ver e iluminar.
+                        <template v-if="tipoDaParede === 'etereo'"
+                            >Etérea: barra o corpo, mas deixa ver e iluminar (um fosso, um precipício).</template
+                        >
+                        <template v-else-if="tipoDaParede === 'ilusoria'"
+                            >Ilusória: barra a visão e a luz, mas o corpo passa (fumaça densa).</template
+                        >
+                        <template v-else
+                            >Aberta, porta e janela deixam tudo passar. A janela é vidro: barra o corpo, mas deixa ver e iluminar.</template
+                        >
                     </p>
                 </fieldset>
             </template>

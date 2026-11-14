@@ -42,7 +42,7 @@ class ObjetoController extends Controller
             'dados' => ['nullable', 'array'],
             'dados.pontos' => ['required_if:tipo,parede,traco', 'array', 'min:4', 'max:6000'],
             'dados.pontos.*' => ['numeric'],
-            'dados.tipo' => ['nullable', Rule::in(['parede', 'porta', 'janela'])],
+            'dados.tipo' => ['nullable', Rule::in(['parede', 'porta', 'janela', 'etereo', 'ilusoria'])],
             'dados.raio' => ['required_if:tipo,luz', 'numeric', 'min:1'],
             'dados.cor' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'dados.aberta' => ['nullable', 'boolean'],

@@ -8,7 +8,21 @@ export const CAMADAS: { id: Camada; nome: string; dica: string }[] = [
     { id: 'iluminacao', nome: 'Iluminação', dica: 'Luzes, paredes, portas e janelas' },
 ];
 
-export type Ferramenta = 'selecionar' | 'mirar' | 'mover' | 'regua' | 'pintar' | 'texto' | 'parede' | 'porta' | 'janela' | 'luz' | 'loot' | 'viagem';
+export type Ferramenta =
+    | 'selecionar'
+    | 'mirar'
+    | 'mover'
+    | 'regua'
+    | 'pintar'
+    | 'texto'
+    | 'parede'
+    | 'porta'
+    | 'janela'
+    | 'etereo'
+    | 'ilusoria'
+    | 'luz'
+    | 'loot'
+    | 'viagem';
 
 /** Estilo atual das ferramentas de pintar (traço) e texto. */
 export interface EstiloPintura {
@@ -17,7 +31,7 @@ export interface EstiloPintura {
     tamanho: number;
 }
 
-export type TipoParede = 'parede' | 'porta' | 'janela';
+export type TipoParede = 'parede' | 'porta' | 'janela' | 'etereo' | 'ilusoria';
 
 /** Mira de um jogador ativa num token de personagem. */
 export interface InfoMira {
