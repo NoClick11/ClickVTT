@@ -67,6 +67,8 @@ export interface ObjetoDto {
         tamanho?: number;
         /** token/imagem: rotação em graus (0 a 360). */
         rotacao?: number;
+        /** token: altura em relação ao chão, na unidade do mapa (negativo = abaixo). Entra no alcance dos ataques e aparece sob o token. */
+        elevacao?: number;
         /** porta/janela: só o mestre abre uma trancada. */
         trancada?: boolean;
         /** token: quantos quadrados enxerga no escuro (vazio = o padrão da página). */

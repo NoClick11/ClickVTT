@@ -138,4 +138,28 @@ class AlcanceDoAtaqueTest extends TestCase
         $this->alvoEmQuadrados($c, 8); // 12 m
         $this->assertSame('2d20kl1+5', $this->atacar($c, '1d20+5', $npc, $c->mestre)->assertCreated()->json('dados.expressao'));
     }
+
+    public function test_a_altura_entra_no_alcance(): void
+    {
+        $c = $this->cenario();
+        $espada = "1d20+@arma.{$c->espada->id}.ataque";
+        $c->tAlvo->update(['dados' => ['elevacao' => 1.5]]); // um quadrado acima, vizinho: ainda alcança
+        $this->atacar($c, $espada)->assertCreated();
+        $c->tAlvo->update(['dados' => ['elevacao' => 4.5]]); // três quadrados acima: o corpo a corpo não chega
+        $this->atacar($c, $espada)->assertStatus(422)->assertJsonValidationErrors('alvo_personagem_id');
+        $arco = "1d20+@arma.{$c->arco->id}.ataque";
+        $this->atacar($c, $arco)->assertCreated(); // o arco (18 m) chega lá em cima
+        $c->tAlvo->update(['dados' => ['elevacao' => -30]]); // 30 m abaixo: passa dos 18 m do arco
+        $this->atacar($c, $arco)->assertStatus(422);
+    }
+
+    public function test_jogador_muda_a_altura_so_do_proprio_token_e_o_mestre_de_todos(): void
+    {
+        $c = $this->cenario();
+        $meu = $c->pagina->objetos()->where('personagem_id', $c->p->id)->first();
+        $como = fn ($j) => $this->withSession(['acesso_mesas' => [$j->mesa_id => [$j->id => true]]])->withHeader('X-Jogador', (string) $j->id);
+        $como($c->ana)->patchJson(route('jogo.objetos.update', [$c->mesa->id, $meu->id]), ['dados' => ['elevacao' => 3]])->assertOk()->assertJsonPath('dados.elevacao', 3);
+        $como($c->ana)->patchJson(route('jogo.objetos.update', [$c->mesa->id, $c->tAlvo->id]), ['dados' => ['elevacao' => 3]])->assertForbidden();
+        $como($c->mestre)->patchJson(route('jogo.objetos.update', [$c->mesa->id, $c->tAlvo->id]), ['dados' => ['elevacao' => -1.5]])->assertOk()->assertJsonPath('dados.elevacao', -1.5);
+    }
 }

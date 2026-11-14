@@ -65,6 +65,7 @@ class ObjetoController extends Controller
             'dados.direcao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
             'dados.atravessa' => ['nullable', 'boolean'],
             'dados.rotacao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
+            'dados.elevacao' => ['nullable', 'numeric', 'min:-10000', 'max:10000'],
             'dados.destino_pagina_id' => ['nullable', 'integer'],
             'dados.destino_objeto_id' => ['nullable', 'integer'],
             'dados.destino_nome' => ['nullable', 'string', 'max:80'],
@@ -159,6 +160,7 @@ class ObjetoController extends Controller
                 'dados.direcao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
                 'dados.atravessa' => ['nullable', 'boolean'],
                 'dados.rotacao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
+                'dados.elevacao' => ['nullable', 'numeric', 'min:-10000', 'max:10000'],
                 'dados.destino_pagina_id' => ['nullable', 'integer'],
                 'dados.destino_objeto_id' => ['nullable', 'integer'],
                 'dados.destino_nome' => ['nullable', 'string', 'max:80'],
@@ -194,10 +196,11 @@ class ObjetoController extends Controller
                 'y' => ['sometimes', 'numeric'],
                 'dados' => ['sometimes', 'nullable', 'array'],
                 'dados.rotacao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
+                'dados.elevacao' => ['nullable', 'numeric', 'min:-10000', 'max:10000'],
                 'reverter_movimento' => ['sometimes', 'boolean'],
             ]);
             if (array_key_exists('dados', $dados) && is_array($dados['dados'])) {
-                $dados['dados'] = array_merge($objeto->dados ?? [], array_filter($dados['dados'], fn ($k) => $k === 'rotacao', ARRAY_FILTER_USE_KEY));
+                $dados['dados'] = array_merge($objeto->dados ?? [], array_filter($dados['dados'], fn ($k) => in_array($k, ['rotacao', 'elevacao'], true), ARRAY_FILTER_USE_KEY));
             }
         }
 

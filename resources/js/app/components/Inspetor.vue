@@ -101,6 +101,25 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
                 />
             </label>
             <label
+                v-if="objeto.tipo === 'token'"
+                class="grid gap-1"
+                title="Altura do token em relação ao chão. Entra no alcance dos ataques. No mapa: PageUp/PageDown sobem e descem."
+            >
+                <span class="text-xs text-preto-300">Altura ({{ pagina.unidade || 'm' }}; negativo = abaixo)</span>
+                <Input
+                    :class="campo"
+                    inputmode="decimal"
+                    placeholder="0"
+                    :model-value="objeto.dados?.elevacao ?? ''"
+                    @change="
+                        (e: Event) => {
+                            const v = parseFloat((e.target as HTMLInputElement).value.replace(',', '.'));
+                            emit('atualizar', { dados: { elevacao: Number.isFinite(v) ? v : 0 } });
+                        }
+                    "
+                />
+            </label>
+            <label
                 v-if="objeto.tipo === 'token' && pagina.iluminacao_ativa"
                 class="flex items-center gap-2"
                 title="Desligado: o jogador deste token não enxerga por ele (cego)."

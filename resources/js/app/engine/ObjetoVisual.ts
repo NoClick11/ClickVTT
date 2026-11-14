@@ -27,6 +27,10 @@ export class ObjetoVisual {
      */
     readonly hud = new Container();
     private iconesStatus = new Container();
+    /** Altura do token (como no Foundry): uma pílula sob o token com seta e valor; só aparece com altura diferente de zero. */
+    private elevacaoBadge = new Container();
+    private elevacaoDesenhada = '';
+    private unidade = 'm';
     private statusDesenhado = '';
     private barras = new Container();
     private barrasDesenhadas = '';
@@ -49,7 +53,7 @@ export class ObjetoVisual {
     ) {
         this.dto = { ...dto };
         this.container.addChild(this.conteudoRotativo, this.mira, this.marcador, this.caveira);
-        this.hud.addChild(this.barras, this.iconesStatus);
+        this.hud.addChild(this.barras, this.iconesStatus, this.elevacaoBadge);
         this.sangue.mask = this.mascaraSangue;
         this.conteudoRotativo.addChild(this.fundo, this.sangue, this.mascaraSangue, this.bordaToken);
         this.aplicar();
@@ -61,6 +65,14 @@ export class ObjetoVisual {
         this.dto = { ...dto };
         this.aplicar();
         if (arquivoMudou) void this.carregarMidia();
+    }
+
+    /** A unidade de distância do mapa (m, ft...), usada no indicador de altura. */
+    definirUnidade(unidade: string | null | undefined): void {
+        const u = (unidade ?? 'm').trim() || 'm';
+        if (u === this.unidade) return;
+        this.unidade = u;
+        this.desenharElevacao();
     }
 
     /** Atualiza os dados arbitrários (rotação, luz, etc.) */
@@ -179,6 +191,7 @@ export class ObjetoVisual {
         this.desenharCaveira();
         this.desenharBarras();
         this.desenharStatus();
+        this.desenharElevacao();
         this.desenharMira();
         this.ajustarMidia();
         this.atualizarRotulo(largura, altura);
@@ -818,6 +831,41 @@ export class ObjetoVisual {
             bolha.addChild(fundo, texto);
             this.iconesStatus.addChild(bolha);
         });
+    }
+
+    /** Indicador de altura sob o token: pílula escura com uma seta (sobe/desce) e o valor com a unidade do mapa. Sem altura, não aparece. */
+    private desenharElevacao(): void {
+        const e = this.ehToken ? Number(this.dto.dados?.elevacao ?? 0) : 0;
+        const { largura, altura } = this.dto;
+        const chave = `${e}|${this.unidade}|${Math.round(largura)}|${Math.round(altura)}`;
+        if (chave === this.elevacaoDesenhada) return;
+        this.elevacaoDesenhada = chave;
+        for (const filho of this.elevacaoBadge.removeChildren()) filho.destroy({ children: true });
+        if (!e) return;
+
+        const h = Math.max(15, Math.min(20, largura * 0.22));
+        const valor = `${Math.abs(e).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${this.unidade}`;
+        const texto = new Text({
+            text: valor,
+            style: { fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', fontSize: h * 0.68, fontWeight: '700', fill: 0xffffff },
+        });
+        texto.anchor.set(0, 0.5);
+        const seta = h * 0.5;
+        const w = h * 0.45 + seta + h * 0.3 + texto.width + h * 0.5;
+        const cor = e > 0 ? 0x7dd3fc : 0xfca5a5; // acima: azul claro; abaixo: rosado
+        const x0 = largura / 2 - w / 2;
+        const y0 = altura + 3;
+        const g = new Graphics()
+            .roundRect(x0, y0, w, h, h / 2)
+            .fill({ color: 0x0d0a12, alpha: 0.92 })
+            .stroke({ color: cor, width: 1.5, alpha: 0.9 });
+        // seta: triângulo para cima (acima do chão) ou para baixo (abaixo)
+        const ax = x0 + h * 0.45 + seta / 2;
+        const ay = y0 + h / 2;
+        const t = seta * 0.5;
+        g.poly(e > 0 ? [ax, ay - t, ax - t, ay + t * 0.7, ax + t, ay + t * 0.7] : [ax, ay + t, ax - t, ay - t * 0.7, ax + t, ay - t * 0.7]).fill(cor);
+        texto.position.set(x0 + h * 0.45 + seta + h * 0.3, y0 + h / 2);
+        this.elevacaoBadge.addChild(g, texto);
     }
 
     /**

@@ -201,6 +201,7 @@ export class Cena {
     setPagina(pagina: PaginaDto, ajustar = false): void {
         const trocou = this.pagina?.id !== pagina.id;
         this.pagina = pagina;
+        for (const v of this.visuais.values()) v.definirUnidade(pagina.unidade);
         this.redesenharPagina();
         this.desenharZonas();
         if (trocou || ajustar) this.ajustarVista();
@@ -239,6 +240,7 @@ export class Cena {
                 this.moverParaCamada(existente, dto.camada);
             } else {
                 const v = new ObjetoVisual(dto, this.opcoes.mestre);
+                v.definirUnidade(this.pagina?.unidade);
                 v.definirAlvo(dto.id === this.alvoId);
                 v.definirMiras(this.mirasJogadores.get(dto.id) ?? []);
                 v.definirEnfase(this.camadaAtiva === 'iluminacao');

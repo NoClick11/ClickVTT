@@ -3060,6 +3060,19 @@ onBeforeUnmount(() => {
 
 // --- teclado -------------------------------------------------------------------
 
+/** PageUp/PageDown: sobe ou desce a altura dos tokens selecionados (ou do personagem ativo) em um quadrado; vale para os tokens que a pessoa controla. */
+function ajustarAltura(passo: number) {
+    const ids = selecionadosIds.value.length ? selecionadosIds.value : selecionadoId.value ? [selecionadoId.value] : [];
+    let alvos = objetos.value.filter((o) => ids.includes(o.id) && o.tipo === 'token');
+    if (!alvos.length && ativo.value) alvos = objetos.value.filter((o) => o.tipo === 'token' && o.personagem_id === ativo.value!.id);
+    alvos = alvos.filter((o) => props.mestre || (o.personagem_id !== null && props.meusPersonagens.includes(o.personagem_id)));
+    for (const o of alvos) {
+        const nova = Math.round(((o.dados?.elevacao ?? 0) + passo) * 100) / 100;
+        o.dados = { ...o.dados, elevacao: nova };
+        api.atualizarObjeto(o.id, { dados: { elevacao: nova } }).catch(falhou);
+    }
+}
+
 function aoTeclar(e: KeyboardEvent) {
     const alvo = e.target as HTMLElement;
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(alvo?.tagName)) return;
@@ -3069,6 +3082,10 @@ function aoTeclar(e: KeyboardEvent) {
         return;
     }
     if (e.key === 'Escape' && alvoObjetoId.value !== null) alvoObjetoId.value = null; // Esc limpa a mira
+    if ((e.key === 'PageUp' || e.key === 'PageDown') && props.pagina) {
+        e.preventDefault();
+        ajustarAltura((e.key === 'PageUp' ? 1 : -1) * props.pagina.distancia_quadrado);
+    }
     if ((e.key === 'Delete' || e.key === 'Backspace') && (selecionadoId.value || selecionadosIds.value.length)) {
         e.preventDefault();
         removerSelecionado();
