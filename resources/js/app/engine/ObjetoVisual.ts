@@ -298,41 +298,92 @@ export class ObjetoVisual {
         g.blendMode = 'add';
     }
 
-    /** Ponto de viagem entre mapas: marcador de porta/passagem aberta entre mapas */
+    /**
+     * Ponto de viagem entre mapas: um portal solto que ocupa a célula (oval vertical com halo, interior de energia com redemoinho e sombra
+     * no chão). Todas as cores saem da cor do ponto (tom escuro, médio e claro), para o conjunto ficar unificado.
+     */
     private desenharViagem(g: Graphics): void {
         const { largura, altura, dados } = this.dto;
         const cx = largura / 2;
         const cy = altura / 2;
         const s = Math.min(largura, altura);
-        const r = s * 0.44;
-        const cor = corHex(dados?.cor ?? '#e2e8f0');
+        const cor = corHex(dados?.cor ?? '#8b9cff');
+        const escuro = misturarCores(cor, 0x000000, 0.2);
+        const fundo = misturarCores(cor, 0x000000, 0.1);
+        const claro = misturarCores(cor, 0xffffff, 0.35);
+        const brilho = misturarCores(cor, 0xffffff, 0.12);
+        const rx = s * 0.35;
+        const ry = s * 0.44;
+        const pt = (u: number, ang: number): [number, number] => [cx + rx * u * Math.cos(ang), cy + ry * u * Math.sin(ang)];
 
-        // Fundo circular escuro minimalista
-        g.circle(cx, cy, r).fill({ color: 0x09090b, alpha: 0.88 });
-        g.circle(cx, cy, r).stroke({ color: cor, width: 2, alpha: 0.65 });
+        // sombra no chão (duas camadas: contato forte e penumbra)
+        g.ellipse(cx, cy + ry - s * 0.01, rx * 1.05, s * 0.05).fill({ color: 0x000000, alpha: 0.18 });
+        g.ellipse(cx, cy + ry - s * 0.01, rx * 0.8, s * 0.032).fill({ color: 0x000000, alpha: 0.3 });
 
-        // Desenho estilo "DoorOpen" (batente da porta + folha aberta em perspectiva)
-        const pw = r * 0.95;
-        const ph = r * 1.25;
-        const x0 = cx - pw / 2;
-        const y0 = cy - ph / 2;
+        // halo suave, que termina na borda da célula
+        const aneis = 10;
+        for (let i = aneis; i >= 1; i--) {
+            const k = (i / aneis) * s * 0.05;
+            g.ellipse(cx, cy, rx + k, ry + k).fill({ color: cor, alpha: 0.04 });
+        }
 
-        // Batente retangular da porta
-        g.rect(x0, y0, pw, ph).stroke({ color: cor, width: 2.5, alpha: 0.85 });
+        // interior: fundo escuro na cor do ponto e energia que clareia da borda para o centro
+        g.ellipse(cx, cy, rx, ry).fill({ color: fundo, alpha: 0.95 });
+        const camadas = 16;
+        for (let i = 0; i < camadas; i++) {
+            const t = 1 - i / camadas;
+            g.ellipse(cx, cy, rx * 0.95 * t, ry * 0.95 * t).fill({ color: cor, alpha: 0.07 });
+        }
+        // ondulações finas (textura de energia parada na água)
+        for (const u of [0.38, 0.56, 0.74, 0.88]) g.ellipse(cx, cy, rx * u, ry * u).stroke({ color: claro, width: 1, alpha: 0.09 });
 
-        // Folha da porta aberta em perspectiva para a direita
-        const xAbrir = x0 + pw * 0.62;
-        g.poly([x0, y0, xAbrir, y0 + ph * 0.12, xAbrir, y0 + ph * 0.88, x0, y0 + ph])
-            .fill({ color: cor, alpha: 0.25 })
-            .stroke({ color: cor, width: 2 });
+        // redemoinho: braços em espiral que giram para o centro. Cada braço é desenhado em camadas contínuas que começam cada vez mais perto
+        // do centro: a ponta de fora fica fraca e larga, e o miolo forte e fino (sem segmentos sobrepostos, que fariam "contas").
+        const passos = 48;
+        const voltas = 0.85;
+        const braco = (fase: number, largura: number, alfa: number, camadasDoBraco: number, cr: number) => {
+            const pontos: [number, number][] = [];
+            for (let i = 0; i <= passos; i++) pontos.push(pt(0.9 - (i / passos) * 0.82, fase + (i / passos) * voltas * Math.PI * 2));
+            for (let k = 0; k < camadasDoBraco; k++) {
+                const ini = Math.round((k / camadasDoBraco) * passos * 0.85);
+                g.moveTo(pontos[ini][0], pontos[ini][1]);
+                for (let i = ini + 1; i <= passos; i++) g.lineTo(pontos[i][0], pontos[i][1]);
+                g.stroke({ color: cr, width: largura * (1 - (k / camadasDoBraco) * 0.78), alpha: alfa, cap: 'round', join: 'round' });
+            }
 
-        // Maçaneta na folha da porta
-        g.circle(x0 + (xAbrir - x0) * 0.8, y0 + ph * 0.52, Math.max(1.5, r * 0.055)).fill(0xffffff);
+            return pontos;
+        };
+        const principais: [number, number][][] = [];
+        for (let b = 0; b < 3; b++) principais.push(braco((b / 3) * Math.PI * 2, s * 0.036, 0.12, 7, brilho));
+        // fios finos entre os braços principais, para dar profundidade
+        for (let b = 0; b < 3; b++) braco(((b + 0.5) / 3) * Math.PI * 2, s * 0.013, 0.1, 4, claro);
 
-        // Degrau / soleira na base
-        g.moveTo(x0 - 4, y0 + ph)
-            .lineTo(x0 + pw + 4, y0 + ph)
-            .stroke({ color: cor, width: 3, alpha: 0.95, cap: 'round' });
+        // partículas de energia soltas ao longo dos braços (posições fixas, pela razão áurea)
+        for (let j = 0; j < 26; j++) {
+            const ponto = principais[j % 3][4 + Math.floor(((j * 0.618) % 1) * (passos - 8))];
+            const desvio = Math.sin(j * 12.9898) * s * 0.035;
+            g.circle(ponto[0] + desvio, ponto[1] - desvio * 0.6, s * (0.005 + ((j * 0.37) % 1) * 0.007)).fill({
+                color: 0xffffff,
+                alpha: 0.25 + ((j * 0.53) % 1) * 0.4,
+            });
+        }
+
+        // núcleo luminoso
+        g.ellipse(cx, cy, rx * 0.3, ry * 0.3).fill({ color: claro, alpha: 0.12 });
+        g.ellipse(cx, cy, rx * 0.17, ry * 0.17).fill({ color: brilho, alpha: 0.26 });
+        g.ellipse(cx, cy, rx * 0.08, ry * 0.08).fill({ color: 0xffffff, alpha: 0.55 });
+
+        // vinheta: a borda interna escurece, dando profundidade ao vão
+        for (let i = 0; i < 6; i++)
+            g.ellipse(cx, cy, rx * (0.99 - i * 0.035), ry * (0.99 - i * 0.035)).stroke({ color: escuro, width: s * 0.014, alpha: 0.2 - i * 0.03 });
+
+        // aro: um fio de luz fino, sem faixa grossa. Brilho que se espalha para os dois lados (camadas largas e fracas), fio claro no meio
+        // e um segundo fio bem tênue por dentro, para a borda se fundir ao interior em vez de parecer uma moldura.
+        const fio = Math.max(1.6, s * 0.022);
+        for (let i = 5; i >= 1; i--) g.ellipse(cx, cy, rx, ry).stroke({ color: cor, width: fio + i * s * 0.014, alpha: 0.07 });
+        g.ellipse(cx, cy, rx, ry).stroke({ color: cor, width: fio * 1.7, alpha: 0.9 });
+        g.ellipse(cx, cy, rx, ry).stroke({ color: claro, width: fio, alpha: 0.95 });
+        g.ellipse(cx, cy, rx - fio * 2.2, ry - fio * 2.2).stroke({ color: claro, width: 1, alpha: 0.25 });
     }
 
     private atualizarRotuloViagem(largura: number, altura: number): void {
