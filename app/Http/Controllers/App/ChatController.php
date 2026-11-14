@@ -5,18 +5,26 @@ namespace App\Http\Controllers\App;
 use App\Http\Controllers\Controller;
 use App\Models\Mensagem;
 use App\Models\Mesa;
+use App\Nucleo\Combate\Alcance;
+use App\Nucleo\Combate\AplicarDano;
 use App\Nucleo\Combate\CombateService;
+use App\Nucleo\Combate\Equipes;
+use App\Nucleo\Combate\Movimento;
 use App\Nucleo\Combate\Pipeline;
 use App\Nucleo\Rolagem\Rolador;
 use App\Nucleo\Rolagem\RolagemInvalida;
 use App\Nucleo\Sistemas\RegistroSistemas;
 use App\Nucleo\Sistemas\Sistema;
+use App\Sistemas\OnePiece\AlcanceDoAtaque;
+use App\Sistemas\OnePiece\ConsumoDaSaijo;
+use App\Sistemas\OnePiece\Forja;
+use App\Sistemas\OnePiece\Municoes;
+use App\Sistemas\OnePiece\Regras;
 use App\Support\AcessoMesa;
 use App\Support\EntregarMensagem;
-use App\Support\Transmitir;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -81,6 +89,8 @@ class ChatController extends Controller
             'tecnica.semTecnica' => ['nullable', 'boolean'],
             'tecnica.ataque' => ['nullable', 'boolean'],
             'tecnica.margem' => ['nullable', 'integer', 'between:2,20'],
+            'tecnica.alcance' => ['nullable', 'numeric', 'between:0,1000'], // alcance máximo (m) do ataque do NPC
+            'tecnica.alcanceNormal' => ['nullable', 'numeric', 'between:0,1000'], // alcance normal (m): além dele, desvantagem
             'tecnica.secundaria' => ['nullable', 'array'],
             'tecnica.secundaria.atributo' => ['required_with:tecnica.secundaria', 'string', 'max:3'],
             'tecnica.secundaria.desvantagem' => ['nullable', 'boolean'],
@@ -93,13 +103,14 @@ class ChatController extends Controller
 
         // Sem fogo amigo: um ataque contra alguém do mesmo lado é recusado antes de gastar qualquer coisa
         if (! empty($dados['alvo_personagem_id']) && ! empty($dados['personagem_id'])) {
-            \App\Nucleo\Combate\Equipes::exigirPodeAtingir($mesa, (int) $dados['personagem_id'], (int) $dados['alvo_personagem_id'], 'alvo_personagem_id');
+            Equipes::exigirPodeAtingir($mesa, (int) $dados['personagem_id'], (int) $dados['alvo_personagem_id'], 'alvo_personagem_id');
         }
         [$sistema, $variaveis, $itens, $ficha] = $this->variaveis($mesa, $dados['personagem_id'] ?? null, $sistemas);
+        $dados = $this->aplicarAlcance($dados, $variaveis, $itens, $acesso);
         // Arma por munição: a munição escolhida tem de existir, servir à arma e ter unidades; o que ela dá é o dado do dano
         $municao = null;
         if (preg_match('/@arma\.(\d+)\.ataque/', $dados['expressao'], $m) && ($itens[(int) $m[1]]['dados']['arma']['municao'] ?? false)) {
-            $municao = \App\Sistemas\OnePiece\Municoes::escolhida($ficha, $itens, (int) $m[1], isset($dados['municao_item_id']) ? (int) $dados['municao_item_id'] : null);
+            $municao = Municoes::escolhida($ficha, $itens, (int) $m[1], isset($dados['municao_item_id']) ? (int) $dados['municao_item_id'] : null);
         }
         if (isset($dados['acao']) && ! empty($dados['personagem_id'])) {
             $combate->gastar($mesa, $acesso, $dados['personagem_id'], $dados['acao']['categoria'], (bool) ($dados['acao']['tecnica'] ?? false), $this->ataquesPorAcao($dados['expressao'], $variaveis, $itens));
@@ -111,17 +122,17 @@ class ChatController extends Controller
         }
         // `^2` (rolar o dano duas vezes e ficar com o maior) é da Saijo Ô Wazamono equipada: até 3 usos por descanso longo, consumidos aqui (depois de a expressão rolar).
         if (str_contains($dados['expressao'], '^')) {
-            \App\Sistemas\OnePiece\ConsumoDaSaijo::consumir($mesa, $dados['personagem_id'] ?? null, $sistema, $itens, $ficha);
+            ConsumoDaSaijo::consumir($mesa, $dados['personagem_id'] ?? null, $sistema, $itens, $ficha);
         }
         // O sistema pode marcar a rolagem (ex.: ataque crítico); o núcleo só guarda e repassa.
-        $combateAtual = \App\Nucleo\Combate\CombateService::normalizar($mesa->fresh()->combate);
+        $combateAtual = CombateService::normalizar($mesa->fresh()->combate);
         $ehAtaque = $this->ehAtaque($resultado['termos']) || ($acesso->ehMestre() && ! empty($dados['tecnica']['ataque']));
         $marcas = $sistema?->metadadosDaRolagem($resultado['termos'], $variaveis, $itens, $ficha, ['municao' => $municao, 'rodada' => $combateAtual['fase'] === 'em_curso' ? $combateAtual['rodada'] : 1]) ?? [];
         if ($municao) {
-            \App\Sistemas\OnePiece\Municoes::consumir($mesa, (int) $dados['personagem_id'], $municao['item_id']);
+            Municoes::consumir($mesa, (int) $dados['personagem_id'], $municao['item_id']);
         }
         if (is_array($dados['tecnica'] ?? null) && $ehAtaque) {
-            $margem = \App\Sistemas\OnePiece\Regras::margemDaTecnica($ficha, $variaveis, trim($dados['tecnica']['nome']));
+            $margem = Regras::margemDaTecnica($ficha, $variaveis, trim($dados['tecnica']['nome']));
             $mestreDoNpc = $acesso->ehMestre();
             if ($mestreDoNpc && isset($dados['tecnica']['margem'])) {
                 $margem = min($margem, (int) $dados['tecnica']['margem']);
@@ -132,7 +143,7 @@ class ChatController extends Controller
             }
         }
         // Shoot (Black Leg): ataque desarmado que acerta com d20 de 16 a 20 pode causar uma condição (Kick Festival), se o alvo falhar na Salvaguarda de Constituição
-        if (str_contains((string) $dados['expressao'], '@ataque.desarmado') && ($kick = \App\Sistemas\OnePiece\Regras::kickFestival($ficha, Pipeline::naturalDoD20($resultado['termos'])))) {
+        if (str_contains((string) $dados['expressao'], '@ataque.desarmado') && ($kick = Regras::kickFestival($ficha, Pipeline::naturalDoD20($resultado['termos'])))) {
             $marcas['tecnica'] = ['nome' => 'Shoot (Kick Festival)', 'semTecnica' => true, 'secundaria' => $kick];
         }
         if (is_array($dados['dano'] ?? null)) {
@@ -142,31 +153,31 @@ class ChatController extends Controller
             ];
             // Dano extra do Black Leg (Fogo do Diable Jambe): Ifrit Jambe e Hell Memories mudam como o dano de Fogo vale contra o alvo
             if (($dados['dano']['fonte'] ?? null) === 'black-leg') {
-                $fogo = \App\Sistemas\OnePiece\Regras::fogoDoBlackLeg($ficha, $marcas['dano']['tipo'] ?? null);
+                $fogo = Regras::fogoDoBlackLeg($ficha, $marcas['dano']['tipo'] ?? null);
                 if ($fogo) {
                     $marcas['dano']['ignora'] = [...($marcas['dano']['ignora'] ?? []), ...$fogo];
                 }
             }
             // Dano de Técnica com chicote (o botão leva o nome da Técnica no rótulo): Golpe Moral confere a Técnica na ficha de quem rola
             if (filled($dados['rotulo'] ?? null) && ! preg_match('/@arma\.\d+\.dano/', (string) $dados['expressao'])) {
-                $ignoraTecnica = \App\Sistemas\OnePiece\Regras::golpeMoralDaTecnica($ficha, trim($dados['rotulo']), $marcas['dano']['tipo'] ?? null);
+                $ignoraTecnica = Regras::golpeMoralDaTecnica($ficha, trim($dados['rotulo']), $marcas['dano']['tipo'] ?? null);
                 // Técnica Principal (Usuário Ínsito): ignora resistências e invulnerabilidades
-                $ignoraTecnica = [...$ignoraTecnica, ...\App\Sistemas\OnePiece\Regras::ignoraDaPrincipal($ficha, trim($dados['rotulo']))];
+                $ignoraTecnica = [...$ignoraTecnica, ...Regras::ignoraDaPrincipal($ficha, trim($dados['rotulo']))];
                 if ($ignoraTecnica) {
                     $marcas['dano']['ignora'] = $ignoraTecnica;
                 }
             }
             // Densidade e Balanço da arma (forja): o servidor deduz da arma da rolagem, nunca do que o cliente manda.
             if (preg_match('/@arma\.(\d+)\.dano/', (string) $dados['expressao'], $m)) {
-                $ignora = \App\Sistemas\OnePiece\Forja::ignoraDoDano($itens[(int) $m[1]]['dados']['arma'] ?? null);
+                $ignora = Forja::ignoraDoDano($itens[(int) $m[1]]['dados']['arma'] ?? null);
                 // Golpe Moral (Aventureiro): o chicote ignora resistência a Cortante e causa metade em invulnerabilidade a ele
                 // Dano Inevitável (Herói, Deus da Arma): a arma sagrada ignora resistências
                 if (in_array($itens[(int) $m[1]]['dados']['catalogo']['id'] ?? null, ['sabre', 'katana', 'espada-montante', 'lanca', 'escudo-de-ferro', 'arco'], true)
-                    && \App\Sistemas\OnePiece\Regras::temCaracteristica($ficha, 'Deus da Arma: Traços Gerais')) {
+                    && Regras::temCaracteristica($ficha, 'Deus da Arma: Traços Gerais')) {
                     $ignora = [...$ignora, 'resistencia'];
                 }
                 if (($itens[(int) $m[1]]['dados']['catalogo']['id'] ?? null) === 'chicote') {
-                    $ignora = [...$ignora, ...\App\Sistemas\OnePiece\Regras::golpeMoral($ficha, $marcas['dano']['tipo'] ?? null)];
+                    $ignora = [...$ignora, ...Regras::golpeMoral($ficha, $marcas['dano']['tipo'] ?? null)];
                 }
                 if ($ignora) {
                     $marcas['dano']['ignora'] = $ignora;
@@ -208,6 +219,63 @@ class ChatController extends Controller
     }
 
     /**
+     * Ataque normal (arma ou desarmado) contra o alvo mirado, medido pelo alcance da arma: até o alcance normal rola sem nada; do normal ao
+     * máximo rola com desvantagem (cancela uma vantagem que já viesse na rolagem); além do máximo é recusado, antes de rolar e de gastar
+     * munição. As Técnicas ficam de fora (cada uma cuida do seu alcance); o ataque de arma de NPC traz o alcance da própria ficha (só o
+     * mestre). Sem token de um dos dois no mesmo mapa, não há como medir e o ataque segue. Devolve os dados da rolagem (com a expressão
+     * e o rótulo ajustados quando há desvantagem).
+     *
+     * @param  array<string, mixed>  $dados
+     * @param  array<string, int|float>  $variaveis
+     * @param  array<int, array>  $itens
+     * @return array<string, mixed>
+     */
+    private function aplicarAlcance(array $dados, array $variaveis, array $itens, AcessoMesa $acesso): array
+    {
+        if (empty($dados['alvo_personagem_id']) || empty($dados['personagem_id'])) {
+            return $dados;
+        }
+        $tecnica = $dados['tecnica'] ?? null;
+        if (is_array($tecnica) && empty($tecnica['semTecnica'])) {
+            return $dados;
+        }
+        $limite = null;
+        if (is_array($tecnica)) {
+            if ($acesso->ehMestre() && isset($tecnica['alcance'])) {
+                $maximo = (float) $tecnica['alcance'];
+                $limite = ['normal' => min((float) ($tecnica['alcanceNormal'] ?? $maximo), $maximo), 'maximo' => $maximo, 'nome' => (string) $tecnica['nome']];
+            }
+        } else {
+            $limite = AlcanceDoAtaque::limite((string) $dados['expressao'], $variaveis, $itens);
+        }
+        if (! $limite) {
+            return $dados;
+        }
+        $distancia = Alcance::entrePersonagens((int) $dados['personagem_id'], (int) $dados['alvo_personagem_id']);
+        if ($distancia === null || $distancia <= $limite['normal'] + Movimento::FOLGA) {
+            return $dados;
+        }
+        $m = fn (float $v) => rtrim(rtrim(number_format($v, 1, ',', '.'), '0'), ',');
+        if ($distancia > $limite['maximo'] + Movimento::FOLGA) {
+            throw ValidationException::withMessages(['alvo_personagem_id' => "Fora do alcance: o alvo está a {$m($distancia)} m e {$limite['nome']} alcança até {$m($limite['maximo'])} m."]);
+        }
+        // Entre o normal e o máximo: desvantagem (vantagem + desvantagem se anulam)
+        $expressao = (string) $dados['expressao'];
+        $nova = match (true) {
+            str_starts_with($expressao, '2d20kl1') => $expressao,
+            str_starts_with($expressao, '2d20kh1') => '1d20'.substr($expressao, 7),
+            str_starts_with($expressao, '1d20') => '2d20kl1'.substr($expressao, 4),
+            default => $expressao,
+        };
+        if ($nova !== $expressao) {
+            $dados['expressao'] = $nova;
+            $dados['rotulo'] = trim(((string) ($dados['rotulo'] ?? '')).' (desvantagem: além do alcance normal)');
+        }
+
+        return $dados;
+    }
+
+    /**
      * Errar com Vontade (Aventureiro): falha crítica num ataque (comum) com chicote acerta o próprio personagem com 2d12 de dano Verdadeiro.
      *
      * @param  array<string, mixed>  $marcas
@@ -215,14 +283,14 @@ class ChatController extends Controller
     private function errarComVontade(Mesa $mesa, AcessoMesa $acesso, mixed $sistema, array $ficha, array $itens, string $expressao, array $marcas, mixed $personagemId, Rolador $rolador): void
     {
         if (! $sistema || ! $personagemId || ($marcas['destaque'] ?? null) !== 'falha' || ! preg_match('/@arma\.(\d+)\.ataque/', $expressao, $m)
-            || ($itens[(int) $m[1]]['dados']['catalogo']['id'] ?? null) !== 'chicote' || ! \App\Sistemas\OnePiece\Regras::temCaracteristica($ficha, 'Errar com Vontade')) {
+            || ($itens[(int) $m[1]]['dados']['catalogo']['id'] ?? null) !== 'chicote' || ! Regras::temCaracteristica($ficha, 'Errar com Vontade')) {
             return;
         }
-        $aplicar = app(\App\Nucleo\Combate\AplicarDano::class);
+        $aplicar = app(AplicarDano::class);
         $dano = (int) $rolador->rolar('2d12')['total'];
-        $r = \Illuminate\Support\Facades\DB::transaction(fn () => $aplicar->aplicar($mesa, (int) $personagemId, $sistema, $dano, 'Verdadeiro'));
+        $r = DB::transaction(fn () => $aplicar->aplicar($mesa, (int) $personagemId, $sistema, $dano, 'Verdadeiro'));
         $aplicar->avisar($mesa, $acesso, 'todos', $r);
-        \App\Nucleo\Combate\AplicarDano::postar($mesa, $acesso, 'todos', "{$r['p']->nome} errou com vontade: o chicote volta e acerta o próprio personagem ({$dano} de dano Verdadeiro).");
+        AplicarDano::postar($mesa, $acesso, 'todos', "{$r['p']->nome} errou com vontade: o chicote volta e acerta o próprio personagem ({$dano} de dano Verdadeiro).");
     }
 
     /**
@@ -249,12 +317,12 @@ class ChatController extends Controller
             ];
             $normal = $acao('dano', 'Dano', $dano['expressao']);
             $meta['acoes'] = $destaque === 'critico'
-                ? [[...$acao('dano-critico', 'Dano crítico', \App\Sistemas\OnePiece\Regras::dobrarDadosDaExpressao($dano['expressao'])), 'destaque' => 'critico'], [...$normal, 'rotulo' => 'Dano normal']]
+                ? [[...$acao('dano-critico', 'Dano crítico', Regras::dobrarDadosDaExpressao($dano['expressao'])), 'destaque' => 'critico'], [...$normal, 'rotulo' => 'Dano normal']]
                 : [$normal];
             // Danos extras de outro tipo (Fogo do Diable Jambe...): um botão cada, com o próprio tipo (no crítico, os dados dobram)
             foreach ($dano['extras'] ?? [] as $i => $extra) {
                 $tipoExtra = filled($extra['tipo'] ?? null) ? trim($extra['tipo']) : null;
-                $expressaoExtra = $destaque === 'critico' ? \App\Sistemas\OnePiece\Regras::dobrarDadosDaExpressao($extra['expressao']) : $extra['expressao'];
+                $expressaoExtra = $destaque === 'critico' ? Regras::dobrarDadosDaExpressao($extra['expressao']) : $extra['expressao'];
                 $meta['acoes'][] = [
                     'id' => "dano-extra-{$i}", 'rotulo' => 'Dano extra'.($tipoExtra ? " ({$tipoExtra})" : ''), 'resumo' => $expressaoExtra, 'expressao' => $expressaoExtra,
                     'rotuloRolagem' => trim($tecnica['nome']).' (extra)', 'dano' => ['tipo' => $tipoExtra, 'fonte' => 'black-leg'],

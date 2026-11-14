@@ -185,6 +185,12 @@ export const dadoDeAtaque = (bonus: number, modo: 'vantagem' | 'desvantagem' | n
     `${modo === 'vantagem' ? '2d20kh1' : modo === 'desvantagem' ? '2d20kl1' : '1d20'}${bonus ? comSinalNpc(bonus) : ''}`;
 
 /** "6 m" / "9/15 m" */
+/** Até onde o ataque do NPC alcança (m): o alcance do corpo a corpo, ou o máximo do ataque à distância. */
+export const alcanceMaximoDoAtaque = (a: AtaqueNpc): number => (Array.isArray(a.alcance) ? a.alcance[1] : a.alcance);
+
+/** Até onde o ataque do NPC não sofre desvantagem (m): o próprio alcance no corpo a corpo, ou o alcance normal à distância. */
+export const alcanceNormalDoAtaque = (a: AtaqueNpc): number => (Array.isArray(a.alcance) ? a.alcance[0] : a.alcance);
+
 export const alcanceDoAtaque = (a: AtaqueNpc): string =>
     Array.isArray(a.alcance) ? `${a.alcance[0]}/${a.alcance[1]} m` : `${String(a.alcance).replace('.', ',')} m`;
 

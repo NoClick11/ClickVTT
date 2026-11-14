@@ -1,6 +1,8 @@
 import type { Atalho, ContextoDeAtalhos } from '../../../nucleo/sistemas/tipos';
 import type { UsoDeTecnica } from '../contexto';
 import {
+    alcanceMaximoDoAtaque,
+    alcanceNormalDoAtaque,
     COM_ACENTO,
     comSinalNpc,
     dadoDeAtaque,
@@ -58,6 +60,8 @@ export function atalhosDoNpc(ctx: ContextoDeAtalhos, npc: NpcDados): Atalho[] {
                     semTecnica: true,
                     ataque: true,
                     margem: margemDeCritico(npc, a),
+                    alcance: alcanceMaximoDoAtaque(a),
+                    alcanceNormal: alcanceNormalDoAtaque(a),
                 });
             },
         });

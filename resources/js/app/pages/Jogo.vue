@@ -1573,6 +1573,8 @@ type RolagemDaFicha = [
         secundaria?: object | null;
         semTecnica?: boolean;
         margem?: number;
+        alcance?: number;
+        alcanceNormal?: number;
     },
     municaoItemId?: number,
 ];

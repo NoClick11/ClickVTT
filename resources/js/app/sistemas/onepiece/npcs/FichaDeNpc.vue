@@ -6,6 +6,8 @@ import CampoNumero from '../../../nucleo/ui/CampoNumero.vue';
 import type { UsoDeTecnica } from '../contexto';
 import {
     alcanceDoAtaque,
+    alcanceMaximoDoAtaque,
+    alcanceNormalDoAtaque,
     camposDoNpc,
     comSinalNpc,
     copiar,
@@ -39,7 +41,14 @@ const emit = defineEmits<{
         acao: { categoria: string } | undefined,
         alvoPersonagemId: number | null | undefined,
         tecnica:
-            | { nome: string; dano: { expressao: string; tipo: string | null }; semTecnica?: boolean; margem?: number; ataque?: boolean }
+            | {
+                  nome: string;
+                  dano: { expressao: string; tipo: string | null };
+                  semTecnica?: boolean;
+                  margem?: number;
+                  ataque?: boolean;
+                  alcance?: number;
+              }
             | undefined,
     ];
     usarTecnica: [uso: UsoDeTecnica];
@@ -92,6 +101,8 @@ function atacar(e: MouseEvent, a: AtaqueNpc) {
         semTecnica: true,
         ataque: true, // bônus próprio da ficha do NPC (sem `@ataque`): o servidor o trata como ataque e rola contra a defesa do alvo
         margem: margemDeCritico(npc.value, a),
+        alcance: alcanceMaximoDoAtaque(a),
+        alcanceNormal: alcanceNormalDoAtaque(a),
     });
 }
 function testar(e: MouseEvent, rotulo: string, bonus: number) {

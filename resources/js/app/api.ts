@@ -245,6 +245,10 @@ export function apiMesa(mesaId: number, atorId: number) {
                 /** Só o mestre (ataque de arma de NPC): não conta como Técnica e traz a margem de crítico própria. */
                 semTecnica?: boolean;
                 margem?: number;
+                /** Só o mestre (ataque de arma de NPC): alcance máximo em metros; o servidor recusa o ataque se o alvo estiver mais longe. */
+                alcance?: number;
+                /** Alcance normal (m) do ataque à distância do NPC: além dele, o servidor rola com desvantagem. */
+                alcanceNormal?: number;
                 /** Só o mestre: a rolagem (de bônus próprio, sem `@ataque`) é um ataque: rola contra a defesa do alvo. */
                 ataque?: boolean;
             },
@@ -260,6 +264,8 @@ export function apiMesa(mesaId: number, atorId: number) {
                               ...(tecnica.secundaria ? { secundaria: tecnica.secundaria } : {}),
                               ...(tecnica.semTecnica ? { semTecnica: true } : {}),
                               ...(tecnica.margem ? { margem: tecnica.margem } : {}),
+                              ...(tecnica.alcance ? { alcance: tecnica.alcance } : {}),
+                              ...(tecnica.alcanceNormal ? { alcanceNormal: tecnica.alcanceNormal } : {}),
                               ...(tecnica.ataque ? { ataque: true } : {}),
                           },
                       }
