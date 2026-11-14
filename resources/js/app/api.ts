@@ -1,5 +1,5 @@
 import type { Criacao, Personagem } from '@/site/types';
-import type { LootDto, ObjetoDto, PaginaDto } from './engine/tipos';
+import type { LootDto, ObjetoDto, PaginaDto, PontoDeViagem } from './engine/tipos';
 import type { ResumoEvento } from './nucleo/combate/reacoes';
 import { socketIdAtual } from './realtime';
 import type {
@@ -105,6 +105,8 @@ export function apiMesa(mesaId: number, atorId: number) {
         atualizarObjeto: (id: number, campos: object) => requisitar<ObjetoDto>(atorId, 'PATCH', r('jogo.objetos.update', id), campos),
         /** Abre/fecha uma porta ou janela (o servidor recusa se estiver trancada, salvo para o mestre). */
         alternarObjeto: (id: number) => requisitar<ObjetoDto>(atorId, 'POST', r('jogo.objetos.alternar', id)),
+        /** Mestre: todos os pontos de viagem da mesa, para ligar um ao outro. */
+        pontosDeViagem: () => requisitar<{ pontos: PontoDeViagem[] }>(atorId, 'GET', r('jogo.objetos.pontos-viagem')),
         /** Usa um ponto de viagem para navegar até outra página e posicionar o token. */
         viajar: (objetoId: number, personagemId?: number) =>
             requisitar<{ destino_pagina_id: number; x: number; y: number; token_movido: boolean }>(

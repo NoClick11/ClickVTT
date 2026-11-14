@@ -3,10 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowDownToLine, ArrowUpToLine, Trash2, X } from 'lucide-vue-next';
 import { computed } from 'vue';
-import { CAMADAS, type Camada, type CamposGeometria, type ObjetoDto, type PaginaDto, type TipoParede } from '../engine/tipos';
+import { CAMADAS, type Camada, type CamposGeometria, type ObjetoDto, type PaginaDto, type PontoDeViagem, type TipoParede } from '../engine/tipos';
 import { BLOQUEIO_PADRAO, type CanalDeBloqueio } from '../engine/visao';
 
-const props = defineProps<{ objeto: ObjetoDto; pagina: PaginaDto; paginas?: PaginaDto[] }>();
+const props = defineProps<{ objeto: ObjetoDto; pagina: PaginaDto; paginas?: PaginaDto[]; pontosDeViagem?: PontoDeViagem[] }>();
 const emit = defineEmits<{ atualizar: [campos: Partial<ObjetoDto>]; remover: []; fechar: []; navegar: [paginaId: number] }>();
 
 const t = computed(() => props.pagina.tamanho_quadrado);
@@ -30,7 +30,11 @@ const raioDaLuz = computed(() => props.objeto.dados?.raio ?? Math.min(props.obje
 const raioClaro = computed(() => Math.min(raioDaLuz.value, props.objeto.dados?.raio_claro ?? raioDaLuz.value * 0.4));
 
 // --- viagem ---
-const paginasDestino = computed(() => (props.paginas ?? []).filter((p) => p.id !== props.pagina.id));
+/** Pontos de OUTROS mapas que ainda estão livres (ou já ligados a este). */
+const pontosLivres = computed(() =>
+    (props.pontosDeViagem ?? []).filter((p) => p.pagina_id !== props.pagina.id && (p.ligado_a === null || p.ligado_a === props.objeto.id)),
+);
+const nomeDoPonto = (p: PontoDeViagem) => `${p.pagina_nome} · ${p.nome || 'Ponto de Viagem'} #${p.id}`;
 /** Muda o raio mantendo o centro da luz (a caixa do objeto acompanha, e o raio claro não passa do raio). */
 function raioTotal(e: Event) {
     const q = numero(e);
@@ -207,30 +211,30 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
             </template>
             <template v-else-if="objeto.tipo === 'viagem'">
                 <label class="grid gap-1">
-                    <span class="text-xs text-preto-300">Mapa de destino</span>
+                    <span class="text-xs text-preto-300">Ligado a (o caminho vale nos dois sentidos)</span>
                     <select
                         :class="[campo, 'rounded-md border']"
-                        :value="objeto.dados?.destino_pagina_id ?? ''"
+                        :value="objeto.dados?.destino_objeto_id ?? ''"
                         @change="
                             (e) => {
                                 const val = (e.target as HTMLSelectElement).value;
-                                const destId = val ? Number(val) : null;
-                                const dest = paginasDestino.find((p) => p.id === destId);
+                                const alvo = pontosLivres.find((p) => p.id === Number(val));
                                 emit('atualizar', {
                                     dados: {
-                                        ...objeto.dados,
-                                        destino_pagina_id: destId,
-                                        destino_nome: dest?.nome ?? null,
+                                        destino_objeto_id: alvo?.id ?? null,
+                                        destino_pagina_id: alvo?.pagina_id ?? null,
+                                        destino_nome: alvo?.pagina_nome ?? null,
                                     },
                                 });
                             }
                         "
                     >
-                        <option value="">(Nenhum destino selecionado)</option>
-                        <option v-for="p in paginasDestino" :key="p.id" :value="p.id">
-                            {{ p.nome }}
-                        </option>
+                        <option value="">(Não ligado)</option>
+                        <option v-for="p in pontosLivres" :key="p.id" :value="p.id">{{ nomeDoPonto(p) }}</option>
                     </select>
+                    <span v-if="!pontosLivres.length && !objeto.dados?.destino_objeto_id" class="text-[11px] text-preto-500">
+                        Crie um ponto de viagem em outro mapa para ligar a este.
+                    </span>
                 </label>
                 <label class="grid gap-1">
                     <span class="text-xs text-preto-300">Cor do portal</span>
@@ -238,7 +242,7 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
                         type="color"
                         class="h-8 p-1"
                         :model-value="objeto.dados?.cor ?? '#6366f1'"
-                        @change="(e: Event) => emit('atualizar', { dados: { ...objeto.dados, cor: (e.target as HTMLInputElement).value } })"
+                        @change="(e: Event) => emit('atualizar', { dados: { cor: (e.target as HTMLInputElement).value } })"
                     />
                 </label>
                 <Button

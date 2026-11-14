@@ -125,6 +125,7 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::put('paginas/{pagina}/exploracao', [ExploracaoController::class, 'guardar'])->middleware('throttle:30,1')->name('exploracao.guardar');
     Route::delete('paginas/{pagina}/exploracao', [ExploracaoController::class, 'limpar'])->middleware('throttle:20,1')->name('exploracao.limpar');
     Route::post('objetos/{objeto}/alternar', [ObjetoController::class, 'alternar'])->middleware('throttle:120,1')->name('objetos.alternar');
+    Route::get('viagem/pontos', [ObjetoController::class, 'pontosDeViagem'])->middleware('throttle:60,1')->name('objetos.pontos-viagem');
     Route::post('objetos/{objeto}/viajar', [ObjetoController::class, 'viajar'])->middleware('throttle:60,1')->name('objetos.viajar');
     Route::delete('objetos/{objeto}', [ObjetoController::class, 'destroy'])->name('objetos.destroy');
     Route::post('mensagens', [ChatController::class, 'texto'])->middleware('throttle:60,1')->name('mensagens.store');

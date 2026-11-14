@@ -94,6 +94,15 @@ export interface ObjetoDto {
     } | null;
 }
 
+/** Ponto de viagem de qualquer mapa da mesa (o mestre liga um ao outro). */
+export interface PontoDeViagem {
+    id: number;
+    nome: string | null;
+    pagina_id: number;
+    pagina_nome: string;
+    ligado_a: number | null;
+}
+
 /** Conteúdo de um loot: o item vem completo porque o jogador ainda não o tem na ficha. */
 export interface LootDto {
     objeto_id: number;

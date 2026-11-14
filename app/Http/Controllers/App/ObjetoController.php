@@ -159,7 +159,7 @@ class ObjetoController extends Controller
                 'dados.direcao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
                 'dados.atravessa' => ['nullable', 'boolean'],
                 'dados.rotacao' => ['nullable', 'numeric', 'min:-720', 'max:720'],
-            'dados.destino_pagina_id' => ['nullable', 'integer'],
+                'dados.destino_pagina_id' => ['nullable', 'integer'],
                 'dados.destino_objeto_id' => ['nullable', 'integer'],
                 'dados.destino_nome' => ['nullable', 'string', 'max:80'],
                 'reverter_movimento' => ['sometimes', 'boolean'],
@@ -169,7 +169,12 @@ class ObjetoController extends Controller
             }
             // `dados` é mesclado: pontos/tipo de uma parede nunca se perdem ao mudar só a cor ou aberta.
             if (array_key_exists('dados', $dados) && is_array($dados['dados'])) {
+                $ligar = $objeto->tipo === 'viagem' && array_key_exists('destino_objeto_id', $dados['dados']);
+                $alvoViagem = $ligar ? ($dados['dados']['destino_objeto_id'] ?: null) : null;
                 $dados['dados'] = array_merge($objeto->dados ?? [], $dados['dados']);
+                if ($ligar) {
+                    $dados['dados'] = $this->ligarViagem($mesa, $objeto, $alvoViagem ? (int) $alvoViagem : null, $dados['dados'], $acesso->jogador->id);
+                }
             }
         } else {
             // Jogador: só move token de personagem SEU ou desenho/texto SEU, na camada Jogadores e na página onde está.
@@ -292,11 +297,11 @@ class ObjetoController extends Controller
         $this->pertence($mesa, $objeto);
         abort_unless($objeto->tipo === 'viagem', 422, 'Este objeto não é um ponto de viagem.');
 
-        $destinoPaginaId = (int) ($objeto->dados['destino_pagina_id'] ?? 0);
-        abort_unless($destinoPaginaId > 0, 422, 'Este ponto de viagem não possui mapa de destino configurado.');
-
-        $destinoPagina = $mesa->paginas()->find($destinoPaginaId);
-        abort_unless($destinoPagina !== null, 404, 'Mapa de destino não encontrado.');
+        $pontoDestino = ! empty($objeto->dados['destino_objeto_id'])
+            ? Objeto::query()->where('tipo', 'viagem')->whereIn('pagina_id', $mesa->paginas()->pluck('id'))->find($objeto->dados['destino_objeto_id'])
+            : null;
+        abort_unless($pontoDestino !== null, 422, 'Este ponto de viagem não está conectado a outro ponto.');
+        $destinoPagina = $pontoDestino->pagina;
 
         $tokenAMover = null;
 
@@ -304,34 +309,17 @@ class ObjetoController extends Controller
             abort_unless($objeto->pagina_id === $this->paginaDe($mesa, $acesso), 403);
             $tokenAMover = $this->tokenPertoDaViagem($objeto, $acesso);
             abort_unless($tokenAMover !== null, 422, 'Aproxime seu personagem do ponto de viagem para usá-lo.');
-        } else {
-            if ($request->filled('personagem_id')) {
-                $tokenAMover = $objeto->pagina->objetos()
-                    ->where('tipo', 'token')
-                    ->where('personagem_id', $request->input('personagem_id'))
-                    ->first();
-            }
-        }
-
-        $destX = (float) ($destinoPagina->largura / 2);
-        $destY = (float) ($destinoPagina->altura / 2);
-
-        // Se há um ponto de viagem conectado no mapa de destino:
-        $pontoDestino = null;
-        if (! empty($objeto->dados['destino_objeto_id'])) {
-            $pontoDestino = $destinoPagina->objetos()->where('tipo', 'viagem')->find($objeto->dados['destino_objeto_id']);
-        }
-        if (! $pontoDestino) {
-            $pontoDestino = $destinoPagina->objetos()
-                ->where('tipo', 'viagem')
-                ->where('dados->destino_pagina_id', $objeto->pagina_id)
+        } elseif ($request->filled('personagem_id')) {
+            $tokenAMover = $objeto->pagina->objetos()
+                ->where('tipo', 'token')
+                ->where('personagem_id', $request->input('personagem_id'))
                 ->first();
         }
 
-        if ($pontoDestino) {
-            $destX = (float) ($pontoDestino->x + $pontoDestino->largura / 2);
-            $destY = (float) ($pontoDestino->y + $pontoDestino->altura / 2);
-        }
+        // O token chega NA FRENTE do ponto de destino (num quadrado livre ao lado), não em cima dele.
+        $largura = (float) ($tokenAMover?->largura ?? $destinoPagina->tamanho_quadrado);
+        $altura = (float) ($tokenAMover?->altura ?? $destinoPagina->tamanho_quadrado);
+        [$destX, $destY] = $this->aFrenteDoPonto($pontoDestino, $largura, $altura, $tokenAMover?->id);
 
         $origemPaginaId = $objeto->pagina_id;
 
@@ -339,12 +327,12 @@ class ObjetoController extends Controller
             $acesso->jogador->update(['pagina_id' => $destinoPagina->id]);
 
             if ($tokenAMover) {
-                $tokenAMover->update([
+                $tokenAMover->forceFill([
                     'pagina_id' => $destinoPagina->id,
                     'x' => $destX - ($tokenAMover->largura / 2),
                     'y' => $destY - ($tokenAMover->altura / 2),
                     'z' => ((int) $destinoPagina->objetos()->max('z')) + 1,
-                ]);
+                ])->save();
             }
         });
 
@@ -386,6 +374,91 @@ class ObjetoController extends Controller
             });
     }
 
+    /**
+     * Liga dois pontos de viagem (sempre em mapas diferentes): a ligação vale nos dois sentidos. Desfaz a ligação antiga de ambos.
+     * Devolve os `dados` do ponto com mapa e nome de destino derivados do ponto ligado.
+     *
+     * @param  array<string, mixed>  $dados
+     * @return array<string, mixed>
+     */
+    private function ligarViagem(Mesa $mesa, Objeto $objeto, ?int $alvoId, array $dados, int $ator): array
+    {
+        $this->desligarParceiro($mesa, $objeto, $ator);
+        $dados['destino_objeto_id'] = null;
+        $dados['destino_pagina_id'] = null;
+        $dados['destino_nome'] = null;
+        if ($alvoId === null) {
+            return $dados;
+        }
+        $alvo = Objeto::query()->where('tipo', 'viagem')->whereIn('pagina_id', $mesa->paginas()->pluck('id'))->findOrFail($alvoId);
+        abort_if($alvo->pagina_id === $objeto->pagina_id, 422, 'Ligue a um ponto de viagem de OUTRO mapa.');
+        $this->desligarParceiro($mesa, $alvo, $ator);
+        $alvo->update(['dados' => array_merge($alvo->dados ?? [], [
+            'destino_objeto_id' => $objeto->id, 'destino_pagina_id' => $objeto->pagina_id, 'destino_nome' => $objeto->pagina->nome,
+        ])]);
+        $this->transmitirViagem($mesa, $alvo->fresh(), $ator);
+
+        return array_merge($dados, ['destino_objeto_id' => $alvo->id, 'destino_pagina_id' => $alvo->pagina_id, 'destino_nome' => $alvo->pagina->nome]);
+    }
+
+    /** Limpa a ligação do ponto que estava ligado a este (se ainda apontava para ele). */
+    private function desligarParceiro(Mesa $mesa, Objeto $objeto, int $ator): void
+    {
+        $id = (int) ($objeto->dados['destino_objeto_id'] ?? 0);
+        if ($id < 1) {
+            return;
+        }
+        $outro = Objeto::query()->where('tipo', 'viagem')->whereIn('pagina_id', $mesa->paginas()->pluck('id'))->find($id);
+        if ($outro && (int) ($outro->dados['destino_objeto_id'] ?? 0) === $objeto->id) {
+            $outro->update(['dados' => array_merge($outro->dados ?? [], ['destino_objeto_id' => null, 'destino_pagina_id' => null, 'destino_nome' => null])]);
+            $this->transmitirViagem($mesa, $outro->fresh(), $ator);
+        }
+    }
+
+    private function transmitirViagem(Mesa $mesa, Objeto $o, int $ator): void
+    {
+        Transmitir::objeto($mesa, $o->pagina_id, 'salvar', $o->paraFront(), $o->id, $ator, $this->soMestre($o));
+    }
+
+    /** Mestre: os pontos de viagem da mesa (para escolher a quem ligar). */
+    public function pontosDeViagem(Request $request, Mesa $mesa): JsonResponse
+    {
+        AcessoMesa::exigirMestre($request, $mesa);
+        $paginas = $mesa->paginas()->get(['id', 'nome'])->keyBy('id');
+        $pontos = Objeto::query()->where('tipo', 'viagem')->whereIn('pagina_id', $paginas->keys())->orderBy('id')->get()
+            ->map(fn (Objeto $o) => [
+                'id' => $o->id, 'nome' => $o->nome, 'pagina_id' => $o->pagina_id, 'pagina_nome' => $paginas[$o->pagina_id]->nome,
+                'ligado_a' => $o->dados['destino_objeto_id'] ?? null,
+            ])->values();
+
+        return response()->json(['pontos' => $pontos]);
+    }
+
+    /**
+     * Onde o token fica ao chegar: centro de um quadrado livre na frente do ponto (embaixo, depois à direita, à esquerda e acima), sem
+     * parede no caminho nem outro token em cima. Sem lugar livre, fica embaixo mesmo.
+     *
+     * @return array{0: float, 1: float}
+     */
+    private function aFrenteDoPonto(Objeto $ponto, float $largura, float $altura, ?int $ignorar): array
+    {
+        $pagina = $ponto->pagina;
+        $cx = (float) ($ponto->x + $ponto->largura / 2);
+        $cy = (float) ($ponto->y + $ponto->altura / 2);
+        $dx = ($ponto->largura + $largura) / 2 + 4;
+        $dy = ($ponto->altura + $altura) / 2 + 4;
+        $candidatos = [[$cx, $cy + $dy], [$cx + $dx, $cy], [$cx - $dx, $cy], [$cx, $cy - $dy]];
+        $tokens = $pagina->objetos()->where('tipo', 'token')->when($ignorar, fn ($q) => $q->where('id', '!=', $ignorar))->get();
+        foreach ($candidatos as [$x, $y]) {
+            $livre = ! $tokens->contains(fn (Objeto $t) => abs($t->x + $t->largura / 2 - $x) < ($t->largura + $largura) / 2 && abs($t->y + $t->altura / 2 - $y) < ($t->altura + $altura) / 2);
+            if ($livre && Paredes::caminhoLivre($pagina, $cx, $cy, $x, $y)) {
+                return [$x, $y];
+            }
+        }
+
+        return $candidatos[0];
+    }
+
     public function destroy(Request $request, Mesa $mesa, Objeto $objeto): JsonResponse
     {
         $acesso = AcessoMesa::exigir($request, $mesa);
@@ -399,6 +472,9 @@ class ObjetoController extends Controller
                 && $objeto->jogador_id === $acesso->jogador->id,
                 403,
             );
+        }
+        if ($objeto->tipo === 'viagem') {
+            $this->desligarParceiro($mesa, $objeto, $acesso->jogador->id);
         }
         $objetoId = $objeto->id;
         $paginaId = $objeto->pagina_id;

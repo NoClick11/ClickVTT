@@ -50,6 +50,7 @@ import {
     type LootDto,
     type ObjetoDto,
     type PaginaDto,
+    type PontoDeViagem,
     type TipoParede,
 } from '../engine/tipos';
 import { tocarSomCura, tocarSomDano } from '../nucleo/audio/sonsCombate';
@@ -893,13 +894,30 @@ function desfazerUltimoMovimento() {
         });
 }
 
+// Pontos de viagem da mesa (o mestre liga um ao outro): recarrega ao selecionar um ponto e depois de cada ligação.
+const pontosDeViagem = ref<PontoDeViagem[]>([]);
+async function carregarPontosDeViagem() {
+    if (!props.mestre) return;
+    try {
+        pontosDeViagem.value = (await api.pontosDeViagem()).pontos;
+    } catch {
+        /* sem a lista o seletor só fica vazio */
+    }
+}
+watch(
+    () => (selecionado.value?.tipo === 'viagem' ? selecionado.value.id : null),
+    (id) => id !== null && carregarPontosDeViagem(),
+);
+
 function atualizarSelecionado(campos: Partial<ObjetoDto>) {
     const o = selecionado.value;
     if (!o) return;
     const { dados, ...resto } = campos;
     Object.assign(o, resto);
     if (dados) o.dados = { ...o.dados, ...dados }; // o servidor também mescla: pontos/tipo nunca se perdem
-    api.atualizarObjeto(o.id, campos).catch(falhou);
+    api.atualizarObjeto(o.id, campos)
+        .then(() => o.tipo === 'viagem' && campos.dados && 'destino_objeto_id' in campos.dados && carregarPontosDeViagem())
+        .catch(falhou);
 }
 
 /** Pode apagar este objeto? Mestre, tudo; jogador, só o que ele mesmo desenhou ou escreveu. */
@@ -3282,6 +3300,7 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                         :objeto="selecionado"
                         :pagina="pagina"
                         :paginas="paginas"
+                        :pontos-de-viagem="pontosDeViagem"
                         @atualizar="atualizarSelecionado"
                         @remover="removerSelecionado"
                         @fechar="configurandoObjetoId = null"
