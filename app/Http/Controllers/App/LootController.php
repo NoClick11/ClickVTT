@@ -13,6 +13,7 @@ use App\Nucleo\Loot\LootIndisponivel;
 use App\Nucleo\Loot\LootService;
 use App\Nucleo\Sistemas\RegistroSistemas;
 use App\Nucleo\Sistemas\SistemaComLoja;
+use App\Nucleo\Sistemas\SistemaComTesouros;
 use App\Support\AcessoMesa;
 use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
@@ -74,7 +75,7 @@ class LootController extends Controller
     {
         $acesso = AcessoMesa::exigir($request, $mesa);
         $loot = $this->doObjeto($mesa, $objeto);
-        $this->exigirVisivel($mesa, $acesso, $objeto);
+        $this->exigirVisivel($mesa, $acesso, $objeto, $loot);
 
         return response()->json($loot->paraFront());
     }
@@ -84,7 +85,7 @@ class LootController extends Controller
     {
         $acesso = AcessoMesa::exigir($request, $mesa);
         $loot = $this->doObjeto($mesa, $objeto);
-        $this->exigirVisivel($mesa, $acesso, $objeto);
+        $this->exigirVisivel($mesa, $acesso, $objeto, $loot);
         $sistema = $this->sistema($mesa, $sistemas);
         $d = $request->validate([
             'personagem_id' => ['required', 'integer'],
@@ -165,7 +166,16 @@ class LootController extends Controller
     {
         $acesso = AcessoMesa::exigirMestre($request, $mesa);
         $loot = $this->doObjeto($mesa, $objeto);
-        $d = $request->validate(['dinheiro' => ['sometimes', 'integer', 'between:0,1000000000000'], 'nome' => ['sometimes', 'string', 'max:80']]);
+        $d = $request->validate([
+            'dinheiro' => ['sometimes', 'integer', 'between:0,1000000000000'],
+            'nome' => ['sometimes', 'string', 'max:80'],
+            'tesouro' => ['sometimes', 'boolean'],
+            'jogador_id' => ['sometimes', 'nullable', 'integer'],
+        ]);
+        if (array_key_exists('jogador_id', $d) && $d['jogador_id'] !== null) {
+            abort_unless($mesa->jogadores()->where('papel', '!=', 'mestre')->whereKey($d['jogador_id'])->exists(), 422, 'Jogador inválido.');
+        }
+        $loot->update(collect($d)->only(['tesouro', 'jogador_id'])->all());
         if (isset($d['dinheiro'])) {
             app(LootService::class)->definirDinheiro($loot->id, $d['dinheiro']);
         }
@@ -176,6 +186,33 @@ class LootController extends Controller
         }
 
         return $this->devolver($mesa, $objeto, $loot);
+    }
+
+    /** Baú do tesouro: rola o d100 no servidor e põe o resultado no baú. Quem pode abrir o baú (o jogador travado ou o mestre) sorteia. */
+    public function sortear(Request $request, Mesa $mesa, Objeto $objeto, RegistroSistemas $sistemas, LojaService $loja): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+        $loot = $this->doObjeto($mesa, $objeto);
+        $this->exigirVisivel($mesa, $acesso, $objeto, $loot);
+        abort_unless($loot->tesouro, 422, 'Este loot não é um baú do tesouro.');
+        $sistema = $this->sistema($mesa, $sistemas);
+        abort_unless($sistema instanceof SistemaComTesouros, 422, 'Este sistema não tem tabela de tesouro.');
+
+        $d100 = random_int(1, 100);
+        $roll = $sistema->tesouroDoD100($d100);
+        $itens = array_map(
+            fn (array $i) => ['item' => $this->itemDoCatalogo($mesa, $sistema, $loja, $i['ref']), 'qtd' => $i['qtd']],
+            $roll['itens'],
+        );
+        try {
+            app(LootService::class)->guardarSorteio($loot->id, $d100, $roll, $itens, $acesso->ehMestre());
+        } catch (LootIndisponivel $e) {
+            return response()->json(['message' => $e->getMessage(), 'loot' => $loot->fresh()->paraFront()], 409);
+        }
+        $estado = $loot->fresh()->paraFront();
+        $this->avisar($mesa, $objeto, $estado, "{$acesso->jogador->nome} abriu {$estado['nome']} e tirou {$d100}: {$roll['texto']}.", $acesso->jogador->id);
+
+        return response()->json($estado);
     }
 
     private function itemDoCatalogo(Mesa $mesa, SistemaComLoja $sistema, LojaService $loja, string $ref): Item
@@ -211,13 +248,16 @@ class LootController extends Controller
     }
 
     /** O mestre abre qualquer loot; o jogador, só os da camada Jogadores da página onde ele está. */
-    private function exigirVisivel(Mesa $mesa, AcessoMesa $acesso, Objeto $objeto): void
+    private function exigirVisivel(Mesa $mesa, AcessoMesa $acesso, Objeto $objeto, ?Loot $loot = null): void
     {
         if ($acesso->ehMestre()) {
             return;
         }
         $pagina = $acesso->jogador->pagina_id ?? $mesa->paginas()->value('id');
         abort_unless($objeto->camada === 'jogadores' && $objeto->pagina_id === $pagina, 404);
+        // Baú travado para um jogador: só ele (e o mestre) abre.
+        $loot ??= Loot::query()->where('objeto_id', $objeto->id)->first();
+        abort_if($loot?->jogador_id && $loot->jogador_id !== $acesso->jogador->id, 403, 'Este baú está travado para outro jogador.');
     }
 
     private function sistema(Mesa $mesa, RegistroSistemas $sistemas): SistemaComLoja

@@ -99,6 +99,10 @@ export interface LootDto {
     objeto_id: number;
     nome: string | null;
     dinheiro: number;
+    /** Baú do tesouro: sorteia o conteúdo (d100); `jogador_id` trava a abertura para um jogador (além do mestre). */
+    tesouro: boolean;
+    jogador_id: number | null;
+    sorteio: { d100: number; texto: string; manual: boolean } | null;
     itens: { id: number; qtd: number; item: { id: number; nome: string; descricao: string | null; peso: number; efeitos: unknown[] } }[];
 }
 

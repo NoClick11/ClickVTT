@@ -994,6 +994,10 @@ const mestreDoLoot = (fn: (id: number) => Promise<LootDto>) => async () => {
     try {
         aplicarLoot(await fn(id));
     } catch (e) {
+        if (e instanceof ErroApi && e.status === 409) {
+            const estado = (e.dados as { loot?: LootDto } | undefined)?.loot;
+            if (estado) aplicarLoot(estado);
+        }
         avisar(mensagemDe(e));
     }
 };
@@ -3607,6 +3611,9 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
             :definir-qtd="(linha, qtd) => mestreDoLoot((id) => api.qtdNoLoot(id, linha, qtd))()"
             :definir-dinheiro="(v) => mestreDoLoot((id) => api.atualizarLoot(id, { dinheiro: v }))()"
             :carregar-catalogo="() => api.catalogoParaLoot().then((r) => r.itens)"
+            :jogadores="jogadoresDaLoja"
+            :sortear="() => mestreDoLoot((id) => api.sortearTesouro(id))()"
+            :configurar-bau="(c) => mestreDoLoot((id) => api.atualizarLoot(id, c))()"
         />
         <MenuObjeto
             v-if="menuObjeto && objetoDoMenu"

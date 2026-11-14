@@ -145,7 +145,8 @@ export function apiMesa(mesaId: number, atorId: number) {
             },
         ) => requisitar<LootDto>(atorId, 'POST', r('jogo.loot.itens.store', id), dados),
         qtdNoLoot: (id: number, linha: number, qtd: number) => requisitar<LootDto>(atorId, 'PATCH', r('jogo.loot.itens.update', id, linha), { qtd }),
-        atualizarLoot: (id: number, campos: { dinheiro?: number; nome?: string }) =>
+        sortearTesouro: (id: number) => requisitar<LootDto>(atorId, 'POST', r('jogo.loot.sortear', id)),
+        atualizarLoot: (id: number, campos: { dinheiro?: number; nome?: string; tesouro?: boolean; jogador_id?: number | null }) =>
             requisitar<LootDto>(atorId, 'PATCH', r('jogo.loot.update', id), campos),
         criarPagina: (dados: object) => requisitar<PaginaDto>(atorId, 'POST', r('jogo.paginas.store'), dados),
         atualizarPagina: (id: number, campos: object) => requisitar<PaginaDto>(atorId, 'PATCH', r('jogo.paginas.update', id), campos),

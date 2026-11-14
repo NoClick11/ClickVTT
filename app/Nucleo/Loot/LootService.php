@@ -117,4 +117,29 @@ final class LootService
     {
         DB::transaction(fn () => Loot::query()->whereKey($lootId)->lockForUpdate()->firstOrFail()->update(['dinheiro' => max(0, $dinheiro)]));
     }
+
+    /**
+     * Baú do tesouro: guarda no loot o que o d100 deu (dinheiro e itens) e registra o sorteio. Só uma vez por baú; o mestre pode sortear de novo.
+     *
+     * @param  list<array{item: Item, qtd: int}>  $itens
+     */
+    public function guardarSorteio(int $lootId, int $d100, array $roll, array $itens, bool $mestre): void
+    {
+        DB::transaction(function () use ($lootId, $d100, $roll, $itens, $mestre) {
+            $loot = Loot::query()->whereKey($lootId)->lockForUpdate()->firstOrFail();
+            if (! $loot->tesouro) {
+                throw new LootIndisponivel('Este loot não é um baú do tesouro.');
+            }
+            if ($loot->sorteio && ! $mestre) {
+                throw new LootIndisponivel('O tesouro deste baú já foi sorteado.');
+            }
+            foreach ($itens as $i) {
+                $this->guardarItem($loot->id, $i['item'], $i['qtd']);
+            }
+            $loot->update([
+                'dinheiro' => min(PHP_INT_MAX, $loot->dinheiro + $roll['dinheiro']),
+                'sorteio' => ['d100' => $d100, 'texto' => $roll['texto'], 'manual' => $roll['manual']],
+            ]);
+        });
+    }
 }

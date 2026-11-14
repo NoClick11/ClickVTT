@@ -9,11 +9,17 @@ use App\Nucleo\Efeitos\Formula;
 use App\Nucleo\Rolagem\Rolador;
 use App\Nucleo\Sistemas\Sistema;
 use App\Nucleo\Sistemas\SistemaComLoja;
+use App\Nucleo\Sistemas\SistemaComTesouros;
 use Illuminate\Validation\ValidationException;
 
 /** Módulo de One Piece: parte das regras do D&D 5e, com atributos, perícias, técnicas e pontos de poder próprios. */
-class OnePiece implements Sistema, SistemaComLoja, SistemaDeCombate
+class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDeCombate
 {
+    public function tesouroDoD100(int $d100): array
+    {
+        return Tesouros::resolver($d100);
+    }
+
     public function catalogoDeLoja(): array
     {
         $c = Itens::catalogo();

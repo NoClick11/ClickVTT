@@ -11,11 +11,11 @@ class Loot extends Model
 {
     protected $table = 'loots';
 
-    protected $fillable = ['mesa_id', 'objeto_id', 'dinheiro'];
+    protected $fillable = ['mesa_id', 'objeto_id', 'dinheiro', 'tesouro', 'jogador_id', 'sorteio'];
 
     protected function casts(): array
     {
-        return ['dinheiro' => 'integer'];
+        return ['dinheiro' => 'integer', 'tesouro' => 'boolean', 'sorteio' => 'array'];
     }
 
     public function objeto(): BelongsTo
@@ -35,6 +35,9 @@ class Loot extends Model
             'objeto_id' => $this->objeto_id,
             'nome' => $this->objeto?->nome,
             'dinheiro' => (int) $this->dinheiro,
+            'tesouro' => (bool) $this->tesouro,
+            'jogador_id' => $this->jogador_id,
+            'sorteio' => $this->sorteio,
             'itens' => $this->itens()->with('item')->orderBy('id')->get()->map->paraFront()->values()->all(),
         ];
     }

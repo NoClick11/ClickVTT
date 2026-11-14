@@ -105,6 +105,7 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::post('loot/{objeto}/pegar', [LootController::class, 'pegar'])->middleware('throttle:120,1')->name('loot.pegar');
     Route::post('loot/{objeto}/itens', [LootController::class, 'adicionarItem'])->middleware('throttle:60,1')->name('loot.itens.store');
     Route::patch('loot/{objeto}/itens/{linha}', [LootController::class, 'definirQtd'])->middleware('throttle:120,1')->name('loot.itens.update');
+    Route::post('loot/{objeto}/sortear', [LootController::class, 'sortear'])->middleware('throttle:30,1')->name('loot.sortear');
     Route::patch('loot/{objeto}', [LootController::class, 'atualizar'])->middleware('throttle:60,1')->name('loot.update');
     // Diário: pastas e folhetos (só o mestre) e a pasta de cada personagem.
     Route::post('diario/pastas', [DiarioController::class, 'criarPasta'])->middleware('throttle:60,1')->name('diario.pastas.store');

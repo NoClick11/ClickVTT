@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Coins, Package, Trash2 } from 'lucide-vue-next';
+import { Coins, Dices, Package, Trash2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import type { LootDto } from '../engine/tipos';
 
@@ -31,6 +31,10 @@ const props = defineProps<{
     }) => Promise<unknown>;
     definirQtd: (linha: number, qtd: number) => Promise<unknown>;
     definirDinheiro: (valor: number) => Promise<unknown>;
+    /** Jogadores (sem o mestre) para travar o baú do tesouro. */
+    jogadores: { id: number; nome: string }[];
+    sortear: () => Promise<unknown>;
+    configurarBau: (campos: { tesouro?: boolean; jogador_id?: number | null }) => Promise<unknown>;
     carregarCatalogo: () => Promise<{ ref: string; nome: string; categoria: string; raridade: string | null }[]>;
 }>();
 const emit = defineEmits<{ 'update:open': [boolean] }>();
@@ -148,6 +152,22 @@ const campo =
                     Você não tem personagem para receber.
                 </p>
 
+                <section v-if="loot.tesouro" class="space-y-2 rounded-md border border-ouro-500/30 bg-ouro-500/5 px-3 py-2" aria-label="Tesouro">
+                    <div class="flex items-center gap-2">
+                        <Dices class="size-4 text-ouro-400" aria-hidden="true" />
+                        <span class="flex-1 text-sm">
+                            <template v-if="loot.sorteio">
+                                Tirou <b>{{ loot.sorteio.d100 }}</b> no d100: {{ loot.sorteio.texto }}
+                            </template>
+                            <template v-else>Baú do tesouro: role o d100 para descobrir o que há dentro.</template>
+                        </span>
+                        <Button v-if="!loot.sorteio || mestre" size="sm" :disabled="ocupado" @click="executar(sortear)">
+                            {{ loot.sorteio ? 'Sortear de novo' : 'Sortear tesouro' }}
+                        </Button>
+                    </div>
+                    <p v-if="loot.sorteio?.manual" class="text-xs text-ouro-100">Este prêmio o mestre entrega depois.</p>
+                </section>
+
                 <section class="space-y-2" aria-label="Dinheiro">
                     <div class="flex items-center gap-2 rounded-md border border-preto-800 bg-preto-900/60 px-3 py-2">
                         <Coins class="size-4 text-ouro-400" aria-hidden="true" />
@@ -241,6 +261,38 @@ const campo =
                             @click="executar(() => definirDinheiro(Math.max(0, Math.floor(Number(novoDinheiro) || 0))))"
                             >Definir</Button
                         >
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <label class="flex items-center gap-2 text-sm text-preto-300">
+                            <input
+                                type="checkbox"
+                                :checked="loot.tesouro"
+                                :disabled="ocupado"
+                                @change="executar(() => configurarBau({ tesouro: ($event.target as HTMLInputElement).checked }))"
+                            />
+                            Baú do tesouro (d100)
+                        </label>
+                        <label v-if="loot.tesouro" class="flex items-center gap-2 text-sm text-preto-300">
+                            Travar para
+                            <select
+                                :value="loot.jogador_id ?? ''"
+                                :class="campo"
+                                aria-label="Jogador que pode abrir o baú"
+                                @change="
+                                    executar(() =>
+                                        configurarBau({
+                                            jogador_id: ($event.target as HTMLSelectElement).value
+                                                ? Number(($event.target as HTMLSelectElement).value)
+                                                : null,
+                                        }),
+                                    )
+                                "
+                            >
+                                <option value="">Qualquer jogador</option>
+                                <option v-for="j in jogadores" :key="j.id" :value="j.id">{{ j.nome }}</option>
+                            </select>
+                        </label>
                     </div>
 
                     <div class="flex gap-1" role="tablist" aria-label="De onde vem o item">
