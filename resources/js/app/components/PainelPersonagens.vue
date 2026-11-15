@@ -120,11 +120,11 @@ const emit = defineEmits<{
 }>();
 
 // --- árvore: pastas (aninháveis), depois personagens e folhetos de cada nível, numa lista só com recuo ---
-const fechadas = ref<Set<number>>(new Set());
+const abertas = ref<Set<number>>(new Set());
 const alternarPasta = (id: number) => {
-    const n = new Set(fechadas.value);
+    const n = new Set(abertas.value);
     if (!n.delete(id)) n.add(id);
-    fechadas.value = n;
+    abertas.value = n;
 };
 
 type Linha =
@@ -149,7 +149,7 @@ const linhas = computed<Linha[]>(() => {
         for (const pasta of pastas.filter((p) => donde(p.pai_id) === pai)) {
             if (visitadas.has(pasta.id)) continue;
             visitadas.add(pasta.id);
-            const aberta = !fechadas.value.has(pasta.id);
+            const aberta = abertas.value.has(pasta.id);
             saida.push({ chave: `pasta-${pasta.id}`, tipo: 'pasta', nivel, pasta, aberta, itens: contar(pasta.id) });
             if (aberta) descer(pasta.id, nivel + 1);
         }

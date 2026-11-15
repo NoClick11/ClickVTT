@@ -39,7 +39,7 @@ const paginasDaPasta = (pastaId: number | null) => props.paginas.filter((p) => p
 
 const editando = ref<{ tipo: 'pagina' | 'pasta'; id: number; valor: string } | null>(null);
 const confirmando = ref<string | null>(null);
-const fechadas = ref<Set<number>>(new Set());
+const abertas = ref<Set<number>>(new Set());
 let ignorarBlurPasta = false;
 
 async function editar(tipo: 'pagina' | 'pasta', id: number, valor: string) {
@@ -68,9 +68,9 @@ function cancelarEdicao() {
     editando.value = null;
 }
 function alternarPasta(id: number) {
-    const s = new Set(fechadas.value);
+    const s = new Set(abertas.value);
     s.has(id) ? s.delete(id) : s.add(id);
-    fechadas.value = s;
+    abertas.value = s;
 }
 function excluir(chave: string, acao: () => void) {
     if (confirmando.value === chave) {
@@ -132,16 +132,16 @@ function iniciarArraste(e: DragEvent, p: Jogador) {
 
                 <!-- Pastas -->
                 <section v-for="pasta in pastas" :key="pasta.id" class="mb-3">
-                    <Collapsible :open="!fechadas.has(pasta.id)">
+                    <Collapsible :open="abertas.has(pasta.id)">
                         <div class="flex items-center gap-1 rounded-md px-1 py-1 hover:bg-preto-900">
                             <CollapsibleTrigger as-child>
                                 <button
                                     type="button"
                                     class="flex size-6 items-center justify-center text-preto-300"
-                                    :aria-label="fechadas.has(pasta.id) ? 'Expandir pasta' : 'Recolher pasta'"
+                                    :aria-label="!abertas.has(pasta.id) ? 'Expandir pasta' : 'Recolher pasta'"
                                     @click="alternarPasta(pasta.id)"
                                 >
-                                    <ChevronRight v-if="fechadas.has(pasta.id)" class="size-4" /><ChevronDown v-else class="size-4" />
+                                    <ChevronRight v-if="!abertas.has(pasta.id)" class="size-4" /><ChevronDown v-else class="size-4" />
                                 </button>
                             </CollapsibleTrigger>
                             <Folder class="size-4 text-ouro-400" />
