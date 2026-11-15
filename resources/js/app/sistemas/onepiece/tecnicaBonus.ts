@@ -83,6 +83,42 @@ export const danoMaximoDaTecnica = (f: FichaOnePiece, t: Pick<Tecnica, 'descrica
     !t.duracao &&
     !/Dura[çc][ãa]o:\s*at[ée]/i.test(t.descricao ?? '');
 
+/** Aura Demoníaca ligada (Espadachim): pela forma (sem PP) ou pagando 2 PP por Técnica. */
+export const auraDemoniaca = (f: FichaOnePiece): 'pp' | 'forma' | null =>
+    temCaracteristica(f, 'Aura Demoníaca (2 PP)') ? 'pp' : temCaracteristica(f, 'Aura Demoníaca (forma)') ? 'forma' : null;
+
+const ehCortante = (t: Pick<Tecnica, 'tipoDano'>): boolean => /cortante/i.test(t.tipoDano ?? '');
+
+/** A Técnica leva os efeitos da Aura Demoníaca? (Técnica de Combate de dano Cortante com arma cortante como requisito, com a aura ligada.) */
+export const comAuraDemoniaca = (f: FichaOnePiece, t: Pick<Tecnica, 'armaCortante' | 'tipoDano'>, grau: number): boolean =>
+    grau >= 1 && !!t.armaCortante && ehCortante(t) && auraDemoniaca(f) !== null;
+
+/** O tipo do dano da Técnica: a Aura Demoníaca o converte em Verdadeiro. */
+export const tipoDoDanoDaTecnica = (f: FichaOnePiece, t: Pick<Tecnica, 'armaCortante' | 'tipoDano'>, grau: number): string | null =>
+    comAuraDemoniaca(f, t, grau) ? 'verdadeiro' : t.tipoDano?.trim() || null;
+
+/**
+ * O custo em PP depois dos descontos e acréscimos do Espadachim, nas Técnicas de Combate com arma cortante como requisito: Apogeu (1º grau grátis, 2º a
+ * 5º pela metade), Domínio Negro (6º e 7º grau: menos o grau, com a Espada Lendária ligada) e a Aura Demoníaca de 2 PP (+2 por Técnica cortante).
+ */
+export function custoDoEstilo(f: FichaOnePiece, t: Pick<Tecnica, 'armaCortante' | 'tipoDano'>, grau: number, custo: number): number {
+    if (!t.armaCortante || grau < 1) return custo;
+    let c = custo;
+    if (temCaracteristica(f, 'Apogeu')) c = grau === 1 ? 0 : grau <= 5 ? Math.floor(c / 2) : c;
+    if (grau >= 6 && temCaracteristica(f, 'Espada Lendária')) c = Math.max(0, c - grau);
+    if (auraDemoniaca(f) === 'pp' && ehCortante(t)) c += 2;
+
+    return c;
+}
+
+/** O custo final de usar a Técnica agora: a Principal/Assinatura (metade) e depois o que é do Espadachim. */
+export const custoFinalDaTecnica = (f: FichaOnePiece, t: Pick<Tecnica, 'nome' | 'custo' | 'armaCortante' | 'tipoDano'>, grau: number): number =>
+    custoDoEstilo(f, t, grau, usoDaPrincipal(f, t, grau)?.custo ?? t.custo);
+
+/** Aura Bestial: Dragão (ligada): a Técnica de Combate de 4º grau ou menos com arma cortante causa o dano máximo. */
+export const danoMaximoDoDragao = (f: FichaOnePiece, t: Pick<Tecnica, 'armaCortante'>, grau: number): boolean =>
+    grau >= 1 && grau <= 4 && !!t.armaCortante && temCaracteristica(f, 'Aura Bestial: Dragão');
+
 /** A característica que dá a Técnica Principal/Assinatura (valendo agora) e o índice dela na lista. */
 export function caracteristicaDaPrincipal(f: FichaOnePiece): { c: Caracteristica; i: number } | null {
     const i = (f.caracteristicas ?? []).findIndex((c) => c.principal && valendo(c, f));
@@ -165,7 +201,8 @@ export function montarDanoDaTecnica(f: FichaOnePiece, t: Tecnica, grau: number, 
             else extras.push(e);
         }
     }
-    if (danoMaximoDaTecnica(f, t))
+    custo = custoDoEstilo(f, t, grau, custo);
+    if (danoMaximoDaTecnica(f, t) || danoMaximoDoDragao(f, t, grau))
         return {
             expressao: maximizar(principal),
             extras: extras.map((e) => ({ ...e, expressao: maximizar(e.expressao) })),

@@ -23,7 +23,14 @@ import {
     type FichaOnePiece,
     type Tecnica,
 } from '../../regras';
-import { caracteristicaDaPrincipal, montarDanoDaTecnica, usoDaPrincipal } from '../../tecnicaBonus';
+import {
+    caracteristicaDaPrincipal,
+    comAuraDemoniaca,
+    custoFinalDaTecnica,
+    montarDanoDaTecnica,
+    tipoDoDanoDaTecnica,
+    usoDaPrincipal,
+} from '../../tecnicaBonus';
 import CriadorDeTecnicas from '../criador/CriadorDeTecnicas.vue';
 
 /**
@@ -66,7 +73,7 @@ function mudar(fn: (lista: Tecnica[]) => void) {
 }
 
 /** O custo de usar agora (a Técnica Principal/Assinatura custa metade enquanto a característica tem usos). */
-const custoDeUsar = (t: Tecnica) => usoDaPrincipal(props.ficha, t, grauDa(t) ?? 0)?.custo ?? t.custo;
+const custoDeUsar = (t: Tecnica) => custoFinalDaTecnica(props.ficha, t, grauDa(t) ?? 0);
 const podeUsar = (t: Tecnica) => props.ficha.pp.atual >= custoDeUsar(t);
 /** A característica que dá a Técnica Principal/Assinatura (se a ficha a tem) e se esta Técnica pode ser a escolhida (grau até o limite). */
 const principalDaFicha = computed(() => caracteristicaDaPrincipal(props.ficha));
@@ -146,7 +153,7 @@ function usar(t: Tecnica) {
     const montado = base ? montarDanoDaTecnica(props.ficha, t, grauDa(t) ?? 0, base) : null;
     // Técnica Principal/Assinatura sem dano (criada sem rolagem): só o desconto de PP
     const principal = montado ? montado.usoDaPrincipal : usoDaPrincipal(props.ficha, t, grauDa(t) ?? 0);
-    const campos = camposDoGastoDePP(props.ficha, montado?.custo ?? principal?.custo ?? t.custo);
+    const campos = camposDoGastoDePP(props.ficha, montado?.custo ?? custoDeUsar(t));
     if (!campos) return;
     if (principal?.gastouUso) {
         // o desconto gasta 1 uso da característica da Técnica Principal/Assinatura
@@ -171,17 +178,22 @@ function usar(t: Tecnica) {
     // O alcance da Kokuto amplia a área; as criaturas dela têm desvantagem na Salvaguarda
     const ampliado = alcanceDe(t);
     const teste = t.teste;
+    // Aura Demoníaca (Espadachim): vantagem no ataque, desvantagem na Salvaguarda e dano Verdadeiro
+    const aura = comAuraDemoniaca(props.ficha, t, grauDa(t) ?? 0);
+    const modoBase = modoDe('ataque') === 'vantagem' ? 'vantagem' : modoDe('ataque') === 'desvantagem' ? 'desvantagem' : null;
     usarTecnica({
         nome: rotuloDoUso(t),
         nomeBase: t.nome,
         ...(teste ? { teste: { tipo: teste.tipo, atributo: teste.atributo, aoPassar: teste.aoPassar, aplica: teste.aplica } } : {}),
-        desvantagem: !!teste?.desvantagem || (kokuto.value && !!t.armaCortante),
+        desvantagem: !!teste?.desvantagem || (kokuto.value && !!t.armaCortante) || (aura && teste?.tipo === 'salvaguarda'),
         area: areaComLimite(ampliado?.mudou ? ampliado.texto : t.alcance),
         ...(duracaoDaTecnica(t) ? { duracao: duracaoDaTecnica(t) } : {}),
         ...(duracaoDaTecnica(t)?.vigia ? { vigia: vigiaDoUso(t) } : {}),
-        dano: expressao ? { expressao, tipo: t.tipoDano?.trim() || null, ...(montado?.extras.length ? { extras: montado.extras } : {}) } : null,
+        dano: expressao
+            ? { expressao, tipo: tipoDoDanoDaTecnica(props.ficha, t, grauDa(t) ?? 0), ...(montado?.extras.length ? { extras: montado.extras } : {}) }
+            : null,
         ...(teste?.secundaria ? { secundaria: teste.secundaria } : {}),
-        modoAtaque: modoDe('ataque') === 'vantagem' ? 'vantagem' : modoDe('ataque') === 'desvantagem' ? 'desvantagem' : null,
+        modoAtaque: aura ? (modoBase === 'desvantagem' ? null : 'vantagem') : modoBase,
         categoria: categoria(t),
         camposDosPP: campos,
         ...(custoDeMunicaoDaTecnica(t.descricao ?? '') ? { municao: { tecnica: t.nome } } : {}),
