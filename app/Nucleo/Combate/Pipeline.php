@@ -138,7 +138,9 @@ final class Pipeline
         $resolveuAgora = false;
         $campos = null;
         $cura = null;
-        $e = DB::transaction(function () use ($mesa, $acesso, $evento, $personagemId, $opcaoId, $sistema, &$resolveuAgora, &$campos, &$cura) {
+        $rolagemDaReacao = null;
+        $rotuloDaReacao = null;
+        $e = DB::transaction(function () use ($mesa, $acesso, $evento, $personagemId, $opcaoId, $sistema, &$resolveuAgora, &$campos, &$cura, &$rolagemDaReacao, &$rotuloDaReacao) {
             $e = EventoDeCombate::query()->whereKey($evento->id)->lockForUpdate()->firstOrFail();
             if ($e->estado !== 'aguardando') {
                 throw ValidationException::withMessages(['evento' => 'A janela de reação já fechou.']);
@@ -163,6 +165,9 @@ final class Pipeline
                 $p = Personagem::query()->whereKey($personagemId)->lockForUpdate()->firstOrFail();
                 $ficha = $p->fichaCompleta($sistema);
                 $pago = $sistema->pagarReacao($ficha, $oferta);
+                // A rolagem da redução de dano (Kiri Shigure, Parry Shot...) vai para o chat; não é campo da ficha
+                $rolagemDaReacao = $pago['_rolagem'] ?? null;
+                unset($pago['_rolagem']);
                 if ($pago) {
                     $p->ficha = $this->fichas->aplicar($sistema, $p->ficha, $pago);
                     $p->save();
@@ -174,6 +179,7 @@ final class Pipeline
                         $mods[] = ['alvo' => 'defesa', 'valor' => $this->valor($ef['valor'])];
                     }
                 }
+                $rotuloDaReacao = $oferta['rotulo'];
                 $respostas[$personagemId] = ['opcao' => $oferta['id'], 'rotulo' => $oferta['rotulo'], 'mods' => $mods, 'cura' => $oferta['cura'] ?? null];
                 $cura = $oferta['cura'] ?? null;
             }
@@ -190,9 +196,26 @@ final class Pipeline
         if ($cura) {
             $this->curar($mesa, $sistema, (int) $e->contexto['alvo_id'], $this->valor($cura));
         }
+        if ($rolagemDaReacao) {
+            $this->mostrarReducao($mesa, $acesso, $personagemId, (string) $rotuloDaReacao, $rolagemDaReacao);
+        }
         $this->enviarResumo($mesa, $e);
 
         return $resolveuAgora ? $this->resolver($mesa, $acesso, $e) : $e;
+    }
+
+    /** O chat mostra os dados da redução de dano armada pela reação (quanto ela tira do próximo dano). */
+    private function mostrarReducao(Mesa $mesa, AcessoMesa $acesso, int $personagemId, string $rotulo, array $r): void
+    {
+        $mensagem = $mesa->mensagens()->create([
+            'jogador_id' => $acesso->jogador->id, 'personagem_id' => $personagemId, 'tipo' => 'rolagem', 'visibilidade' => 'todos',
+            'texto' => $r['expressao'],
+            'dados' => [
+                'expressao' => $r['expressao'], 'rotulo' => "{$rotulo}: reduz {$r['total']} do dano (reserva {$r['reserva']})",
+                'termos' => $r['termos'], 'total' => $r['total'],
+            ],
+        ]);
+        EntregarMensagem::para($mesa, $mensagem, $acesso);
     }
 
     /** O mestre fecha a janela: quem não respondeu conta como "passou". */
