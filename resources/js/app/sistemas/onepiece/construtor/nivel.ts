@@ -8,8 +8,25 @@
  */
 import { camposDaAkuma } from '../akuma/regras.ts';
 import { camposDaFrutaNoNivel } from '../frutas/regras.ts';
-import { ATRIBUTOS, bonusProficiencia, usosMax, type AtributoId, type Caracteristica, type FichaOnePiece, type Tecnica } from '../regras.ts';
-import { dadoDoEstilo, estiloPorId, tecnicaDoEstilo, tecnicasDoEstiloNoNivel, tracosDoEstiloNoNivel } from './dados/estilos.ts';
+import {
+    ATRIBUTOS,
+    bonusProficiencia,
+    comEspadas,
+    usosMax,
+    type AtributoId,
+    type Caracteristica,
+    type FichaOnePiece,
+    type Tecnica,
+} from '../regras.ts';
+import {
+    dadoDoEstilo,
+    estiloPorId,
+    gruposDeEscolha,
+    tecnicaDoEstilo,
+    tecnicasDoEstiloNoNivel,
+    tracosDoEstiloNoNivel,
+    type EscolhaDeTracos,
+} from './dados/estilos.ts';
 import { aumentosDoAprimoramento, hbPorId, OPCOES_QUEBRADOR } from './dados/habilidades-basicas.ts';
 import { maestriaPorId, NIVEIS_DE_MAESTRIA, problemasDaMaestria } from './dados/maestrias.ts';
 import {
@@ -40,6 +57,8 @@ export interface EscolhasDoNivel {
     hakiPrincipal?: 'armamento' | 'observacao' | null;
     /** A opção escolhida na escolha de traços do estilo (Escolha Diabólica, no 2º e no 11º nível). */
     tracoEscolhido?: string | null;
+    /** Estilos com várias escolhas no mesmo nível (Espadachim): a opção de cada grupo (id do grupo → id da opção). */
+    tracosEscolhidos?: Record<string, string>;
     /** PV ganhos no nível (dado + CON); os efeitos de PV da ficha ficam à parte. */
     pvGanho: number;
 }
@@ -59,6 +78,22 @@ export interface Pendencias {
     hakiPrincipal: boolean;
     /** Este nível pede uma escolha de traço do estilo (Escolha Diabólica). */
     escolhaDeTraco: boolean;
+    /** Os grupos de escolha de traços deste nível (um por escolha pendente). */
+    gruposDeEscolha: EscolhaDeTracos[];
+}
+
+/** A chave de um grupo de escolha em `tracosEscolhidos` (o estilo com uma só escolha não dá id ao grupo). */
+export const chaveDoGrupo = (g: EscolhaDeTracos): string => g.id ?? 'principal';
+
+/** As opções escolhidas neste nível, por grupo (aceita o campo antigo `tracoEscolhido` quando só há um grupo). */
+export function escolhidosDoNivel(
+    esc: Pick<EscolhasDoNivel, 'tracoEscolhido' | 'tracosEscolhidos'>,
+    grupos: EscolhaDeTracos[],
+): Record<string, string> {
+    if (esc.tracosEscolhidos) return Object.fromEntries(Object.entries(esc.tracosEscolhidos).filter(([, v]) => !!v));
+    if (esc.tracoEscolhido && grupos.length === 1) return { [chaveDoGrupo(grupos[0])]: esc.tracoEscolhido };
+
+    return {};
 }
 
 export const limiteDeAtributo = (nivel: number): number => (nivel >= 16 ? 24 : nivel >= 12 ? 22 : 20);
@@ -86,7 +121,8 @@ export function pendenciasDoNivel(f: FichaOnePiece, novo: number): Pendencias {
         podeTrocar: ava && trocasFeitas(f) < TROCAS_DE_AVA,
         hakiPrincipal: novo === 8 && !f.haki?.principal,
         maestria: !!estilo && NIVEIS_DE_MAESTRIA.includes(novo) && (f.tracosDeMaestria ?? []).length < 3,
-        escolhaDeTraco: !!estilo?.escolhaDeTracos?.niveis.includes(novo),
+        escolhaDeTraco: gruposDeEscolha(estilo).some((g) => g.niveis.includes(novo)),
+        gruposDeEscolha: gruposDeEscolha(estilo).filter((g) => g.niveis.includes(novo)),
     };
 }
 
@@ -148,12 +184,17 @@ export function problemasDoNivel(f: FichaOnePiece, esc: EscolhasDoNivel): string
     } else if (esc.maestria) p.push('Este nível não dá Traço de Maestria.');
     if (pend.hakiPrincipal && !['armamento', 'observacao'].includes(esc.hakiPrincipal ?? ''))
         p.push('O Haki desperta agora: escolha o Haki Principal (Armamento ou Observação).');
+    const escolhidos = escolhidosDoNivel(esc, pend.gruposDeEscolha);
     if (pend.escolhaDeTraco) {
-        const ja = f.estiloEscolhas ?? [];
-        const opcoes = estiloPorId(f.estiloId)?.escolhaDeTracos?.opcoes ?? [];
-        if (!esc.tracoEscolhido || !opcoes.some((o) => o.id === esc.tracoEscolhido) || ja.includes(esc.tracoEscolhido))
-            p.push(`${estiloPorId(f.estiloId)?.escolhaDeTracos?.nome ?? 'Escolha'}: escolha um traço que você ainda não tem.`);
-    } else if (esc.tracoEscolhido) p.push('Este nível não pede escolha de traço do estilo.');
+        // o que a ficha já tem (as escolhas anteriores e o caminho do 1º nível) não se repete
+        const ja = [...(f.estiloEscolhas ?? []), ...(f.estiloCaminho ? [f.estiloCaminho] : [])];
+        const outras = Object.values(escolhidos);
+        for (const g of pend.gruposDeEscolha) {
+            const v = escolhidos[chaveDoGrupo(g)];
+            if (!v || !g.opcoes.some((o) => o.id === v) || ja.includes(v) || outras.filter((x) => x === v).length > 1)
+                p.push(`${g.nome}: escolha um traço que você ainda não tem.`);
+        }
+    } else if (esc.tracoEscolhido || Object.keys(escolhidos).length) p.push('Este nível não pede escolha de traço do estilo.');
     if (!Number.isInteger(esc.pvGanho) || esc.pvGanho < 1) p.push('Informe os PV ganhos (mínimo 1).');
 
     return p;
@@ -221,19 +262,24 @@ export function camposDoNivel(f: FichaOnePiece, esc: EscolhasDoNivel): Record<st
     }
     // traços do estilo que passam a valer neste nível (os de nível maior não vêm na criação)
     const jaTem = new Set((f.caracteristicas ?? []).filter((c) => c.builder === 'estilo' && !c.hb).map((c) => c.nome));
-    const escolhas = pend.escolhaDeTraco && esc.tracoEscolhido ? [...(f.estiloEscolhas ?? []), esc.tracoEscolhido] : (f.estiloEscolhas ?? []);
+    const novasEscolhas = pend.escolhaDeTraco ? Object.values(escolhidosDoNivel(esc, pend.gruposDeEscolha)) : [];
+    const escolhas = [...(f.estiloEscolhas ?? []), ...novasEscolhas];
     if (pend.escolhaDeTraco) campos.estiloEscolhas = escolhas;
     const tracosDoNivel = tracosDoEstiloNoNivel(estilo, f.estiloCaminho, novo, escolhas).filter((t) => !jaTem.has(t.nome));
     const tracosNovos = tracosDoNivel.map((traco) => caracteristicaDe({ traco, origem: estilo.nome, builder: 'estilo' }, novo));
     // resistências que o traço do estilo dá (Invencibilidade) entram na lista da ficha, sem repetir
     const resistenciasNovas = tracosDoNivel.flatMap((t) => t.resistencias ?? []).filter((r) => !(f.resistencias ?? []).includes(r));
     if (resistenciasNovas.length) campos.resistencias = [...(f.resistencias ?? []), ...resistenciasNovas];
-    campos.caracteristicas = [
-        ...(f.caracteristicas ?? []).filter((c) => !c.hb && c.builder !== 'maestria').map(ajustar),
-        ...tracosNovos,
-        ...novasHB,
-        ...caracteristicasDaMaestria(maestriaId, tracosM, novo),
-    ];
+    // as Posturas novas já nascem ligadas ou desligadas conforme as espadas empunhadas
+    campos.caracteristicas = comEspadas(
+        [
+            ...(f.caracteristicas ?? []).filter((c) => !c.hb && c.builder !== 'maestria').map(ajustar),
+            ...tracosNovos,
+            ...novasHB,
+            ...caracteristicasDaMaestria(maestriaId, tracosM, novo),
+        ],
+        f.espadas ?? 0,
+    );
 
     // Akuma no Mi: as características e as técnicas dos Points dependem do nível (Intangibilidade, Points, técnicas por grau)
     if (f.akuma?.tipo) {

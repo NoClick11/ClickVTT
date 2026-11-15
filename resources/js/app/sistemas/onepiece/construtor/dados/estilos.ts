@@ -5,6 +5,7 @@
  * O que o motor de efeitos modela entra em `efeitos`/`usos`/`acao`; o resto vira descrição + `etiquetas` (o resumo curto
  * que aparece na ficha). Características com `nivelMin` só valem a partir do nível indicado.
  */
+import { ARMAS } from '../../itens/armas.ts';
 import type { AjusteDeArma, AtributoId, BonusDeDano, CategoriaDeAcao, DuracaoDaTecnica, Tecnica, TesteDaTecnica } from '../../regras.ts';
 import type { DadoDeVida } from '../regras.ts';
 import type { TracoDados } from './tipos.ts';
@@ -26,6 +27,8 @@ export type TracoDoEstilo = TracoDados & {
 
 /** Uma escolha entre traços feita ao subir de nível (Usuário Ínsito: a Escolha Diabólica no 2º nível e mais uma no 11º). */
 export interface EscolhaDeTracos {
+    /** Identifica o grupo quando o estilo tem várias escolhas (Espadachim: postura, empunhadura, aura). */
+    id?: string;
     nome: string;
     /** Os níveis em que se escolhe (uma opção por vez, sem repetir). */
     niveis: number[];
@@ -40,6 +43,8 @@ export interface CaminhoDoEstilo {
     dado?: DadoDeVida;
     /** As armas favoritas permitidas neste caminho (sem isto valem as do estilo). */
     armasFavoritas?: string[];
+    /** Quantas armas cortantes a Postura exige (o assistente já começa a ficha com este número de espadas). */
+    espadas?: number;
 }
 
 /** Um item do catálogo do Cap. 8 (id) e quantas unidades. */
@@ -82,6 +87,8 @@ export interface EstiloDados {
     equipamentoInicial?: EquipamentoInicial;
     caminhos?: CaminhoDoEstilo[];
     escolhaDeTracos?: EscolhaDeTracos;
+    /** Mais escolhas de traços, cada uma com os próprios níveis (Espadachim); juntas com `escolhaDeTracos` formam `gruposDeEscolha`. */
+    escolhasDeTracos?: EscolhaDeTracos[];
     /** Nível em que o personagem recebe também o que não escolheu dos caminhos (Rei Atirador). */
     herdaTudoEm?: number;
     /** Níveis do Aumento no Valor de Atributo. */
@@ -2567,7 +2574,710 @@ export const USUARIO_INSITO: EstiloDados = {
     tecnicas: [],
 };
 
-export const ESTILOS: EstiloDados[] = [ATIRADOR, AVENTUREIRO, BRUTAMONTES, BLACK_LEG, HEROI, USUARIO_INSITO];
+/**
+ * Espadachim. Regra do projeto: só dano, PP e as reações defensivas são automáticos; o resto fica como texto na ficha.
+ * Automáticos aqui: dado de vida, Técnicas (dano, PP, ataque/Salvaguarda), Postura Ittoryu (+2/+3), margem de crítico da Empunhadura, Poder da
+ * Lâmina Forte, Ataque Extra (Corvo), Olhos de Gavião, Apogeu, Domínio Negro, Aura Demoníaca (custo e dano Verdadeiro), Dragão, Honra de um
+ * Espadachim, Kiri Shigure, Blue Bird (barreira) e Kiai no Tate (reações). As Posturas ligam sozinhas pelo número de espadas empunhadas (`espadas`).
+ */
+/** As armas favoritas do Espadachim: qualquer Arma Cortante do catálogo. */
+const CORTANTES = ARMAS.filter((a) => a.categoria === 'armas-cortantes').map((a) => a.nome);
+
+type EfeitosDoTraco = NonNullable<TracoDados['efeitos']>;
+
+interface PosturaDef {
+    id: string;
+    nome: string;
+    /** Quantas armas cortantes exige (sem isto, é uma Manobra: vale com ao menos uma). */
+    espadas?: number;
+    descricao: string;
+    etiquetas: string[];
+    efeitos?: EfeitosDoTraco;
+    acoes?: TracoDados['acoes'];
+}
+
+const POSTURAS_DO_ESPADACHIM: PosturaDef[] = [
+    {
+        id: 'ittoryu',
+        nome: 'Ittoryu (uma espada)',
+        espadas: 1,
+        descricao:
+            'Foco Único: ao empunhar uma única arma cortante, se houver apenas uma criatura hostil a até 1,5 metro de você e nenhuma outra a até 3 metros, todas as suas jogadas de ataque (comum) com arma cortante recebem +2 na jogada de ataque e +3 de dano Cortante extra contra a criatura. (A ficha aplica o bônus com 1 espada empunhada; se houver mais criaturas por perto, desligue o interruptor.)',
+        etiquetas: ['1 espada: +2 ataque e +3 dano Cortante se for um único hostil a 1,5 m e nenhum outro a 3 m'],
+        efeitos: [
+            { alvo: 'ataque.arma', modo: 'soma', valor: 2 },
+            { alvo: 'dano.arma', modo: 'soma', valor: 3 },
+        ],
+    },
+    {
+        id: 'nitoryu',
+        nome: 'Nitoryu (duas espadas)',
+        espadas: 2,
+        descricao:
+            'Ataque Contra Multidões: com duas armas cortantes, ao fazer uma jogada de ataque (comum) corpo a corpo com uma delas, todas as criaturas a 1,5 metro de você que não forem o alvo recebem 2d6 de dano Cortante.',
+        etiquetas: ['2 espadas: ataque corpo a corpo causa 2d6 Cortante nas outras criaturas a 1,5 m'],
+        acoes: [{ rotulo: 'Dano em multidão: 2d6', tipo: 'rolar', rolagem: '2d6' }],
+    },
+    {
+        id: 'santoryu',
+        nome: 'Santoryu (três espadas)',
+        espadas: 3,
+        descricao:
+            'Defesa Contra Multidões: com três armas cortantes, você recebe +1 na CR para cada criatura inimiga a até 3 metros de você, até +3 na CR (some à mão).',
+        etiquetas: ['3 espadas: +1 CR por inimigo a 3 m (máx. +3)'],
+    },
+    {
+        id: 'yontoryu',
+        nome: 'Yontoryu (quatro espadas)',
+        espadas: 4,
+        descricao:
+            'Corte Voador: com quatro armas cortantes, ao fazer uma jogada de ataque (comum) corpo a corpo você pode aumentar o alcance do ataque para 6 metros; as jogadas continuam sendo ataques corpo a corpo.',
+        etiquetas: ['4 espadas: ataque corpo a corpo com alcance de 6 m'],
+    },
+    {
+        id: 'rokutoryu',
+        nome: 'Rokutoryu (seis espadas)',
+        espadas: 6,
+        descricao:
+            'Movimento Afiado: com seis armas cortantes, seu deslocamento não é reduzido por terreno difícil, você recebe deslocamento de escalada igual ao normal e pode ficar de cabeça para baixo ou em inclinação vertical, usando concentração, por até 1 minuto.',
+        etiquetas: ['6 espadas: ignora terreno difícil, escalada = deslocamento'],
+        efeitos: [{ alvo: 'movimento.escalada', modo: 'min', valor: 90 }],
+    },
+    {
+        id: 'hattoryu',
+        nome: 'Hattoryu (oito espadas)',
+        espadas: 8,
+        descricao:
+            'Manto de Lâminas: com oito armas cortantes, ao receber jogada de ataque (comum ou Técnicas) corpo a corpo de uma criatura a até 1,5 metro, ela recebe 1d4 de dano Cortante extra.',
+        etiquetas: ['8 espadas: quem ataca corpo a corpo a 1,5 m recebe 1d4 Cortante'],
+        acoes: [{ rotulo: 'Manto de Lâminas: 1d4', tipo: 'rolar', rolagem: '1d4' }],
+    },
+    {
+        id: 'kyutoryu',
+        nome: 'Kyutoryu (nove espadas)',
+        espadas: 9,
+        descricao:
+            'Ashura: com nove armas cortantes, na primeira vez que uma criatura estiver a 1,5 metro de você, e a cada vez que ela iniciar o turno nesse alcance, ela recebe 1d10 de dano Cortante.',
+        etiquetas: ['9 espadas: 1d10 Cortante em quem inicia o turno a 1,5 m'],
+        acoes: [{ rotulo: 'Ashura: 1d10', tipo: 'rolar', rolagem: '1d10' }],
+    },
+    {
+        id: 'movimento-enganador',
+        nome: 'Manobra: Movimento Enganador',
+        descricao:
+            'Ao ser alvo de uma jogada de ataque (comum), use a reação: todas as jogadas de ataque (comum) contra você têm desvantagem até o início do seu próximo turno; no turno seguinte seu deslocamento cai para 3 metros. Ou use até 3 vezes por encontro, sem reação.',
+        etiquetas: ['Reação: ataques contra você com desvantagem até seu próximo turno (deslocamento 3 m depois)'],
+    },
+    {
+        id: 'golpe-provocativo',
+        nome: 'Manobra: Golpe Provocativo',
+        descricao:
+            'Ao atingir uma criatura com ataque (comum ou Técnicas) corpo a corpo com arma cortante, use uma ação bônus: o alvo tem desvantagem nas jogadas de ataque (comum) contra criaturas que não sejam você, até o fim do próximo turno dele.',
+        etiquetas: ['Ação bônus após acertar: alvo com desvantagem contra outros'],
+    },
+    {
+        id: 'contra-atacar',
+        nome: 'Manobra: Contra-Atacar',
+        descricao:
+            'Use sua reação, quando uma criatura fizer jogada de ataque (comum ou Técnicas) contra você, para fazer uma jogada de ataque (comum) corpo a corpo com arma cortante contra ela.',
+        etiquetas: ['Reação: ataque corpo a corpo contra quem atacou você'],
+    },
+    {
+        id: 'golpe-concentrado',
+        nome: 'Manobra: Golpe Concentrado',
+        descricao:
+            'Ao atingir uma criatura com jogada de ataque (comum) corpo a corpo com arma cortante, use uma ação bônus para somar 1d10 de dano Cortante extra ao ataque.',
+        etiquetas: ['Ação bônus após acertar: +1d10 Cortante'],
+        acoes: [{ rotulo: 'Golpe Concentrado: +1d10', tipo: 'rolar', rolagem: '1d10' }],
+    },
+    {
+        id: 'nunca-recuar',
+        nome: 'Manobra: Nunca Recuar',
+        descricao:
+            'Ao ser alvo de uma jogada de ataque (comum ou Técnicas) corpo a corpo, use a reação para receber 1d4 de dano extra e impedir a criatura atacante de usar reação e ação bônus até o fim do próximo turno dela.',
+        etiquetas: ['Reação: recebe +1d4 de dano; o atacante fica sem reação e ação bônus'],
+    },
+];
+
+/** A Postura/Manobra como característica: `caminho` (a do 1º nível), `escolha` (as dos níveis 3, 6 e 9) ou `aperfeicoada` (Postura Aperfeiçoada, 11º e 15º). */
+const posturaDoEspadachim = (p: PosturaDef, modo: 'caminho' | 'escolha' | 'aperfeicoada'): TracoDoEstilo => {
+    const ligada = !!p.efeitos?.length;
+    const nome = modo === 'aperfeicoada' ? `Postura Aperfeiçoada: ${p.nome}` : `Postura de Espadachim: ${p.nome}`;
+    const espadas = modo === 'aperfeicoada' && p.espadas ? { min: 1 } : p.espadas ? { exato: p.espadas } : undefined;
+
+    return {
+        id: `${modo === 'aperfeicoada' ? 'aperf' : 'postura'}-${p.id}${modo === 'escolha' ? '-esc' : ''}`,
+        nome,
+        ...(modo === 'caminho' ? { caminho: p.id } : modo === 'escolha' ? { escolha: p.id } : { escolha: `aperf-${p.id}`, nivelMin: 11 }),
+        descricao:
+            modo === 'aperfeicoada'
+                ? `${p.descricao} Pela Postura Aperfeiçoada, o traço vale com ao menos uma arma cortante empunhada, junto dos Traços Inatos de outras posturas.`
+                : p.descricao,
+        etiquetas: p.etiquetas,
+        // a ativa liga e desliga sozinha pelo número de espadas; sem efeitos de motor, o interruptor serve de marca
+        ...(p.espadas ? { tipo: 'ativa' as const, interruptor: true, ...(espadas ? { espadas } : {}) } : {}),
+        ...(ligada ? { efeitos: p.efeitos } : {}),
+        ...(p.acoes ? { acoes: p.acoes } : {}),
+    };
+};
+
+const AURAS_DO_ESPADACHIM: { id: string; nome: string; descricao: string }[] = [
+    {
+        id: 'aura-caranguejo',
+        nome: 'Caranguejo',
+        descricao: 'Corte Absoluto: seus ataques com arma cortante ignoram Invulnerabilidade a dano Cortante.',
+    },
+    {
+        id: 'aura-cavalo',
+        nome: 'Cavalo',
+        descricao:
+            'Investida Indomável: proficiência e proficiência dobrada em Atletismo; deslocamento normal 15 m, sem redução por terreno difícil ou exaustão.',
+    },
+    { id: 'aura-corvo', nome: 'Corvo', descricao: 'Ataque Extra: ataca duas vezes, em vez de uma, ao usar a ação Atacar.' },
+    {
+        id: 'aura-dragao',
+        nome: 'Dragão',
+        descricao: 'Liberação Fatigante: dano máximo numa Técnica de Combate de 4º grau ou menor, ao custo de 2 Níveis de Exaustão.',
+    },
+    { id: 'aura-gaviao', nome: 'Gavião', descricao: 'Olhos de Gavião: +3 na jogada de ataque (Técnicas) das Técnicas com arma cortante.' },
+    {
+        id: 'aura-gorila',
+        nome: 'Gorila',
+        descricao: 'Ichi Gorila, Ni Gorila: os dados das Técnicas de Combate com arma cortante causam, no mínimo, metade do dano total.',
+    },
+    {
+        id: 'aura-leao',
+        nome: 'Leão',
+        descricao: 'Aura do Rei: 20 Pontos de Ambição para o Haki do Rei e troca do tipo de dano para Psíquico, até 3 vezes por descanso longo.',
+    },
+    {
+        id: 'aura-lobo',
+        nome: 'Lobo',
+        descricao:
+            'Astúcia Instintiva: se nenhuma criatura, ambiente, estrutura ou objeto for afetado pela Técnica, gaste grau−1 PP (mín. 1) e não perca os PP exigidos.',
+    },
+    {
+        id: 'aura-ogro',
+        nome: 'Ogro',
+        descricao:
+            'Arauto do Submundo: proficiência e proficiência dobrada em Intimidação; ação bônus e 2 PP para encerrar uma condição ou efeito negativo.',
+    },
+    {
+        id: 'aura-rinoceronte',
+        nome: 'Rinoceronte',
+        descricao:
+            'Fôlego Imparável: após descanso longo, 8 PP recuperam 1 Nível de Exaustão; 4 PP ignoram Exaustão de 5º grau ou inferior por 5 minutos.',
+    },
+    {
+        id: 'aura-tigre',
+        nome: 'Tigre',
+        descricao:
+            'Caçada Selvagem: reação para perseguir quem foge e atacar; se acertar, o deslocamento dele vai a 0 até o fim do próximo turno dele.',
+    },
+    { id: 'aura-touro', nome: 'Touro', descricao: 'Corpo Parrudo: +10 PV máximos e +5 a cada nível seguinte (até 40 PV no total).' },
+];
+
+/** O traço da Aura Bestial escolhida (o que a ficha calcula vai em `efeitos`/`usos`; o resto é texto). */
+const TRACOS_DAS_AURAS: Record<string, Partial<TracoDoEstilo>> = {
+    'aura-caranguejo': { etiquetas: ['Ataques cortantes ignoram Invulnerabilidade a Cortante'] },
+    'aura-cavalo': {
+        etiquetas: ['Deslocamento 15 m, sem redução', 'Atletismo: proficiência dobrada'],
+        efeitos: [{ alvo: 'movimento.normal', modo: 'min', valor: 150 }],
+    },
+    'aura-corvo': { etiquetas: ['Ação Atacar: 2 ataques'], efeitos: [{ alvo: 'ataques.acao', modo: 'soma', valor: 1 }] },
+    'aura-dragao': {
+        tipo: 'ativa',
+        interruptor: true,
+        etiquetas: ['Ligada: Técnica de 4º grau ou menos com dano máximo (2 Níveis de Exaustão)'],
+    },
+    'aura-gaviao': { etiquetas: ['Técnicas: +3 no ataque'], efeitos: [{ alvo: 'ataque', modo: 'soma', valor: 3 }] },
+    'aura-gorila': { etiquetas: ['Dados das Técnicas: mínimo de metade do dano total'] },
+    'aura-leao': {
+        usos: { max: 3, descanso: 'longo' },
+        etiquetas: ['3 usos: troca o tipo de dano para Psíquico', '20 Pontos de Ambição (Haki do Rei)'],
+    },
+    'aura-lobo': { etiquetas: ['Técnica sem afetar nada: gaste grau−1 PP e não perca os PP originais'] },
+    'aura-ogro': { etiquetas: ['Intimidação: proficiência dobrada', 'Ação bônus + 2 PP: encerra uma condição negativa'] },
+    'aura-rinoceronte': {
+        etiquetas: ['Descanso longo: 8 PP recuperam 1 Nível de Exaustão', '4 PP: ignora Exaustão de 5º grau ou menos por 5 minutos'],
+    },
+    'aura-tigre': { etiquetas: ['Reação: persegue quem foge e ataca; deslocamento dele vai a 0'] },
+    'aura-touro': { etiquetas: ['+10 PV máx. (+5 por nível seguinte, até 40)'], efeitos: [{ alvo: 'pv.max', modo: 'soma', valor: 10 }] },
+};
+
+const E_FORTE = 'forte';
+const E_GENTIL = 'gentil';
+
+/** Os traços de uma Empunhadura: valem a partir do 3º nível para quem a escolheu e do 6º para quem escolheu a outra. */
+const empunhadura = (qual: string): TracoDoEstilo[] => {
+    const outra = qual === E_FORTE ? E_GENTIL : E_FORTE;
+    const traco = (t: Omit<TracoDoEstilo, 'escolha' | 'nivelMin'>): TracoDoEstilo[] => [
+        { ...t, escolha: qual, nivelMin: 3 },
+        { ...t, id: `${t.id}-6`, escolha: outra, nivelMin: 6 },
+    ];
+    if (qual === E_FORTE)
+        return [
+            ...traco({
+                id: 'forte-poder',
+                nome: 'Lâmina Forte: Poder',
+                descricao:
+                    'Ao empunhar uma ou mais armas cortantes sem a propriedade "Acuidade": quando acertar uma jogada de ataque (comum) com arma cortante, soma dano Cortante extra igual à metade do seu nível de Espadachim, arredondado para baixo (máximo +5). Alcance: Técnicas em Linha, Cone, Esfera ou Cilindro com arma cortante como requisito recebem +6 m (a ficha soma só o das Linhas). Ímpeto: uma vez no turno, ao fazer um acerto crítico corpo a corpo com arma cortante, faça uma jogada de ataque (comum) adicional.',
+                efeitos: [
+                    { alvo: 'dano.arma', modo: 'soma', valor: 'min(5,floor(@nivel/2))' },
+                    { alvo: 'alcance.linha', modo: 'soma', valor: 60 },
+                ],
+                etiquetas: ['Dano +½ nível (máx. +5)', 'Linha/Cone/Esfera/Cilindro: +6 m', 'Crítico: ataque adicional (1×/turno)'],
+            }),
+        ];
+
+    return [
+        ...traco({
+            id: 'gentil-precisao',
+            nome: 'Lâmina Gentil',
+            descricao:
+                'Ao empunhar uma ou mais armas cortantes com a propriedade "Acuidade": Precisão — seus ataques (comum ou Técnicas) com arma cortante ignoram resistência a dano Cortante. Rapidez — ao fazer jogada de ataque (comum) corpo a corpo, use uma ação bônus para fazer uma jogada de ataque (comum) corpo a corpo adicional com arma cortante. Estabilidade — o dado de dano da arma vira 1d10 Cortante nos ataques (comum) corpo a corpo (prevalece o maior).',
+            etiquetas: ['Ignora resistência a Cortante', 'Ação bônus: ataque corpo a corpo adicional', 'Dado de dano da arma: 1d10 (ou maior)'],
+        }),
+    ];
+};
+
+export const ESPADACHIM: EstiloDados = {
+    id: 'espadachim',
+    nome: 'Espadachim',
+    descricao:
+        'Guerreiros que usam espadas e armas similares: uns com leveza e precisão, outros com força e ferocidade; os que manejam várias lâminas fazem tudo num único movimento. Treinam sem parar para cortar tudo o que precisarem, até cortes que voam contra o adversário.',
+    dado: 'd10',
+    atributosPrimarios: ['for', 'des'],
+    salvaguardas: ['des', 'von'],
+    proficiencias: ['Armas Cortantes'],
+    pericias: 2,
+    periciasPermitidas: ['atletismo', 'intimidacao', 'intuicao', 'percepcao'],
+    armasFavoritas: CORTANTES,
+    habilidadesInatas: [
+        { id: 'perito-em-tecnicas', nome: 'Perito em Técnicas' },
+        { id: 'superando-limites', nome: 'Superando Limites' },
+    ],
+    equipamento: '2 sabres ou 2 katanas e 5d10 x 1000 Bellys.',
+    equipamentoInicial: {
+        // "2 sabres ou 2 katanas": quem favorece a katana recebe katanas; as demais armas favoritas recebem os sabres
+        porArma: Object.fromEntries(CORTANTES.map((n) => [n, [{ catalogo: n === 'Katana' ? 'katana' : 'sabre', qtd: 2 }]])),
+        itens: [],
+        dinheiro: { dados: '5d10', multiplicador: 1000 },
+    },
+    // A Postura (ou Manobra) do 1º nível é o "caminho"; as dos níveis 3, 6 e 9 acumulam pela escolha de traços
+    caminhos: POSTURAS_DO_ESPADACHIM.map((p) => ({
+        id: p.id,
+        nome: p.nome,
+        descricao: p.descricao,
+        ...(p.espadas ? { espadas: p.espadas } : {}),
+    })),
+    escolhasDeTracos: [
+        {
+            id: 'postura',
+            nome: 'Nova Postura de Espadachim',
+            niveis: [3, 6, 9],
+            opcoes: POSTURAS_DO_ESPADACHIM.map((p) => ({ id: p.id, nome: p.nome, descricao: p.etiquetas[0] ?? '' })),
+        },
+        {
+            id: 'empunhadura',
+            nome: 'Empunhadura',
+            niveis: [3],
+            opcoes: [
+                { id: E_FORTE, nome: 'Lâmina Forte', descricao: 'Armas sem Acuidade: alcance maior, dano extra e ataque adicional no crítico.' },
+                {
+                    id: E_GENTIL,
+                    nome: 'Lâmina Gentil',
+                    descricao: 'Armas com Acuidade: ignora resistência Cortante, ataque extra e dado de dano 1d10.',
+                },
+            ],
+        },
+        {
+            id: 'aura',
+            nome: 'Aura Bestial',
+            niveis: [6, 8, 10, 12, 14],
+            opcoes: AURAS_DO_ESPADACHIM,
+        },
+        {
+            id: 'postura-aperfeicoada',
+            nome: 'Postura Aperfeiçoada',
+            niveis: [11, 15],
+            opcoes: POSTURAS_DO_ESPADACHIM.filter((p) => p.espadas).map((p) => ({
+                id: `aperf-${p.id}`,
+                nome: p.nome,
+                descricao: 'O traço vale com ao menos uma arma cortante empunhada.',
+            })),
+        },
+    ],
+    niveisAva: [4, 8, 12, 16, 20],
+    niveisDeTecnica: [1, 3, 6, 9, 12, 16, 20],
+    tracos: [
+        // --- Posturas e Manobras ---
+        ...POSTURAS_DO_ESPADACHIM.map((p) => posturaDoEspadachim(p, 'caminho')),
+        ...POSTURAS_DO_ESPADACHIM.map((p) => posturaDoEspadachim(p, 'escolha')),
+        ...POSTURAS_DO_ESPADACHIM.filter((p) => p.espadas).map((p) => posturaDoEspadachim(p, 'aperfeicoada')),
+        // --- Características ---
+        {
+            id: 'consciencia-expandida',
+            nome: 'Consciência Expandida',
+            nivelMin: 2,
+            descricao:
+                'Jogadas de ataque (comum ou Técnicas) com arma cortante que acertem um objeto (que ninguém vista ou carregue) ou estrutura têm o dano dos dados dobrado, se forem de rocha ou madeira de cedro (ou menos resistentes); no 4º nível, ferro e carvalho; no 6º, aço e cerejeira; no 8º, aço temperado e madeira Adam. Cortar Mundos: sem gastar ação, ação poderosa, reação ou ação bônus, corte construções e objetos até 6 m de você: 2º nível, Pequeno ou menor; 6º, Médio (1 PP); 13º, Grande ou Enorme (2 PP, 1 Nível de Exaustão e 30 segundos de preparo); 16º, Imenso ou maior (3 PP, 1 Nível de Exaustão e 1 minuto).',
+            etiquetas: ['Dano dos dados dobrado contra objetos e estruturas', 'Cortar Mundos: corta construções a 6 m (tamanho cresce com o nível)'],
+        },
+        {
+            id: 'empunhadura-14',
+            nome: 'Empunhadura: crítico 19-20',
+            nivelMin: 3,
+            nivelMax: 14,
+            descricao:
+                'Suas jogadas de ataque (comum) com arma cortante têm margem de acerto crítico 19-20, e você rola um dado de dano adicional da arma depois de calcular o dano extra do crítico. Você escolhe entre Lâmina Gentil e Lâmina Forte (única); no 6º nível ganha também a que não escolheu.',
+            efeitos: [{ alvo: 'margem.corpo', modo: 'max', valor: 19 }],
+            etiquetas: ['Crítico 19-20 (+1 dado de dano da arma)'],
+        },
+        {
+            id: 'empunhadura-17',
+            nome: 'Empunhadura: crítico 18-20',
+            nivelMin: 15,
+            nivelMax: 17,
+            descricao: 'A margem de acerto crítico passa a 18-20, com dois dados de dano adicionais da arma.',
+            efeitos: [{ alvo: 'margem.corpo', modo: 'max', valor: 18 }],
+            etiquetas: ['Crítico 18-20 (+2 dados de dano da arma)'],
+        },
+        {
+            id: 'empunhadura-20',
+            nome: 'Empunhadura: crítico 17-20',
+            nivelMin: 18,
+            descricao: 'A margem de acerto crítico passa a 17-20, com três dados de dano adicionais da arma.',
+            efeitos: [{ alvo: 'margem.corpo', modo: 'max', valor: 17 }],
+            etiquetas: ['Crítico 17-20 (+3 dados de dano da arma)'],
+        },
+        ...empunhadura(E_FORTE),
+        ...empunhadura(E_GENTIL),
+        {
+            id: 'honra',
+            nome: 'Honra de um Espadachim',
+            nivelMin: 5,
+            descricao:
+                'Uma vez a cada rodada, o primeiro dano sofrido por ataques que atingirem a frente de seu corpo é reduzido em 10 (a ficha aplica a redução no primeiro dano de ataque da rodada). O dano sofrido por ataques de oportunidade recebe 2 dados de dano Psíquico a mais. Você pode escolher sofrer o dano de um ataque que falhou em acertá-lo e receber 3 PP para cada 10 de dano efetivamente sofridos (máx. PP igual ao seu nível de Espadachim); ao fazer isso, uma vez por rodada, tem uma reação adicional até o fim do próximo turno (não serve para ataques nem dano).',
+            etiquetas: ['1×/rodada: primeiro dano frontal reduzido em 10', 'Sofrer ataque que errou: +3 PP por 10 de dano (máx. = nível)'],
+        },
+        ...AURAS_DO_ESPADACHIM.map(
+            (a): TracoDoEstilo => ({
+                id: a.id,
+                nome: `Aura Bestial: ${a.nome}`,
+                escolha: a.id,
+                descricao: a.descricao,
+                ...TRACOS_DAS_AURAS[a.id],
+            }),
+        ),
+        {
+            id: 'analise-de-batalha',
+            nome: 'Análise de Batalha',
+            nivelMin: 7,
+            usos: { max: 3, descanso: 'longo' },
+            descricao:
+                'Ao acertar uma jogada de ataque (comum) corpo a corpo com arma cortante, aplique o aumento dos dados de dano, só da arma usada, como se fosse acerto crítico (conta como crítico para efeitos que não exijam "Crítico Natural"). Até 3 usos; voltam em descanso longo.',
+            etiquetas: ['3 usos: dados da arma como crítico num acerto corpo a corpo'],
+        },
+        {
+            id: 'roubar-tecnicas',
+            nome: 'Roubar Técnicas',
+            nivelMin: 10,
+            usos: { max: 3, descanso: 'longo' },
+            descricao:
+                'Ao ver uma Técnica de Combate de uma criatura hostil, tente aprendê-la: Teste de Vontade (Percepção) com CD 15 + grau (−1 por tentativa adicional em 24 h, até −3; aliadas: CD +5, uma tentativa). Exige arma cortante como requisito, efeitos reproduzíveis só com seu corpo e a arma, e grau igual ou menor ao de uma Técnica que você já tenha. Cada Técnica roubada aumenta seus PP máximos em 2, causa 1 dado de dano a mais e custa 1 PP a menos (mín. 1); uma vez entre descansos longos, uma roubada de ação poderosa pode ser usada com ação bônus. Para adicioná-la, use o Criador de Técnicas (a mesa conduz o teste e o ajuste dos PP). Alternativamente, ao executar uma Técnica não roubada, aumente os dados de dano em metade do Bônus de Proficiência (até 3 usos, voltam em descanso longo).',
+            etiquetas: ['Rouba Técnicas vistas (teste e PP máx. +2 pela mesa)', '3 usos: Técnica não roubada com dados de dano +½ prof.'],
+        },
+        {
+            id: 'aura-demoniaca-2pp',
+            nome: 'Aura Demoníaca (2 PP)',
+            nivelMin: 14,
+            tipo: 'ativa',
+            interruptor: true,
+            descricao:
+                'Ao realizar uma Técnica de Combate de dano Cortante com arma cortante, gaste 2 PP para: ter vantagem na jogada de ataque (Técnicas) dessa Técnica; impor desvantagem nas Salvaguardas contra ela; e converter o dano para "Verdadeiro". A ilusão multiplica as armas que você aparenta manejar, permitindo Técnicas que exijam qualquer quantidade. Ligada, cada Técnica cortante custa +2 PP e recebe esses efeitos.',
+            etiquetas: ['Ligada: Técnicas cortantes +2 PP, vantagem no ataque, desvantagem na Salvaguarda, dano Verdadeiro'],
+        },
+        {
+            id: 'aura-demoniaca-forma',
+            nome: 'Aura Demoníaca (forma)',
+            nivelMin: 14,
+            tipo: 'ativa',
+            interruptor: true,
+            usos: { max: 1, descanso: 'longo' },
+            descricao:
+                'Com uma ação bônus, sem custo de PP, mantenha a forma demoníaca por até 1 minuto: as Técnicas cortantes têm os mesmos efeitos da Aura Demoníaca (vantagem no ataque, desvantagem na Salvaguarda, dano Verdadeiro) sem gastar os 2 PP, e você pode usar posturas de qualquer quantidade de espadas. Depois, só no próximo descanso longo. Desligue ao fim do minuto.',
+            etiquetas: ['1×/descanso longo, 1 min: Técnicas cortantes com vantagem, desvantagem na Salvaguarda e dano Verdadeiro sem PP'],
+        },
+        {
+            id: 'apogeu',
+            nome: 'Apogeu',
+            nivelMin: 15,
+            descricao:
+                'Técnicas de Combate com arma cortante como requisito: 1º grau custam 0 PP; 2º a 5º grau custam metade (arredondado para baixo) — a ficha já desconta; as que têm alcance diferente de toque podem ter o alcance dobrado ou reduzido até 3 metros.',
+            etiquetas: ['Técnicas cortantes: 1º grau 0 PP; 2º–5º metade do PP', 'Alcance dobrado ou reduzido a 3 m'],
+        },
+        {
+            id: 'mestre-espadachim',
+            nome: 'Mestre Espadachim',
+            nivelMin: 18,
+            descricao:
+                'Distribua livremente 6 pontos entre seus atributos, respeitando o máximo de 24; dois atributos podem receber esses pontos até o máximo de 30.',
+        },
+        {
+            id: 'espada-lendaria',
+            nome: 'Espada Lendária',
+            nivelMin: 19,
+            tipo: 'ativa',
+            interruptor: true,
+            descricao:
+                'Uma de suas armas cortantes se torna uma Kokuto. Ligue enquanto empunhá-la: Corte Negro — Consciência Expandida com ação bônus, qualquer tamanho, sem PP, Exaustão ou preparo; Morte Negra — criaturas com ND 8 ou menos atingidas por suas Técnicas de Combate (arma cortante) vão a 0 PV (a mesa aplica); Domínio Negro — Técnicas de 6º e 7º grau custam PP menos o grau (a ficha já desconta).',
+            etiquetas: ['Ligada (empunhando): Técnicas de 6º/7º grau custam PP − grau', 'ND 8 ou menos atingidos vão a 0 PV'],
+        },
+    ],
+    tecnicas: [
+        tec(
+            1,
+            1,
+            '',
+            'Ittoryu - Baki',
+            2,
+            'poderosa',
+            'Até 9 m, Linha',
+            '2d10 Cortante',
+            '2d10',
+            'cortante',
+            'Você lança, em jogada de ataque (Técnicas) à distância, um projétil crescente de ar contra uma criatura. A próxima jogada de ataque (comum) contra essa criatura tem vantagem. <Yakkodori> No 6º nível, pode ser usada como Técnica de 3º Grau: 6d10 Cortante, alcance 21 m em Linha e 5 PP. Requisito: 1 arma cortante, ação poderosa. Ataque combinado: possível.',
+            { armaCortante: true },
+        ),
+        tec(
+            6,
+            3,
+            '',
+            'Yakkodori',
+            5,
+            'poderosa',
+            'Até 21 m, Linha',
+            '6d10 Cortante',
+            '6d10',
+            'cortante',
+            'Ittoryu - Baki aprimorada (3º Grau): projétil crescente de ar, em jogada de ataque (Técnicas) à distância. A próxima jogada de ataque (comum) contra a criatura tem vantagem. Requisito: 1 arma cortante, ação poderosa. Ataque combinado: possível.',
+            { armaCortante: true },
+        ),
+        tec(
+            3,
+            2,
+            '',
+            'Trueno Bastardo',
+            4,
+            'poderosa',
+            'Toque',
+            '4d10 Cortante',
+            '4d10',
+            'cortante',
+            'Corte implacável contra uma criatura, em jogada de ataque (Técnicas) corpo a corpo. A criatura atingida faz Salvaguarda de Constituição ou recebe "Sangramento". Requisito: 1 arma cortante, ação poderosa. Ataque combinado: impossível.',
+            { armaCortante: true },
+        ),
+        tec(
+            3,
+            2,
+            '',
+            'Trueno Bastardo (corte voador)',
+            4,
+            'poderosa',
+            'Até 15 m, Cone',
+            '4d6 Cortante',
+            '4d6',
+            'cortante',
+            'Alternativa do Trueno Bastardo: corte voador em cone de 15 metros. Cada criatura faz Salvaguarda de Destreza, com desvantagem: todo o dano se falhar, metade se passar. Requisito: 1 arma cortante, ação poderosa. Ataque combinado: impossível.',
+            { armaCortante: true },
+        ),
+        tec(
+            6,
+            3,
+            '',
+            'Ittoryu Iai - Shishi Sonson',
+            6,
+            'poderosa',
+            'Toque',
+            '6d10 Cortante',
+            '6d10',
+            'cortante',
+            'Corte em alta velocidade: a criatura atingida, em jogada de ataque (Técnicas) corpo a corpo, só sente o golpe quando você já embainhou a arma. Você recebe 3 metros de deslocamento normal até o fim do seu turno. <Shi Shishi Sonson> No 12º nível, pode ser usada como Técnica de 5º Grau: 10d10 Cortante, +6 m de deslocamento e 10 PP. Requisito: 1 arma cortante, ação poderosa. Ataque combinado: impossível.',
+            { armaCortante: true },
+        ),
+        tec(
+            12,
+            5,
+            '',
+            'Shi Shishi Sonson',
+            10,
+            'poderosa',
+            'Toque',
+            '10d10 Cortante',
+            '10d10',
+            'cortante',
+            'Ittoryu Iai - Shishi Sonson aprimorada (5º Grau): corte em alta velocidade, em jogada de ataque (Técnicas) corpo a corpo. Você recebe 6 metros de deslocamento normal até o fim do seu turno. Requisito: 1 arma cortante, ação poderosa. Ataque combinado: impossível.',
+            { armaCortante: true },
+        ),
+        tec(
+            9,
+            4,
+            '',
+            'Ittoryu - Sanjuroku (36) Pound Hou',
+            6,
+            'poderosa',
+            'Até 27 m, Cone',
+            '8d6 Cortante',
+            '8d6',
+            'cortante',
+            'Balanço circular que usa o próprio ar para aumentar o alcance, criando um projétil em espiral. Cada criatura na área faz Salvaguarda de Destreza: todo o dano se falhar, metade se passar. <Sanbyakurokuju (360) Pound Ho> No 16º nível, pode ser usada como Técnica de 6º Grau: 12d6 Cortante, cone de 33 m e 9 PP. Requisito: 1 arma cortante, ação poderosa. Ataque combinado: possível.',
+            { armaCortante: true },
+        ),
+        tec(
+            16,
+            6,
+            '',
+            'Sanbyakurokuju (360) Pound Ho',
+            9,
+            'poderosa',
+            'Até 33 m, Cone',
+            '12d6 Cortante',
+            '12d6',
+            'cortante',
+            'Ittoryu - Sanjuroku (36) Pound Hou aprimorada (6º Grau): projétil em espiral. Cada criatura na área faz Salvaguarda de Destreza: todo o dano se falhar, metade se passar. Requisito: 1 arma cortante, ação poderosa. Ataque combinado: possível.',
+            { armaCortante: true },
+        ),
+        tec(
+            12,
+            5,
+            '',
+            'Biken - Blue Bird',
+            8,
+            'poderosa',
+            'Toque',
+            '10d10 Perfurante',
+            '10d10',
+            'perfurante',
+            'Uma única estocada rápida e precisa, em jogada de ataque (Técnicas) corpo a corpo com arma. Requisito: 1 arma cortante, ação poderosa. Ataque combinado: possível. A versão defensiva é a "Biken - Blue Bird (barreira)".',
+            { armaCortante: true },
+        ),
+        tec(
+            12,
+            5,
+            '',
+            'Biken - Blue Bird (barreira)',
+            8,
+            'reacao',
+            'Pessoal',
+            'Nega todo o dano',
+            '',
+            undefined,
+            'Alternativa do Blue Bird, com a reação ao ser alvo de jogada de ataque (comum ou Técnicas) ou Salvaguarda de Força ou Destreza: o ataque é interrompido na metade, criando uma barreira de ar que protege de qualquer dano você e a área de um cone de 6 metros atrás de você. Requisito: 1 arma cortante.',
+            { reacao: { gatilho: 'ataque_declarado', alcance: 'si', reducao: { zerar: true } } },
+        ),
+        tec(
+            16,
+            6,
+            '',
+            'Ittoryu - Dai Shinkan',
+            12,
+            'poderosa',
+            'Toque',
+            '9d10 Cortante',
+            '9d10',
+            'cortante',
+            'Jogada de ataque (Técnicas) corpo a corpo com um corte de tanta pressão que desestabiliza o alvo. A criatura atingida faz Salvaguarda de Constituição ou fica "Atordoada" até o fim do próximo turno dela. Requisito: 1 arma cortante, ação poderosa. Ataque combinado: impossível.',
+            { armaCortante: true },
+        ),
+        tec(
+            20,
+            7,
+            '',
+            'Kamusari',
+            14,
+            'poderosa',
+            'Toque',
+            '14d10 Cortante',
+            '14d10',
+            'cortante',
+            'Corte com toda a força do espadachim, em jogada de ataque (Técnicas) corpo a corpo. A criatura de tamanho Grande ou menor é empurrada para um espaço desocupado a até 9 m se falhar numa Salvaguarda de Força; se bater em objeto ou estrutura de mais de 1,5 m de raio, recebe 3d8 de dano extra. Requisito: 1 arma cortante, ação poderosa. Ataque combinado: possível.',
+            { armaCortante: true },
+        ),
+        tec(
+            1,
+            undefined,
+            '',
+            'Kiri Shigure',
+            2,
+            'reacao',
+            'Toque',
+            'Reduz 2d8 do dano (até 10d8)',
+            '',
+            undefined,
+            'Ao fazer uma Salvaguarda de Força ou Destreza, execute um corte que reduz 2d8 do dano causado a você e a todas as criaturas em um cone de até 12 metros atrás de você. Se o ataque for totalmente reduzido, ele é refletido em um cone de 6 metros à frente (cada criatura faz Salvaguarda de Destreza: todo o dano se falhar, metade se passar). Gaste 1 PP para somar 1d8 à redução, até 10d8. Alternativamente, ao ser alvo de ataque (comum ou Técnicas) à distância, defleta, causando o dano só ao atacante que você veja a até 9 m. Requisito: reação, 1 arma cortante.',
+            {
+                reacao: { gatilho: 'ataque_declarado', alcance: 'si', reducao: { reserva: '2d8', mais: '1d8', maximo: 10, unica: true } },
+                armaCortante: true,
+            },
+        ),
+        tec(
+            6,
+            undefined,
+            '',
+            'Clear Lance',
+            6,
+            'bonus',
+            'Até 21 m, Linha',
+            'Desloca até 21 m sem provocar reações',
+            '',
+            undefined,
+            'Usando o impulso do golpe, lance-se em qualquer direção, até um local desocupado dentro do alcance. O movimento não provoca reações de nenhum tipo, nem as que ignoram isso. Logo depois, a próxima jogada de ataque (comum) antes do fim do seu turno tem vantagem. Alternativamente, receba só o deslocamento, gastando 2 PP. Requisito: ação bônus, 1 arma cortante.',
+            { armaCortante: true },
+        ),
+        tec(
+            12,
+            undefined,
+            '',
+            'Kiai no Tate',
+            10,
+            'reacao',
+            'Pessoal',
+            'PV não caem abaixo de 1 até o fim do turno',
+            '',
+            undefined,
+            'Ao ser alvo de jogada de ataque (comum ou Técnicas) ou Salvaguarda para reduzir ou não sofrer dano, eleve o espírito ao máximo: até o fim do seu turno, qualquer dano causado a você não consegue reduzir seus PV a menos de 1. Requisito: reação.',
+            { reacao: { gatilho: 'ataque_declarado', alcance: 'si', reducao: { piso: true } } },
+        ),
+    ],
+};
+
+/** Como cada Técnica do Espadachim causa o dano: ataque (Técnicas) ou Salvaguarda da área. Sem entrada, não há teste automático. */
+const TESTES_DO_ESPADACHIM: Record<string, TesteDaTecnica> = {
+    'Ittoryu - Baki': { tipo: 'ataque' },
+    Yakkodori: { tipo: 'ataque' },
+    'Trueno Bastardo': { tipo: 'ataque', secundaria: { atributo: 'con', efeito: 'Sangramento', aplica: { condicao: 'sangramento' } } },
+    'Trueno Bastardo (corte voador)': { tipo: 'salvaguarda', atributo: 'des', desvantagem: true, aoPassar: 'metade' },
+    'Ittoryu Iai - Shishi Sonson': { tipo: 'ataque' },
+    'Shi Shishi Sonson': { tipo: 'ataque' },
+    'Ittoryu - Sanjuroku (36) Pound Hou': { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'metade' },
+    'Sanbyakurokuju (360) Pound Ho': { tipo: 'salvaguarda', atributo: 'des', aoPassar: 'metade' },
+    'Biken - Blue Bird': { tipo: 'ataque' },
+    'Ittoryu - Dai Shinkan': {
+        tipo: 'ataque',
+        secundaria: { atributo: 'con', efeito: 'Atordoado até o fim do próximo turno dela', aplica: { condicao: 'atordoado', turnos: 1 } },
+    },
+    Kamusari: { tipo: 'ataque', secundaria: { atributo: 'for', efeito: 'Empurrada até 9 m' } },
+};
+for (const t of ESPADACHIM.tecnicas) if (TESTES_DO_ESPADACHIM[t.nome]) t.teste = TESTES_DO_ESPADACHIM[t.nome];
+
+export const ESTILOS: EstiloDados[] = [ATIRADOR, AVENTUREIRO, BRUTAMONTES, BLACK_LEG, HEROI, USUARIO_INSITO, ESPADACHIM];
+
+/** Todos os grupos de escolha de traços do estilo (a escolha única de antes mais as extras). */
+export const gruposDeEscolha = (estilo: EstiloDados | undefined): EscolhaDeTracos[] => [
+    ...(estilo?.escolhaDeTracos ? [estilo.escolhaDeTracos] : []),
+    ...(estilo?.escolhasDeTracos ?? []),
+];
 export const estiloPorId = (id: string | undefined | null): EstiloDados | undefined => ESTILOS.find((e) => e.id === id);
 
 /** O dado de vida do estilo para o caminho escolhido (o caminho pode mudá-lo). */
@@ -2627,6 +3337,7 @@ export function tecnicaDoEstilo(t: TecnicaDoEstilo & { origem: string }): Tecnic
         ...(t.reacao ? { reacao: t.reacao } : {}),
         ...(t.armarBonus ? { armarBonus: t.armarBonus } : {}),
         ...(t.margemCritica ? { margemCritica: t.margemCritica } : {}),
+        ...(t.armaCortante ? { armaCortante: true } : {}),
         ...(t.teste ? { teste: t.teste } : {}),
         ...(t.duracao ? { duracao: t.duracao } : {}),
         builder: 'estilo',

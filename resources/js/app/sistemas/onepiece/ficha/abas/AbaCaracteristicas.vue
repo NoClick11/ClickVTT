@@ -8,6 +8,7 @@ import { estilos, useFicha } from '../../contexto';
 import EditorCaracteristicaDialog from '../../EditorCaracteristicaDialog.vue';
 import {
     comBuffAlternado,
+    comEspadas,
     expandirRolagem,
     hakiDesligado,
     usosMax,
@@ -35,6 +36,14 @@ const grupos = computed(() => [
     { titulo: 'Ativas', itens: doTipo('ativa') },
     { titulo: 'Passivas', itens: doTipo('passiva') },
 ]);
+
+/** Espadachim: o número de armas cortantes empunhadas liga e desliga as Posturas sozinho. */
+const temPostura = computed(() => props.ficha.caracteristicas.some((c) => c.espadas));
+const espadas = computed(() => props.ficha.espadas ?? 0);
+const mudarEspadas = (n: number) => {
+    const novo = Math.max(0, Math.min(9, n));
+    salvar({ espadas: novo, caracteristicas: comEspadas(clonar(props.ficha.caracteristicas), novo) });
+};
 
 function mudar(fn: (lista: Caracteristica[]) => void) {
     const lista = clonar(props.ficha.caracteristicas);
@@ -163,6 +172,38 @@ function aoSalvar(c: Caracteristica) {
                 <p class="text-xs text-preto-400">
                     {{ ficha.profissao || 'Sem profissão' }}{{ ficha.fruta ? ' · ' + ficha.fruta : '' }} · dado de vida {{ ficha.dadosVida.tipo }}
                 </p>
+            </div>
+        </section>
+
+        <section
+            v-if="temPostura"
+            class="flex items-center justify-between gap-3 rounded-lg border border-ouro-500/30 bg-preto-900/60 p-3"
+            aria-label="Armas cortantes empunhadas"
+        >
+            <div class="min-w-0">
+                <p class="text-sm font-semibold text-ouro-50">Armas cortantes empunhadas</p>
+                <p class="text-xs text-preto-400">As Posturas de Espadachim ligam e desligam sozinhas por este número.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button
+                    type="button"
+                    class="size-8 rounded border border-preto-700 text-lg leading-none hover:bg-preto-800 disabled:opacity-40"
+                    :disabled="espadas <= 0"
+                    aria-label="Menos uma espada"
+                    @click="mudarEspadas(espadas - 1)"
+                >
+                    −
+                </button>
+                <span class="w-6 text-center font-serif text-xl font-semibold text-ouro-200" aria-live="polite">{{ espadas }}</span>
+                <button
+                    type="button"
+                    class="size-8 rounded border border-preto-700 text-lg leading-none hover:bg-preto-800 disabled:opacity-40"
+                    :disabled="espadas >= 9"
+                    aria-label="Mais uma espada"
+                    @click="mudarEspadas(espadas + 1)"
+                >
+                    +
+                </button>
             </div>
         </section>
 

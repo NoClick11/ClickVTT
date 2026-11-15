@@ -126,6 +126,8 @@ final class FichaOnePiece
             'duracoes' => [],
             // As opções escolhidas na escolha de traços do estilo (Escolha Diabólica do Usuário Ínsito)
             'estiloEscolhas' => [],
+            // Armas cortantes empunhadas agora (as Posturas do Espadachim ligam por este número)
+            'espadas' => 0,
             // O nome da Técnica Principal/Assinatura escolhida (Usuário Ínsito, Herói)
             'tecnicaPrincipal' => null,
             // Reduções de dano armadas por reações defensivas (Yamantaka: reserva em pontos; Corpo de Criatura: zera o próximo dano).
@@ -314,7 +316,8 @@ final class FichaOnePiece
         $r['inventario.*.itens.*.arma.danoExtra.*.tipo'] = ['nullable', 'string', 'max:40'];
 
         $r['tecnicaPrincipal'] = ['nullable', 'string', 'max:120'];
-        $r['estiloEscolhas'] = ['array', 'max:6'];
+        $r['estiloEscolhas'] = ['array', 'max:20'];
+        $r['espadas'] = ['integer:strict', 'between:0,9'];
         $r['estiloEscolhas.*'] = ['string', 'max:40'];
         $r['bonusTecnica'] = ['array'];
         $r['bonusTecnica.dados'] = $inteiro(0, 20);
@@ -361,6 +364,10 @@ final class FichaOnePiece
         $r['caracteristicas.*.nivelMin'] = ['nullable', 'integer:strict', 'between:1,20'];
         $r['caracteristicas.*.nivelMax'] = ['nullable', 'integer:strict', 'between:1,20'];
         $r['caracteristicas.*.interruptor'] = ['nullable', 'boolean:strict'];
+        // Postura do Espadachim: liga sozinha conforme o número de armas cortantes empunhadas (`espadas` da ficha)
+        $r['caracteristicas.*.espadas'] = ['nullable', 'array'];
+        $r['caracteristicas.*.espadas.exato'] = ['nullable', 'integer:strict', 'between:0,9'];
+        $r['caracteristicas.*.espadas.min'] = ['nullable', 'integer:strict', 'between:0,9'];
         // Dá uma Técnica Principal/Assinatura: ver `TecnicaPrincipalConfig` (TS)
         $r['caracteristicas.*.principal'] = ['nullable', 'array'];
         $r['caracteristicas.*.principal.pp'] = ['required_with:caracteristicas.*.principal', 'string', 'in:cima,baixo'];
@@ -507,6 +514,7 @@ final class FichaOnePiece
             $r["{$base}.reacao.reducao.zerar"] = ['nullable', 'boolean:strict'];
             $r["{$base}.reacao.reducao.unica"] = ['nullable', 'boolean:strict'];
             $r["{$base}.reacao.reducao.pvAbaixoDaMetade"] = ['nullable', 'boolean:strict'];
+            $r["{$base}.reacao.reducao.piso"] = ['nullable', 'boolean:strict']; // Kiai no Tate: o dano não leva os PV abaixo de 1 até o fim do turno
             $r["{$base}.reacao.reducao.gasta"] = ['nullable', 'array'];
             $r["{$base}.reacao.reducao.gasta.de"] = ['required_with:'.$base.'.reacao.reducao.gasta', 'string', 'max:80'];
             $r["{$base}.reacao.reducao.gasta.qtd"] = ['required_with:'.$base.'.reacao.reducao.gasta', 'integer:strict', 'between:1,30'];

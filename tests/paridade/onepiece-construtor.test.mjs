@@ -1256,3 +1256,198 @@ test('fruta pronta: ao subir de nível a ficha ganha as Técnicas da fruta que o
     assert.ok(campos3['akuma.lista'].some((t) => t.nome === 'Tamaito'));
     assert.ok(campos3.caracteristicas.some((c) => c.builder === 'fruta'));
 });
+
+// --- estilo de luta: Espadachim ---------------------------------------------------------------------------------------
+import { comEspadas } from '../../resources/js/app/sistemas/onepiece/regras.ts';
+import {
+    comAuraDemoniaca,
+    custoFinalDaTecnica,
+    danoMaximoDoDragao,
+    tipoDoDanoDaTecnica,
+} from '../../resources/js/app/sistemas/onepiece/tecnicaBonus.ts';
+
+const espadachim = (caminho = 'ittoryu', armaFavorita = 'Katana', extra = {}) =>
+    feito({
+        estilo: {
+            id: 'espadachim',
+            nome: 'Espadachim',
+            dado: 'd10',
+            primario: 'for',
+            caminho,
+            armaFavorita,
+            hbInata: 'perito-em-tecnicas',
+            pericias: ['atletismo', 'percepcao'],
+        },
+        especies: ['humano'],
+        variantes: [null],
+        dinheiro: { estilo: 'espadachim', dados: Array(5).fill(5), total: 25, bellys: 25000, fixo: 0, expressao: '5d10', multiplicador: 1000 },
+        ...extra,
+    });
+
+test('Espadachim: d10, FOR ou DES, salvaguardas DES e VON, 2 perícias da lista e arma favorita cortante', () => {
+    assert.deepEqual(problemasDaEtapa(espadachim(), 'estilo'), []);
+    assert.ok(problemasDaEtapa(espadachim(null), 'estilo').length > 0); // sem Postura
+    const e = espadachim();
+    assert.ok(
+        problemasDaEtapa({ ...e, estilo: { ...e.estilo, pericias: ['atletismo', 'acrobacia'] } }, 'estilo').some((m) => m.includes('permitidas')),
+    );
+    assert.ok(problemasDaEtapa({ ...e, estilo: { ...e.estilo, armaFavorita: 'Pistola' } }, 'estilo').some((m) => m.includes('arma favorita')));
+    const { campos } = camposDaCriacao(e);
+    assert.equal(campos['dadosVida.tipo'], 'd10');
+    assert.ok(['des', 'von'].every((s) => campos.salvaguardas.includes(s)));
+    assert.ok(campos.proficienciasArmas.includes('Armas Cortantes'));
+    // 2 katanas para quem favorece a katana; os sabres para as demais
+    const estilo = ESTILOS.find((x) => x.id === 'espadachim');
+    assert.deepEqual(itensDoEstilo(estilo, 'Katana'), [{ catalogo: 'katana', qtd: 2 }]);
+    assert.deepEqual(itensDoEstilo(estilo, 'Sabre'), [{ catalogo: 'sabre', qtd: 2 }]);
+});
+
+test('Espadachim: Técnicas por nível (graus 1 a 7), evoluções e reações defensivas', () => {
+    const tecnicas = (n) => camposDaCriacao(espadachim(), { nivel: n }).campos['tecnicas.lista'];
+    assert.deepEqual(
+        tecnicas(1).map((t) => t.nome),
+        ['Ittoryu - Baki', 'Kiri Shigure'],
+    );
+    assert.ok(tecnicas(6).some((t) => t.nome === 'Yakkodori' && t.custo === 5));
+    assert.ok(tecnicas(6).some((t) => t.nome === 'Ittoryu Iai - Shishi Sonson'));
+    assert.ok(!tecnicas(5).some((t) => t.nome === 'Ittoryu Iai - Shishi Sonson'));
+    assert.ok(tecnicas(20).some((t) => t.nome === 'Kamusari' && t.custo === 14));
+    assert.ok(tecnicas(20).filter((t) => t.armaCortante).length >= 12);
+    assert.deepEqual(tecnicas(1).find((t) => t.nome === 'Kiri Shigure').reacao.reducao, { reserva: '2d8', mais: '1d8', maximo: 10, unica: true });
+    assert.deepEqual(tecnicas(12).find((t) => t.nome === 'Biken - Blue Bird (barreira)').reacao.reducao, { zerar: true });
+    assert.deepEqual(tecnicas(12).find((t) => t.nome === 'Kiai no Tate').reacao.reducao, { piso: true });
+    assert.deepEqual(tecnicas(1)[0].teste, { tipo: 'ataque' });
+});
+
+test('Espadachim: a Postura do 1º nível liga sozinha pelo número de espadas empunhadas', () => {
+    const { campos } = camposDaCriacao(espadachim('ittoryu'));
+    assert.equal(campos.espadas, 1);
+    const postura = (cs) => cs.find((c) => c.nome.includes('Ittoryu'));
+    assert.equal(postura(campos.caracteristicas).ativa, true);
+    assert.deepEqual(
+        postura(campos.caracteristicas).efeitos.map((x) => [x.alvo, x.valor]),
+        [
+            ['ataque.arma', 2],
+            ['dano.arma', 3],
+        ],
+    );
+    assert.equal(postura(comEspadas(campos.caracteristicas, 2)).ativa, false);
+    assert.equal(camposDaCriacao(espadachim('nitoryu')).campos.espadas, 2);
+    // Manobra: sem espadas exigidas, não liga nem desliga
+    assert.equal(camposDaCriacao(espadachim('contra-atacar')).campos.espadas, undefined);
+    // o ataque da ficha acompanha a Postura
+    const f = { ...fichaDe(campos), espadas: 1 };
+    const com = calcular(f, {})['ataque.arma'];
+    const sem = calcular({ ...f, caracteristicas: comEspadas(f.caracteristicas, 2) }, {})['ataque.arma'];
+    assert.equal(com - sem, 2);
+});
+
+test('Espadachim: no 3º nível escolhe nova Postura e Empunhadura; no 6º, Postura e Aura; sem repetir', () => {
+    const f = (n, extra = {}) => ({ ...fichaCompleta(espadachim('ittoryu'), n), espadas: 1, estiloEscolhas: [], ...extra });
+    assert.deepEqual(
+        pendenciasDoNivel(f(2), 3).gruposDeEscolha.map((g) => g.id),
+        ['postura', 'empunhadura'],
+    );
+    assert.deepEqual(
+        pendenciasDoNivel(f(5), 6).gruposDeEscolha.map((g) => g.id),
+        ['postura', 'aura'],
+    );
+    assert.deepEqual(
+        pendenciasDoNivel(f(10), 11).gruposDeEscolha.map((g) => g.id),
+        ['postura-aperfeicoada'],
+    );
+    assert.ok(!pendenciasDoNivel(f(3), 4).escolhaDeTraco);
+    const esc = (tracos) => ({ hb: { id: 'robusto' }, tracosEscolhidos: tracos, pvGanho: 6 });
+    assert.ok(problemasDoNivel(f(2), esc({ postura: 'nitoryu' })).some((m) => m.includes('Empunhadura')));
+    assert.ok(problemasDoNivel(f(2), esc({ postura: 'ittoryu', empunhadura: 'forte' })).some((m) => m.includes('Postura'))); // a do 1º nível não repete
+    assert.deepEqual(problemasDoNivel(f(2), esc({ postura: 'nitoryu', empunhadura: 'forte' })), []);
+    const campos = camposDoNivel(f(2), esc({ postura: 'nitoryu', empunhadura: 'forte' }));
+    assert.deepEqual(campos.estiloEscolhas, ['nitoryu', 'forte']);
+    const nomes = campos.caracteristicas.map((c) => c.nome);
+    assert.ok(nomes.some((n) => n.includes('Nitoryu')) && nomes.includes('Lâmina Forte: Poder') && !nomes.includes('Lâmina Gentil'));
+    // a Postura nova liga conforme as espadas (1 espada: Nitoryu fica desligada)
+    assert.equal(campos.caracteristicas.find((c) => c.nome.includes('Nitoryu')).ativa, false);
+    // a Empunhadura não escolhida entra no 6º nível, e a Aura Bestial vale ao escolher
+    const seis = camposDoNivel(
+        f(5, { estiloEscolhas: ['nitoryu', 'forte'], caracteristicas: campos.caracteristicas }),
+        esc({ postura: 'santoryu', aura: 'aura-corvo' }),
+    );
+    assert.ok(seis.caracteristicas.some((c) => c.nome === 'Lâmina Gentil'));
+    assert.ok(seis.caracteristicas.some((c) => c.nome === 'Aura Bestial: Corvo' && c.efeitos[0].alvo === 'ataques.acao'));
+    assert.ok(!seis.caracteristicas.some((c) => c.nome === 'Aura Bestial: Touro'));
+});
+
+test('Espadachim: Empunhadura dá crítico 19-20, 18-20 (15º) e 17-20 (18º); Lâmina Forte soma metade do nível ao dano (máx. +5)', () => {
+    const car = (n) => camposDaCriacao(espadachim(), { nivel: n }).campos.caracteristicas;
+    const margem = (n) =>
+        car(n)
+            .filter((c) => c.nivelMin <= n && (c.nivelMax ?? 99) >= n)
+            .flatMap((c) => c.efeitos ?? [])
+            .find((e) => e.alvo === 'margem.corpo')?.valor;
+    assert.deepEqual([2, 3, 14, 15, 17, 18].map(margem), [undefined, 19, 19, 18, 18, 17]);
+    const forte = ESTILOS.find((x) => x.id === 'espadachim').tracos.find((t) => t.id === 'forte-poder');
+    assert.equal(forte.efeitos[0].valor, 'min(5,floor(@nivel/2))');
+});
+
+test('Espadachim: Apogeu, Domínio Negro, Aura Demoníaca e Dragão mexem no custo, no tipo e no dano máximo da Técnica', () => {
+    const car = (n, ligar = []) =>
+        camposDaCriacao(espadachim(), { nivel: n }).campos.caracteristicas.map((c) =>
+            ligar.some((l) => c.nome.includes(l)) ? { ...c, ativa: true } : c,
+        );
+    const ficha = (n, ligar) => ({ nivel: n, caracteristicas: car(n, ligar), bonusTecnica: {} });
+    const t = (custo, extra = {}) => ({
+        nome: 'T',
+        origem: '',
+        custo,
+        alcance: '',
+        efeito: '',
+        descricao: '',
+        rolagem: '10d10',
+        tipoDano: 'cortante',
+        armaCortante: true,
+        ...extra,
+    });
+    // sem Apogeu o custo é o do livro
+    assert.equal(custoFinalDaTecnica(ficha(12), t(8), 5), 8);
+    // Apogeu (15º): 1º grau grátis, 2º a 5º pela metade (para baixo), 6º em diante inteiro
+    assert.deepEqual(
+        [
+            [2, 1],
+            [4, 2],
+            [8, 5],
+            [9, 6],
+            [12, 6],
+        ].map(([c, g]) => custoFinalDaTecnica(ficha(15), t(c), g)),
+        [0, 2, 4, 9, 12],
+    );
+    // sem arma cortante como requisito, nada muda
+    assert.equal(custoFinalDaTecnica(ficha(15), t(8, { armaCortante: false }), 5), 8);
+    // Domínio Negro (19º, Espada Lendária ligada): 6º e 7º grau custam PP − grau
+    assert.deepEqual(
+        [
+            [12, 6],
+            [14, 7],
+        ].map(([c, g]) => custoFinalDaTecnica(ficha(19, ['Espada Lendária']), t(c), g)),
+        [6, 7],
+    );
+    assert.equal(custoFinalDaTecnica(ficha(19), t(14), 7), 14); // desligada: inteiro
+    // Aura Demoníaca de 2 PP: +2 PP, dano Verdadeiro e os efeitos só em Técnica cortante
+    const aura = ficha(14, ['Aura Demoníaca (2 PP)']);
+    assert.equal(custoFinalDaTecnica(aura, t(6), 4), 8);
+    assert.equal(tipoDoDanoDaTecnica(aura, t(6), 4), 'verdadeiro');
+    assert.equal(tipoDoDanoDaTecnica(aura, t(6, { tipoDano: 'perfurante' }), 4), 'perfurante');
+    assert.ok(comAuraDemoniaca(aura, t(6), 4) && !comAuraDemoniaca(ficha(14), t(6), 4));
+    // a forma (sem PP): mesmos efeitos, sem custo extra
+    assert.equal(custoFinalDaTecnica(ficha(14, ['Aura Demoníaca (forma)']), t(6), 4), 6);
+    assert.equal(tipoDoDanoDaTecnica(ficha(14, ['Aura Demoníaca (forma)']), t(6), 4), 'verdadeiro');
+    // montarDanoDaTecnica entrega o custo com o desconto
+    assert.equal(montarDanoDaTecnica(ficha(15), t(4), 3, '4d10').custo, 2);
+    // Dragão (ligada): dano máximo só em Técnica de 4º grau ou menos
+    const dragao = { nivel: 6, caracteristicas: [{ nome: 'Aura Bestial: Dragão', tipo: 'ativa', ativa: true }], bonusTecnica: {} };
+    assert.ok(danoMaximoDoDragao(dragao, t(6), 4) && !danoMaximoDoDragao(dragao, t(8), 5));
+    assert.equal(montarDanoDaTecnica(dragao, t(6), 4, '8d6').expressao, '48');
+    assert.equal(
+        montarDanoDaTecnica({ ...dragao, caracteristicas: [{ ...dragao.caracteristicas[0], ativa: false }] }, t(6), 4, '8d6').expressao,
+        '8d6',
+    );
+});

@@ -186,6 +186,85 @@
           "multiplicador": 1000
         }
       }
+    },
+    {
+      "id": "espadachim",
+      "nome": "Espadachim",
+      "equipamentoInicial": {
+        "porArma": {
+          "Adaga": [
+            {
+              "catalogo": "sabre",
+              "qtd": 2
+            }
+          ],
+          "Daito": [
+            {
+              "catalogo": "sabre",
+              "qtd": 2
+            }
+          ],
+          "Espada Montante": [
+            {
+              "catalogo": "sabre",
+              "qtd": 2
+            }
+          ],
+          "Katana": [
+            {
+              "catalogo": "katana",
+              "qtd": 2
+            }
+          ],
+          "Kogatana": [
+            {
+              "catalogo": "sabre",
+              "qtd": 2
+            }
+          ],
+          "Machado": [
+            {
+              "catalogo": "sabre",
+              "qtd": 2
+            }
+          ],
+          "Machado Grande": [
+            {
+              "catalogo": "sabre",
+              "qtd": 2
+            }
+          ],
+          "Nodachi": [
+            {
+              "catalogo": "sabre",
+              "qtd": 2
+            }
+          ],
+          "Rapieira": [
+            {
+              "catalogo": "sabre",
+              "qtd": 2
+            }
+          ],
+          "Sabre": [
+            {
+              "catalogo": "sabre",
+              "qtd": 2
+            }
+          ],
+          "Shikomizue": [
+            {
+              "catalogo": "sabre",
+              "qtd": 2
+            }
+          ]
+        },
+        "itens": [],
+        "dinheiro": {
+          "dados": "5d10",
+          "multiplicador": 1000
+        }
+      }
     }
   ]
 }

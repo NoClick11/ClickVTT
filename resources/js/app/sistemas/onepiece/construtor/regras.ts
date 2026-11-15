@@ -17,6 +17,7 @@ import {
 import {
     ativaNoNivel,
     ATRIBUTOS,
+    comEspadas,
     modificador,
     PERICIAS,
     PERICIAS_ESCOLHIVEIS,
@@ -719,6 +720,7 @@ export function caracteristicaDe(t: TracoEscolhido, nivel: number): Caracteristi
     if (traco.nivelMin && traco.nivelMin > 1) c.nivelMin = traco.nivelMin;
     if (traco.nivelMax) c.nivelMax = traco.nivelMax;
     if (traco.hb) c.hb = traco.hb;
+    if (traco.espadas) c.espadas = traco.espadas;
 
     return c;
 }
@@ -816,6 +818,8 @@ export function camposDaCriacao(
             ),
         );
     const pv = pvInicial(e);
+    // Espadachim: a ficha começa com as espadas que a Postura do 1º nível exige (as Posturas ligam sozinhas por este número)
+    const espadasIniciais = estilo?.caminhos?.find((c) => c.id === e.estilo.caminho)?.espadas;
     const campos: Record<string, unknown> = {
         especie: fisico.nome,
         estilo: estilo ? estilo.nome : e.estilo.nome.trim(),
@@ -836,6 +840,7 @@ export function camposDaCriacao(
                   estiloCaminho: e.estilo.caminho ?? '',
                   proficienciasArmas: [...new Set([...(atual.proficienciasArmas ?? []), ...estilo.proficiencias])],
                   habilidadesBasicas: hbs,
+                  ...(espadasIniciais !== undefined ? { espadas: espadasIniciais } : {}),
               }
             : {}),
         tamanho: fisico.categoria,
@@ -856,7 +861,7 @@ export function camposDaCriacao(
         'pv.atual': pv,
         'pp.atual': nivel * 4,
         ancestralidade: e.ancestralidade.trim(),
-        caracteristicas: [...manuais, ...geradas],
+        caracteristicas: comEspadas([...manuais, ...geradas], espadasIniciais ?? 0),
         // Técnicas que os traços dão (esfera de fogo): as do assistente são refeitas, as criadas à mão ficam.
         'tecnicas.lista': [
             ...(atual.tecnicas ?? []).filter((t) => !t.builder || t.builder === 'maestria' || t.builder === 'treinamento' || t.builder === 'criador'),

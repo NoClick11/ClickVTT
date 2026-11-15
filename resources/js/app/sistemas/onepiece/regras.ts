@@ -238,6 +238,8 @@ export interface ReacaoDeCombate {
         gasta?: { de: string; qtd: number };
         /** Só é oferecida com menos da metade dos PV máximos (Virada Heroica). */
         pvAbaixoDaMetade?: boolean;
+        /** Até o fim do turno o dano não derruba os PV abaixo de 1 (Kiai no Tate). */
+        piso?: boolean;
     };
 }
 export type CategoriaDeAcao = 'padrao' | 'poderosa' | 'bonus' | 'livre' | 'reacao';
@@ -354,6 +356,8 @@ export interface Caracteristica {
     nivelMax?: number;
     /** De qual Habilidade Básica ela vem (id do catálogo). */
     hb?: string;
+    /** Postura do Espadachim: liga sozinha conforme o número de armas cortantes empunhadas (`FichaOnePiece.espadas`). */
+    espadas?: { exato?: number; min?: number };
     /** Reação a um ataque (a característica com usos gasta um). */
     reacao?: ReacaoDeCombate;
     /** Etiquetas de combate mostradas na ficha (ex.: "Alcança alvos Enormes"). */
@@ -521,6 +525,8 @@ export interface FichaOnePiece {
     estiloEscolhas?: string[];
     /** O nome da Técnica Principal/Assinatura escolhida (a característica `principal` dá o benefício). */
     tecnicaPrincipal?: string | null;
+    /** Armas cortantes empunhadas agora (0 a 9): as Posturas do Espadachim ligam e desligam por este número. */
+    espadas?: number;
     /** NPC aliado dos jogadores: os jogadores não o atingem (só o mestre marca). */
     aliado?: boolean;
     /** Habilidades Básicas escolhidas (id, nível em que vieram e a opção, no Quebrador de Regras). */
@@ -596,6 +602,14 @@ export const hakiDesligado = (c: { builder?: string }, f: { haki?: { ativo?: boo
 /** A característica vale neste nível? Sem `nivelMin`/`nivelMax` vale sempre. Espelha `Regras::ativaNoNivel`. */
 export const ativaNoNivel = (c: { nivelMin?: number; nivelMax?: number }, nivel: number): boolean =>
     nivel >= (c.nivelMin ?? 1) && nivel <= (c.nivelMax ?? 99);
+
+/** A característica de Postura vale com este número de armas cortantes empunhadas? (`exato` ou `min`). Sem `espadas`, não depende de nada. */
+export const valeComEspadas = (c: { espadas?: { exato?: number; min?: number } }, n: number): boolean =>
+    !c.espadas || (c.espadas.exato !== undefined ? n === c.espadas.exato : n >= (c.espadas.min ?? 1));
+
+/** Liga e desliga as Posturas (`espadas`) conforme o número de armas cortantes empunhadas; as demais características ficam como estão. */
+export const comEspadas = <T extends { espadas?: { exato?: number; min?: number }; ativa?: boolean }>(lista: T[], n: number): T[] =>
+    lista.map((c) => (c.espadas ? { ...c, ativa: valeComEspadas(c, n) } : c));
 
 /** Os tamanhos de dado, em ordem, para o "aumento em um passo" (1d4 → 1d6 → 1d8 → 1d10 → 1d12). */
 export const DEGRAUS = [4, 6, 8, 10, 12];
@@ -1088,7 +1102,9 @@ export function camposDoDescanso(
             ...(c.alternativo && recarrega && tipo === 'longo' ? { alternativo: { ...c.alternativo, atual: c.alternativo.max } } : {}),
         };
     });
-    if (JSON.stringify(antes) !== JSON.stringify(depois)) campos.caracteristicas = depois;
+    // o descanso desliga os buffs, mas as Posturas seguem as armas que o personagem ainda empunha
+    const religadas = comEspadas(depois, f.espadas ?? 0);
+    if (JSON.stringify(antes) !== JSON.stringify(religadas)) campos.caracteristicas = religadas;
 
     if (tipo === 'longo') {
         if ((f.meito?.usados ?? 0) > 0) campos['meito.usados'] = 0;

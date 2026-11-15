@@ -83,6 +83,8 @@ export interface TracoDados {
     nivelMax?: number;
     /** Habilidade Básica de que o traço faz parte (catálogo das Habilidades Básicas). */
     hb?: string;
+    /** Só vale com este número de armas cortantes empunhadas (`exato`) ou com pelo menos `min` (Posturas do Espadachim): a ficha liga e desliga sozinha. */
+    espadas?: { exato?: number; min?: number };
 }
 
 export interface VarianteDados {

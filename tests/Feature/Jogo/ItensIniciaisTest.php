@@ -213,7 +213,7 @@ class ItensIniciaisTest extends TestCase
     public function test_so_estilo_que_rola_dinheiro_rola_e_so_o_dono_ou_o_mestre(): void
     {
         $c = $this->cenario();
-        $this->rolarDinheiro($c, 'espadachim')->assertStatus(422)->assertJsonValidationErrors('estilo');
+        $this->rolarDinheiro($c, 'estilo-inexistente')->assertStatus(422)->assertJsonValidationErrors('estilo');
         $this->rolarDinheiro($c, 'atirador', $c->mestre)->assertOk();
         $outra = $c->mesa->jogadores()->create(['nome' => 'Bia', 'papel' => 'jogador', 'cor' => '#16a34a']);
         $this->rolarDinheiro($c, 'atirador', $outra)->assertForbidden();

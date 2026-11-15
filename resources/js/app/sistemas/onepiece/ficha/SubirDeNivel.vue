@@ -2,11 +2,12 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { computed, reactive, ref, watch } from 'vue';
-import { estiloPorId } from '../construtor/dados/estilos';
+import { estiloPorId, type EscolhaDeTracos } from '../construtor/dados/estilos';
 import { HABILIDADES_BASICAS, hbPorId, OPCOES_APRIMORAMENTO, OPCOES_QUEBRADOR } from '../construtor/dados/habilidades-basicas';
 import { maestriaPorId, MAESTRIAS, problemasDaMaestria } from '../construtor/dados/maestrias';
 import {
     camposDoNivel,
+    chaveDoGrupo,
     hbsTidas,
     limiteDeAtributo,
     pendenciasDoNivel,
@@ -45,8 +46,10 @@ const maestriaId = ref('');
 const tracoId = ref('');
 const confirmou = ref(false);
 /** A escolha de traço do estilo (Escolha Diabólica): as opções que ainda não foram escolhidas e a marcada agora. */
-const tracoEscolhido = ref('');
-const opcoesDeTraco = computed(() => (estilo.value?.escolhaDeTracos?.opcoes ?? []).filter((o) => !(props.ficha.estiloEscolhas ?? []).includes(o.id)));
+const tracosEscolhidos = reactive<Record<string, string>>({});
+/** As opções do grupo que ainda não foram escolhidas (nem são o caminho do 1º nível). */
+const opcoesDoGrupo = (g: EscolhaDeTracos) =>
+    g.opcoes.filter((o) => !(props.ficha.estiloEscolhas ?? []).includes(o.id) && o.id !== props.ficha.estiloCaminho);
 const principal = ref<'armamento' | 'observacao' | ''>('');
 const maestriaAtual = computed(() => maestriaPorId(props.ficha.maestria || maestriaId.value));
 const tracosTidos = computed(() => (props.ficha.tracosDeMaestria ?? []).map((t) => t.id));
@@ -62,7 +65,7 @@ watch(
         maestriaId.value = '';
         tracoId.value = '';
         confirmou.value = false;
-        tracoEscolhido.value = '';
+        for (const k of Object.keys(tracosEscolhidos)) delete tracosEscolhidos[k];
         principal.value = '';
         avaTipo.value = 'dois';
         avaAtributos.value = [];
@@ -107,7 +110,7 @@ const escolhas = computed<EscolhasDoNivel>(() => ({
         pend.value.maestria && maestriaAtual.value && tracoId.value
             ? { id: maestriaAtual.value.id, traco: tracoId.value, confirmou: confirmou.value }
             : null,
-    tracoEscolhido: pend.value.escolhaDeTraco && tracoEscolhido.value ? tracoEscolhido.value : null,
+    tracosEscolhidos: pend.value.escolhaDeTraco ? { ...tracosEscolhidos } : undefined,
     pvGanho: Number(esc.pvGanho),
 }));
 const problemas = computed(() => problemasDoNivel(props.ficha, escolhas.value));
@@ -292,18 +295,16 @@ const inativo = 'border-preto-700 bg-preto-950 text-preto-200 hover:border-ouro-
                     </div>
                 </section>
 
-                <section v-if="pend.escolhaDeTraco" class="grid gap-2" :aria-label="estilo?.escolhaDeTracos?.nome">
-                    <h3 class="text-xs font-semibold uppercase tracking-wide text-preto-400">
-                        {{ estilo?.escolhaDeTracos?.nome }}: escolha um traço
-                    </h3>
-                    <div class="grid gap-2" role="group" :aria-label="estilo?.escolhaDeTracos?.nome">
+                <section v-for="g in pend.gruposDeEscolha" :key="chaveDoGrupo(g)" class="grid gap-2" :aria-label="g.nome">
+                    <h3 class="text-xs font-semibold uppercase tracking-wide text-preto-400">{{ g.nome }}: escolha um traço</h3>
+                    <div class="grid gap-2" role="group" :aria-label="g.nome">
                         <button
-                            v-for="o in opcoesDeTraco"
+                            v-for="o in opcoesDoGrupo(g)"
                             :key="o.id"
                             type="button"
-                            :class="[cartao, tracoEscolhido === o.id ? ativo : inativo]"
-                            :aria-pressed="tracoEscolhido === o.id"
-                            @click="tracoEscolhido = o.id"
+                            :class="[cartao, tracosEscolhidos[chaveDoGrupo(g)] === o.id ? ativo : inativo]"
+                            :aria-pressed="tracosEscolhidos[chaveDoGrupo(g)] === o.id"
+                            @click="tracosEscolhidos[chaveDoGrupo(g)] = o.id"
                         >
                             <span class="font-semibold">{{ o.nome }}</span>
                             <span class="block text-xs text-preto-400">{{ o.descricao }}</span>
