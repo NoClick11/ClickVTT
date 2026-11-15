@@ -139,6 +139,41 @@ final class Regras
         return $ignora;
     }
 
+    /**
+     * Espadachim, dano Cortante de arma cortante: a Lâmina Gentil (Precisão) ignora a resistência a Cortante e a Aura Bestial do Caranguejo (Corte
+     * Absoluto) ignora a invulnerabilidade a Cortante.
+     *
+     * @param  array<string, mixed>  $f
+     * @return list<string>
+     */
+    public static function cortanteDoEspadachim(array $f, ?string $tipoDano): array
+    {
+        if (! str_contains(Dano::normalizar((string) $tipoDano), 'cortante')) {
+            return [];
+        }
+        $ignora = [];
+        if (self::temCaracteristica($f, 'Lâmina Gentil')) {
+            $ignora[] = 'resistencia';
+        }
+        if (self::temCaracteristica($f, 'Aura Bestial: Caranguejo')) {
+            $ignora[] = 'imunidade';
+        }
+
+        return $ignora;
+    }
+
+    /** `cortanteDoEspadachim` para uma Técnica com arma cortante como requisito (`armaCortante` na ficha). */
+    public static function cortanteDaTecnica(array $f, string $nomeTecnica, ?string $tipoDano): array
+    {
+        foreach ($f['tecnicas']['lista'] ?? [] as $t) {
+            if (($t['nome'] ?? null) === $nomeTecnica && ! empty($t['armaCortante'])) {
+                return self::cortanteDoEspadachim($f, $tipoDano);
+            }
+        }
+
+        return [];
+    }
+
     /** Kick Festival (Shoot, Black Leg): a condição de cada d20 de 16 a 20 e a parte do corpo atingida. */
     public const KICK_FESTIVAL = [
         16 => ['letargico', 'Letárgico', 'barriga'], 17 => ['caido', 'Caído', 'perna'], 18 => ['contido', 'Impedido', 'nuca'],

@@ -163,6 +163,8 @@ class ChatController extends Controller
                 $ignoraTecnica = Regras::golpeMoralDaTecnica($ficha, trim($dados['rotulo']), $marcas['dano']['tipo'] ?? null);
                 // Técnica Principal (Usuário Ínsito): ignora resistências e invulnerabilidades
                 $ignoraTecnica = [...$ignoraTecnica, ...Regras::ignoraDaPrincipal($ficha, trim($dados['rotulo']))];
+                // Espadachim: Lâmina Gentil (Precisão) e Aura Bestial do Caranguejo, nas Técnicas com arma cortante
+                $ignoraTecnica = [...$ignoraTecnica, ...Regras::cortanteDaTecnica($ficha, trim($dados['rotulo']), $marcas['dano']['tipo'] ?? null)];
                 if ($ignoraTecnica) {
                     $marcas['dano']['ignora'] = $ignoraTecnica;
                 }
@@ -176,6 +178,8 @@ class ChatController extends Controller
                     && Regras::temCaracteristica($ficha, 'Deus da Arma: Traços Gerais')) {
                     $ignora = [...$ignora, 'resistencia'];
                 }
+                // Espadachim: o dano Cortante da arma passa por resistência (Lâmina Gentil) e invulnerabilidade (Caranguejo) a Cortante
+                $ignora = [...$ignora, ...Regras::cortanteDoEspadachim($ficha, $marcas['dano']['tipo'] ?? null)];
                 if (($itens[(int) $m[1]]['dados']['catalogo']['id'] ?? null) === 'chicote') {
                     $ignora = [...$ignora, ...Regras::golpeMoral($ficha, $marcas['dano']['tipo'] ?? null)];
                 }

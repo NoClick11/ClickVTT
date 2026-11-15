@@ -243,6 +243,10 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
             }
         } else {
             $campos = ($oferta['custo']['pp'] ?? 0) > 0 ? ['pp.atual' => max(0, (int) ($ficha['pp']['atual'] ?? 0) - (int) $oferta['custo']['pp'])] : [];
+            // Técnica que zera o dano (Blue Bird, barreira): os PP já foram pagos agora, então o dano zera sem gastar usos de característica
+            if (! empty($oferta['reducao']['zerar'])) {
+                $campos['reducao.zerarPago'] = true;
+            }
         }
 
         return [...$campos, ...$this->armarReducao($ficha, $oferta['reducao'] ?? null), ...$this->darPvTemporarios($ficha, $oferta['pvTemporarios'] ?? null)];
@@ -296,10 +300,12 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
         $atual = $ficha['reducao'] ?? [];
         $rolar = fn (string $d): array => [(int) app(Rolador::class)->rolar($d)['total'], (int) explode('d', $d)[0]];
         if (isset($reducao['reserva'])) {
-            [$total, $dados] = $rolar($reducao['reserva']);
+            $r = app(Rolador::class)->rolar($reducao['reserva']);
+            [$total, $dados] = [(int) $r['total'], (int) explode('d', $reducao['reserva'])[0]];
 
-            // `unica` (Parry Shot): a reserva vale só para o próximo dano que o personagem sofrer
-            return ['reducao.reserva' => $total, 'reducao.dados' => $dados, 'reducao.turnos' => $turnos, 'reducao.unica' => ! empty($reducao['unica'])];
+            // `unica` (Parry Shot): a reserva vale só para o próximo dano que o personagem sofrer. `_rolagem` é só para o chat (quem chama a tira dos campos)
+            return ['reducao.reserva' => $total, 'reducao.dados' => $dados, 'reducao.turnos' => $turnos, 'reducao.unica' => ! empty($reducao['unica']),
+                '_rolagem' => ['expressao' => $r['expressao'], 'termos' => $r['termos'], 'total' => $total, 'reserva' => $total]];
         }
         if (isset($reducao['mais'])) {
             $n = (int) explode('d', $reducao['mais'])[0];
@@ -308,12 +314,18 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
             if ($dados === 0) {
                 return [];
             }
-            $total = (int) app(Rolador::class)->rolar($dados.'d'.explode('d', $reducao['mais'])[1])['total'];
+            $r = app(Rolador::class)->rolar($dados.'d'.explode('d', $reducao['mais'])[1]);
+            $total = (int) $r['total'];
 
-            return ['reducao.reserva' => (int) ($atual['reserva'] ?? 0) + $total, 'reducao.dados' => (int) ($atual['dados'] ?? 0) + $dados];
+            return ['reducao.reserva' => (int) ($atual['reserva'] ?? 0) + $total, 'reducao.dados' => (int) ($atual['dados'] ?? 0) + $dados,
+                '_rolagem' => ['expressao' => $r['expressao'], 'termos' => $r['termos'], 'total' => $total, 'reserva' => (int) ($atual['reserva'] ?? 0) + $total]];
         }
         if (! empty($reducao['zerar'])) {
             return ['reducao.zerar' => true, 'reducao.turnos' => $turnos];
+        }
+        // Kiai no Tate: até o fim do turno o dano não leva os PV abaixo de 1
+        if (! empty($reducao['piso'])) {
+            return ['reducao.piso' => true, 'reducao.turnos' => $turnos];
         }
 
         return [];
@@ -362,6 +374,22 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
             $marcar[] = 'rompante';
             $avisos[] = 'Rompante Defensivo: o dano do ataque cai pela metade (1ª vez nesta rodada)';
         }
+        // Honra de um Espadachim: uma vez por rodada, o primeiro dano de ataque que atinge a frente do corpo é reduzido em 10
+        if ($dano > 0 && in_array($origem, ['ataque', 'tecnica'], true) && $tem('Honra de um Espadachim') && ! in_array('honra', $contexto['usados'] ?? [], true)) {
+            $reduzido = min($dano, 10);
+            $dano -= $reduzido;
+            $marcar[] = 'honra';
+            $avisos[] = "Honra de um Espadachim: −{$reduzido} no primeiro dano da rodada";
+        }
+        // Blue Bird (barreira): a Técnica de reação já foi paga e protege de qualquer dano
+        if (! empty($r['zerarPago'])) {
+            if ($dano > 0) {
+                $avisos[] = 'a barreira de ar anula o dano';
+                $dano = 0;
+            }
+            $campos['reducao.zerar'] = false;
+            $campos['reducao.zerarPago'] = false;
+        }
         if ($dano > 0 && ! empty($r['zerar'])) {
             $lista = $ficha['caracteristicas'] ?? [];
             foreach ($lista as $i => $c) {
@@ -399,6 +427,14 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
                 $campos['reducao.unica'] = false;
             }
             $avisos[] = "a reserva de redução absorve {$abs}".($unica ? '' : ' (restam '.($reserva - $abs).')');
+        }
+        // Kiai no Tate: o dano não deixa os PV (com os temporários) abaixo de 1 até o fim do turno
+        if ($dano > 0 && ! empty($r['piso'])) {
+            $limite = max(0, (int) ($ficha['pv']['atual'] ?? 0) + (int) ($ficha['pv']['temp'] ?? 0) - 1);
+            if ($dano > $limite) {
+                $avisos[] = 'Kiai no Tate: os PV não caem abaixo de 1';
+                $dano = $limite;
+            }
         }
 
         return ['final' => $dano, 'campos' => $campos, 'aviso' => $avisos ? ucfirst(implode('; ', $avisos)).'.' : null, 'marcar' => $marcar];

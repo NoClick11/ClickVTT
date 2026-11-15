@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Nucleo\Combate\Dano;
 use App\Sistemas\OnePiece\FichaOnePiece;
+use App\Sistemas\OnePiece\OnePiece;
 use App\Sistemas\OnePiece\Regras;
 use PHPUnit\Framework\TestCase;
 
@@ -133,5 +134,46 @@ class DanoDoEstiloTest extends TestCase
         $this->assertSame(19, Regras::margemDaTecnica($f, [], 'God Thread')); // técnica da Akuma
         $this->assertSame(20, Regras::margemDaTecnica($f, [], 'Inexistente'));
         $this->assertSame(2, Regras::margemDaTecnica($f, ['margem.tecnica' => -3], 'Overheat')); // nunca abaixo de 2
+    }
+
+    public function test_espadachim_lamina_gentil_ignora_resistencia_e_caranguejo_ignora_invulnerabilidade_a_cortante(): void
+    {
+        $f = $this->ficha([$this->car('Lâmina Gentil'), $this->car('Aura Bestial: Caranguejo')]);
+        $this->assertSame(['resistencia', 'imunidade'], Regras::cortanteDoEspadachim($f, 'Cortante'));
+        $this->assertSame([], Regras::cortanteDoEspadachim($f, 'Fogo')); // só dano Cortante
+        $this->assertSame([], Regras::cortanteDoEspadachim($this->ficha([]), 'Cortante'));
+        $this->assertSame(['resistencia'], Regras::cortanteDoEspadachim($this->ficha([$this->car('Lâmina Gentil')]), 'Cortante'));
+        // a Técnica só vale se tiver arma cortante como requisito
+        $f['tecnicas'] = ['lista' => [['nome' => 'Baki', 'armaCortante' => true], ['nome' => 'Soco']]];
+        $this->assertSame(['resistencia', 'imunidade'], Regras::cortanteDaTecnica($f, 'Baki', 'Cortante'));
+        $this->assertSame([], Regras::cortanteDaTecnica($f, 'Soco', 'Cortante'));
+        $alvo = ['resistencias' => ['Cortante'], 'imunidades' => []];
+        $this->assertSame(20, Dano::calcular($alvo, 20, 'Cortante', Regras::cortanteDoEspadachim($f, 'Cortante'))['final']);
+    }
+
+    public function test_espadachim_honra_reduz_10_uma_vez_por_rodada_e_blue_bird_e_kiai_protegem(): void
+    {
+        $honra = $this->ficha([$this->car('Honra de um Espadachim', ['nivelMin' => 5])], 5);
+        $honra['pv'] = ['atual' => 30, 'max' => 30, 'temp' => 0];
+        $r = (new OnePiece)->absorverDano($honra, 25, ['origem' => 'ataque']);
+        $this->assertSame([15, ['honra']], [$r['final'], $r['marcar']]);
+        $this->assertSame(0, (new OnePiece)->absorverDano($honra, 8, ['origem' => 'tecnica'])['final']); // não passa de 10
+        $this->assertSame(25, (new OnePiece)->absorverDano($honra, 25, ['origem' => 'ataque', 'usados' => ['honra']])['final']); // já gastou na rodada
+        $this->assertSame(25, (new OnePiece)->absorverDano($honra, 25, ['origem' => 'salvaguarda'])['final']); // só ataques
+        $this->assertSame(25, (new OnePiece)->absorverDano([...$honra, 'nivel' => 4], 25, ['origem' => 'ataque'])['final']);
+
+        // Blue Bird (barreira): a Técnica de reação já foi paga e nenhum dano passa
+        $barreira = [...$this->ficha([]), 'pv' => ['atual' => 30, 'max' => 30, 'temp' => 0], 'reducao' => ['zerar' => true, 'zerarPago' => true]];
+        $r = (new OnePiece)->absorverDano($barreira, 40, ['origem' => 'ataque']);
+        $this->assertSame(0, $r['final']);
+        $this->assertFalse($r['campos']['reducao.zerar']);
+        $this->assertFalse($r['campos']['reducao.zerarPago']);
+
+        // Kiai no Tate: o dano deixa 1 PV (contando os temporários) até o fim do turno e não se consome
+        $kiai = [...$this->ficha([]), 'pv' => ['atual' => 12, 'max' => 30, 'temp' => 3], 'reducao' => ['piso' => true]];
+        $this->assertSame(14, (new OnePiece)->absorverDano($kiai, 50, ['origem' => 'ataque'])['final']);
+        $this->assertSame(5, (new OnePiece)->absorverDano($kiai, 5, ['origem' => 'ataque'])['final']);
+        $zero = [...$kiai, 'pv' => ['atual' => 1, 'max' => 30, 'temp' => 0]];
+        $this->assertSame(0, (new OnePiece)->absorverDano($zero, 9, ['origem' => 'ataque'])['final']);
     }
 }

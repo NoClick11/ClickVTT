@@ -295,7 +295,7 @@ class TecnicaController extends Controller
                 $dados['alvos'][$i]['final'] = 0;
                 if ($base > 0) {
                     $fichaDoAtacante = $atacante ? $atacante->fichaCompleta($sistema) : [];
-                    $ignora = $atacante ? [...\App\Sistemas\OnePiece\Regras::golpeMoralDaTecnica($fichaDoAtacante, $t['nome'], $t['dano']['tipo']), ...\App\Sistemas\OnePiece\Regras::ignoraDaPrincipal($fichaDoAtacante, $t['nome'])] : [];
+                    $ignora = $atacante ? [...\App\Sistemas\OnePiece\Regras::golpeMoralDaTecnica($fichaDoAtacante, $t['nome'], $t['dano']['tipo']), ...\App\Sistemas\OnePiece\Regras::ignoraDaPrincipal($fichaDoAtacante, $t['nome']), ...\App\Sistemas\OnePiece\Regras::cortanteDaTecnica($fichaDoAtacante, $t['nome'], $t['dano']['tipo'])] : [];
                     $res = $aplicar->aplicar($mesa, $a['personagem_id'], $sistema, $base, $t['dano']['tipo'], $ignora, $t['atacante_id'], ['origem' => 'salvaguarda', 'atributo' => $t['atributo'] ?? null, 'passou' => (bool) $a['passou']]);
                     $dados['alvos'][$i]['final'] = $res['calculo']['final'];
                     $dados['alvos'][$i]['modo'] = $res['calculo']['modo'];
