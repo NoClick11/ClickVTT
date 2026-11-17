@@ -350,6 +350,7 @@ final class FichaOnePiece
         $r['reducao.zerar'] = ['boolean:strict'];
         $r['reducao.pvTemp'] = $inteiro(0, 9999); // PV temporários dados por uma reação (vencem no início do próximo turno do dono)
         $r['reducao.unica'] = ['boolean:strict'];
+        $r['reducao.metade'] = ['boolean:strict'];
         $r['reducao.turnos'] = $inteiro(0, 9);
 
         $r['condicoes'] = ['array', 'max:'.count(Condicoes::ids())];

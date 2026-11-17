@@ -57,7 +57,7 @@ import {
 import { caixaDaZona } from '../engine/zona';
 import { tocarSomCura, tocarSomDano } from '../nucleo/audio/sonsCombate';
 import { avaliarAcao, avaliarAtaque, type CategoriaAcao } from '../nucleo/combate/acoes';
-import type { AreaDeEfeito } from '../nucleo/combate/area';
+import { tokensNaArea, type AreaDeEfeito } from '../nucleo/combate/area';
 import { podeAtingir } from '../nucleo/combate/equipes';
 import type { ItemTurno } from '../nucleo/combate/estado';
 import { emCurso, itemAtual, normalizar as normalizarCombate, podeAgirAgora, rodadaParaFicha, semIniciativaDe } from '../nucleo/combate/estado';
@@ -2124,6 +2124,36 @@ async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
                 mpp,
             };
             const res = atingidos as ResultadoGabarito;
+            res.info = infoGabarito;
+            alvos = res;
+        } else if (uso.area?.noPonto && uso.area.metros) {
+            // Área num ponto à distância (Rede, Guilhotina): escolhe o ponto (até `noPonto` m) e atinge quem está na forma, sem quem usa
+            const de = centroDoToken(personagemId);
+            if (!de) return avisar('Coloque o seu token no mapa para marcar a área.');
+            const a = uso.area;
+            avisar(`Escolha o ponto da área (até ${a.noPonto} m): clique para confirmar, Esc cancela.`);
+            const retangulo = a.forma === 'retangulo' ? { metros: a.metros!, largura: a.largura ?? a.metros! } : undefined;
+            const centro = await escolherPonto({ de, maximo: a.noPonto, raio: a.forma === 'esfera' ? a.metros! : 0, retangulo });
+            erro.value = null;
+            if (!centro) return;
+            const mpp = metrosPorPixelDaPagina();
+            const medida = { forma: a.forma, metros: a.metros!, angulo: 0, ...(a.largura ? { largura: a.largura } : {}) };
+            const protegidos = new Set(protegidosDe(personagemId));
+            const naArea = tokensNaArea(
+                medida,
+                centro,
+                objetos.value
+                    .filter((o) => o.tipo === 'token' && o.personagem_id !== null && o.personagem_id !== personagemId && !protegidos.has(o.id))
+                    .map((o) => ({
+                        id: o.personagem_id as number,
+                        x: o.x + o.largura / 2,
+                        y: o.y + o.altura / 2,
+                        raio: Math.min(o.largura, o.altura) / 2,
+                    })),
+                mpp,
+            );
+            infoGabarito = { medida, origem: centro, mpp };
+            const res = naArea as ResultadoGabarito;
             res.info = infoGabarito;
             alvos = res;
         } else if (uso.area) {

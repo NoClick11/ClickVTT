@@ -217,9 +217,14 @@ export const limiteDeUsos = (u: TecnicaNpc['usos'] | undefined): number | null =
 
 /** A área da técnica no mapa (null = vale o alvo mirado). */
 export function areaDaTecnica(t: TecnicaNpc): UsoDeTecnica['area'] {
-    if (t.modo === 'ataque') return t.area ? { forma: t.area.forma, metros: t.alcance } : null;
+    if (!t.area) return null;
 
-    return t.area ? { forma: t.area.forma, metros: t.alcance } : null;
+    return {
+        forma: t.area.forma,
+        metros: t.alcance,
+        ...(t.area.largura ? { largura: t.area.largura } : {}),
+        ...(t.area.noPonto ? { noPonto: t.area.noPonto } : {}),
+    };
 }
 
 /** O `UsoDeTecnica` que a mesa já sabe executar (gabarito da área, salvaguarda coletiva, dano e gasto de PP). */
@@ -231,7 +236,8 @@ export function usoDaTecnica(npc: NpcDados, t: TecnicaNpc, ppAtual: number, tipo
         categoria: 'poderosa',
         camposDosPP: { 'pp.atual': Math.max(0, ppAtual - t.pp), ...extras },
         area: areaDaTecnica(t),
-        dano: t.dano ? { expressao: t.dano, tipo: tipoDano } : null,
+        ...(t.zona ? { zona: t.zona } : {}),
+        dano: t.dano ? { expressao: t.dano, tipo: tipoDano, ...(extrasDoAtaque(t).length ? { extras: extrasDoAtaque(t) } : {}) } : null,
     } satisfies Partial<UsoDeTecnica>;
     if (t.modo === 'ataque')
         return { ...base, teste: { tipo: 'ataque' }, ataqueFixo: { bonus: t.ataque?.bonus ?? 0, margemCritica: margemDeCritico(npc, t) } };
@@ -240,5 +246,5 @@ export function usoDaTecnica(npc: NpcDados, t: TecnicaNpc, ppAtual: number, tipo
 }
 
 /** As partes de dano extras do ataque no formato que o servidor espera (`dano.extras`); só as com dado preenchido. */
-export const extrasDoAtaque = (a: AtaqueNpc): { expressao: string; tipo: string | null }[] =>
+export const extrasDoAtaque = (a: Pick<AtaqueNpc, 'extras'>): { expressao: string; tipo: string | null }[] =>
     (a.extras ?? []).filter((x) => x.dano.trim()).map((x) => ({ expressao: x.dano.trim(), tipo: x.tipoDano.trim() || null }));

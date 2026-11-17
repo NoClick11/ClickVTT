@@ -177,7 +177,16 @@ export interface DadosDaTecnica {
         /** A condição que a Técnica aplicou a quem falhou (ou a imunidade que impediu). */
         condicao?: { nome: string; situacao: 'aplicada' | 'imune' | 'desconhecida' };
     }[];
-    dano?: { total: number; expressao: string; tipo: string | null; termos: TermoRolagem[]; repeticoes?: number[]; escolhida?: number };
+    dano?: {
+        total: number;
+        expressao: string;
+        tipo: string | null;
+        termos: TermoRolagem[];
+        repeticoes?: number[];
+        escolhida?: number;
+        /** Danos de outro tipo (Fogo...): rolam à parte e valem por alvo como o principal. */
+        extras?: { total: number; expressao: string; tipo: string | null }[];
+    };
 }
 
 export const dadosDaTecnica = (m: { dados: unknown }): DadosDaTecnica => m.dados as DadosDaTecnica;

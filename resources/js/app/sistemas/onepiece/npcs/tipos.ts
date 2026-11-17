@@ -30,6 +30,14 @@ export interface TextoNpc {
     texto: string;
     pp?: number;
     usos?: UsosNpc;
+    /** Só em reação defensiva: o que a mesa faz sozinha quando o mestre a usa na janela de reação (paga o PP e reduz o dano). */
+    auto?: AutoNpc;
+}
+
+/** Efeito automático de uma reação defensiva de NPC: reserva de redução em dados (`10d8`), metade do próximo dano ou bônus na CR contra o golpe. */
+export interface AutoNpc {
+    reducao?: { reserva?: string; metade?: boolean };
+    defesa?: number;
 }
 
 /** Técnica de Combate (ação poderosa): ataque, área ou alvo único com salvaguarda, com efeito em texto. */
@@ -44,13 +52,18 @@ export interface TecnicaNpc {
     ataque?: { tipo: 'corpo' | 'distancia'; bonus: number };
     /** metros; área/alvo em linha ou cone: comprimento */
     alcance: number;
-    area?: { forma: 'cone' | 'linha'; largura?: number };
+    /** `retangulo`: `alcance` é o comprimento e `largura` o outro lado (m). `noPonto`: a área sai num ponto escolhido a até estes metros (Rede, Guilhotina). */
+    area?: { forma: 'cone' | 'linha' | 'esfera' | 'retangulo'; largura?: number; noPonto?: number };
     dano?: string;
     /** tipos possíveis (o mestre escolhe um quando há mais de um) */
     tipoDano: string[];
+    /** Partes do dano de outro tipo (ex.: `4d8 Fogo` além do `4d8 Contundente`): rolam à parte e cada uma respeita as defesas do próprio tipo. */
+    extras?: { dano: string; tipoDano: string }[];
     salvaguarda?: { atributo: AtributoNpc; cd: number; metade: boolean };
     /** margem de crítico quando diferente de 20 (ex.: 18) */
     critico?: number;
+    /** A Técnica deixa uma Zona no mapa, na área marcada: dano (dado e tipo) a quem entra ou começa o turno nela, terreno difícil e se nasce visível. */
+    zona?: { dano_dados?: string; dano_tipo?: string; terreno_dificil?: boolean; visivel?: boolean };
     efeito?: string;
 }
 

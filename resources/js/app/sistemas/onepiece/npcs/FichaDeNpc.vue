@@ -7,6 +7,7 @@ import CampoNumero from '../../../nucleo/ui/CampoNumero.vue';
 import SelectTipoDano from '../../../nucleo/ui/SelectTipoDano.vue';
 import SeletorTiposDano from '../../../nucleo/ui/SeletorTiposDano.vue';
 import type { UsoDeTecnica } from '../contexto';
+import { HABILIDADES_COMUNS } from './fabricas';
 import {
     alcanceDoAtaque,
     alcanceMaximoDoAtaque,
@@ -154,10 +155,10 @@ const descricaoDaTecnica = (t: TecnicaNpc) => {
     if (t.modo === 'ataque') partes.push(`${t.ataque!.tipo === 'corpo' ? 'Corpo a corpo' : 'À distância'} ${comSinalNpc(t.ataque!.bonus)}`);
     partes.push(
         t.area
-            ? `${t.area.forma === 'cone' ? 'Cone' : 'Linha'} ${String(t.alcance).replace('.', ',')} m`
+            ? `${{ cone: 'Cone', linha: 'Linha', esfera: 'Esfera', retangulo: 'Retângulo' }[t.area.forma]} ${String(t.alcance).replace('.', ',')}${t.area.largura ? ` x ${String(t.area.largura).replace('.', ',')}` : ''} m${t.area.noPonto ? ` (num ponto a até ${String(t.area.noPonto).replace('.', ',')} m)` : ''}`
             : `alcance ${String(t.alcance).replace('.', ',')} m`,
     );
-    if (t.dano) partes.push(`${t.dano} ${t.tipoDano.join('/')}`);
+    if (t.dano) partes.push([`${t.dano} ${t.tipoDano.join('/')}`, ...(t.extras ?? []).map((x) => `${x.dano} ${x.tipoDano}`)].join(' + '));
     if (t.salvaguarda) partes.push(`Salv. ${ROTULO_ATRIBUTO_NPC[t.salvaguarda.atributo]} CD ${t.salvaguarda.cd}`);
 
     return partes.join(' · ');
@@ -198,6 +199,20 @@ const novaTecnica = (): TecnicaNpc => ({
     dano: '2d10',
     tipoDano: ['Contundente'],
 });
+function adicionarComum(chave: 'aspectos' | 'acoesBonus' | 'reacoes', e: Event) {
+    const el = e.target as HTMLSelectElement;
+    const h = HABILIDADES_COMUNS[chave][Number(el.value)];
+    if (h && rascunho.value) rascunho.value[chave].push(h.criar(nomeEditado.value.trim() || 'NPC'));
+    el.value = '';
+}
+const tipoDoAuto = (t: TextoNpc): '' | 'reserva' | 'metade' | 'defesa' =>
+    t.auto?.reducao?.reserva !== undefined ? 'reserva' : t.auto?.reducao?.metade ? 'metade' : t.auto?.defesa !== undefined ? 'defesa' : '';
+function mudarAuto(t: TextoNpc, tipo: string) {
+    if (tipo === 'reserva') t.auto = { reducao: { reserva: '5d8' } };
+    else if (tipo === 'metade') t.auto = { reducao: { metade: true } };
+    else if (tipo === 'defesa') t.auto = { defesa: 2 };
+    else delete t.auto;
+}
 const novoTexto = (): TextoNpc => ({ nome: 'Nome', texto: '' });
 const num = (e: Event) => Number((e.target as HTMLInputElement).value);
 const campo =
@@ -647,14 +662,41 @@ const rotuloSecao = 'mb-1 text-[11px] font-semibold uppercase tracking-wider tex
                         aria-label="Forma"
                         @change="
                             ($event.target as HTMLSelectElement).value
-                                ? (t.area = { forma: ($event.target as HTMLSelectElement).value as 'cone' | 'linha' })
+                                ? (t.area = { forma: ($event.target as HTMLSelectElement).value as 'cone' | 'linha' | 'esfera' | 'retangulo' })
                                 : (t.area = undefined)
                         "
                     >
                         <option value="">sem forma</option>
                         <option value="cone">Cone</option>
                         <option value="linha">Linha</option>
+                        <option value="esfera">Esfera (raio)</option>
+                        <option value="retangulo">Retângulo</option>
                     </select>
+                    <template v-if="t.area">
+                        <input
+                            v-if="t.area.forma === 'retangulo'"
+                            :value="t.area.largura ?? ''"
+                            type="number"
+                            min="0.5"
+                            step="0.5"
+                            :class="[campo, 'col-span-3']"
+                            title="Largura do retângulo (m); o comprimento é o alcance"
+                            aria-label="Largura (m)"
+                            placeholder="largura (m)"
+                            @input="t.area.largura = num($event) || undefined"
+                        />
+                        <input
+                            :value="t.area.noPonto ?? ''"
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            :class="[campo, 'col-span-3']"
+                            title="Vazio: a área sai de quem usa. Com valor: a área sai num ponto escolhido no mapa, a até estes metros."
+                            aria-label="Alcance até o ponto (m)"
+                            placeholder="num ponto até (m)"
+                            @input="t.area.noPonto = num($event) || undefined"
+                        />
+                    </template>
                     <input
                         :value="t.dano ?? ''"
                         :class="[campo, 'col-span-3']"
@@ -663,6 +705,31 @@ const rotuloSecao = 'mb-1 text-[11px] font-semibold uppercase tracking-wider tex
                         @input="t.dano = ($event.target as HTMLInputElement).value || undefined"
                     />
                     <SeletorTiposDano v-model="t.tipoDano" :opcoes="TIPOS_DE_DANO_ONE_PIECE" rotulo="Tipos de dano" class="col-span-4" />
+                    <template v-for="(x, xi) in t.extras ?? []" :key="xi">
+                        <input v-model="x.dano" :class="[campo, 'col-span-3 col-start-1']" placeholder="4d8" aria-label="Dado do dano extra" />
+                        <SelectTipoDano
+                            v-model="x.tipoDano"
+                            :opcoes="TIPOS_DE_DANO_ONE_PIECE"
+                            :class="[campo, 'col-span-3']"
+                            aria-label="Tipo do dano extra"
+                        />
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            class="col-span-1 size-7 text-red-300"
+                            aria-label="Remover dano extra"
+                            @click="t.extras?.splice(xi, 1)"
+                            ><Trash2 class="size-3.5"
+                        /></Button>
+                    </template>
+                    <Button
+                        v-if="(t.extras?.length ?? 0) < 4"
+                        size="sm"
+                        variant="ghost"
+                        class="col-span-12 h-6 w-fit gap-1 px-2 text-[11px]"
+                        @click="(t.extras ??= []).push({ dano: '1d6', tipoDano: 'fogo' })"
+                        ><Plus class="size-3" /> Dano de outro tipo</Button
+                    >
                     <input
                         :value="t.usos && 'max' in t.usos ? t.usos.max : 0"
                         type="number"
@@ -672,6 +739,40 @@ const rotuloSecao = 'mb-1 text-[11px] font-semibold uppercase tracking-wider tex
                         aria-label="Usos por dia"
                         @input="t.usos = num($event) ? { max: num($event), periodo: 'dia' } : undefined"
                     />
+                    <template v-if="t.area">
+                        <label class="col-span-12 flex items-center gap-1.5 text-[11px] text-preto-200"
+                            ><input
+                                type="checkbox"
+                                class="size-3.5 accent-ouro-500"
+                                :checked="!!t.zona"
+                                @change="t.zona = ($event.target as HTMLInputElement).checked ? { dano_dados: '1d6', dano_tipo: 'fogo' } : undefined"
+                            />
+                            Deixa uma zona no mapa (na área marcada)</label
+                        >
+                        <template v-if="t.zona">
+                            <input
+                                :value="t.zona.dano_dados ?? ''"
+                                :class="[campo, 'col-span-3 col-start-1']"
+                                placeholder="1d6 (sem dano: vazio)"
+                                aria-label="Dano da zona"
+                                @input="t.zona.dano_dados = ($event.target as HTMLInputElement).value.trim() || undefined"
+                            />
+                            <SelectTipoDano
+                                :model-value="t.zona.dano_tipo ?? ''"
+                                :opcoes="TIPOS_DE_DANO_ONE_PIECE"
+                                vazio="Sem tipo"
+                                :class="[campo, 'col-span-3']"
+                                aria-label="Tipo do dano da zona"
+                                @update:model-value="t.zona.dano_tipo = $event || undefined"
+                            />
+                            <label class="col-span-3 flex items-center gap-1 text-[10px]"
+                                ><input v-model="t.zona.terreno_dificil" type="checkbox" /> terreno difícil</label
+                            >
+                            <label class="col-span-3 flex items-center gap-1 text-[10px]"
+                                ><input v-model="t.zona.visivel" type="checkbox" /> visível aos jogadores</label
+                            >
+                        </template>
+                    </template>
                     <input
                         :value="t.efeito ?? ''"
                         :class="[campo, 'col-span-11']"
@@ -758,11 +859,49 @@ const rotuloSecao = 'mb-1 text-[11px] font-semibold uppercase tracking-wider tex
                             @click="rascunho[chave].splice(i, 1)"
                             ><Trash2 class="size-3.5"
                         /></Button>
+                        <template v-if="chave === 'reacoes'">
+                            <select
+                                :value="tipoDoAuto(t)"
+                                :class="[campo, 'col-span-6']"
+                                title="Reação defensiva que a mesa aplica sozinha ao ser usada na janela de reação"
+                                aria-label="Efeito automático da reação"
+                                @change="mudarAuto(t, ($event.target as HTMLSelectElement).value)"
+                            >
+                                <option value="">Sem efeito automático (só texto)</option>
+                                <option value="reserva">Reduz dano em dados</option>
+                                <option value="metade">Metade do próximo dano</option>
+                                <option value="defesa">Bônus na CR contra o golpe</option>
+                            </select>
+                            <input
+                                v-if="tipoDoAuto(t) === 'reserva'"
+                                :value="t.auto?.reducao?.reserva ?? ''"
+                                :class="[campo, 'col-span-3']"
+                                placeholder="10d8"
+                                aria-label="Dados da redução"
+                                @input="t.auto = { reducao: { reserva: ($event.target as HTMLInputElement).value.trim() } }"
+                            />
+                            <input
+                                v-else-if="tipoDoAuto(t) === 'defesa'"
+                                :value="t.auto?.defesa ?? 0"
+                                type="number"
+                                min="1"
+                                max="10"
+                                :class="[campo, 'col-span-3']"
+                                aria-label="Bônus na CR"
+                                @input="t.auto = { defesa: num($event) }"
+                            />
+                        </template>
                         <textarea v-model="t.texto" rows="2" :class="[campo, 'col-span-12']" aria-label="Texto" />
                     </div>
-                    <Button size="sm" variant="ghost" class="h-7 w-fit gap-1 px-2 text-xs" @click="rascunho[chave].push(novoTexto())"
-                        ><Plus class="size-3.5" /> Adicionar</Button
-                    >
+                    <div class="flex flex-wrap items-center gap-1">
+                        <Button size="sm" variant="ghost" class="h-7 w-fit gap-1 px-2 text-xs" @click="rascunho[chave].push(novoTexto())"
+                            ><Plus class="size-3.5" /> Adicionar</Button
+                        >
+                        <select :class="[campo, 'w-auto max-w-56']" aria-label="Adicionar habilidade comum" @change="adicionarComum(chave, $event)">
+                            <option value="">+ Habilidade comum…</option>
+                            <option v-for="(h, hi) in HABILIDADES_COMUNS[chave]" :key="h.rotulo" :value="hi">{{ h.rotulo }}</option>
+                        </select>
+                    </div>
                 </div>
             </section>
         </template>

@@ -112,7 +112,11 @@ const aoPassar = computed(() => (d.value.tecnica.aoPassar === 'metade' ? 'metade
                 <span
                     >Dano rolado: <strong>{{ d.dano.expressao }}</strong
                     ><span v-if="d.dano.tipo"> · {{ d.dano.tipo }}</span
-                    ><span v-if="d.dano.repeticoes?.length"> · rolou {{ d.dano.repeticoes.length }}×: {{ d.dano.repeticoes.join(' e ') }}</span></span
+                    ><span v-if="d.dano.repeticoes?.length"> · rolou {{ d.dano.repeticoes.length }}×: {{ d.dano.repeticoes.join(' e ') }}</span
+                    ><span v-for="(x, i) in d.dano.extras ?? []" :key="i" class="block"
+                        >+ <strong>{{ x.expressao }}</strong
+                        ><span v-if="x.tipo"> · {{ x.tipo }}</span> = {{ x.total }}</span
+                    ></span
                 >
                 <span class="font-serif text-2xl font-bold tabular-nums">{{ d.dano.total }}</span>
             </div>

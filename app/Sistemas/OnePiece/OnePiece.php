@@ -189,6 +189,17 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
                 }
             }
         }
+        // Reações defensivas de NPC (`ficha.npc.reacoes[].auto`): o mestre as usa na janela de reação; custam PP (sem PP não são oferecidas)
+        foreach ($ficha['npc']['reacoes'] ?? [] as $i => $r) {
+            $auto = is_array($r) ? ($r['auto'] ?? null) : null;
+            if (! is_array($auto) || ($auto['reducao'] ?? $auto['defesa'] ?? null) === null || (int) ($r['pp'] ?? 0) > (int) ($ficha['pp']['atual'] ?? 0)) {
+                continue;
+            }
+            $monta("n:{$i}", [
+                'nome' => $r['nome'] ?? 'Reação', 'descricao' => $r['texto'] ?? '',
+                'reacao' => ['gatilho' => $gatilho, 'alcance' => 'si', ...array_intersect_key($auto, ['reducao' => 1, 'defesa' => 1])],
+            ], (int) ($r['pp'] ?? 0) > 0 ? ['pp' => (int) $r['pp']] : []);
+        }
         foreach ($ficha['caracteristicas'] ?? [] as $i => $c) {
             if (! Regras::ativaNoNivel($c, $nivel) || Regras::hakiDesligado($c, $ficha)) {
                 continue;
@@ -323,6 +334,10 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
         if (! empty($reducao['zerar'])) {
             return ['reducao.zerar' => true, 'reducao.turnos' => $turnos];
         }
+        // Metade do próximo dano (Têmpera de Aço Rubro, NPC)
+        if (! empty($reducao['metade'])) {
+            return ['reducao.metade' => true, 'reducao.turnos' => $turnos];
+        }
         // Kiai no Tate: até o fim do turno o dano não leva os PV abaixo de 1
         if (! empty($reducao['piso'])) {
             return ['reducao.piso' => true, 'reducao.turnos' => $turnos];
@@ -415,6 +430,11 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
                 break;
             }
             $campos['reducao.zerar'] = false;
+        }
+        if ($dano > 0 && ! empty($r['metade'])) {
+            $avisos[] = 'o dano cai pela metade ('.$dano.' → '.intdiv($dano, 2).')';
+            $dano = intdiv($dano, 2);
+            $campos['reducao.metade'] = false;
         }
         $reserva = (int) ($r['reserva'] ?? 0);
         if ($dano > 0 && $reserva > 0) {

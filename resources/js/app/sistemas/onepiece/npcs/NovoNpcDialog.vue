@@ -67,7 +67,7 @@ const emBranco = () => {
                     </div>
                     <div class="flex gap-1" role="tablist" aria-label="Facção">
                         <button
-                            v-for="f in ['Todos', 'Pirata', 'Marinha'] as const"
+                            v-for="f in ['Todos', 'Pirata', 'Marinha', 'Outro'] as const"
                             :key="f"
                             type="button"
                             role="tab"
@@ -122,7 +122,10 @@ const emBranco = () => {
                             </template>
                         </p>
                         <ul class="mb-2 grid gap-0.5 text-xs">
-                            <li v-for="a in escolhido.ataques" :key="a.nome">{{ a.nome }}: {{ comSinal(a.bonus) }}, {{ a.dano }} {{ a.tipoDano }}</li>
+                            <li v-for="a in escolhido.ataques" :key="a.nome">
+                                {{ a.nome }}: {{ comSinal(a.bonus) }}, {{ a.dano }} {{ a.tipoDano
+                                }}<template v-for="(x, xi) in a.extras ?? []" :key="xi"> + {{ x.dano }} {{ x.tipoDano }}</template>
+                            </li>
                         </ul>
                         <p v-if="escolhido.tecnicas.length" class="text-xs text-preto-300">
                             <b>Técnicas:</b> {{ escolhido.tecnicas.map((t) => t.nome).join(', ') }}

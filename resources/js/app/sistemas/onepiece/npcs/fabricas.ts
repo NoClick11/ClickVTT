@@ -66,6 +66,29 @@ export const cone = (
     salvaguarda: { atributo, cd, metade: true },
     ...(usos ? { usos } : {}),
 });
+/** Área circular (raio em metros, centrada em quem usa): esfera, cilindro ou emanação. */
+export const esfera = (
+    nome: string,
+    grau: number,
+    pp: number,
+    raio: number,
+    dano: string,
+    tipoDano: string[],
+    atributo: AtributoNpc,
+    cd: number,
+    extra: { usos?: UsosNpc; efeito?: string; extras?: TecnicaNpc['extras'] } = {},
+): TecnicaNpc => ({
+    nome,
+    grau,
+    pp,
+    modo: 'area',
+    alcance: raio,
+    area: { forma: 'esfera' },
+    dano,
+    tipoDano,
+    salvaguarda: { atributo, cd, metade: true },
+    ...extra,
+});
 export const linha = (
     nome: string,
     grau: number,
@@ -233,9 +256,13 @@ export const reacao = {
         t(
             'Aparar',
             `O ${s} adiciona 5 à sua CR contra jogadas de ataque (comum ou Técnicas) que poderia atingi-lo. Para tanto, o ${s} deve poder ver o atacante e estar empunhando uma arma.`,
+            { auto: { defesa: 5 } },
         ),
     defesaPoderosa: (s: string, pp: number, dados: number) =>
-        t('Defesa Poderosa', `O ${s} se protege de golpes, reduzindo ${dados}d8 pontos de dano, até o início do próximo turno dele.`, { pp }),
+        t('Defesa Poderosa', `O ${s} se protege de golpes, reduzindo ${dados}d8 pontos de dano, até o início do próximo turno dele.`, {
+            pp,
+            auto: { reducao: { reserva: `${dados}d8` } },
+        }),
     ordemCruel: (s: string) =>
         t(
             'Ordem Cruel',
@@ -257,3 +284,28 @@ export const lendarias = (s: string): { n: number; texto: string; opcoes: TextoN
 
 export { t as texto };
 export type { AtaqueNpc };
+
+/** Habilidades que quase todo NPC tem: o editor oferece cada uma com um clique (`s` é como o texto chama o NPC). As reações defensivas já vêm automáticas. */
+export const HABILIDADES_COMUNS: Record<'aspectos' | 'acoesBonus' | 'reacoes', { rotulo: string; criar: (s: string) => TextoNpc }[]> = {
+    aspectos: [
+        { rotulo: 'Evasão', criar: asp.evasao },
+        { rotulo: 'Corpo Resistente', criar: asp.corpoResistente },
+        { rotulo: 'Reflexo', criar: asp.reflexo },
+        { rotulo: 'Reativo', criar: asp.reativo },
+        { rotulo: 'Especialista em Armas', criar: asp.especialista },
+        { rotulo: 'Movimentação Livre', criar: asp.movLivre },
+        { rotulo: 'Bucaneiro (1 dado)', criar: (s) => asp.bucaneiro(s, 1) },
+        { rotulo: 'Treino de Combate (1 dado)', criar: (s) => asp.treino(s, 1) },
+    ],
+    acoesBonus: [
+        { rotulo: 'Descuidado', criar: bonus.descuidado },
+        { rotulo: 'Passo Relâmpago (4 PP)', criar: bonus.passoRelampago },
+    ],
+    reacoes: [
+        { rotulo: 'Ataque de Oportunidade', criar: (s) => reacao.ataqueOp(s) },
+        { rotulo: 'Redirecionar Ataque', criar: (s) => reacao.redirecionar(s) },
+        { rotulo: 'Retaliação', criar: reacao.retaliacao },
+        { rotulo: 'Aparar (+5 CR, automática)', criar: reacao.aparar },
+        { rotulo: 'Defesa Poderosa (5 PP, 10d8, automática)', criar: (s) => reacao.defesaPoderosa(s, 5, 10) },
+    ],
+};
