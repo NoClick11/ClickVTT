@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Plus, X } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
+import { TIPOS_DE_DANO_DND } from '../../nucleo/combate/tiposDano';
 import { dadosValidos } from '../../nucleo/efeitos/efeitos';
+import SelectTipoDano from '../../nucleo/ui/SelectTipoDano.vue';
 import { ATRIBUTOS, type DadosItemDnd5e } from './regras';
 
 /**
@@ -156,7 +158,7 @@ const campoLinha = campo.replace('w-full ', '');
             </label>
             <label
                 ><span :class="rotulo">Tipo de dano</span
-                ><input v-model="arma.tipoDano" type="text" maxlength="30" placeholder="cortante" :class="campo" aria-label="Tipo de dano"
+                ><SelectTipoDano v-model="arma.tipoDano" :opcoes="TIPOS_DE_DANO_DND" vazio="Sem tipo" :class="campo" aria-label="Tipo de dano"
             /></label>
             <label
                 ><span :class="rotulo">Bônus de acerto</span

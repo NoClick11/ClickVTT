@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ChevronDown, Pin } from 'lucide-vue-next';
 import { computed, inject, ref } from 'vue';
+import { TIPOS_DE_DANO_ONE_PIECE } from '../../../../nucleo/combate/tiposDano';
 import { clonar } from '../../../../nucleo/ficha/caminho';
 import CampoNumero from '../../../../nucleo/ui/CampoNumero.vue';
 import CampoTexto from '../../../../nucleo/ui/CampoTexto.vue';
+import SelectTipoDano from '../../../../nucleo/ui/SelectTipoDano.vue';
 import { alcanceMaximoDaArma } from '../../alcanceDaArma';
 import { areaDoAlcance } from '../../area';
 import { estilos, useFicha } from '../../contexto';
@@ -306,8 +308,6 @@ function alternarReacao(i: number, ligada: boolean) {
     });
 }
 
-/** Tipos de dano sugeridos (o campo aceita qualquer texto; "geral" = dano sem tipo, que nenhuma defesa reduz). */
-const TIPOS_DE_DANO = ['geral', 'cortante', 'perfurante', 'contundente', 'fogo', 'elétrico', 'gelo', 'veneno', 'ácido', 'psíquico', 'energia'];
 const vazia = () => ({ nome: '', origem: '', custo: 1, alcance: '', efeito: '', rolagem: '', tipoDano: '', descricao: '' });
 const novo = ref(vazia());
 function adicionar() {
@@ -685,14 +685,13 @@ function adicionar() {
                                         :class="[estilos.campo, 'min-w-48 flex-1 font-mono']"
                                         @salvar="mudar((l) => (l[i].rolagem = $event))"
                                     />
-                                    <CampoTexto
+                                    <SelectTipoDano
                                         :model-value="t.tipoDano ?? ''"
-                                        :maximo="30"
-                                        list="tipos-de-dano"
-                                        placeholder="Tipo do dano (se a rolagem for dano)"
+                                        :opcoes="TIPOS_DE_DANO_ONE_PIECE"
+                                        vazio="Sem tipo de dano"
                                         aria-label="Tipo do dano"
                                         :class="[estilos.campo, 'w-56']"
-                                        @salvar="mudar((l) => (l[i].tipoDano = $event.trim() || undefined))"
+                                        @update:model-value="mudar((l) => (l[i].tipoDano = $event || undefined))"
                                     />
                                 </div>
                                 <CampoTexto
@@ -744,19 +743,14 @@ function adicionar() {
                 :class="campo"
                 class="w-44 font-mono"
             />
-            <input
+            <SelectTipoDano
                 v-model="novo.tipoDano"
-                type="text"
-                maxlength="30"
-                list="tipos-de-dano"
-                placeholder="Tipo do dano"
+                :opcoes="TIPOS_DE_DANO_ONE_PIECE"
+                vazio="Tipo do dano"
                 aria-label="Tipo do dano"
                 :class="campo"
-                class="w-32"
+                class="w-36"
             />
-            <datalist id="tipos-de-dano">
-                <option v-for="t in TIPOS_DE_DANO" :key="t" :value="t" />
-            </datalist>
             <button type="submit" class="rounded bg-ouro-500 px-3 text-xs font-semibold text-preto-950 hover:bg-ouro-400">Adicionar</button>
         </form>
         <CriadorDeTecnicas v-model:open="criando" :ficha="ficha" :destino="caminho === 'akuma.lista' ? 'akuma' : 'estilo'" :mestre="mestre" />

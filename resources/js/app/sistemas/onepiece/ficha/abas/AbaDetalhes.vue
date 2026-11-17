@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { TIPOS_DE_DANO_ONE_PIECE } from '../../../../nucleo/combate/tiposDano';
 import { clonar } from '../../../../nucleo/ficha/caminho';
 import CampoNumero from '../../../../nucleo/ui/CampoNumero.vue';
 import CampoTexto from '../../../../nucleo/ui/CampoTexto.vue';
 import LinhaRolavel from '../../../../nucleo/ui/LinhaRolavel.vue';
+import SeletorTiposDano from '../../../../nucleo/ui/SeletorTiposDano.vue';
 import { estilos, useFicha } from '../../contexto';
 import { nomeDoOficio, temOficio } from '../../profissoes/regras';
 import { ATRIBUTOS, comSinal, PERICIAS, type AtributoId, type FichaOnePiece, type Proficiencia } from '../../regras';
@@ -58,6 +60,7 @@ const listas: {
     { campo: 'proficienciasArmas', rotulo: 'Armas' },
     { campo: 'idiomas', rotulo: 'Idiomas' },
 ];
+const defesas = ['resistencias', 'imunidades', 'vulnerabilidades'];
 const salvarLista = (campo: string, texto: string) =>
     salvar({
         [campo]: texto
@@ -227,6 +230,14 @@ const cartao = estilos.cartao;
                     <div v-for="l in listas" :key="l.campo">
                         <dt :class="estilos.rotulo">{{ l.rotulo }}</dt>
                         <dd v-if="!editar">{{ ficha[l.campo].join(', ') || '—' }}</dd>
+                        <dd v-else-if="defesas.includes(l.campo)">
+                            <SeletorTiposDano
+                                :model-value="ficha[l.campo]"
+                                :opcoes="TIPOS_DE_DANO_ONE_PIECE"
+                                :rotulo="l.rotulo"
+                                @update:model-value="salvar({ [l.campo]: $event })"
+                            />
+                        </dd>
                         <dd v-else>
                             <CampoTexto
                                 :model-value="ficha[l.campo].join(', ')"
