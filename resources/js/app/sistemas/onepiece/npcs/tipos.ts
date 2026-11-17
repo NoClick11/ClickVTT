@@ -20,6 +20,8 @@ export interface AtaqueNpc {
     /** expressão de dano já com o modificador, ex.: `1d6+2` */
     dano: string;
     tipoDano: string;
+    /** Partes do dano de outro tipo (ex.: `1d6 Fogo` além do `1d6 Contundente`): rolam à parte e cada uma respeita as defesas do próprio tipo. */
+    extras?: { dano: string; tipoDano: string }[];
 }
 
 /** Característica, aspecto, reação, ação bônus ou ação lendária: texto, com PP e usos quando for técnica auxiliar. */

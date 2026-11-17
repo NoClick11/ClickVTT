@@ -123,6 +123,8 @@ export interface AjusteDeArma {
     bonusDano?: number | null;
     margemCritica?: number | null;
     danoExtra?: { dados: string; tipo?: string | null }[] | null;
+    /** Forja e lendas da arma só nesta ficha (só o mestre define); `{}` tira a forja do item original. */
+    forja?: NonNullable<NonNullable<DadosItemOnePiece['arma']>['forja']> | null;
 }
 export const CAMPOS_DO_AJUSTE_DA_ARMA = [
     'dano',
@@ -133,6 +135,7 @@ export const CAMPOS_DO_AJUSTE_DA_ARMA = [
     'bonusDano',
     'margemCritica',
     'danoExtra',
+    'forja',
 ] as const;
 
 /**
@@ -867,6 +870,29 @@ export function modoDaRolagem(efeitos: Efeito[], variavel: string): Rolagem {
     return alvo ? rolagem(alvo, efeitos) : null;
 }
 
+const semAcento = (s: string) =>
+    s
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+/**
+ * Os dados extras DA ARMA com o tipo que valem: `tipo` null quando o extra não tem tipo ou tem o mesmo da arma (entra na mesma rolagem);
+ * de outro tipo, rola à parte e se aplica com o próprio tipo. Espelha `Regras::danosExtrasDaArma`.
+ */
+export function danosExtrasDaArma(arma: {
+    tipoDano?: string | null;
+    danoExtra?: { dados: string; tipo?: string | null }[] | null;
+}): { dados: string; tipo: string | null }[] {
+    const principal = semAcento(arma.tipoDano ?? '');
+    return (arma.danoExtra ?? [])
+        .filter((x) => dadosValidos(x.dados))
+        .map((x) => {
+            const tipo = (x.tipo ?? '').trim();
+            return { dados: x.dados, tipo: tipo === '' || semAcento(tipo) === principal ? null : tipo };
+        });
+}
+
 /**
  * Todos os dados do dano de uma arma, em ordem: o da arma, os extras DA ARMA (`danoExtra`) e os extras dos buffs ativos
  * (efeitos de modo `dados` em `dano.arma`: Ataque Furtivo, itens, características). Espelha `Regras::dadosDeDano`.
@@ -879,7 +905,7 @@ export function dadosDeDano(f: FichaOnePiece, itensDaMesa: ItensPorId, itemId: n
 
     // O dado da arma sobe os degraus do tipo dela (corpo a corpo ou à distância); os extras não
     const dados = [degrau(danoComForja(arma.dano, arma.forja), valores[arma.distancia ? 'passo.distancia' : 'passo.corpo'] ?? 0)];
-    for (const extra of arma.danoExtra ?? []) if (dadosValidos(extra.dados)) dados.push(extra.dados);
+    for (const extra of danosExtrasDaArma(arma)) if (extra.tipo === null) dados.push(extra.dados);
     for (const e of efeitosAtivos(f, itens)) if (e.modo === 'dados' && casa(e.alvo, 'dano.arma') && dadosValidos(e.valor)) dados.push(e.valor);
 
     return dados;

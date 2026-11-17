@@ -238,3 +238,7 @@ export function usoDaTecnica(npc: NpcDados, t: TecnicaNpc, ppAtual: number, tipo
 
     return { ...base, teste: { tipo: 'salvaguarda', atributo: t.salvaguarda?.atributo, aoPassar: t.salvaguarda?.metade ? 'metade' : 'nada' } };
 }
+
+/** As partes de dano extras do ataque no formato que o servidor espera (`dano.extras`); só as com dado preenchido. */
+export const extrasDoAtaque = (a: AtaqueNpc): { expressao: string; tipo: string | null }[] =>
+    (a.extras ?? []).filter((x) => x.dano.trim()).map((x) => ({ expressao: x.dano.trim(), tipo: x.tipoDano.trim() || null }));

@@ -31,7 +31,7 @@ final class Regras
     }
 
     /** O que o jogador ajusta numa arma só na própria ficha (`inventario.*.itens.*.arma`). Espelha `AjusteDeArma` (TS). */
-    public const AJUSTES_DA_ARMA = ['dano', 'tipoDano', 'atributo', 'atributoDano', 'bonusAtaque', 'bonusDano', 'margemCritica', 'danoExtra'];
+    public const AJUSTES_DA_ARMA = ['dano', 'tipoDano', 'atributo', 'atributoDano', 'bonusAtaque', 'bonusDano', 'margemCritica', 'danoExtra', 'forja'];
 
     /**
      * Os itens da mesa com os ajustes de arma DESTA ficha aplicados (o item original nunca muda). `dano` não vale em arma por munição.
@@ -678,6 +678,14 @@ final class Regras
                     [...$normal, 'rotulo' => 'Dano normal'],
                 ]
                 : [$normal];
+            // Dados extras de OUTRO tipo (ex.: +1d6 de Fogo numa arma Contundente): um botão cada, com o próprio tipo (no crítico, os dados dobram)
+            foreach (array_values(array_filter(self::danosExtrasDaArma($itens[$arma]['dados']['arma'] ?? [], $municao), fn ($x) => $x['tipo'] !== null)) as $i => $x) {
+                $dadosExtra = ($meta['destaque'] ?? null) === 'critico' ? self::multiplicarDados($x['dados'], $multiplicador) : $x['dados'];
+                $meta['acoes'][] = [
+                    'id' => "dano-extra-{$i}", 'rotulo' => "Dano extra ({$x['tipo']})", 'resumo' => $dadosExtra, 'expressao' => $dadosExtra,
+                    'rotuloRolagem' => "{$nome} (extra)", 'dano' => ['tipo' => $x['tipo'], ...($fator !== 1 ? ['fator' => $fator] : [])],
+                ];
+            }
 
             // Expertise: no acerto crítico natural, com proficiência na arma. O texto do efeito vai no card; o dano extra (dados) e
             // o dano máximo viram botões. Os efeitos sobre condições e movimento ficam para o jogador e o Narrador aplicarem.
@@ -736,8 +744,8 @@ final class Regras
         // O dado da arma sobe os degraus do tipo dela (corpo a corpo ou à distância); os extras não
         $passos = (int) ($variaveis[($arma['distancia'] ?? false) ? 'passo.distancia' : 'passo.corpo'] ?? 0);
         $dados = [self::degrau(Forja::danoComForja($arma['dano'], $arma['forja'] ?? null), $passos)];
-        foreach ($arma['danoExtra'] ?? [] as $extra) {
-            if (Efeitos::dadosValidos($extra['dados'] ?? null)) {
+        foreach (self::danosExtrasDaArma($arma, $municao) as $extra) {
+            if ($extra['tipo'] === null) {
                 $dados[] = $extra['dados'];
             }
         }
@@ -748,6 +756,29 @@ final class Regras
         }
 
         return $dados;
+    }
+
+    /**
+     * Os dados extras DA ARMA com o tipo que valem: `tipo` null quando o extra não tem tipo ou tem o mesmo da arma (entra na mesma
+     * rolagem); com um tipo diferente do da arma, rola à parte e se aplica com o próprio tipo (resistência a Fogo não reduz o Cortante).
+     * Espelha `danosExtrasDaArma` (TS).
+     *
+     * @param  array<string, mixed>  $arma
+     * @return list<array{dados: string, tipo: ?string}>
+     */
+    public static function danosExtrasDaArma(array $arma, ?array $municao = null): array
+    {
+        $principal = Dano::normalizar((string) ($municao['tipo'] ?? $arma['tipoDano'] ?? ''));
+        $r = [];
+        foreach ($arma['danoExtra'] ?? [] as $extra) {
+            if (! Efeitos::dadosValidos($extra['dados'] ?? null)) {
+                continue;
+            }
+            $tipo = trim((string) ($extra['tipo'] ?? ''));
+            $r[] = ['dados' => $extra['dados'], 'tipo' => $tipo === '' || Dano::normalizar($tipo) === $principal ? null : $tipo];
+        }
+
+        return $r;
     }
 
     /**

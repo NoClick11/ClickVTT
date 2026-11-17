@@ -2,7 +2,10 @@
 import { Button } from '@/components/ui/button';
 import { Camera, Minus, Pencil, Plus, RotateCcw, Save, Swords, Trash2, X, Zap } from 'lucide-vue-next';
 import { computed, inject, ref, type ComputedRef } from 'vue';
+import { TIPOS_DE_DANO_ONE_PIECE } from '../../../nucleo/combate/tiposDano';
 import CampoNumero from '../../../nucleo/ui/CampoNumero.vue';
+import SelectTipoDano from '../../../nucleo/ui/SelectTipoDano.vue';
+import SeletorTiposDano from '../../../nucleo/ui/SeletorTiposDano.vue';
 import type { UsoDeTecnica } from '../contexto';
 import {
     alcanceDoAtaque,
@@ -12,6 +15,7 @@ import {
     comSinalNpc,
     copiar,
     dadoDeAtaque,
+    extrasDoAtaque,
     lerNpc,
     limiteDeUsos,
     margemDeCritico,
@@ -97,7 +101,7 @@ function atacar(e: MouseEvent, a: AtaqueNpc) {
     const m = modo(e);
     emit('rolar', dadoDeAtaque(a.bonus, m), m ? `${a.nome} (${m})` : a.nome, undefined, undefined, { categoria: 'padrao' }, alvoDoAtaque.value, {
         nome: a.nome,
-        dano: { expressao: a.dano, tipo: a.tipoDano },
+        dano: { expressao: a.dano, tipo: a.tipoDano, extras: extrasDoAtaque(a) },
         semTecnica: true,
         ataque: true, // bônus próprio da ficha do NPC (sem `@ataque`): o servidor o trata como ataque e rola contra a defesa do alvo
         margem: margemDeCritico(npc.value, a),
@@ -195,12 +199,6 @@ const novaTecnica = (): TecnicaNpc => ({
     tipoDano: ['Contundente'],
 });
 const novoTexto = (): TextoNpc => ({ nome: 'Nome', texto: '' });
-const tiposTexto = (t: TecnicaNpc) => t.tipoDano.join(', ');
-const lerTipos = (t: TecnicaNpc, v: string) =>
-    (t.tipoDano = v
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean));
 const num = (e: Event) => Number((e.target as HTMLInputElement).value);
 const campo =
     'w-full rounded border border-preto-700 bg-preto-950 px-1.5 py-1 text-xs text-preto-100 focus-visible:border-ouro-400 focus-visible:outline-none';
@@ -450,7 +448,8 @@ const rotuloSecao = 'mb-1 text-[11px] font-semibold uppercase tracking-wider tex
                         ><span class="font-medium">{{ a.nome }}</span>
                         <span class="block text-[11px] text-preto-400"
                             >{{ a.tipo === 'corpo' ? 'Corpo a corpo' : 'À distância' }}{{ a.arma ? ' com arma' : '' }} · {{ alcanceDoAtaque(a) }} ·
-                            {{ a.dano }} {{ a.tipoDano }}</span
+                            {{ a.dano }} {{ a.tipoDano
+                            }}<template v-for="(x, xi) in a.extras ?? []" :key="xi"> + {{ x.dano }} {{ x.tipoDano }}</template></span
                         ></span
                     >
                 </li>
@@ -497,7 +496,7 @@ const rotuloSecao = 'mb-1 text-[11px] font-semibold uppercase tracking-wider tex
                         />
                     </template>
                     <input v-model="a.dano" :class="[campo, 'col-span-3']" placeholder="1d6+2" aria-label="Dano" />
-                    <input v-model="a.tipoDano" :class="[campo, 'col-span-3']" aria-label="Tipo de dano" />
+                    <SelectTipoDano v-model="a.tipoDano" :opcoes="TIPOS_DE_DANO_ONE_PIECE" :class="[campo, 'col-span-3']" aria-label="Tipo de dano" />
                     <Button
                         size="icon"
                         variant="ghost"
@@ -506,6 +505,31 @@ const rotuloSecao = 'mb-1 text-[11px] font-semibold uppercase tracking-wider tex
                         @click="rascunho.ataques.splice(i, 1)"
                         ><Trash2 class="size-3.5"
                     /></Button>
+                    <template v-for="(x, xi) in a.extras ?? []" :key="xi">
+                        <input v-model="x.dano" :class="[campo, 'col-span-3 col-start-1']" placeholder="1d6" aria-label="Dado do dano extra" />
+                        <SelectTipoDano
+                            v-model="x.tipoDano"
+                            :opcoes="TIPOS_DE_DANO_ONE_PIECE"
+                            :class="[campo, 'col-span-3']"
+                            aria-label="Tipo do dano extra"
+                        />
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            class="col-span-1 size-7 text-red-300"
+                            aria-label="Remover dano extra"
+                            @click="a.extras?.splice(xi, 1)"
+                            ><Trash2 class="size-3.5"
+                        /></Button>
+                    </template>
+                    <Button
+                        v-if="(a.extras?.length ?? 0) < 4"
+                        size="sm"
+                        variant="ghost"
+                        class="col-span-12 h-6 w-fit gap-1 px-2 text-[11px]"
+                        @click="(a.extras ??= []).push({ dano: '1d6', tipoDano: 'fogo' })"
+                        ><Plus class="size-3" /> Dano de outro tipo</Button
+                    >
                 </div>
                 <Button size="sm" variant="ghost" class="h-7 w-fit gap-1 px-2 text-xs" @click="rascunho.ataques.push(novoAtaque())"
                     ><Plus class="size-3.5" /> Ataque</Button
@@ -638,13 +662,7 @@ const rotuloSecao = 'mb-1 text-[11px] font-semibold uppercase tracking-wider tex
                         aria-label="Dano"
                         @input="t.dano = ($event.target as HTMLInputElement).value || undefined"
                     />
-                    <input
-                        :value="tiposTexto(t)"
-                        :class="[campo, 'col-span-4']"
-                        placeholder="Cortante, Perfurante"
-                        aria-label="Tipos de dano"
-                        @input="lerTipos(t, ($event.target as HTMLInputElement).value)"
-                    />
+                    <SeletorTiposDano v-model="t.tipoDano" :opcoes="TIPOS_DE_DANO_ONE_PIECE" rotulo="Tipos de dano" class="col-span-4" />
                     <input
                         :value="t.usos && 'max' in t.usos ? t.usos.max : 0"
                         type="number"

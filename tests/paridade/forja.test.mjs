@@ -2,9 +2,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { CATALOGO_DE_ITENS } from '../../resources/js/app/sistemas/onepiece/itens/index.ts';
 import * as f from '../../resources/js/app/sistemas/onepiece/itens/forja.ts';
-import { analisar, armasAtivas, dadosDeDano } from '../../resources/js/app/sistemas/onepiece/regras.ts';
+import { CATALOGO_DE_ITENS } from '../../resources/js/app/sistemas/onepiece/itens/index.ts';
+import { analisar, armasAtivas, dadosDeDano, danosExtrasDaArma } from '../../resources/js/app/sistemas/onepiece/regras.ts';
 
 const cat = JSON.parse(readFileSync(new URL('../../app/Sistemas/OnePiece/dados/forja.json', import.meta.url), 'utf8'));
 
@@ -26,12 +26,15 @@ test('forja: toda Expertise do catálogo de armas existe e as 30 armas têm uma'
 });
 
 test('forja: Meito — dado mínimo, acerto, margem crítica e dados de Técnica do livro', () => {
-    assert.deepEqual(f.MEITO.map((m) => [m.pf, m.danoMinimo, m.bonusAtaque, m.margem, m.dadosDeTecnica]), [
-        [2, '1d6', 0, 20, 1],
-        [4, '1d8', 1, 20, 2],
-        [6, '1d10', 2, 19, 3],
-        [10, '1d12', 3, 18, 4],
-    ]);
+    assert.deepEqual(
+        f.MEITO.map((m) => [m.pf, m.danoMinimo, m.bonusAtaque, m.margem, m.dadosDeTecnica]),
+        [
+            [2, '1d6', 0, 20, 1],
+            [4, '1d8', 1, 20, 2],
+            [6, '1d10', 2, 19, 3],
+            [10, '1d12', 3, 18, 4],
+        ],
+    );
     assert.equal(f.danoComForja('1d4', { meito: 'wazamono' }), '1d6'); // adaga vira 1d6
     assert.equal(f.danoComForja('1d8', { meito: 'wazamono' }), '1d8'); // já era maior
     assert.equal(f.danoComForja('2d6', { meito: 'ryo-wazamono' }), '2d6'); // montante (média maior que 1d8): não diminui
@@ -61,7 +64,17 @@ test('forja: custo em PF das melhorias (Meito pela diferença, Expertise 1, Supr
 });
 
 test('forja: validação (Meito só cortante, Kokuto/Yoto só em Meito, Balanço exige Densidade, até 2 Expertises)', () => {
-    assert.deepEqual(f.problemasDaForja({ meito: 'wazamono', yoto: 'azar-mortal', expertise: ['caido', 'sangramento'], densidade: 'cortante', balanco: true, fio: 3 }), []);
+    assert.deepEqual(
+        f.problemasDaForja({
+            meito: 'wazamono',
+            yoto: 'azar-mortal',
+            expertise: ['caido', 'sangramento'],
+            densidade: 'cortante',
+            balanco: true,
+            fio: 3,
+        }),
+        [],
+    );
     assert.ok(f.problemasDaForja({ meito: 'wazamono' }, false).some((x) => x.includes('cortantes')));
     assert.ok(f.problemasDaForja({ kokuto: true }).some((x) => x.includes('Kokuto')));
     assert.ok(f.problemasDaForja({ yoto: 'azar-mortal' }).some((x) => x.includes('Yoto')));
@@ -88,7 +101,13 @@ const ficha = (arma, extra = {}) => ({
 const itens = (arma) => ({ 1: { nome: 'Lâmina', peso: 1, equipavel: true, dados: { arma } } });
 
 test('forja: com a arma equipada o acerto, a margem crítica e o dano mudam sozinhos (e voltam ao desequipar)', () => {
-    const arma = { dano: '1d4', atributo: 'acuidade', tipoDano: 'Cortante', proficiente: true, forja: { meito: 'o-wazamono', fio: 1, expertise: ['maximizar'], yoto: 'azar-mortal', densidade: 'cortante' } };
+    const arma = {
+        dano: '1d4',
+        atributo: 'acuidade',
+        tipoDano: 'Cortante',
+        proficiente: true,
+        forja: { meito: 'o-wazamono', fio: 1, expertise: ['maximizar'], yoto: 'azar-mortal', densidade: 'cortante' },
+    };
     const i = itens(arma);
     const v = analisar(ficha(), i).valores;
     // acuidade usa DES +3; proficiência +3 (nível 5); Ô Wazamono +2
@@ -100,7 +119,10 @@ test('forja: com a arma equipada o acerto, a margem crítica e o dano mudam sozi
     assert.deepEqual(a.etiquetas, ['Ô Wazamono', 'Yoto: Azar Mortal', 'Ignora resistência (cortante)', 'Fio +1']);
     assert.deepEqual(a.expertise, ['maximizar']);
     // sem proficiência não há Expertise
-    assert.deepEqual(armasAtivas(ficha(), itens({ ...arma, proficiente: false }), analisar(ficha(), itens({ ...arma, proficiente: false })).valores)[0].expertise, []);
+    assert.deepEqual(
+        armasAtivas(ficha(), itens({ ...arma, proficiente: false }), analisar(ficha(), itens({ ...arma, proficiente: false })).valores)[0].expertise,
+        [],
+    );
     // bônus maior vence: arma que já tinha +3
     assert.equal(analisar(ficha(), itens({ ...arma, bonusAtaque: 3 })).valores['arma.1.ataque'], 3 + 3 + 3);
     // desequipada: não conta
@@ -141,16 +163,28 @@ test('forja: Kokuto amplia o alcance das Técnicas (Linha 15/+9, Cone 9/+6, Esfe
 
 test('forja: Saijo Ô e Kokuto equipadas são detectadas; descanso longo devolve os usos da Saijo', async () => {
     const { saijoEquipada, kokutoEquipada, camposDoDescanso } = await import('../../resources/js/app/sistemas/onepiece/regras.ts');
-    const fi = (forja, equipado = true) => ({ ...ficha(), inventario: [{ secao: 'E', itens: [{ item_id: 1, qtd: 1, equipado, sintonizado: false }] }] });
+    const fi = (forja, equipado = true) => ({
+        ...ficha(),
+        inventario: [{ secao: 'E', itens: [{ item_id: 1, qtd: 1, equipado, sintonizado: false }] }],
+    });
     const it = (forja) => itens({ dano: '1d6', atributo: 'for', tipoDano: 'Cortante', forja });
     assert.equal(saijoEquipada(fi(), it({ meito: 'saijo-o-wazamono' })), true);
     assert.equal(saijoEquipada(fi(), it({ meito: 'o-wazamono' })), false);
     assert.equal(saijoEquipada(fi(null, false), it({ meito: 'saijo-o-wazamono' })), false); // desequipada
     assert.equal(kokutoEquipada(fi(), it({ meito: 'wazamono', kokuto: true })), true);
     assert.equal(kokutoEquipada(fi(), it({ meito: 'wazamono' })), false);
-    const longo = camposDoDescanso({ ...ficha(), pv: { atual: 1, max: 10, temp: 0 }, dadosVida: { restantes: 1, tipo: 'd8' }, exaustao: 0, meito: { usados: 2 } }, 'longo');
+    const longo = camposDoDescanso(
+        { ...ficha(), pv: { atual: 1, max: 10, temp: 0 }, dadosVida: { restantes: 1, tipo: 'd8' }, exaustao: 0, meito: { usados: 2 } },
+        'longo',
+    );
     assert.equal(longo['meito.usados'], 0);
-    assert.equal(camposDoDescanso({ ...ficha(), pv: { atual: 1, max: 10, temp: 0 }, dadosVida: { restantes: 1, tipo: 'd8' }, exaustao: 0, meito: { usados: 2 } }, 'curto')['meito.usados'], undefined);
+    assert.equal(
+        camposDoDescanso(
+            { ...ficha(), pv: { atual: 1, max: 10, temp: 0 }, dadosVida: { restantes: 1, tipo: 'd8' }, exaustao: 0, meito: { usados: 2 } },
+            'curto',
+        )['meito.usados'],
+        undefined,
+    );
 });
 
 test('ajuste da arma só na ficha: dado, bônus, crítico e dados extras mudam sem alterar o item', () => {
@@ -158,12 +192,28 @@ test('ajuste da arma só na ficha: dado, bônus, crítico e dados extras mudam s
     const i = itens(arma);
     const base = analisar(ficha(), i).valores;
     const f2 = ficha();
-    f2.inventario[0].itens[0].arma = { dano: '2d6', bonusAtaque: 2, bonusDano: 3, margemCritica: 19, tipoDano: 'Fogo', danoExtra: [{ dados: '1d4', tipo: 'Gelo' }] };
+    f2.inventario[0].itens[0].arma = {
+        dano: '2d6',
+        bonusAtaque: 2,
+        bonusDano: 3,
+        margemCritica: 19,
+        tipoDano: 'Fogo',
+        danoExtra: [{ dados: '1d4', tipo: 'Gelo' }],
+    };
     const v = analisar(f2, i).valores;
     assert.equal(v['arma.1.ataque'], base['arma.1.ataque'] + 2);
     assert.equal(v['arma.1.dano'], base['arma.1.dano'] + 3);
     assert.equal(v['arma.1.margem'], 19);
-    assert.deepEqual(dadosDeDano(f2, i, 1, v), ['2d6', '1d4']);
+    // o extra de outro tipo (Gelo, numa arma de Fogo) rola à parte: não entra nos dados do dano da arma
+    assert.deepEqual(dadosDeDano(f2, i, 1, v), ['2d6']);
+    assert.deepEqual(
+        danosExtrasDaArma({ tipoDano: 'Fogo', danoExtra: [{ dados: '1d4', tipo: 'Gelo' }, { dados: '1d6', tipo: 'fogo' }, { dados: '1d8' }] }),
+        [
+            { dados: '1d4', tipo: 'Gelo' },
+            { dados: '1d6', tipo: null },
+            { dados: '1d8', tipo: null },
+        ],
+    );
     const a = armasAtivas(f2, i, v)[0];
     assert.equal(a.tipoDano, 'Fogo');
     // o item da mesa continua igual e a ficha sem ajuste também

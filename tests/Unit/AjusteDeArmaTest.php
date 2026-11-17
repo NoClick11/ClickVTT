@@ -29,4 +29,12 @@ class AjusteDeArmaTest extends TestCase
         $this->assertSame(1, $r[1]['dados']['arma']['bonusDano']);
         $this->assertSame($itens, Regras::comAjustes(['inventario' => [['secao' => 'A', 'itens' => [['item_id' => 1]]]]], $itens));
     }
+
+    public function test_dado_extra_de_outro_tipo_rola_a_parte_e_o_do_mesmo_tipo_ou_sem_tipo_entra_na_rolagem_da_arma(): void
+    {
+        $arma = ['dano' => '1d8', 'atributo' => 'for', 'tipoDano' => 'Cortante', 'danoExtra' => [['dados' => '1d6', 'tipo' => 'Fogo'], ['dados' => '1d4', 'tipo' => 'cortante'], ['dados' => '1d10']]];
+
+        $this->assertSame([['dados' => '1d6', 'tipo' => 'Fogo'], ['dados' => '1d4', 'tipo' => null], ['dados' => '1d10', 'tipo' => null]], Regras::danosExtrasDaArma($arma));
+        $this->assertSame(['1d8', '1d4', '1d10'], Regras::dadosDeDano([], [1 => ['dados' => ['arma' => $arma]]], 1));
+    }
 }
