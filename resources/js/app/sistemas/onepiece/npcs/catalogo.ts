@@ -7,6 +7,7 @@ import {
     corpo,
     desarmado,
     dia,
+    esfera,
     golpe,
     katana,
     lendarias,
@@ -91,6 +92,7 @@ const npc = (e: Entrada): NpcModelo => {
 
 const pir = (e: Omit<Entrada, 'faccao'>) => npc({ ...e, faccao: 'Pirata' });
 const mar = (e: Omit<Entrada, 'faccao'>) => npc({ ...e, faccao: 'Marinha' });
+const outro = (e: Omit<Entrada, 'faccao'>) => npc({ ...e, faccao: 'Outro' });
 
 const impactoEfeito = 'A criatura atingida fica incapaz de usar reação e ação bônus, até o final do próximo turno dela.';
 const retiro =
@@ -1087,6 +1089,78 @@ export const CATALOGO_NPCS: NpcModelo[] = [
         ],
         lendarias: lendarias(M),
     }),
+
+    // ===================== OUTROS (chefes e NPCs únicos) =====================
+    outro({
+        nome: 'Gideon "Quebra-Bigorna"',
+        nd: '5',
+        xp: 1800,
+        pp: 25,
+        cr: 17,
+        pv: [221, '26d10+78'],
+        bp: 3,
+        cd: 15,
+        desl: 12,
+        nado: 12,
+        at: [18, 12, 17, 12, 14, 14],
+        pericias: 'Atletismo +7, Intimidação +5',
+        salv: 'Força +7, Constituição +6',
+        passiva: 12,
+        aspectos: [
+            texto(
+                'Corpo de Fornalha (Kaji Kaji no Mi)',
+                'Quando um jogador bloqueia um golpe corpo a corpo de Gideon com arma metálica comum, ou o atinge com arma metálica enquanto ele está superaquecido, a arma recebe 1 Marca de Calor. As marcas somem se a arma for mergulhada nos tanques de água (1 Ação Bônus) ou se tiver Óleo Refratário ou Haki. 1ª Marca (Aço Rubro): dano leve de fogo na mão do portador no início do turno dele. 2ª Marca (Aço Maleável): os ataques com a arma têm Desvantagem por 3 turnos. 3ª Marca (Fusão Crítica): a arma entorta de vez e fica inutilizada pelo resto da luta. (As marcas são controladas pela mesa.)',
+            ),
+            texto(
+                'Vulnerabilidade a Choque Térmico',
+                'Se for atingido pela água fria dos tanques laterais (raio de 4,5 m, 3 quadrados, ao estourar um tanque), perde Corpo de Fornalha por 2 turnos, fica com metade do deslocamento e sem Reações.',
+            ),
+        ],
+        multiplos: [2, 'Punho de Malho Incandescente'],
+        ataques: [
+            {
+                ...corpo('Punho de Malho Incandescente', 7, '2d6+4', 'Contundente', false, 3),
+                extras: [{ dano: '1d8', tipoDano: 'Fogo' }],
+            },
+        ],
+        reacoes: [
+            {
+                nome: 'Têmpera de Aço Rubro (Resistência)',
+                texto: 'Reação, 1x por rodada. Ao receber um ataque físico ou tiro, Gideon funde sucata no peito e sofre metade do dano daquele golpe.',
+                auto: { reducao: { metade: true } },
+            },
+            {
+                nome: 'Têmpera de Aço Rubro (CR)',
+                texto: 'Reação, 1x por rodada. Ao receber um ataque físico ou tiro, Gideon funde sucata no peito e ganha +3 de CR contra aquele golpe.',
+                auto: { defesa: 3 },
+            },
+        ],
+        tecnicas: [
+            {
+                nome: 'Bigorna Viva: Algemas de Escória',
+                grau: 1,
+                pp: 2,
+                modo: 'alvo',
+                alcance: 9,
+                tipoDano: [],
+                salvaguarda: { atributo: 'des', cd: 15, metade: false },
+                efeito: 'Ação Bônus, recarga de 3 turnos. Alcance 9 m, até 2 alvos pisando no chão metálico (use a técnica uma vez para cada alvo). Em uma falha na Salvaguarda de Destreza ou Força, o alvo fica Impedido (deslocamento 0) por 2 turnos, com queimadura contínua; gasta 1 Ação para quebrar.',
+            },
+            {
+                ...cone('Sopro da Fundição', 2, 3, 6, '4d8', ['Fogo'], 'des', 15),
+                zona: { dano_dados: '1d6', dano_tipo: 'fogo', terreno_dificil: true, visivel: true },
+                efeito: 'Ação, recarga de 3 turnos. Cone de 6 m. Deixa o chão em brasa por 2 turnos: terreno difícil que dá dano de fogo a quem pisar (a zona fica no mapa; apague-a quando acabar).',
+            },
+            {
+                ...esfera('Obra-Prima: Martelo do Vulcão Adormecido', 3, 6, 6, '4d8', ['Contundente'], 'des', 15, {
+                    usos: dia(1),
+                    extras: [{ dano: '4d8', tipoDano: 'Fogo' }],
+                }),
+                efeito: 'Ação Completa, 1x no combate. Gideon salta até 6 m e esmaga o chão em raio de 6 m, com erupção nas 2 calhas de lava. Quem falha na Salvaguarda cai (Caído) e é empurrado 3 m. Depois do golpe, Gideon sofre Desvantagem em Destreza por 1 turno.',
+            },
+        ],
+    }),
+
 ];
 
 export const NPC_DO_CATALOGO = (id: string): NpcModelo | undefined => CATALOGO_NPCS.find((n) => n.id === id);
