@@ -22,6 +22,7 @@ use App\Sistemas\OnePiece\Municoes;
 use App\Sistemas\OnePiece\Regras;
 use App\Support\AcessoMesa;
 use App\Support\EntregarMensagem;
+use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +31,18 @@ use Illuminate\Validation\ValidationException;
 
 class ChatController extends Controller
 {
+    /** Só o mestre apaga uma mensagem ou rolagem do chat (para todos): a tela de cada um a tira na hora. */
+    public function excluir(Request $request, Mesa $mesa, int $mensagem): JsonResponse
+    {
+        $acesso = AcessoMesa::exigir($request, $mesa);
+        abort_unless($acesso->ehMestre(), 403, 'Só o mestre exclui mensagens do chat.');
+        $m = $mesa->mensagens()->findOrFail($mensagem);
+        $m->delete();
+        Transmitir::enviar($mesa, 'mensagem-removida', ['id' => $mensagem, 'ator' => $acesso->jogador->id], ['mesa']);
+
+        return response()->json(['ok' => true]);
+    }
+
     public function texto(Request $request, Mesa $mesa): JsonResponse
     {
         $acesso = AcessoMesa::exigir($request, $mesa);

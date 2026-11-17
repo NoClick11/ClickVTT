@@ -129,6 +129,7 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::post('objetos/{objeto}/viajar', [ObjetoController::class, 'viajar'])->middleware('throttle:60,1')->name('objetos.viajar');
     Route::delete('objetos/{objeto}', [ObjetoController::class, 'destroy'])->name('objetos.destroy');
     Route::post('mensagens', [ChatController::class, 'texto'])->middleware('throttle:60,1')->name('mensagens.store');
+    Route::delete('mensagens/{mensagem}', [ChatController::class, 'excluir'])->middleware('throttle:60,1')->name('mensagens.destroy');
     Route::post('rolagens', [ChatController::class, 'rolar'])->middleware('throttle:60,1')->name('rolagens.store');
     Route::post('tecnicas/salvaguarda', [TecnicaController::class, 'abrir'])->middleware('throttle:30,1')->name('tecnicas.salvaguarda.abrir');
     Route::post('tecnicas/municao', [TecnicaController::class, 'gastarMunicao'])->middleware('throttle:60,1')->name('tecnicas.municao.gastar');

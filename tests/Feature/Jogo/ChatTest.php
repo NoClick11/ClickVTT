@@ -531,4 +531,19 @@ class ChatTest extends TestCase
         $this->rolar($c, $c->ana, ['personagem_id' => $c->aria->id])->assertCreated()->assertJsonPath('autor.nome', 'Aria');
         $this->rolar($c, $c->ana, ['personagem_id' => $alheio->id])->assertStatus(422);
     }
+
+    public function test_so_o_mestre_exclui_uma_mensagem_do_chat_e_ela_some_para_todos(): void
+    {
+        $c = $this->cenario();
+        $texto = $this->como($c->ana)->postJson(route('jogo.mensagens.store', $c->mesa->id), ['texto' => 'oi'])->assertCreated()->json('id');
+        $rolagem = $this->rolar($c, $c->ana, ['expressao' => '1d20', 'personagem_id' => $c->aria->id])->assertCreated()->json('id');
+
+        $this->como($c->ana)->deleteJson(route('jogo.mensagens.destroy', [$c->mesa->id, $texto]))->assertForbidden();
+        $this->assertSame(2, $c->mesa->mensagens()->count());
+
+        $this->como($c->mestre)->deleteJson(route('jogo.mensagens.destroy', [$c->mesa->id, $texto]))->assertOk();
+        $this->como($c->mestre)->deleteJson(route('jogo.mensagens.destroy', [$c->mesa->id, $rolagem]))->assertOk();
+        $this->assertSame(0, $c->mesa->mensagens()->count());
+        $this->como($c->mestre)->deleteJson(route('jogo.mensagens.destroy', [$c->mesa->id, $rolagem]))->assertNotFound();
+    }
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
-import { Send } from 'lucide-vue-next';
+import { Send, Trash2 } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import type { AcaoDaRolagem } from '../nucleo/rolagem';
 import type { Mensagem } from '../tipos-mesa';
@@ -23,6 +23,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
     enviar: [texto: string];
+    excluir: [mensagem: Mensagem];
     acao: [mensagem: Mensagem, acao: AcaoDaRolagem];
     aplicarDano: [mensagem: Mensagem];
     rolarSalvaguarda: [mensagem: Mensagem, personagemId: number];
@@ -116,10 +117,20 @@ const hora = (m: Mensagem) => (m.criada_em ? new Date(m.criada_em).toLocaleTimeS
                 <div
                     v-for="m in g.mensagens"
                     :key="m.id"
-                    class="mt-1.5 border-t border-preto-800/70 pt-1.5 first-of-type:mt-0.5 first-of-type:border-t-0 first-of-type:pt-0"
+                    class="group/msg relative mt-1.5 border-t border-preto-800/70 pt-1.5 first-of-type:mt-0.5 first-of-type:border-t-0 first-of-type:pt-0"
                     :title="hora(m)"
                     data-mensagem
                 >
+                    <button
+                        v-if="mestre"
+                        type="button"
+                        class="absolute right-0 top-1 z-10 rounded p-1 text-preto-500 opacity-0 transition hover:bg-red-500/15 hover:text-red-300 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 group-hover/msg:opacity-100"
+                        aria-label="Excluir esta mensagem do chat"
+                        title="Excluir do chat (para todos)"
+                        @click="emit('excluir', m)"
+                    >
+                        <Trash2 class="size-3.5" />
+                    </button>
                     <p v-if="m.tipo === 'texto'" class="break-words text-preto-100">{{ m.texto }}</p>
                     <p v-else-if="m.visibilidade === 'secreto_oculto'" class="text-xs italic text-preto-300">🎲 {{ m.texto }}</p>
                     <CartaoGatilho

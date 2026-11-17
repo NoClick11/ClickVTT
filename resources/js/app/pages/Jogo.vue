@@ -2780,6 +2780,15 @@ function receberMensagem(m: Mensagem, substitui = false): boolean {
 
     return false;
 }
+/** Mestre: apaga a mensagem do chat de todos (a tela tira a dele quando o servidor confirma). */
+async function excluirMensagem(m: Mensagem) {
+    try {
+        await api.excluirMensagem(m.id);
+        mensagens.value = mensagens.value.filter((x) => x.id !== m.id);
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
 function aoNovaMensagem(m: Mensagem, substitui = false) {
     const nova = receberMensagem(m, substitui);
     if (nova && m.autor?.id !== props.jogador.id && !(lateralAberta.value && abaLateral.value === 'chat')) naoLidas.value++;
@@ -2924,6 +2933,7 @@ onMounted(() => {
         const abrir = (canal: ReturnType<Conexao['echo']['private']>) =>
             canal
                 .listen('.mensagem', (e: { mensagem: Mensagem; substitui?: boolean }) => aoNovaMensagem(e.mensagem, !!e.substitui))
+                .listen('.mensagem-removida', (e: { id: number }) => (mensagens.value = mensagens.value.filter((x) => x.id !== e.id)))
                 .listen('.objeto', aoMudarObjeto)
                 .listen('.cena', (e: { ator: number | null; socket?: string | null }) => aoMudarCena(e))
                 .listen('.ficha', aoMudarFicha)
@@ -3394,6 +3404,7 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                             :visivel="lateralAberta && abaLateral === 'chat'"
                             :mestre="mestre"
                             @enviar="enviarTexto"
+                            @excluir="excluirMensagem"
                             :alvo-nome="alvoPersonagem?.nome ?? null"
                             :aplicados="aplicadosAoAlvo"
                             :meus-personagens="meusPersonagens"

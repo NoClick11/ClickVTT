@@ -230,6 +230,7 @@ export function apiMesa(mesaId: number, atorId: number) {
             requisitar<object>(atorId, 'PUT', r('jogo.personagens.atribuir', personagemId), { jogadores }),
         enviarTexto: (texto: string, personagemId: number | null) =>
             requisitar<Mensagem>(atorId, 'POST', r('jogo.mensagens.store'), { texto, personagem_id: personagemId }),
+        excluirMensagem: (mensagemId: number) => requisitar<{ ok: boolean }>(atorId, 'DELETE', r('jogo.mensagens.destroy', mensagemId)),
         rolar: (
             expressao: string,
             visibilidade: VisibilidadeRolagem,
