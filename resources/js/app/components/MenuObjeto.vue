@@ -11,7 +11,9 @@ const props = defineProps<{ objeto: ObjetoDto; x: number; y: number }>();
 const emit = defineEmits<{ mover: [camada: Camada]; abrir: []; configurar: []; fechar: [] }>();
 
 /** O loot só vive oculto (Mestre) ou aberto aos jogadores (Jogadores). */
-const camadas = computed(() => CAMADAS.filter((c) => c.id !== 'iluminacao' && (props.objeto.tipo !== 'loot' || c.id !== 'mapa')));
+const camadas = computed(() =>
+    CAMADAS.filter((c) => c.id !== 'iluminacao' && ((props.objeto.tipo !== 'loot' && props.objeto.tipo !== 'zona') || c.id !== 'mapa')),
+);
 const titulo = computed(() => props.objeto.nome || 'Objeto');
 /** Mantém o menu dentro da janela. */
 const posicao = computed(() => ({

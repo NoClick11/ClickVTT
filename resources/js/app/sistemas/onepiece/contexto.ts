@@ -102,6 +102,8 @@ export interface UsoDeTecnica {
     desvantagem: boolean;
     /** A forma e o tamanho da área no mapa (null = sem forma: vale o alvo mirado). */
     area: AreaDeEfeito | null;
+    /** A Técnica deixa uma Zona no mapa, na área marcada (só o mestre cria): o dano da zona, o terreno difícil e se nasce visível. */
+    zona?: { dano_dados?: string; dano_tipo?: string; terreno_dificil?: boolean; visivel?: boolean };
     /** Técnica que dura vários turnos: com o combate em curso, fica ativa e pede um ataque a cada turno de quem está ao alcance. */
     duracao?: DuracaoDaTecnica;
     dano: DanoDaTecnica | null;

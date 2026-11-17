@@ -10,6 +10,7 @@ use App\Models\Personagem;
 use App\Nucleo\Cena\Paredes;
 use App\Nucleo\Combate\CombateService;
 use App\Nucleo\Combate\TecnicasAtivas;
+use App\Nucleo\Combate\Zonas;
 use App\Support\AcessoMesa;
 use App\Support\OtimizarImagem;
 use App\Support\Transmitir;
@@ -69,6 +70,12 @@ class ObjetoController extends Controller
             'dados.destino_pagina_id' => ['nullable', 'integer'],
             'dados.destino_objeto_id' => ['nullable', 'integer'],
             'dados.destino_nome' => ['nullable', 'string', 'max:80'],
+            'dados.forma' => ['nullable', Rule::in(['esfera', 'cone', 'linha', 'retangulo'])],
+            'dados.metros' => ['nullable', 'numeric', 'min:0.1', 'max:2000'],
+            'dados.largura_m' => ['nullable', 'numeric', 'min:0.1', 'max:2000'],
+            'dados.dano_dados' => ['nullable', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})(?:[+-]\d{1,3})?$/'],
+            'dados.dano_tipo' => ['nullable', 'string', 'max:30'],
+            'dados.terreno_dificil' => ['nullable', 'boolean'],
         ]);
         $this->validarCamada($dados['camada'], $dados['tipo']);
         $this->validarPares($dados);
@@ -164,6 +171,12 @@ class ObjetoController extends Controller
                 'dados.destino_pagina_id' => ['nullable', 'integer'],
                 'dados.destino_objeto_id' => ['nullable', 'integer'],
                 'dados.destino_nome' => ['nullable', 'string', 'max:80'],
+                'dados.forma' => ['nullable', Rule::in(['esfera', 'cone', 'linha', 'retangulo'])],
+                'dados.metros' => ['nullable', 'numeric', 'min:0.1', 'max:2000'],
+                'dados.largura_m' => ['nullable', 'numeric', 'min:0.1', 'max:2000'],
+                'dados.dano_dados' => ['nullable', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})(?:[+-]\d{1,3})?$/'],
+                'dados.dano_tipo' => ['nullable', 'string', 'max:30'],
+                'dados.terreno_dificil' => ['nullable', 'boolean'],
                 'reverter_movimento' => ['sometimes', 'boolean'],
             ]);
             if (isset($dados['camada'])) {
@@ -243,6 +256,8 @@ class ObjetoController extends Controller
         // Vigília (Overwatch): o atirador que anda a encerra
         if ($objeto->tipo === 'token' && isset($dados['x'], $dados['y']) && ($de['x'] !== (float) $dados['x'] || $de['y'] !== (float) $dados['y'])) {
             TecnicasAtivas::aoMover($mesa, $acesso, $objeto);
+            // Zonas com dano: quem ENTRA numa delas é ferido
+            Zonas::aoMover($mesa, $acesso, $objeto, $de);
         }
 
         return response()->json($front);
@@ -533,7 +548,7 @@ class ObjetoController extends Controller
     private function validarCamada(string $camada, string $tipo): void
     {
         $iluminacao = in_array($tipo, ['luz', 'parede'], true);
-        abort_if(in_array($tipo, ['loot', 'viagem'], true) && ! in_array($camada, ['mestre', 'jogadores'], true), 422, 'O objeto fica na camada Mestre ou Jogadores.');
+        abort_if(in_array($tipo, ['loot', 'viagem', 'zona'], true) && ! in_array($camada, ['mestre', 'jogadores'], true), 422, 'O objeto fica na camada Mestre ou Jogadores.');
         abort_if($iluminacao && $camada !== 'iluminacao', 422, 'Luzes e paredes pertencem à camada de iluminação.');
         abort_if(! $iluminacao && $camada === 'iluminacao', 422, 'Esta camada só aceita luzes e paredes.');
     }

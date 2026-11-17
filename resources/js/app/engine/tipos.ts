@@ -22,7 +22,8 @@ export type Ferramenta =
     | 'ilusoria'
     | 'luz'
     | 'loot'
-    | 'viagem';
+    | 'viagem'
+    | 'zona';
 
 /** Estilo atual das ferramentas de pintar (traço) e texto. */
 export interface EstiloPintura {
@@ -45,7 +46,7 @@ import type { BarraDoToken } from '../nucleo/sistemas/tipos';
 export interface ObjetoDto {
     id: number;
     camada: Camada;
-    tipo: 'imagem' | 'token' | 'luz' | 'parede' | 'traco' | 'texto' | 'loot' | 'viagem';
+    tipo: 'imagem' | 'token' | 'luz' | 'parede' | 'traco' | 'texto' | 'loot' | 'viagem' | 'zona';
     personagem_id: number | null;
     /** token: ids dos efeitos (condições) ativos do personagem, desenhados como ícones no token. */
     status?: string[];
@@ -103,6 +104,13 @@ export interface ObjetoDto {
         direcao?: number;
         /** luz: ignora as paredes. */
         atravessa?: boolean;
+        /** zona: a forma, o tamanho (m) e o dano/terreno que ela causa a quem entra ou começa o turno nela. */
+        forma?: 'esfera' | 'cone' | 'linha' | 'retangulo';
+        metros?: number;
+        largura_m?: number;
+        dano_dados?: string | null;
+        dano_tipo?: string | null;
+        terreno_dificil?: boolean;
         /** viagem: página e ponto de destino conectados */
         destino_pagina_id?: number | null;
         destino_objeto_id?: number | null;
@@ -190,6 +198,8 @@ export interface CenaEventos {
     usarPontoViagem: (id: number) => void;
     /** Clique com a ferramenta Viagem (mestre): cria um ponto de viagem. */
     criarViagem: (x: number, y: number) => void;
+    /** Clique com a ferramenta Zona (mestre): cria uma zona no ponto, com as opções do painel. */
+    criarZona: (x: number, y: number, fim?: { x: number; y: number }) => void;
     /** Botão direito (sem arrastar) sobre um objeto, em qualquer camada: posição na tela (client) para abrir o menu. */
     menuObjeto: (id: number, tela: { x: number; y: number }) => void;
     /** Ferramenta Mirar (ou tecla T + clique): o token de personagem clicado vira o alvo (`null` = limpar o alvo). */

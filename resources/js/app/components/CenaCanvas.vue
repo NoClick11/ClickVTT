@@ -23,7 +23,7 @@ const props = defineProps<{
     /** Gabarito de área da Técnica em uso: a forma, o tamanho e o token (id do objeto) de onde parte; null = sem gabarito. */
     gabarito?: { area: AreaDeEfeito; origem: number; excluir?: number[] } | null;
     /** Marcar o centro de uma esfera (Vigília): de onde parte (pixels), alcance máximo e raio (metros); null = desligado. */
-    ponto?: { de: { x: number; y: number }; maximo: number; raio: number } | null;
+    ponto?: { de: { x: number; y: number }; maximo: number; raio: number; retangulo?: { metros: number; largura: number } } | null;
     /** Esferas persistentes no mapa (Vigília), visíveis para todos. */
     zonas?: { id: string; x: number; y: number; raio: number; cor: string }[];
 }>();
@@ -36,6 +36,7 @@ const emit = defineEmits<{
     criarLuz: [x: number, y: number];
     criarLoot: [x: number, y: number];
     criarViagem: [x: number, y: number];
+    criarZona: [x: number, y: number, fim?: { x: number; y: number }];
     usarPontoViagem: [id: number];
     abrirLoot: [id: number];
     abrirToken: [id: number];
@@ -80,6 +81,7 @@ onMounted(async () => {
             criarLuz: (x, y) => emit('criarLuz', x, y),
             criarLoot: (x, y) => emit('criarLoot', x, y),
             criarViagem: (x, y) => emit('criarViagem', x, y),
+            criarZona: (x, y, fim) => emit('criarZona', x, y, fim),
             usarPontoViagem: (id) => emit('usarPontoViagem', id),
             abrirLoot: (id) => emit('abrirLoot', id),
             abrirToken: (id) => emit('abrirToken', id),

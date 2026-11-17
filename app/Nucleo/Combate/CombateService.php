@@ -6,6 +6,7 @@ use App\Models\Mesa;
 use App\Models\Objeto;
 use App\Models\Personagem;
 use App\Nucleo\Rolagem\Rolador;
+use App\Nucleo\Sistemas\FichaCampos;
 use App\Nucleo\Sistemas\RegistroSistemas;
 use App\Support\AcessoMesa;
 use App\Support\EntregarMensagem;
@@ -59,7 +60,7 @@ final class CombateService
 
     public static function emCurso(Mesa $mesa): bool
     {
-        return (self::normalizar($mesa->combate)['fase']) === 'em_curso';
+        return self::normalizar($mesa->combate)['fase'] === 'em_curso';
     }
 
     /** O item do turno atual (ou null). */
@@ -103,6 +104,8 @@ final class CombateService
         Duracoes::aoMudarOCombate($mesa, $antes, $depois);
         // ...e as Técnicas ativas pedem o ataque contra quem começa o turno ao alcance
         TecnicasAtivas::aoMudarOTurno($mesa, $acesso, $antes, $depois);
+        // ...e as Zonas do mapa com dano ferem quem começa o turno dentro delas
+        Zonas::aoMudarOTurno($mesa, $acesso, $antes, $depois);
         Transmitir::enviar($mesa, 'combate', ['combate' => $depois, 'ator' => $acesso->jogador->id], ['mesa']);
 
         return $depois;
@@ -180,6 +183,7 @@ final class CombateService
         if ($mudou) {
             Transmitir::enviar($mesa, 'combate', ['combate' => $depois, 'ator' => $acesso->jogador->id], ['mesa']);
         }
+
         return $depois;
     }
 
@@ -190,7 +194,7 @@ final class CombateService
     public function darAtaquesExtras(Mesa $mesa, AcessoMesa $acesso, int $personagemId, int $n): array
     {
         abort_unless($acesso->podeControlar($personagemId), 403, 'Este personagem não é seu.');
-        $depois = DB::transaction(function () use ($mesa, $acesso, $personagemId, $n) {
+        $depois = DB::transaction(function () use ($mesa, $personagemId, $n) {
             $m = Mesa::query()->whereKey($mesa->id)->lockForUpdate()->firstOrFail();
             $c = self::normalizar($m->combate);
             $k = collect($c['itens'])->search(fn ($i) => (int) ($i['personagem_id'] ?? 0) === (int) $personagemId);
@@ -397,7 +401,7 @@ final class CombateService
         foreach (Personagem::query()->where('mesa_id', $mesa->id)->get() as $p) {
             // O sistema renova o que volta ao fim do encontro (ex.: Pontos de Escudo do Haki)
             if ($sistema && method_exists($sistema, 'aoEncerrarCombate') && ($renovar = $sistema->aoEncerrarCombate($p->fichaCompleta($sistema))) !== []) {
-                $p->ficha = app(\App\Nucleo\Sistemas\FichaCampos::class)->aplicar($sistema, $p->ficha, $renovar);
+                $p->ficha = app(FichaCampos::class)->aplicar($sistema, $p->ficha, $renovar);
                 $p->save();
                 Duracoes::transmitir($mesa, $p, $renovar);
             }

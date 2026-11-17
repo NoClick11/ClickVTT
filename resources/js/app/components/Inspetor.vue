@@ -5,6 +5,10 @@ import { ArrowDownToLine, ArrowUpToLine, Trash2, X } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { CAMADAS, type Camada, type CamposGeometria, type ObjetoDto, type PaginaDto, type PontoDeViagem, type TipoParede } from '../engine/tipos';
 import { BLOQUEIO_PADRAO, type CanalDeBloqueio } from '../engine/visao';
+import { caixaDaZona } from '../engine/zona';
+import { fatorParaMetros } from '../nucleo/combate/movimento';
+import { TIPOS_DE_DANO_ONE_PIECE } from '../nucleo/combate/tiposDano';
+import SelectTipoDano from '../nucleo/ui/SelectTipoDano.vue';
 
 const props = defineProps<{ objeto: ObjetoDto; pagina: PaginaDto; paginas?: PaginaDto[]; pontosDeViagem?: PontoDeViagem[] }>();
 const emit = defineEmits<{ atualizar: [campos: Partial<ObjetoDto>]; remover: []; fechar: []; navegar: [paginaId: number] }>();
@@ -24,6 +28,17 @@ const numero = (e: Event): number | null => {
 
     return Number.isFinite(v) ? v : null;
 };
+
+// --- zona: o tamanho muda a caixa do objeto (um quadrado que cabe a forma) em volta do mesmo centro ---
+const metrosPorPx = computed(() => (props.pagina.distancia_quadrado * fatorParaMetros(props.pagina.unidade)) / Math.max(1, t.value));
+function tamanhoDaZona(campo: 'metros' | 'largura_m', e: Event) {
+    const v = numero(e);
+    const o = props.objeto;
+    if (v === null || v < 0.5 || !o.dados?.forma) return;
+    const dados = { forma: o.dados.forma, metros: o.dados.metros ?? 3, largura_m: o.dados.largura_m, [campo]: v };
+    const caixa = caixaDaZona({ x: o.x + o.largura / 2, y: o.y + o.altura / 2 }, dados, metrosPorPx.value);
+    emit('atualizar', { ...caixa, dados: { [campo]: v } });
+}
 
 // --- luz ---
 const raioDaLuz = computed(() => props.objeto.dados?.raio ?? Math.min(props.objeto.largura, props.objeto.altura) / 2);
@@ -285,6 +300,76 @@ const campo = 'h-8 border-ouro-500/20 bg-preto-900 px-2 text-sm';
                 >
                     Ir para este mapa
                 </Button>
+            </template>
+            <template v-else-if="objeto.tipo === 'zona'">
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="grid gap-1">
+                        <span class="text-xs text-preto-300">{{ objeto.dados?.forma === 'esfera' ? 'Raio (m)' : 'Comprimento (m)' }}</span>
+                        <Input
+                            :class="campo"
+                            type="number"
+                            min="0.5"
+                            step="0.5"
+                            :model-value="objeto.dados?.metros ?? 0"
+                            @change="(e: Event) => tamanhoDaZona('metros', e)"
+                        />
+                    </label>
+                    <label v-if="objeto.dados?.forma === 'retangulo'" class="grid gap-1">
+                        <span class="text-xs text-preto-300">Largura (m)</span>
+                        <Input
+                            :class="campo"
+                            type="number"
+                            min="0.5"
+                            step="0.5"
+                            :model-value="objeto.dados?.largura_m ?? objeto.dados?.metros ?? 0"
+                            @change="(e: Event) => tamanhoDaZona('largura_m', e)"
+                        />
+                    </label>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="grid gap-1">
+                        <span class="text-xs text-preto-300">Dano (dado)</span>
+                        <Input
+                            :class="campo"
+                            maxlength="12"
+                            placeholder="2d6 (vazio = sem dano)"
+                            :model-value="objeto.dados?.dano_dados ?? ''"
+                            @change="(e: Event) => emit('atualizar', { dados: { dano_dados: (e.target as HTMLInputElement).value.trim() || null } })"
+                        />
+                    </label>
+                    <label class="grid gap-1">
+                        <span class="text-xs text-preto-300">Tipo do dano</span>
+                        <SelectTipoDano
+                            :model-value="objeto.dados?.dano_tipo ?? ''"
+                            :opcoes="TIPOS_DE_DANO_ONE_PIECE"
+                            vazio="Sem tipo"
+                            :class="campo"
+                            @update:model-value="(v: string) => emit('atualizar', { dados: { dano_tipo: v || null } })"
+                        />
+                    </label>
+                </div>
+                <label class="flex items-center gap-2 text-xs text-preto-200">
+                    <input
+                        type="checkbox"
+                        class="size-4 accent-ouro-500"
+                        :checked="!!objeto.dados?.terreno_dificil"
+                        @change="(e) => emit('atualizar', { dados: { terreno_dificil: (e.target as HTMLInputElement).checked } })"
+                    />
+                    Terreno difícil (só desenhado)
+                </label>
+                <label class="grid gap-1">
+                    <span class="text-xs text-preto-300">Cor</span>
+                    <Input
+                        type="color"
+                        class="h-8 p-1"
+                        :model-value="objeto.dados?.cor ?? '#ef4444'"
+                        @change="(e: Event) => emit('atualizar', { dados: { cor: (e.target as HTMLInputElement).value } })"
+                    />
+                </label>
+                <p class="text-[11px] text-preto-400">
+                    Gire com a alça de rotação (ou E/R). Para mostrar ou ocultar aos jogadores, troque a camada (Mestre = oculta, Jogadores =
+                    visível). O dano vale ao entrar e no início do turno de quem está dentro (combate em curso).
+                </p>
             </template>
             <template v-else>
                 <label v-if="objeto.tipo === 'traco'" class="grid gap-1">

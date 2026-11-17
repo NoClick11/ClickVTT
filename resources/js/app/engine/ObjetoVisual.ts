@@ -1,8 +1,10 @@
 import { Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { GifSprite } from 'pixi.js/gif';
+import { desenhoDaArea, tokensNaArea } from '../nucleo/combate/area';
 import type { BarraDoToken } from '../nucleo/sistemas/tipos';
 import { iconeDoStatus } from '../nucleo/status';
 import type { InfoMira, ObjetoDto } from './tipos';
+import { medidaDaZona, type DadosDeZona } from './zona';
 
 /** Representa um objeto da cena no Pixi: imagem/vídeo/GIF (mapa), token (círculo), luz ou parede. */
 export class ObjetoVisual {
@@ -116,6 +118,7 @@ export class ObjetoVisual {
             const { x: ox, y: oy, largura, altura } = this.dto;
             return Math.hypot(x - (ox + largura / 2), y - (oy + altura / 2)) <= Math.max(Math.min(largura, altura) / 2, tolerancia);
         }
+        if (this.dto.tipo === 'zona') return this.zonaContem(x, y, tolerancia);
         if (this.dto.tipo === 'viagem') {
             const { x: ox, y: oy, largura, altura } = this.dto;
             const raio = Math.max(Math.min(largura, altura) / 2, 28);
@@ -213,6 +216,8 @@ export class ObjetoVisual {
             this.desenharLoot(g);
         } else if (this.dto.tipo === 'viagem') {
             this.desenharViagem(g);
+        } else if (this.dto.tipo === 'zona') {
+            this.desenharZona(g);
         } else if (this.ehToken && !this.arquivoCarregado) {
             // Sem imagem: círculo colorido com a inicial.
             g.ellipse(largura / 2, altura / 2, largura / 2, altura / 2).fill({ color: corHex(dados?.cor), alpha: 1 });
@@ -221,6 +226,60 @@ export class ObjetoVisual {
             g.rect(0, 0, largura, altura).fill({ color: 0x25212b, alpha: 0.6 }).stroke({ color: 0x4a4452, width: 2 });
         }
         void nome;
+    }
+
+    /** A zona como dados (forma e tamanho) ou null se faltam. */
+    private dadosDaZona(): DadosDeZona | null {
+        const d = this.dto.dados;
+
+        return d?.forma && d.metros ? { forma: d.forma, metros: d.metros, ...(d.largura_m ? { largura_m: d.largura_m } : {}) } : null;
+    }
+
+    /** O clique (mundo) cai dentro da zona? Gira o ponto de volta pela rotação do objeto e usa a mesma conta dos alvos. */
+    private zonaContem(x: number, y: number, tolerancia: number): boolean {
+        const z = this.dadosDaZona();
+        if (!z) return false;
+        const { x: ox, y: oy, largura, altura } = this.dto;
+        const cx = ox + largura / 2;
+        const cy = oy + altura / 2;
+        const rad = -((this.dto.dados?.rotacao ?? 0) * Math.PI) / 180;
+        const dx = x - cx;
+        const dy = y - cy;
+        const local = { x: cx + dx * Math.cos(rad) - dy * Math.sin(rad), y: cy + dx * Math.sin(rad) + dy * Math.cos(rad) };
+        const { medida, metrosPorPx } = medidaDaZona(z, largura);
+
+        return tokensNaArea(medida, { x: cx, y: cy }, [{ id: 0, x: local.x, y: local.y, raio: tolerancia }], metrosPorPx).length > 0;
+    }
+
+    /**
+     * Zona: a área colorida (a mesma forma que os alvos usam), com pontinhos onde o terreno é difícil. A rotação é a do objeto inteiro
+     * (`conteudoRotativo`), então aqui a forma é desenhada sem girar.
+     */
+    private desenharZona(g: Graphics): void {
+        const z = this.dadosDaZona();
+        if (!z) return;
+        const { largura, altura, dados } = this.dto;
+        const centro = { x: largura / 2, y: altura / 2 };
+        const { medida, metrosPorPx } = medidaDaZona(z, largura);
+        const area = desenhoDaArea(medida, centro, 0, metrosPorPx);
+        const cor = corHex(dados?.cor ?? '#ef4444');
+        const caminho = () => {
+            if (area.tipo === 'circulo') g.circle(area.x, area.y, area.r);
+            else if (area.tipo === 'setor') g.moveTo(area.x, area.y).arc(area.x, area.y, area.r, area.de, area.ate).closePath();
+            else g.poly(area.pontos);
+        };
+        caminho();
+        g.fill({ color: cor, alpha: 0.22 });
+        caminho();
+        g.stroke({ color: cor, width: 3, alpha: 0.9 });
+        if (dados?.terreno_dificil) {
+            // terreno difícil: pontinhos numa grade, só onde a forma cobre (o mesmo teste do acerto)
+            const passo = Math.max(18, largura / 22);
+            for (let px = passo / 2; px < largura; px += passo)
+                for (let py = passo / 2; py < altura; py += passo)
+                    if (tokensNaArea(medida, centro, [{ id: 0, x: px, y: py, raio: 0 }], metrosPorPx).length)
+                        g.circle(px, py, 2.2).fill({ color: cor, alpha: 0.8 });
+        }
     }
 
     /** Loot: um baú de tesouro (tampa arredondada, cintas de metal e fechadura), no estilo do ícone do Foundry. */

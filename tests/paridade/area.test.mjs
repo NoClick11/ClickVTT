@@ -155,3 +155,17 @@ test('catálogo: toda arma vai para a mesa com alcance (distância normal/máxim
     }
     assert.ok(armas > 10);
 });
+
+test('area: retângulo centrado na origem, com comprimento ao longo do ângulo e largura do outro lado (Zonas)', () => {
+    const m = { forma: 'retangulo', metros: 6, angulo: 0, largura: 2 };
+    // 6 m de comprimento (±3) × 2 m de largura (±1)
+    assert.deepEqual(tokensNaArea(m, O, [T(1, 2.9, 0.9), T(2, 3.1, 0), T(3, 0, 1.1), T(4, -2.9, -0.9)], 1), [1, 4]);
+    // sem largura é um quadrado de `metros`; girado 90° troca os eixos
+    assert.deepEqual(tokensNaArea({ forma: 'retangulo', metros: 4, angulo: 0 }, O, [T(1, 1.9, 1.9), T(2, 2.1, 0)], 1), [1]);
+    assert.deepEqual(tokensNaArea({ forma: 'retangulo', metros: 6, angulo: Math.PI / 2, largura: 2 }, O, [T(1, 0.9, 2.9), T(2, 2.9, 0.9)], 1), [1]);
+    // o desenho é o retângulo alargado pelo raio do token
+    assert.deepEqual(desenhoDaArea({ forma: 'retangulo', metros: 4, angulo: 0, largura: 2 }, O, 0.5, 1), {
+        tipo: 'poligono',
+        pontos: [-2.5, -1.5, 2.5, -1.5, 2.5, 1.5, -2.5, 1.5],
+    });
+});

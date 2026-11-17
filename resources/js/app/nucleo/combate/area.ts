@@ -3,7 +3,18 @@
  * Técnica; o cursor dá a direção (cone, linha) e, quando o alcance varia (arma), também o tamanho. Arquivo PURO (sem Vue nem Pixi):
  * o Node o executa direto nos testes e o mapa só desenha.
  */
-export type FormaDeArea = 'linha' | 'cone' | 'esfera';
+export type FormaDeArea = 'linha' | 'cone' | 'esfera' | 'retangulo';
+
+/**
+ * O retângulo (só nas Zonas do mapa) é centrado na origem: `metros` é o comprimento ao longo do `angulo` e `largura` (m) o outro lado
+ * (sem `largura`, é um quadrado de `metros`).
+ */
+export interface MedidaDeArea {
+    forma: FormaDeArea;
+    metros: number;
+    angulo: number;
+    largura?: number;
+}
 
 /** Largura da Linha (m): um quadrado. */
 export const LARGURA_DA_LINHA = 1.5;
@@ -16,6 +27,10 @@ export interface AreaDeEfeito {
     metros: number | null;
     /** Com `metros: null`: o tamanho máximo que o cursor pode dar (o alcance da arma). */
     maximo?: number | null;
+    /** Retângulo: o outro lado (m); sem ele, um quadrado. */
+    largura?: number | null;
+    /** A área sai num PONTO escolhido no mapa, a até estes metros de quem usa (Rede, Guilhotina), em vez de centrada nele. */
+    noPonto?: number | null;
     /** A área não pode ser marcada (ex.: sem arma equipada, ou arma sem alcance): o motivo para avisar o jogador. */
     bloqueio?: string;
 }
@@ -26,12 +41,7 @@ export interface Ponto {
 }
 
 /** A forma já com o tamanho (m): o cursor decide o que o alcance da arma deixou em aberto; fixo, só dá a direção. */
-export function areaMedida(
-    area: AreaDeEfeito,
-    origem: Ponto,
-    cursor: Ponto,
-    metrosPorPx: number,
-): { forma: FormaDeArea; metros: number; angulo: number } {
+export function areaMedida(area: AreaDeEfeito, origem: Ponto, cursor: Ponto, metrosPorPx: number): MedidaDeArea {
     const dx = cursor.x - origem.x;
     const dy = cursor.y - origem.y;
 
@@ -54,7 +64,7 @@ export interface TokenNoMapa {
  * (`origemId`) fica de fora. `medida.metros` em metros; `metrosPorPx` converte o mapa.
  */
 export function tokensNaArea(
-    medida: { forma: FormaDeArea; metros: number; angulo: number },
+    medida: MedidaDeArea,
     origem: Ponto,
     tokens: TokenNoMapa[],
     metrosPorPx: number,
@@ -73,6 +83,8 @@ export function tokensNaArea(
             const s = Math.sin(medida.angulo);
             const along = dx * c + dy * s;
             const across = Math.abs(-dx * s + dy * c);
+            if (medida.forma === 'retangulo')
+                return Math.abs(along) <= medida.metros / 2 + raio && across <= (medida.largura ?? medida.metros) / 2 + raio;
             if (medida.forma === 'linha') return along >= -raio && along <= medida.metros + raio && across <= LARGURA_DA_LINHA / 2 + raio;
             // cone: dentro do comprimento e do ângulo (a margem do raio do token deixa passar quem está na borda)
             return (
@@ -95,12 +107,7 @@ export type DesenhoDaArea =
  * (`raioPx`). Assim a borda toca onde um token começa a ser atingido: a esfera de 1,5 m cobre os quadrados vizinhos por inteiro, e não
  * só até a metade deles. A origem é o centro de quem usa a Técnica.
  */
-export function desenhoDaArea(
-    medida: { forma: FormaDeArea; metros: number; angulo: number },
-    origem: Ponto,
-    raioPx: number,
-    metrosPorPx: number,
-): DesenhoDaArea {
+export function desenhoDaArea(medida: MedidaDeArea, origem: Ponto, raioPx: number, metrosPorPx: number): DesenhoDaArea {
     const comprimento = medida.metros / metrosPorPx;
     const c = Math.cos(medida.angulo);
     const sn = Math.sin(medida.angulo);
@@ -116,6 +123,16 @@ export function desenhoDaArea(
             r: comprimento + raioPx + recuo,
             de: medida.angulo - MEIO_ANGULO_DO_CONE,
             ate: medida.angulo + MEIO_ANGULO_DO_CONE,
+        };
+    }
+    if (medida.forma === 'retangulo') {
+        const meiaAlong = comprimento / 2 + raioPx;
+        const meiaLado = (medida.largura ?? medida.metros) / metrosPorPx / 2 + raioPx;
+        const canto = (along: number, lado: number) => [origem.x + c * along - sn * lado, origem.y + sn * along + c * lado];
+
+        return {
+            tipo: 'poligono',
+            pontos: [...canto(-meiaAlong, -meiaLado), ...canto(meiaAlong, -meiaLado), ...canto(meiaAlong, meiaLado), ...canto(-meiaAlong, meiaLado)],
         };
     }
     const meia = LARGURA_DA_LINHA / metrosPorPx / 2 + raioPx;

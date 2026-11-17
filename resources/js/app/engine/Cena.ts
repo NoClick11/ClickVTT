@@ -24,7 +24,7 @@ const TAMANHO_ALCA = 8; // px na tela
 const MARGEM_TOPO = 48; // altura da barra superior
 const ALCAS: AlcaRedimensionar[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
-type Modo = 'nenhum' | 'pan' | 'mover' | 'redimensionar' | 'rotacionar' | 'regua' | 'desenhar' | 'pintar' | 'laco';
+type Modo = 'nenhum' | 'pan' | 'mover' | 'redimensionar' | 'rotacionar' | 'regua' | 'desenhar' | 'zona' | 'pintar' | 'laco';
 
 interface AnimacaoToken {
     objetoId: number;
@@ -99,7 +99,7 @@ export class Cena {
     /** Gabarito de área em uso (Técnica de área): a forma segue o cursor a partir do token de quem usa; um clique confirma. */
     private gabarito: { area: AreaDeEfeito; origem: number; excluir?: number[] } | null = null;
     /** Marcar o centro de uma esfera (Vigília): segue o cursor, limitada a `maximo` m do ponto `de`; um clique confirma. */
-    private ponto: { de: { x: number; y: number }; maximo: number; raio: number } | null = null;
+    private ponto: { de: { x: number; y: number }; maximo: number; raio: number; retangulo?: { metros: number; largura: number } } | null = null;
     private zonas: { id: string; x: number; y: number; raio: number; cor: string }[] = [];
     /** Tecla T apertada: o próximo clique em um token o mira (qualquer ferramenta). */
     private teclaMirar = false;
@@ -115,6 +115,8 @@ export class Cena {
     private alca: AlcaRedimensionar | null = null;
     private reguaInicio = { x: 0, y: 0 };
     private desenhoInicio = { x: 0, y: 0 };
+    /** Onde se apertou o mouse com a ferramenta Zona (sem o encaixe na grade): separa o clique do arrasto. */
+    private zonaToque = { x: 0, y: 0 };
     /** Destino encaixado no grid durante o redimensionamento (mostrado como contorno-guia). */
     private alvoEncaixe: CamposGeometria | null = null;
     /** Destino do token durante o arrasto estilo Foundry (o token real fica parado até soltar). */
@@ -302,7 +304,7 @@ export class Cena {
     }
 
     /** Liga a marcação do centro de uma esfera (`de` e centro em pixels do mundo; `maximo` e `raio` em metros), ou a desliga (`null`). */
-    setPonto(p: { de: { x: number; y: number }; maximo: number; raio: number } | null): void {
+    setPonto(p: { de: { x: number; y: number }; maximo: number; raio: number; retangulo?: { metros: number; largura: number } } | null): void {
         this.ponto = p;
         this.gabaritoG.clear();
         this.reguaTexto.visible = false;
@@ -345,10 +347,20 @@ export class Cena {
         const mpp = this.metrosPorPixel();
         const estilo = { color: 0xfb923c, width: 2, alpha: 0.95, pixelLine: true };
         g.circle(this.ponto.de.x, this.ponto.de.y, this.ponto.maximo / mpp).stroke({ ...estilo, alpha: 0.35 }); // o alcance
-        g.circle(r.x, r.y, this.ponto.raio / mpp)
-            .fill({ color: 0xfb923c, alpha: 0.22 })
-            .stroke(estilo);
-        this.reguaTexto.text = `${formatar(r.metros)} m (máx. ${formatar(this.ponto.maximo)} m) · esfera de ${formatar(this.ponto.raio)} m`;
+        const ret = this.ponto.retangulo;
+        if (ret) {
+            const w = ret.metros / mpp;
+            const h = ret.largura / mpp;
+            g.rect(r.x - w / 2, r.y - h / 2, w, h)
+                .fill({ color: 0xfb923c, alpha: 0.22 })
+                .stroke(estilo);
+        } else {
+            g.circle(r.x, r.y, this.ponto.raio / mpp)
+                .fill({ color: 0xfb923c, alpha: 0.22 })
+                .stroke(estilo);
+        }
+        const forma = ret ? `retângulo de ${formatar(ret.metros)} x ${formatar(ret.largura)} m` : `esfera de ${formatar(this.ponto.raio)} m`;
+        this.reguaTexto.text = `${formatar(r.metros)} m (máx. ${formatar(this.ponto.maximo)} m) · ${forma}`;
         this.reguaTexto.scale.set(1 / this.mundo.scale.x);
         this.reguaTexto.position.set(cursor.x + 12 / this.mundo.scale.x, cursor.y - 24 / this.mundo.scale.x);
         this.reguaTexto.visible = true;
@@ -1167,7 +1179,8 @@ export class Cena {
         }
 
         // Alça de rotação estilo Roll20 (no topo do token/imagem, perpendicular à borda superior)
-        const podeRotacionar = (v.dto.tipo === 'token' || (this.opcoes.mestre && v.dto.tipo === 'imagem')) && this.podeInteragir(v);
+        const podeRotacionar =
+            (v.dto.tipo === 'token' || (this.opcoes.mestre && (v.dto.tipo === 'imagem' || v.dto.tipo === 'zona'))) && this.podeInteragir(v);
         if (podeRotacionar) {
             const distHaste = 24 / this.mundo.scale.x;
             const stemBase = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
@@ -1182,7 +1195,7 @@ export class Cena {
             g.circle(stemEnd.x, stemEnd.y, rAlca * 0.45).fill(0xd4a843);
         }
 
-        if (!this.opcoes.mestre || v.dto.tipo === 'texto') return;
+        if (!this.opcoes.mestre || v.dto.tipo === 'texto' || v.dto.tipo === 'zona') return;
         const s = TAMANHO_ALCA / this.mundo.scale.x;
         for (const a of this.alcasVisiveis(largura, altura)) {
             const p = this.posicaoAlca(a, x, y, largura, altura, rot);
@@ -1209,7 +1222,7 @@ export class Cena {
     private alcaRotacaoEm(px: number, py: number): boolean {
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
         if (!v || !this.podeInteragir(v)) return false;
-        if (v.dto.tipo !== 'token' && !(this.opcoes.mestre && v.dto.tipo === 'imagem')) return false;
+        if (v.dto.tipo !== 'token' && !(this.opcoes.mestre && (v.dto.tipo === 'imagem' || v.dto.tipo === 'zona'))) return false;
         const p = this.posicaoAlcaRotacao(v);
         const tol = (TAMANHO_ALCA * 1.3) / this.mundo.scale.x;
 
@@ -1244,7 +1257,7 @@ export class Cena {
 
     private alcaEm(px: number, py: number): AlcaRedimensionar | null {
         const v = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
-        if (!v || !this.opcoes.mestre || v.dto.tipo === 'parede' || v.dto.tipo === 'texto') return null;
+        if (!v || !this.opcoes.mestre || v.dto.tipo === 'parede' || v.dto.tipo === 'texto' || v.dto.tipo === 'zona') return null;
         const tol = (TAMANHO_ALCA * 0.9) / this.mundo.scale.x;
         const { x, y, largura, altura } = v.dto;
         const rot = v.dto.dados?.rotacao ?? 0;
@@ -1389,7 +1402,11 @@ export class Cena {
             // Teclas E e R: rotacionam o token selecionado (como no Roll20)
             if ((e.code === 'KeyE' || e.code === 'KeyR') && !e.ctrlKey && !e.metaKey) {
                 const sel = this.selecionadoId ? this.visuais.get(this.selecionadoId) : null;
-                if (sel && (sel.dto.tipo === 'token' || (this.opcoes.mestre && sel.dto.tipo === 'imagem')) && this.podeInteragir(sel)) {
+                if (
+                    sel &&
+                    (sel.dto.tipo === 'token' || (this.opcoes.mestre && (sel.dto.tipo === 'imagem' || sel.dto.tipo === 'zona'))) &&
+                    this.podeInteragir(sel)
+                ) {
                     e.preventDefault();
                     const passo = e.altKey || e.shiftKey ? 15 : 45;
                     const direcao = e.code === 'KeyE' ? 1 : -1;
@@ -1486,6 +1503,15 @@ export class Cena {
         }
         if (this.ferramenta === 'viagem') {
             if (this.opcoes.mestre) this.opcoes.eventos.criarViagem(this.snapCentro(p.x), this.snapCentro(p.y));
+            return;
+        }
+        if (this.ferramenta === 'zona') {
+            // clicar cria no tamanho do painel; arrastar define o tamanho e a direção (a origem é onde se apertou)
+            if (this.opcoes.mestre) {
+                this.modo = 'zona';
+                this.zonaToque = { x: p.x, y: p.y };
+                this.desenhoInicio = { x: this.snapCentro(p.x), y: this.snapCentro(p.y) };
+            }
             return;
         }
 
@@ -1629,6 +1655,16 @@ export class Cena {
         }
         if (this.modo === 'regua') {
             this.atualizarRegua({ x: this.snapCentro(p.x), y: this.snapCentro(p.y) });
+            return;
+        }
+        if (this.modo === 'zona') {
+            const ini = this.desenhoInicio;
+            const metros = Math.hypot(p.x - ini.x, p.y - ini.y) * this.metrosPorPixel();
+            this.desenhoG.clear().moveTo(ini.x, ini.y).lineTo(p.x, p.y).stroke({ color: 0xfb923c, width: 3, alpha: 0.9, cap: 'round' });
+            this.reguaTexto.text = `${formatar(metros)} m`;
+            this.reguaTexto.scale.set(1 / this.mundo.scale.x);
+            this.reguaTexto.position.set(p.x + 12 / this.mundo.scale.x, p.y - 24 / this.mundo.scale.x);
+            this.reguaTexto.visible = true;
             return;
         }
         if (this.modo === 'laco') {
@@ -1960,6 +1996,15 @@ export class Cena {
                 this.opcoes.eventos.criarParede([this.desenhoInicio.x, this.desenhoInicio.y, fim.x, fim.y], tipo);
             }
         }
+        if (this.modo === 'zona') {
+            const tela = this.posTela(e);
+            const fim = this.paraMundo(tela.x, tela.y);
+            const ini = this.desenhoInicio;
+            this.desenhoG.clear();
+            this.reguaTexto.visible = false;
+            const arrastou = Math.hypot(fim.x - this.zonaToque.x, fim.y - this.zonaToque.y) * this.mundo.scale.x > 8;
+            this.opcoes.eventos.criarZona(ini.x, ini.y, arrastou ? fim : undefined);
+        }
         if (this.modo === 'laco') {
             const tela = this.posTela(e);
             const fim = this.paraMundo(tela.x, tela.y);
@@ -2087,7 +2132,7 @@ export class Cena {
             this.teclaMirar ||
             this.gabarito ||
             this.ponto ||
-            ['mirar', 'regua', 'loot', 'viagem', 'luz', 'parede', 'porta', 'janela', 'etereo', 'ilusoria', 'pintar'].includes(this.ferramenta)
+            ['mirar', 'regua', 'loot', 'viagem', 'zona', 'luz', 'parede', 'porta', 'janela', 'etereo', 'ilusoria', 'pintar'].includes(this.ferramenta)
                 ? 'crosshair'
                 : this.ferramenta === 'texto'
                   ? 'text'

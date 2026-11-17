@@ -32,6 +32,7 @@ import MenuPersonagem from '../components/MenuPersonagem.vue';
 import MenuPing from '../components/MenuPing.vue';
 import NovoPersonagemDialog from '../components/NovoPersonagemDialog.vue';
 import OpcoesFerramenta from '../components/OpcoesFerramenta.vue';
+import OpcoesZona, { type OpcoesDaZona } from '../components/OpcoesZona.vue';
 import PainelAlvo from '../components/PainelAlvo.vue';
 import PainelChat from '../components/PainelChat.vue';
 import PainelConfiguracoes from '../components/PainelConfiguracoes.vue';
@@ -53,6 +54,7 @@ import {
     type PontoDeViagem,
     type TipoParede,
 } from '../engine/tipos';
+import { caixaDaZona } from '../engine/zona';
 import { tocarSomCura, tocarSomDano } from '../nucleo/audio/sonsCombate';
 import { avaliarAcao, avaliarAtaque, type CategoriaAcao } from '../nucleo/combate/acoes';
 import type { AreaDeEfeito } from '../nucleo/combate/area';
@@ -1068,6 +1070,82 @@ async function criarViagem(cx: number, cy: number) {
     }
 }
 
+/** O que a ferramenta Zona cria (mestre): forma, tamanho, dano e se nasce visível. */
+const opcoesZona = ref<OpcoesDaZona>({
+    forma: 'esfera',
+    metros: 6,
+    largura_m: 3,
+    dano_dados: '',
+    dano_tipo: 'fogo',
+    terreno_dificil: false,
+    visivel: false,
+    limite: null,
+});
+
+/** Metros por pixel da página (a mesma escala do mapa). */
+const metrosPorPixelDaPagina = (): number => {
+    const p = props.pagina;
+
+    return ((p?.distancia_quadrado ?? 1.5) * fatorParaMetros(p?.unidade)) / Math.max(1, p?.tamanho_quadrado ?? 100);
+};
+
+/** Cria uma zona no ponto: a caixa (um quadrado que cabe a forma) vem da forma e da escala da página; oculta = camada Mestre. */
+async function criarZonaNoMapa(cx: number, cy: number, o: OpcoesDaZona, nome = 'Zona', rotacao = 0) {
+    if (!props.pagina || !props.mestre) return;
+    const caixa = caixaDaZona({ x: cx, y: cy }, o, metrosPorPixelDaPagina());
+    try {
+        const novo = await api.criarObjeto(props.pagina.id, {
+            camada: o.visivel ? 'jogadores' : 'mestre',
+            tipo: 'zona',
+            nome,
+            ...caixa,
+            dados: {
+                forma: o.forma,
+                metros: o.metros,
+                ...(o.forma === 'retangulo' ? { largura_m: o.largura_m } : {}),
+                cor: o.dano_dados ? '#ef4444' : '#a3a3a3',
+                ...(rotacao ? { rotacao } : {}),
+                ...(o.dano_dados ? { dano_dados: o.dano_dados, ...(o.dano_tipo ? { dano_tipo: o.dano_tipo } : {}) } : {}),
+                ...(o.terreno_dificil ? { terreno_dificil: true } : {}),
+            },
+        });
+        incluirObjeto(novo);
+        selecionadoId.value = novo.id;
+    } catch (e) {
+        avisar(mensagemDe(e));
+    }
+}
+/** Ferramenta Zona: o clique cria no tamanho do painel; o arrasto define o tamanho (a distância) e a direção; o painel pode limitar o tamanho (Teia). */
+function criarZona(cx: number, cy: number, fim?: { x: number; y: number }) {
+    const o = opcoesZona.value;
+    if (!fim) return criarZonaNoMapa(cx, cy, o);
+    const mpp = metrosPorPixelDaPagina();
+    const metros = Math.min(Math.max(0.5, Math.round(Math.hypot(fim.x - cx, fim.y - cy) * mpp * 2) / 2), o.limite ?? Infinity);
+    const graus = (Math.atan2(fim.y - cy, fim.x - cx) * 180) / Math.PI;
+
+    return criarZonaNoMapa(cx, cy, { ...o, metros }, 'Zona', ((Math.round(graus) % 360) + 360) % 360);
+}
+
+/** A Técnica que deixa uma zona: cria na área que o mestre acabou de marcar (a origem é quem usa; a rotação é a direção marcada). */
+function criarZonaDaTecnica(zona: NonNullable<UsoDeTecnica['zona']>, info: InfoGabaritoArea, nome: string) {
+    const graus = Math.round((info.medida.angulo * 180) / Math.PI);
+    return criarZonaNoMapa(
+        info.origem.x,
+        info.origem.y,
+        {
+            forma: info.medida.forma,
+            metros: Math.round(info.medida.metros * 100) / 100,
+            largura_m: info.medida.largura ?? info.medida.metros,
+            dano_dados: zona.dano_dados ?? '',
+            dano_tipo: zona.dano_tipo ?? '',
+            terreno_dificil: !!zona.terreno_dificil,
+            visivel: !!zona.visivel,
+        },
+        nome,
+        ((graus % 360) + 360) % 360,
+    );
+}
+
 async function usarPontoViagem(id: number) {
     const obj = objetos.value.find((o) => o.id === id);
     if (!obj || obj.tipo !== 'viagem') return;
@@ -1599,7 +1677,7 @@ async function rolarDaFicha(
 // --- Técnicas: gabarito de área e Salvaguarda coletiva ---------------------------------------------------------------------
 // Técnica de Salvaguarda: a área aparece no mapa a partir do token de quem usa; quem estiver dentro é alvo. O clique confirma, Esc cancela.
 export interface InfoGabaritoArea {
-    medida: { forma: 'linha' | 'cone' | 'esfera'; metros: number; angulo: number };
+    medida: { forma: 'linha' | 'cone' | 'esfera' | 'retangulo'; metros: number; angulo: number; largura?: number };
     origem: { x: number; y: number };
     mpp: number;
 }
@@ -1625,14 +1703,14 @@ const escolherNaArea = (area: AreaDeEfeito, origem: number, excluir: number[]) =
         gabarito.value = { area, origem, excluir };
     });
 // Vigília (Overwatch): marcar o centro da esfera no mapa (limitada ao alcance) e as esferas ativas, visíveis para todos.
-const pontoAtivo = ref<{ de: { x: number; y: number }; maximo: number; raio: number } | null>(null);
+const pontoAtivo = ref<{ de: { x: number; y: number }; maximo: number; raio: number; retangulo?: { metros: number; largura: number } } | null>(null);
 let resolverPonto: ((p: { x: number; y: number } | null) => void) | null = null;
 function aoPonto(p: { x: number; y: number } | null) {
     pontoAtivo.value = null;
     resolverPonto?.(p);
     resolverPonto = null;
 }
-const escolherPonto = (cfg: { de: { x: number; y: number }; maximo: number; raio: number }) =>
+const escolherPonto = (cfg: { de: { x: number; y: number }; maximo: number; raio: number; retangulo?: { metros: number; largura: number } }) =>
     new Promise<{ x: number; y: number } | null>((resolver) => {
         resolverPonto?.(null);
         resolverPonto = resolver;
@@ -2092,6 +2170,7 @@ async function usarTecnicaDaFicha(personagemId: number, uso: UsoDeTecnica) {
         if (!(await gastarAcaoDoCombate(personagemId, uso.categoria, true))) return;
         if (uso.municao) await api.gastarMunicaoDaTecnica(personagemId, uso.municao.tecnica); // sem munição o servidor recusa e os PP não são gastos
         salvarFicha(personagemId, uso.camposDosPP);
+        if (uso.zona && infoGabarito && props.mestre) await criarZonaDaTecnica(uso.zona, infoGabarito, `${uso.nome} (zona)`);
         dispararEfeitoAudiovisual(personagemId, uso, alvos, infoGabarito);
 
         if (teste?.tipo === 'salvaguarda' && teste.atributo) {
@@ -3206,6 +3285,7 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                     @criar-luz="criarLuz"
                     @criar-loot="criarLoot"
                     @criar-viagem="criarViagem"
+                    @criar-zona="criarZona"
                     @usar-ponto-viagem="usarPontoViagem"
                     @abrir-loot="abrirLoot"
                     @abrir-token="abrirDoToken"
@@ -3378,6 +3458,7 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                     :ferramenta="ferramenta"
                     v-model:estilo="estilo"
                 />
+                <OpcoesZona v-if="ferramenta === 'zona' && mestre && !painelDados && !painelTurnos" v-model="opcoesZona" />
                 <PainelDados v-if="painelDados" v-model:animacao="animacao" :mestre="mestre" @rolar="rolar" @fechar="painelDados = false" />
                 <PainelTurnos
                     v-if="painelTurnos && mestre"
