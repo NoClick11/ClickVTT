@@ -508,6 +508,26 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
      * Haki e o Haki do Rei, o despertar prematuro e os PA dados (gerais e restritos) são do mestre; o jogador só compra
      * talentos (sem devolver) e escolhe Haki Principal e afinidade, e a compra tem de caber no saldo e nos requisitos.
      */
+    /**
+     * A forja ajustada em cada arma do inventário (`inventario.*.itens.*.arma.forja`), por posição: só o mestre a muda.
+     *
+     * @param  array<string, mixed>  $ficha
+     * @return array<string, mixed>
+     */
+    private static function forjasAjustadas(array $ficha): array
+    {
+        $r = [];
+        foreach ($ficha['inventario'] ?? [] as $si => $secao) {
+            foreach (is_array($secao) ? ($secao['itens'] ?? []) : [] as $ri => $ref) {
+                if (is_array($ref) && isset($ref['arma']['forja'])) {
+                    $r["{$si}.{$ri}.".($ref['item_id'] ?? 0)] = $ref['arma']['forja'];
+                }
+            }
+        }
+
+        return $r;
+    }
+
     /** @param  array{subir_nivel?: bool}  $liberacoes  o que o mestre liberou na mesa */
     public function conferirFicha(array $antes, array $depois, bool $mestre, array $liberacoes = []): void
     {
@@ -545,6 +565,9 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
             abort(403, 'Só o mestre desperta a Akuma no Mi.');
         }
         // Pontos de Forja: o jogador nunca os altera à mão (a forja gasta e conta as lâminas no servidor; o mestre dá os PF).
+        if (self::forjasAjustadas($antes) != self::forjasAjustadas($depois)) {
+            abort(403, 'Só o mestre ajusta a forja (Meito, Yoto, Expertise...) de uma arma.');
+        }
         if (($antes['forja'] ?? Ferreiro::padrao()) != ($depois['forja'] ?? Ferreiro::padrao())) {
             abort(403, 'Só o mestre ou a própria forja alteram os Pontos de Forja.');
         }

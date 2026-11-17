@@ -2,6 +2,7 @@
 
 namespace App\Sistemas\OnePiece;
 
+use App\Nucleo\Combate\Dano;
 use App\Nucleo\Efeitos\Efeitos;
 use App\Nucleo\Efeitos\Formula;
 use Illuminate\Validation\Rule;
@@ -314,6 +315,21 @@ final class FichaOnePiece
         $r['inventario.*.itens.*.arma.danoExtra'] = ['nullable', 'array', 'max:3'];
         $r['inventario.*.itens.*.arma.danoExtra.*.dados'] = ['required', 'string', 'regex:/^(?:[1-9]|[1-4]\d|50)d(?:[2-9]|[1-9]\d{1,2})$/'];
         $r['inventario.*.itens.*.arma.danoExtra.*.tipo'] = ['nullable', 'string', 'max:40'];
+        // Forja e lendas da arma só nesta ficha (a engrenagem do inventário): só o mestre grava (`OnePiece::conferirFicha`); aqui só o formato
+        $r['inventario.*.itens.*.arma.forja'] = ['nullable', 'array', function (string $atributo, mixed $forja, \Closure $fail) {
+            foreach (is_array($forja) ? Forja::problemas($forja) : [] as $p) {
+                $fail($p);
+            }
+        }];
+        $r['inventario.*.itens.*.arma.forja.meito'] = ['nullable', 'string', Rule::in(Forja::ids('meito'))];
+        $r['inventario.*.itens.*.arma.forja.kokuto'] = ['boolean:strict'];
+        $r['inventario.*.itens.*.arma.forja.yoto'] = ['nullable', 'string', Rule::in(Forja::ids('yoto'))];
+        $r['inventario.*.itens.*.arma.forja.expertise'] = ['array', 'max:2'];
+        $r['inventario.*.itens.*.arma.forja.expertise.*'] = ['string', Rule::in(Forja::ids('expertises'))];
+        $r['inventario.*.itens.*.arma.forja.densidade'] = ['nullable', 'string', Rule::in(Forja::catalogo()['tiposFisicos'])];
+        $r['inventario.*.itens.*.arma.forja.dureza'] = ['boolean:strict'];
+        $r['inventario.*.itens.*.arma.forja.balanco'] = ['boolean:strict'];
+        $r['inventario.*.itens.*.arma.forja.fio'] = ['integer:strict', 'between:0,'.Forja::catalogo()['maxFio']];
 
         $r['tecnicaPrincipal'] = ['nullable', 'string', 'max:120'];
         $r['estiloEscolhas'] = ['array', 'max:20'];
@@ -641,7 +657,7 @@ final class FichaOnePiece
                 // A forja da arma (Meito só em cortantes, Kokuto/Yoto só em Meito, Balanço exige Densidade...) é conferida junto do dano.
                 $forja = request()->input('dados.arma.forja');
                 if (is_array($forja)) {
-                    foreach (Forja::problemas($forja, str_contains(\App\Nucleo\Combate\Dano::normalizar((string) request()->input('dados.arma.tipoDano')), 'cortante')) as $p) {
+                    foreach (Forja::problemas($forja, str_contains(Dano::normalizar((string) request()->input('dados.arma.tipoDano')), 'cortante')) as $p) {
                         $fail($p);
                     }
                 }

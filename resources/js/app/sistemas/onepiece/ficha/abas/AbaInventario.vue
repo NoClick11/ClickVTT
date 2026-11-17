@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { TIPOS_DE_DANO_ONE_PIECE } from '../../../../nucleo/combate/tiposDano';
 import { resumoEfeito } from '../../../../nucleo/efeitos/resumo';
 import { clonar } from '../../../../nucleo/ficha/caminho';
 import CampoNumero from '../../../../nucleo/ui/CampoNumero.vue';
+import SelectTipoDano from '../../../../nucleo/ui/SelectTipoDano.vue';
 import { formatoDeResumo } from '../../alvos';
 import { estilos, useFicha } from '../../contexto';
 import { itemDoCatalogo } from '../../itens';
+import type { ForjaDaArma } from '../../itens/forja';
 import {
     ATRIBUTOS,
     itensComAjustes,
@@ -15,6 +18,7 @@ import {
     type FichaOnePiece,
     type ItemInventario,
 } from '../../regras';
+import CamposDeForja from '../forja/CamposDeForja.vue';
 
 const props = defineProps<{ ficha: FichaOnePiece }>();
 const { editar, calc, salvar, itens, mestre, abrirEditorItem } = useFicha();
@@ -129,6 +133,7 @@ interface Rascunho {
     bonusDano: number;
     margemCritica: number;
     danoExtra: { dados: string; tipo: string }[];
+    forja: ForjaDaArma | null;
 }
 const rascunho = ref<Rascunho | null>(null);
 function abrirAjuste(id: number) {
@@ -144,6 +149,7 @@ function abrirAjuste(id: number) {
         bonusDano: a.bonusDano ?? a.bonusMagico ?? 0,
         margemCritica: a.margemCritica ?? 20,
         danoExtra: (a.danoExtra ?? []).map((e) => ({ dados: e.dados, tipo: e.tipo ?? '' })),
+        forja: (a.forja as ForjaDaArma | undefined) ?? null,
     };
 }
 const fecharAjuste = () => {
@@ -181,6 +187,14 @@ function salvarAjuste(si: number, ri: number) {
     const extras = r.danoExtra.map((e) => ({ dados: e.dados.trim(), ...(e.tipo.trim() ? { tipo: e.tipo.trim() } : {}) }));
     if (JSON.stringify(extras) !== JSON.stringify((orig.danoExtra ?? []).map((e) => ({ dados: e.dados, ...(e.tipo ? { tipo: e.tipo } : {}) }))))
         aj.danoExtra = extras;
+    // Forja (só o mestre mexe): guarda o conjunto inteiro; `{}` tira a forja que o item original tem
+    if (mestre) {
+        if (JSON.stringify(r.forja ?? null) !== JSON.stringify(orig.forja ?? null)) aj.forja = r.forja ?? {};
+    } else {
+        // jogador não mexe na forja, mas o ajuste que o mestre fez continua
+        const dada = props.ficha.inventario[si]?.itens[ri]?.arma?.forja;
+        if (dada) aj.forja = dada;
+    }
     mudar((inv) => {
         const alvo = inv[si].itens[ri];
         if (Object.keys(aj).length) alvo.arma = aj;
@@ -414,7 +428,12 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
                                         class="w-full min-w-0"
                                 /></label>
                                 <label class="grid gap-0.5 text-preto-300"
-                                    >Tipo de dano<input v-model="rascunho.tipoDano" type="text" maxlength="40" :class="campo" class="w-full min-w-0"
+                                    >Tipo de dano<SelectTipoDano
+                                        v-model="rascunho.tipoDano"
+                                        :opcoes="TIPOS_DE_DANO_ONE_PIECE"
+                                        vazio="Sem tipo"
+                                        :class="campo"
+                                        class="w-full min-w-0"
                                 /></label>
                                 <label class="grid gap-0.5 text-preto-300"
                                     >Bônus de ataque<input
@@ -475,11 +494,10 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
                                         :class="campo"
                                         class="w-20"
                                     />
-                                    <input
+                                    <SelectTipoDano
                                         v-model="e.tipo"
-                                        type="text"
-                                        maxlength="40"
-                                        placeholder="Tipo (ex.: Fogo)"
+                                        :opcoes="TIPOS_DE_DANO_ONE_PIECE"
+                                        vazio="Mesmo tipo da arma"
                                         :aria-label="`Tipo dos dados extras ${ei + 1}`"
                                         :class="campo"
                                         class="min-w-0 flex-1"
@@ -501,6 +519,13 @@ const campo = 'rounded border border-preto-700 bg-preto-950 px-2 py-1 text-xs fo
                                 >
                                     + Adicionar dados extras
                                 </button>
+                            </fieldset>
+                            <fieldset
+                                v-if="mestre && !armaOriginal(ref.item_id)?.municao"
+                                class="grid min-w-0 gap-1 rounded border border-preto-700 p-2"
+                            >
+                                <legend class="px-1 text-preto-300">Forja e lendas (Meito, Yoto, Expertise, Fio...)</legend>
+                                <CamposDeForja :key="editando" v-model="rascunho.forja" />
                             </fieldset>
                             <p v-if="!rascunhoValido" class="text-red-300">Confira o dado (ex.: 1d8, 2d6), os bônus e o crítico (2 a 20).</p>
                             <div class="flex flex-wrap justify-end gap-1.5">
