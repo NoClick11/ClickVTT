@@ -5,6 +5,7 @@ namespace App\Http\Controllers\App;
 use App\Http\Controllers\Controller;
 use App\Models\Mensagem;
 use App\Models\Mesa;
+use App\Models\Personagem;
 use App\Nucleo\Combate\Alcance;
 use App\Nucleo\Combate\AplicarDano;
 use App\Nucleo\Combate\CombateService;
@@ -128,6 +129,18 @@ class ChatController extends Controller
         if (isset($dados['acao']) && ! empty($dados['personagem_id'])) {
             $combate->gastar($mesa, $acesso, $dados['personagem_id'], $dados['acao']['categoria'], (bool) ($dados['acao']['tecnica'] ?? false), $this->ataquesPorAcao($dados['expressao'], $variaveis, $itens));
         }
+        // Descuidado (NPC): quem o ataca (com ele mirado) rola com vantagem; se já tinha desvantagem, as duas se anulam
+        $contraDescuidado = false;
+        if (! empty($dados['alvo_personagem_id']) && preg_match('/@ataque|@arma\.\d+\.ataque/', (string) $dados['expressao']) !== 0) {
+            $alvoDescuidado = Personagem::query()->where('mesa_id', $mesa->id)->find($dados['alvo_personagem_id']);
+            if ($alvoDescuidado && ($alvoDescuidado->ficha['npc']['descuidado'] ?? false) === true) {
+                $nova = preg_replace(['/^1d20/', '/^2d20kl1/'], ['2d20kh1', '1d20'], (string) $dados['expressao'], 1, $trocas);
+                if ($trocas === 1 && ! str_starts_with((string) $dados['expressao'], '2d20kh1')) {
+                    $dados['expressao'] = $nova;
+                    $contraDescuidado = true;
+                }
+            }
+        }
         try {
             $resultado = $rolador->rolar($dados['expressao'], $variaveis);
         } catch (RolagemInvalida $e) {
@@ -158,6 +171,9 @@ class ChatController extends Controller
         // Shoot (Black Leg): ataque desarmado que acerta com d20 de 16 a 20 pode causar uma condição (Kick Festival), se o alvo falhar na Salvaguarda de Constituição
         if (str_contains((string) $dados['expressao'], '@ataque.desarmado') && ($kick = Regras::kickFestival($ficha, Pipeline::naturalDoD20($resultado['termos'])))) {
             $marcas['tecnica'] = ['nome' => 'Shoot (Kick Festival)', 'semTecnica' => true, 'secundaria' => $kick];
+        }
+        if ($contraDescuidado) {
+            $marcas['descuidado'] = true; // o card avisa que o alvo está Descuidado (vantagem para quem o ataca)
         }
         if (is_array($dados['dano'] ?? null)) {
             $marcas['dano'] = [

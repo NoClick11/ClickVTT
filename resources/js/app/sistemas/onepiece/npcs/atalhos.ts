@@ -10,6 +10,7 @@ import {
     lerBonus,
     limiteDeUsos,
     margemDeCritico,
+    modoDoAtaqueDoNpc,
     PERICIA_ATRIBUTO,
     usoDaTecnica,
     usosDa,
@@ -54,7 +55,7 @@ export function atalhosDoNpc(ctx: ContextoDeAtalhos, npc: NpcDados): Atalho[] {
             detalhe: comSinalNpc(a.bonus),
             icone: a.tipo === 'distancia' ? 'arco' : 'espada',
             executar: (e) => {
-                const m = modoDe(e);
+                const m = modoDoAtaqueDoNpc(npc, modoDe(e));
                 ctx.rolar(dadoDeAtaque(a.bonus, m), m ? `${a.nome} (${m})` : a.nome, undefined, undefined, { categoria: 'padrao' }, ctx.alvo, {
                     nome: a.nome,
                     dano: { expressao: a.dano, tipo: a.tipoDano, extras: extrasDoAtaque(a) },

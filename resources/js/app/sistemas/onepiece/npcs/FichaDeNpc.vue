@@ -20,6 +20,7 @@ import {
     lerNpc,
     limiteDeUsos,
     margemDeCritico,
+    modoDoAtaqueDoNpc,
     usoDaTecnica,
     usosDa,
     type NpcDados,
@@ -99,7 +100,7 @@ const definirPp = (n: number) => emit('salvar', { 'pp.atual': Math.max(0, Math.m
 
 // --- ataques e técnicas ------------------------------------------------------------------------------------------------------
 function atacar(e: MouseEvent, a: AtaqueNpc) {
-    const m = modo(e);
+    const m = modoDoAtaqueDoNpc(npc.value, modo(e));
     emit('rolar', dadoDeAtaque(a.bonus, m), m ? `${a.nome} (${m})` : a.nome, undefined, undefined, { categoria: 'padrao' }, alvoDoAtaque.value, {
         nome: a.nome,
         dano: { expressao: a.dano, tipo: a.tipoDano, extras: extrasDoAtaque(a) },
@@ -447,7 +448,17 @@ const rotuloSecao = 'mb-1 text-[11px] font-semibold uppercase tracking-wider tex
             <h3 :class="rotuloSecao">
                 Ataques<span v-if="npc.multiplos" class="ml-2 font-normal normal-case tracking-normal text-preto-400"
                     >{{ npc.multiplos.n }} por turno: {{ npc.multiplos.com }}</span
+                ><button
+                    v-if="!editando"
+                    type="button"
+                    :aria-pressed="!!npc.descuidado"
+                    class="float-right rounded border px-2 py-0.5 text-[11px] font-semibold normal-case tracking-normal transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400"
+                    :class="npc.descuidado ? 'border-red-400 bg-red-500/20 text-red-100' : 'border-preto-700 text-preto-300 hover:text-ouro-200'"
+                    title="Descuidado: os ataques deste NPC rolam com vantagem e quem o ataca também. Desliga sozinho no início do próximo turno dele."
+                    @click="emit('salvar', { npc: { ...npc, descuidado: !npc.descuidado } })"
                 >
+                    Descuidado{{ npc.descuidado ? ': ligado' : '' }}
+                </button>
             </h3>
             <ul v-if="!editando" class="grid gap-1">
                 <li v-for="a in npc.ataques" :key="a.nome" class="flex items-center gap-2 rounded border border-preto-800 bg-preto-900/60 px-2 py-1">

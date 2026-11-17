@@ -39,7 +39,10 @@ final class Duracoes
         }
     }
 
-    /** Início do turno do personagem: os PV temporários dados por uma reação (Costura Interna) acabam. */
+    /**
+     * Início do turno do personagem: os PV temporários dados por uma reação (Costura Interna) acabam e o Descuidado de um NPC desliga (ele dura
+     * "até o início do próximo turno": o mestre liga de novo, se quiser).
+     */
     public static function iniciarTurno(Mesa $mesa, int $personagemId): void
     {
         $sistema = app(RegistroSistemas::class)->resolver($mesa->sistema->slug);
@@ -49,16 +52,27 @@ final class Duracoes
         $campos = DB::transaction(function () use ($mesa, $personagemId, $sistema, &$p) {
             $p = Personagem::query()->where('mesa_id', $mesa->id)->whereKey($personagemId)->lockForUpdate()->first();
             $ficha = $p?->fichaCompleta($sistema);
-            $dado = (int) ($ficha['reducao']['pvTemp'] ?? 0);
-            if (! $p || $dado <= 0) {
+            if (! $p) {
                 return null;
             }
-            $ficha['pv']['temp'] = max(0, (int) ($ficha['pv']['temp'] ?? 0) - $dado);
-            $ficha['reducao']['pvTemp'] = 0;
+            $campos = [];
+            $dado = (int) ($ficha['reducao']['pvTemp'] ?? 0);
+            if ($dado > 0) {
+                $ficha['pv']['temp'] = max(0, (int) ($ficha['pv']['temp'] ?? 0) - $dado);
+                $ficha['reducao']['pvTemp'] = 0;
+                $campos = ['pv.temp' => $ficha['pv']['temp'], 'reducao' => $ficha['reducao']];
+            }
+            if (is_array($ficha['npc'] ?? null) && ($ficha['npc']['descuidado'] ?? false)) {
+                $ficha['npc']['descuidado'] = false;
+                $campos['npc'] = $ficha['npc'];
+            }
+            if (! $campos) {
+                return null;
+            }
             $p->ficha = $ficha;
             $p->save();
 
-            return ['pv.temp' => $ficha['pv']['temp'], 'reducao' => $ficha['reducao']];
+            return $campos;
         });
         if ($campos) {
             self::transmitir($mesa, $p, $campos, false);
@@ -155,7 +169,7 @@ final class Duracoes
                 'personagem_id' => $p->id,
                 'status' => array_values($p->ficha['condicoes'] ?? []),
                 'morto' => (bool) (($p->ficha['npc'] ?? false) && ((int) ($p->ficha['pv']['atual'] ?? 1) <= 0)),
-                'ferimento' => \App\Models\Personagem::ferimentoDe($p->ficha ?? []),
+                'ferimento' => Personagem::ferimentoDe($p->ficha ?? []),
                 'aliado' => (bool) ($p->ficha['aliado'] ?? false),
             ], ['mesa']);
         }

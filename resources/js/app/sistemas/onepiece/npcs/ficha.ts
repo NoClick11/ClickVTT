@@ -14,6 +14,8 @@ export interface NpcDados extends Omit<NpcModelo, 'id' | 'faccao'> {
     usos?: Record<string, number>;
     /** ações lendárias gastas neste turno */
     lendarias_usadas?: number;
+    /** Descuidado ligado: os ataques dele têm vantagem e quem o ataca também (o servidor aplica); desliga no início do turno dele. */
+    descuidado?: boolean;
 }
 
 export const COM_ACENTO: Record<string, AtributoNpc> = {
@@ -181,6 +183,10 @@ export function lerNpc(ficha: Record<string, unknown> | null | undefined): NpcDa
 export const comSinalNpc = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
 /** Rolagem de ataque (`1d20+4`) com vantagem/desvantagem. */
+/** O modo do ataque do NPC: o do clique (Shift/Ctrl) e, com Descuidado ligado, vantagem (que a desvantagem do clique anula). */
+export const modoDoAtaqueDoNpc = (npc: Pick<NpcDados, 'descuidado'>, clique: 'vantagem' | 'desvantagem' | null): 'vantagem' | 'desvantagem' | null =>
+    npc.descuidado ? (clique === 'desvantagem' ? null : 'vantagem') : clique;
+
 export const dadoDeAtaque = (bonus: number, modo: 'vantagem' | 'desvantagem' | null) =>
     `${modo === 'vantagem' ? '2d20kh1' : modo === 'desvantagem' ? '2d20kl1' : '1d20'}${bonus ? comSinalNpc(bonus) : ''}`;
 
@@ -232,7 +238,7 @@ export function usoDaTecnica(npc: NpcDados, t: TecnicaNpc, ppAtual: number, tipo
     const base = {
         nome: t.nome,
         desvantagem: false,
-        modoAtaque: null,
+        modoAtaque: t.modo === 'ataque' && npc.descuidado ? 'vantagem' : null,
         categoria: 'poderosa',
         camposDosPP: { 'pp.atual': Math.max(0, ppAtual - t.pp), ...extras },
         area: areaDaTecnica(t),
