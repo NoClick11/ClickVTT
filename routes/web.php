@@ -65,6 +65,7 @@ Route::prefix('jogo/{mesa}')->name('jogo.')->group(function () {
     Route::delete('personagens/{personagem}', [PersonagemDoJogoController::class, 'excluir'])->middleware('throttle:30,1')->name('personagens.excluir');
     Route::patch('personagens/{personagem}/nome', [PersonagemDoJogoController::class, 'renomear'])->middleware('throttle:60,1')->name('personagens.renomear');
     Route::post('personagens/{personagem}/foto', [PersonagemDoJogoController::class, 'foto'])->middleware('throttle:30,1')->name('personagens.foto');
+    Route::post('personagens/{personagem}/foto-da-fase', [PersonagemDoJogoController::class, 'fotoDaFase'])->middleware('throttle:60,1')->name('personagens.foto_da_fase');
     Route::patch('personagens/{personagem}/ficha', [FichaController::class, 'atualizar'])
         ->middleware('throttle:120,1')->name('personagens.ficha');
     Route::post('personagens/{personagem}/companheiros', [CompanheiroController::class, 'criar'])->middleware('throttle:10,1')->name('personagens.companheiros');

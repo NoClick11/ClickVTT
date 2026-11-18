@@ -74,7 +74,7 @@ export interface Atalho {
     /** Linha pequena sob o nome (bônus, dano, custo). */
     detalhe?: string;
     /** Ícone do botão (monocromático). */
-    icone: 'espada' | 'arco' | 'arma-de-fogo' | 'tecnica' | 'salvaguarda' | 'pericia' | 'teste';
+    icone: 'espada' | 'arco' | 'arma-de-fogo' | 'tecnica' | 'salvaguarda' | 'pericia' | 'teste' | 'transformar';
     /** Motivo de não poder usar agora (PP, usos...); o botão fica apagado. */
     bloqueio?: string | null;
     /** Shift = vantagem, Ctrl/Alt = desvantagem (o `MouseEvent` chega a quem rola). */
@@ -94,6 +94,8 @@ export interface ContextoDeAtalhos {
     /** Mesmo contrato do evento `rolar` da ficha. */
     rolar: (...argumentos: unknown[]) => void;
     salvar: (campos: Record<string, unknown>) => void;
+    /** NPC em transformação: a imagem passa a ser a da fase que entra (chamar e aguardar ANTES de salvar a troca). */
+    trocarFotoDaFase: () => Promise<void>;
     usarTecnica: (uso: never) => void;
     /** Técnica de jogador pelo nome (a mesa a executa pela ficha invisível); devolve o motivo se não deu. */
     usarTecnicaPorNome: (nome: string) => string | null;

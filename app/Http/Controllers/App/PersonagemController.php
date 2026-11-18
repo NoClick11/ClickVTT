@@ -118,10 +118,12 @@ class PersonagemController extends Controller
             return response()->json(['ok' => true, 'foto' => $fotoAntiga, 'foto_token' => $fotoTokenAntiga]);
         }
 
-        if ($fotoAntiga && $fotoAntiga !== $novaFoto && str_starts_with($fotoAntiga, '/storage/personagens/')) {
+        // A imagem da outra fase de um NPC (boss com duas fichas) continua guardada: não se apaga o arquivo.
+        $daOutraFase = array_filter([$ficha['npc']['outra_fase']['foto'] ?? null, $ficha['npc']['outra_fase']['foto_token'] ?? null]);
+        if ($fotoAntiga && $fotoAntiga !== $novaFoto && ! in_array($fotoAntiga, $daOutraFase, true) && str_starts_with($fotoAntiga, '/storage/personagens/')) {
             Storage::disk('public')->delete(substr($fotoAntiga, 9));
         }
-        if ($fotoTokenAntiga && $fotoTokenAntiga !== $novaFotoToken && $fotoTokenAntiga !== $fotoAntiga && str_starts_with($fotoTokenAntiga, '/storage/personagens/')) {
+        if ($fotoTokenAntiga && $fotoTokenAntiga !== $novaFotoToken && $fotoTokenAntiga !== $fotoAntiga && ! in_array($fotoTokenAntiga, $daOutraFase, true) && str_starts_with($fotoTokenAntiga, '/storage/personagens/')) {
             Storage::disk('public')->delete(substr($fotoTokenAntiga, 9));
         }
 
@@ -219,6 +221,53 @@ class PersonagemController extends Controller
             'foto_token' => $novaFotoToken,
             'personagem' => $personagem->fresh()->load('jogadores')->paraFront($acesso->podeControlar($personagem->id)),
         ]);
+    }
+
+    /**
+     * Transformação de NPC em outra fase: a imagem da ficha e do token passam a ser as da fase que entra (guardadas em
+     * `ficha.npc.outra_fase`). Age só neste personagem (e nos tokens dele), nunca no modelo nem nas cópias irmãs, e não apaga arquivos.
+     * Deve ser chamada ANTES de a ficha trocar de fase.
+     */
+    public function fotoDaFase(Request $request, Mesa $mesa, Personagem $personagem): JsonResponse
+    {
+        $acesso = AcessoMesa::exigirMestre($request, $mesa);
+        abort_unless($personagem->mesa_id === $mesa->id, 404);
+
+        $ficha = $personagem->ficha ?? [];
+        $entra = $ficha['npc']['outra_fase'] ?? null;
+        if (! is_array($entra) || ! array_key_exists('foto', $entra)) {
+            return response()->json(['ok' => true, 'mudou' => false]);
+        }
+        $foto = $entra['foto'] ?: null;
+        $fotoToken = ($entra['foto_token'] ?? null) ?: $foto;
+        $antigaFoto = $ficha['foto'] ?? null;
+        $antigaToken = $ficha['foto_token'] ?? $antigaFoto;
+
+        if ($foto) {
+            $ficha['foto'] = $foto;
+            $ficha['foto_token'] = $fotoToken;
+        } else {
+            unset($ficha['foto'], $ficha['foto_token']);
+        }
+        $personagem->forceFill(['ficha' => $ficha])->save();
+
+        $relativo = fn (?string $c) => $c ? (str_starts_with($c, '/storage/') ? substr($c, 9) : $c) : null;
+        $novo = $relativo($fotoToken);
+        $velhos = array_filter([$relativo($antigaToken), $relativo($antigaFoto)]);
+        foreach (Objeto::query()->where('personagem_id', $personagem->id)->where('tipo', 'token')->get() as $token) {
+            if (empty($token->arquivo) || in_array($token->arquivo, $velhos, true)) {
+                $token->arquivo = $novo;
+                $token->arquivo_tipo = $novo ? match (strtolower(pathinfo($novo, PATHINFO_EXTENSION))) {
+                    'webm', 'mp4' => 'video',
+                    'gif' => 'gif',
+                    default => 'imagem',
+                } : null;
+                $token->save();
+            }
+        }
+        Transmitir::cena($mesa, null, $acesso->jogador->id);
+
+        return response()->json(['ok' => true, 'mudou' => true, 'foto' => $foto, 'foto_token' => $fotoToken]);
     }
 
     /**

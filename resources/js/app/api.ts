@@ -162,6 +162,13 @@ export function apiMesa(mesaId: number, atorId: number) {
             requisitar<Personagem>(atorId, 'PATCH', r('jogo.personagens.renomear', personagemId), { nome }),
         /** Só o mestre: exclui o personagem (ficha, tokens e lugar no combate). */
         excluirPersonagem: (personagemId: number) => requisitar<{ ok: true }>(atorId, 'DELETE', r('jogo.personagens.excluir', personagemId)),
+        /** Só o mestre: o NPC vai trocar de fase; a imagem passa a ser a da fase que entra (chamar antes de salvar a troca). */
+        fotoDaFase: (personagemId: number) =>
+            requisitar<{ ok: boolean; mudou: boolean; foto?: string | null; foto_token?: string | null }>(
+                atorId,
+                'POST',
+                r('jogo.personagens.foto_da_fase', personagemId),
+            ),
         /** Altera ou remove a foto do personagem (arquivo local ou URL). */
         alterarFotoPersonagem: (
             personagemId: number,

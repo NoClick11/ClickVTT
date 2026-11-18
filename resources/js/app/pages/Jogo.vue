@@ -2300,6 +2300,7 @@ const atalhosDoAtivo = computed(() => {
             alvo: alvoDoAtaque.value,
             rolar: (...argumentos) => void rolarDaFicha(a.id, ...(argumentos as RolagemDaFicha)),
             salvar: (campos) => salvarFicha(a.id, campos),
+            trocarFotoDaFase: () => trocarFotoDaFase(a.id),
             usarTecnica: (uso) => void usarTecnicaDaFicha(a.id, uso as UsoDeTecnica),
             usarTecnicaPorNome: (nome) => executorDeTecnicas.value?.usarTecnicaPorNome?.(nome) ?? 'A ficha ainda está carregando.',
             fixados: fixadosDe(a.id),
@@ -2777,6 +2778,29 @@ function abrirAlterarFoto(p: { id: number; nome: string; foto?: string | null; f
     modalFotoPersonagem.value = { ...p };
 }
 provide('abrirAlterarFoto', abrirAlterarFoto);
+
+/** NPC trocando de fase: a imagem passa a ser a da fase que entra; vale só para este personagem e os tokens dele (não para o modelo nem as cópias irmãs). */
+async function trocarFotoDaFase(personagemId: number) {
+    const res = await api.fotoDaFase(personagemId);
+    if (!res.mudou) return;
+    const foto = res.foto ?? null;
+    const fotoToken = res.foto_token ?? foto;
+    if (fichas.value[personagemId]) {
+        fichas.value[personagemId].foto = foto;
+        fichas.value[personagemId].foto_token = fotoToken;
+    }
+    const p = props.personagens.find((x) => x.id === personagemId);
+    if (p) {
+        p.foto = foto;
+        p.foto_token = fotoToken;
+        if (p.ficha) {
+            p.ficha.foto = foto;
+            p.ficha.foto_token = fotoToken;
+        }
+    }
+    for (const obj of objetos.value) if (obj.tipo === 'token' && obj.personagem_id === personagemId) obj.arquivo = fotoToken;
+}
+provide('trocarFotoDaFase', trocarFotoDaFase);
 
 async function salvarFotoPersonagem(dados: {
     arquivo?: Blob | File | null;
