@@ -16,6 +16,13 @@ export interface NpcDados extends Omit<NpcModelo, 'id' | 'faccao'> {
     lendarias_usadas?: number;
     /** Descuidado ligado: os ataques dele têm vantagem e quem o ataca também (o servidor aplica); desliga no início do turno dele. */
     descuidado?: boolean;
+    /** Segunda fase (boss): a ficha inteira da outra fase, guardada aqui. Transformar troca esta com a ficha ativa. */
+    outra_fase?: NpcDados;
+    /** Qual fase está ativa (1 = a original). */
+    fase?: 1 | 2;
+    /** Imagens da ficha/token desta fase, guardadas ao trocar (vazio = não mexe na imagem). */
+    foto?: string | null;
+    foto_token?: string | null;
 }
 
 export const COM_ACENTO: Record<string, AtributoNpc> = {
@@ -176,6 +183,47 @@ export function lerNpc(ficha: Record<string, unknown> | null | undefined): NpcDa
         usos: d.usos && typeof d.usos === 'object' && !Array.isArray(d.usos) ? d.usos : {},
         lendarias_usadas: d.lendarias_usadas ?? 0,
     };
+}
+
+// --- fases (boss com duas fichas) ---------------------------------------------------------------------------------------------
+
+/** Cria a segunda fase como cópia da ficha atual (o mestre a edita depois, já transformado). */
+export function comSegundaFase(npc: NpcDados): NpcDados {
+    const { outra_fase, ...atual } = npc;
+
+    return { ...atual, fase: npc.fase ?? 1, outra_fase: { ...copiar(atual), fase: npc.fase === 2 ? 1 : 2 } };
+}
+
+/**
+ * Os campos a salvar para transformar o NPC na outra fase (`null` = não tem outra fase): a ficha da outra fase vira a ativa, a atual
+ * vai para `outra_fase` e PV, PP, usos e ações lendárias recarregam pelos dados novos. A imagem acompanha a fase pelo servidor (`trocarFotoDaFase`, antes de salvar estes campos).
+ */
+export function camposDaTroca(ficha: Record<string, unknown>): Record<string, unknown> | null {
+    const atual = lerNpc(ficha);
+    if (!atual?.outra_fase) return null;
+    const { outra_fase, ...guardar } = atual;
+    const proxima = lerNpc({ npc: outra_fase })!;
+    const fase: 1 | 2 = (atual.fase ?? 1) === 1 ? 2 : 1;
+    const novo: NpcDados = {
+        ...proxima,
+        fase,
+        instancia_de: atual.instancia_de,
+        catalogo_id: atual.catalogo_id,
+        usos: {},
+        lendarias_usadas: 0,
+        descuidado: false,
+        foto: undefined,
+        foto_token: undefined,
+        outra_fase: {
+            ...guardar,
+            foto: (ficha.foto as string | null | undefined) ?? null,
+            foto_token: (ficha.foto_token as string | null | undefined) ?? null,
+            usos: {},
+            lendarias_usadas: 0,
+            descuidado: false,
+        },
+    };
+    return camposDeNpcNovo(novo);
 }
 
 // --- rolagens ---------------------------------------------------------------------------------------------------------------

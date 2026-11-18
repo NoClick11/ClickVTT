@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
-import { Camera, Minus, Pencil, Plus, RotateCcw, Save, Swords, Trash2, X, Zap } from 'lucide-vue-next';
+import { Camera, Minus, Pencil, Plus, Repeat, RotateCcw, Save, Swords, Trash2, X, Zap } from 'lucide-vue-next';
 import { computed, inject, ref, type ComputedRef } from 'vue';
 import { TIPOS_DE_DANO_ONE_PIECE } from '../../../nucleo/combate/tiposDano';
 import CampoNumero from '../../../nucleo/ui/CampoNumero.vue';
@@ -12,7 +12,9 @@ import {
     alcanceDoAtaque,
     alcanceMaximoDoAtaque,
     alcanceNormalDoAtaque,
+    camposDaTroca,
     camposDoNpc,
+    comSegundaFase,
     comSinalNpc,
     copiar,
     dadoDeAtaque,
@@ -142,6 +144,21 @@ function usarTexto(t: TextoNpc) {
     emit('salvar', { npc: { ...npc.value, usos }, ...(t.pp ? { 'pp.atual': pp.value - t.pp } : {}) });
 }
 const usosDoTexto = (t: TextoNpc) => (t.usos && 'max' in t.usos ? { gastos: usosDa(npc.value, t.nome), max: t.usos.max } : null);
+// --- fases (boss) ---
+const faseAtual = computed(() => npc.value.fase ?? 1);
+const criarSegundaFase = () => emit('salvar', { npc: comSegundaFase(npc.value) });
+const trocarFotoDaFase = inject<(personagemId: number) => Promise<void>>('trocarFotoDaFase', async () => {});
+async function transformar() {
+    const campos = camposDaTroca(props.ficha);
+    if (!campos) return;
+    await trocarFotoDaFase(props.personagem.id);
+    emit('salvar', campos);
+}
+function removerSegundaFase() {
+    const { outra_fase, fase, ...resto } = npc.value;
+    emit('salvar', { npc: resto });
+}
+
 function zerarUsos() {
     emit('salvar', { npc: { ...npc.value, usos: {}, lendarias_usadas: 0 } });
 }
@@ -262,6 +279,36 @@ const rotuloSecao = 'mb-1 text-[11px] font-semibold uppercase tracking-wider tex
                     >
                         <RotateCcw class="size-3.5" /> Descanso
                     </Button>
+                    <Button
+                        v-if="!npc.outra_fase"
+                        size="sm"
+                        variant="ghost"
+                        class="h-7 gap-1 px-2 text-xs"
+                        title="Cria uma segunda ficha (cópia desta) para o NPC se transformar; edite-a depois de transformar"
+                        @click="criarSegundaFase"
+                    >
+                        <Repeat class="size-3.5" /> Criar fase 2
+                    </Button>
+                    <template v-else>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            class="h-7 gap-1 px-2 text-xs"
+                            :title="`Fase ${faseAtual}: transforma na fase ${faseAtual === 1 ? 2 : 1} (recarrega PV e PP)`"
+                            @click="transformar"
+                        >
+                            <Repeat class="size-3.5" /> Fase {{ faseAtual === 1 ? 2 : 1 }}
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            class="h-7 px-2 text-xs"
+                            title="Descarta a outra fase e fica só com esta"
+                            @click="removerSegundaFase"
+                        >
+                            <Trash2 class="size-3.5" />
+                        </Button>
+                    </template>
                     <Button size="sm" variant="ghost" class="h-7 gap-1 px-2 text-xs" @click="editar"><Pencil class="size-3.5" /> Editar</Button>
                 </template>
                 <template v-else>

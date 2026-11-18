@@ -3,6 +3,7 @@ import type { UsoDeTecnica } from '../contexto';
 import {
     alcanceMaximoDoAtaque,
     alcanceNormalDoAtaque,
+    camposDaTroca,
     COM_ACENTO,
     comSinalNpc,
     dadoDeAtaque,
@@ -120,6 +121,28 @@ export function atalhosDoNpc(ctx: ContextoDeAtalhos, npc: NpcDados): Atalho[] {
             detalhe: comSinalNpc(bonus),
             icone: 'teste',
             executar: teste(`Teste de ${ROTULO_ATRIBUTO_NPC[a]}`, bonus),
+        });
+    }
+
+    if (npc.outra_fase) {
+        const indo = (npc.fase ?? 1) === 1 ? 2 : 1;
+        atalhos.push({
+            id: 'fase',
+            grupo: 'Fase',
+            rotulo: `Fase ${indo}`,
+            detalhe: 'Transformar',
+            icone: 'transformar',
+            executar: () => {
+                const campos = camposDaTroca(ctx.ficha);
+                if (!campos) return;
+                void ctx
+                    .trocarFotoDaFase()
+                    .then(() => {
+                        ctx.salvar(campos);
+                        ctx.avisar(`Transformado: fase ${indo}.`);
+                    })
+                    .catch(() => ctx.avisar('Não deu para trocar a imagem da fase.'));
+            },
         });
     }
 

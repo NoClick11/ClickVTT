@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ChevronUp, Crosshair, Dices, Shield, Sword, Target, Zap } from 'lucide-vue-next';
+import { ChevronUp, Crosshair, Dices, RefreshCw, Shield, Sword, Target, Zap } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref, type Component } from 'vue';
 import type { Atalho } from '../nucleo/sistemas/tipos';
 
@@ -12,7 +12,7 @@ import type { Atalho } from '../nucleo/sistemas/tipos';
 const props = defineProps<{ atalhos: Atalho[]; nome: string; cor: string }>();
 
 /** Só os ataques ficam como botões diretos; os outros grupos (técnicas, salvaguardas, perícias, testes) são menus que abrem para cima. */
-const DIRETOS = ['Ataques'];
+const DIRETOS = ['Ataques', 'Fase'];
 const diretos = computed(() => props.atalhos.filter((a) => DIRETOS.includes(a.grupo)));
 const menus = computed(() =>
     [...new Set(props.atalhos.filter((a) => !DIRETOS.includes(a.grupo)).map((a) => a.grupo))].map((g) => ({
@@ -30,6 +30,7 @@ const icones: Record<Atalho['icone'], Component | null> = {
     salvaguarda: Shield,
     pericia: Target,
     teste: Dices,
+    transformar: RefreshCw,
 };
 
 /** O atalho com janelinha de escolha (a munição da arma de fogo) aberto. */
