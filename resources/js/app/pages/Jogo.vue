@@ -1553,7 +1553,10 @@ function sincronizarFichas() {
     sincronizarPorId(fichas.value, novas); // só as fichas que mudaram de verdade são trocadas: as janelas abertas não piscam a cada recarga
 }
 sincronizarFichas();
-watch(() => props.personagens, sincronizarFichas, { deep: true });
+// Só quando a lista chega nova do servidor (recarga troca o array). Sem `deep`: os avisos em tempo real mexem nos itens da lista
+// (`ferimento`/`morto` do `.status`, a foto) sem trazer a ficha nova, e um `deep` refazia TODAS as fichas com a cópia antiga
+// (o NPC "curava" ao levar dano, os PV/PP de todo mundo voltavam na tela e o próximo salvamento gravava o valor velho).
+watch(() => props.personagens, sincronizarFichas);
 
 /** Um envio por vez por personagem, na ordem das edições (respostas fora de ordem não desfazem nada). */
 const filasFicha = new Map<number, Promise<void>>();
