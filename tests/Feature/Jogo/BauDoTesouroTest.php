@@ -27,6 +27,24 @@ class BauDoTesouroTest extends TestCase
         $this->assertSame(1000000000, Tesouros::resolver(97)['dinheiro']);
     }
 
+    public function test_roleta_para_no_resultado_e_o_resultado_fraco_tem_um_lendario_colado(): void
+    {
+        for ($d = 1; $d <= 100; $d++) {
+            $r = Tesouros::roleta($d);
+            $this->assertCount(60, $r['casas']);
+            $this->assertSame(Tesouros::casa($d), $r['casas'][$r['alvo']], "d100={$d}");
+            $this->assertGreaterThanOrEqual(0, $r['offset']);
+            $this->assertLessThanOrEqual(1, $r['offset']);
+            if (Tesouros::casa($d)['tier'] !== 'lendario' && ($r['offset'] < 0.2 || $r['offset'] > 0.8)) {
+                // parou na beirada: a casa do lado da trava é lendária (o "quase")
+                $lado = $r['offset'] > 0.8 ? $r['alvo'] + 1 : $r['alvo'] - 1;
+                $this->assertSame('lendario', $r['casas'][$lado]['tier'], "d100={$d}");
+            }
+        }
+        $this->assertSame('lendario', Tesouros::casa(99)['tier']);
+        $this->assertSame('comum', Tesouros::casa(3)['tier']);
+    }
+
     public function test_bau_travado_so_abre_para_o_jogador_e_sorteia_uma_vez(): void
     {
         $mesa = User::factory()->create()->mesas()->create([

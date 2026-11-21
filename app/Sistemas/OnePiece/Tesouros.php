@@ -64,6 +64,114 @@ final class Tesouros
         };
     }
 
+    /**
+     * O que aparece numa casa da roleta para um resultado do d100: nome curto, raridade visual (`comum`, `incomum`, `raro`, `epico`, `lendario`)
+     * e o ícone. Só para a animação: o que o baú recebe sai de `resolver`.
+     *
+     * @return array{nome: string, tier: string, icone: string}
+     */
+    public static function casa(int $d): array
+    {
+        $d = max(1, min(100, $d));
+        [$nome, $icone] = match (true) {
+            $d <= 5 => ['Nada', 'nada'],
+            $d <= 10 => ['฿ 10', 'moeda'],
+            $d <= 15 => ['฿ 100', 'moeda'],
+            $d <= 20 => ['฿ 1.000', 'moeda'],
+            $d <= 25 => ['Bebida fina', 'garrafa'],
+            $d <= 30 => ['Livro velho', 'livro'],
+            $d <= 35 => ['฿ 10.000', 'moeda'],
+            $d <= 40 => ['Pop Green', 'semente'],
+            $d <= 45 => ['Kit de Ferramentas', 'kit'],
+            $d <= 50 => ['Dial Cotidiano', 'dial'],
+            $d <= 55 => ['Veneno Básico', 'veneno'],
+            $d <= 60 => ['Planta Mãe', 'semente'],
+            $d <= 65 => ['฿ 100 mil', 'joia'],
+            $d <= 70 => ['Meito Wazamono', 'espada'],
+            $d <= 75 => ['Dial Bélico', 'dial'],
+            $d === 76 => ['Eternal Pose', 'bussola'],
+            $d === 77 => ['Dial Restrito', 'dial'],
+            $d === 78 => ['฿ 500 mil', 'joia'],
+            $d === 79 => ['Livro de Profissão', 'livro'],
+            $d === 80 => ['Den-Den Branco', 'caracol'],
+            $d === 81 => ['฿ 1 milhão', 'joia'],
+            $d === 82 => ['Algemas de Kairoseki', 'algema'],
+            $d === 83 => ['Rede de Kairoseki', 'rede'],
+            $d === 84 => ['Akuma no Mi C', 'fruta'],
+            $d === 85 => ['฿ 30 milhões', 'joia'],
+            $d === 86 => ['฿ 50 milhões', 'joia'],
+            $d === 87 => ['Ryo Wazamono', 'espada'],
+            $d === 88 => ['Equip. Engenhado', 'engrenagem'],
+            $d === 89 => ['฿ 150 milhões', 'joia'],
+            $d === 90 => ['Akuma no Mi B', 'fruta'],
+            $d === 91 => ['Objeto Akuma', 'fruta'],
+            $d === 92 => ['฿ 250 milhões', 'joia'],
+            $d === 93 => ['Ô Wazamono', 'espada'],
+            $d === 94 => ['฿ 500 milhões', 'joia'],
+            $d === 95 => ['Akuma no Mi A', 'fruta'],
+            $d === 96 => ['Munição Kairoseki', 'municao'],
+            $d === 97 => ['฿ 1 bilhão', 'joia'],
+            $d === 98 => ['Saijo Ô Wazamono', 'espada'],
+            $d === 99 => ['Akuma no Mi S', 'fruta'],
+            default => ['Raid Suit', 'armadura'],
+        };
+        $tier = match (true) {
+            $d <= 25 => 'comum',
+            $d <= 55 => 'incomum',
+            $d <= 75 => 'raro',
+            $d <= 89 => 'epico',
+            default => 'lendario',
+        };
+
+        return ['nome' => $nome, 'tier' => $tier, 'icone' => $icone];
+    }
+
+    private const TIERS = ['comum' => 0, 'incomum' => 1, 'raro' => 2, 'epico' => 3, 'lendario' => 4];
+
+    /**
+     * A faixa da roleta (estilo caixa de CS) para um d100 já sorteado: 60 casas, a do resultado na posição `alvo` e o ponto da parada dentro dela
+     * (`offset`, 0 = borda esquerda, 1 = direita). Para atiçar a mesa: com resultado fraco, um lendário fica colado ao lado e a trava para na
+     * beirada, quase pegando; no trecho final (que passa devagar) entram alguns épicos e lendários. O resultado nunca muda: é só o visual.
+     *
+     * @return array{casas: list<array{nome: string, tier: string, icone: string}>, alvo: int, offset: float}
+     */
+    public static function roleta(int $d100): array
+    {
+        $total = 60;
+        $alvo = 50;
+        $casas = [];
+        for ($i = 0; $i < $total; $i++) {
+            $casas[] = self::casa(random_int(1, 100));
+        }
+        $lendario = fn () => self::casa(random_int(90, 100));
+        $epico = fn () => self::casa(random_int(76, 89));
+        $fracao = fn (float $a, float $b) => $a + (random_int(0, 1000) / 1000) * ($b - $a);
+
+        // o trecho que passa devagar antes da parada: alguns épicos e lendários à vista
+        foreach ([$alvo - 7, $alvo - 4, $alvo - 2] as $k => $i) {
+            $casas[$i] = $k === 1 ? $lendario() : $epico();
+        }
+        $resultado = self::casa($d100);
+        $casas[$alvo] = $resultado;
+        $rank = self::TIERS[$resultado['tier']];
+
+        if ($rank === 4) {
+            // tirou um lendário: para perto do meio da casa, sem susto
+            $offset = $fracao(0.35, 0.65);
+        } else {
+            // quase: o lendário colado num lado e a trava parando na beirada dele
+            $direita = random_int(0, 1) === 1;
+            $casas[$direita ? $alvo + 1 : $alvo - 1] = $lendario();
+            $casas[$direita ? $alvo - 1 : $alvo + 1] = $rank >= 3 ? $lendario() : $epico();
+            $offset = $direita ? $fracao(0.84, 0.94) : $fracao(0.06, 0.16);
+            if ($rank === 3 && random_int(0, 1) === 1) {
+                $offset = $fracao(0.3, 0.7); // épico: às vezes para tranquilo
+            }
+        }
+
+        return ['casas' => $casas, 'alvo' => $alvo, 'offset' => round($offset, 3)];
+    }
+
     private static function nada(): array
     {
         return ['texto' => 'Nada', 'dinheiro' => 0, 'itens' => [], 'manual' => false];

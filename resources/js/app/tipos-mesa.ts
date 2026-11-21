@@ -133,3 +133,26 @@ export interface MusicaMesaDto {
     tocando?: EstadoMusicaTocando | null;
     playlist?: ItemMusica[];
 }
+
+/** Uma casa da roleta do baú do tesouro (só o visual): nome curto, raridade e ícone. */
+export interface CasaDaRoleta {
+    nome: string;
+    tier: 'comum' | 'incomum' | 'raro' | 'epico' | 'lendario';
+    icone: string;
+}
+
+/**
+ * Roleta do baú do tesouro (evento `tesouro-roleta`, para todos da mesa): a faixa já montada pelo servidor, a casa onde para (`alvo`) e o
+ * ponto da parada dentro dela (`offset`, 0–1), para todo mundo ver exatamente a mesma animação. O resultado é o d100 sorteado no servidor.
+ */
+export interface RoletaDoTesouro {
+    id: string;
+    bau: string;
+    quem: string;
+    cor: string | null;
+    casas: CasaDaRoleta[];
+    alvo: number;
+    offset: number;
+    resultado: CasaDaRoleta & { d100: number; texto: string };
+    aviso: string;
+}

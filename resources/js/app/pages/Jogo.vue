@@ -40,6 +40,7 @@ import PainelDados from '../components/PainelDados.vue';
 import PainelMusica from '../components/PainelMusica.vue';
 import PainelPersonagens from '../components/PainelPersonagens.vue';
 import PainelTurnos from '../components/PainelTurnos.vue';
+import RoletaTesouro from '../components/RoletaTesouro.vue';
 import SeletorCamada from '../components/SeletorCamada.vue';
 import {
     CAMADAS,
@@ -93,6 +94,7 @@ import type {
     MusicaMesaDto,
     NovoItem,
     NovoItemDeCatalogo,
+    RoletaDoTesouro,
     VisibilidadeRolagem,
 } from '../tipos-mesa';
 
@@ -960,6 +962,13 @@ async function pedirMemoria(paginaId: number) {
 // agora e a janela se corrige. As janelas abertas também se atualizam ao vivo (evento `loot`).
 const lootObjetoId = ref<number | null>(null);
 const lootEstado = ref<LootDto | null>(null);
+/** Roletas do baú do tesouro a mostrar (fila: uma por vez). Quando uma termina, o resultado vira aviso. */
+const roletas = ref<RoletaDoTesouro[]>([]);
+function fimDaRoleta() {
+    const r = roletas.value[0];
+    roletas.value = roletas.value.slice(1);
+    if (r) avisar(r.aviso);
+}
 const lootAberto = computed({
     get: () => lootObjetoId.value !== null,
     set: (v: boolean) => {
@@ -3095,6 +3104,10 @@ onMounted(() => {
                     aplicarLoot(e.loot);
                     if (e.aviso && !deMim(e)) avisar(e.aviso);
                 })
+                .listen('.tesouro-roleta', (e: RoletaDoTesouro) => {
+                    // a roleta do baú vai a todos: quem abriu e quem só assiste veem a mesma animação (uma de cada vez, sem repetir)
+                    if (!roletas.value.some((r) => r.id === e.id)) roletas.value = [...roletas.value, e];
+                })
                 .listen('.loot-fechado', (e: { objeto_id: number; nome: string | null }) => {
                     // O mestre fechou o loot: quem estava com ele aberto (jogador) é tirado dali na hora
                     if (!props.mestre && e.objeto_id === lootObjetoId.value) {
@@ -3529,6 +3542,7 @@ async function atualizarMusicaDaMesa(dados: { tocando?: any; playlist?: any }) {
                 />
                 <JanelaDeReacao :janelas="janelasDeReacao" :mestre="mestre" @encerrar="encerrarJanela" />
                 <ModalReacao :ofertas="ofertasDeReacao" :ocupado="reagindo" @reagir="reagir" />
+                <RoletaTesouro v-if="roletas[0]" :key="roletas[0].id" :roleta="roletas[0]" @fim="fimDaRoleta" />
                 <ModalIniciativa :itens="iniciativasPendentes" :ocupado="false" @rolar="rolarMinhaIniciativa" />
                 <BarraLateral
                     v-model:aba="abaLateral"

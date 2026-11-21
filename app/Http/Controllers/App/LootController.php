@@ -216,7 +216,19 @@ class LootController extends Controller
             return response()->json(['message' => $e->getMessage(), 'loot' => $loot->fresh()->paraFront()], 409);
         }
         $estado = $loot->fresh()->paraFront();
-        $this->avisar($mesa, $objeto, $estado, "{$acesso->jogador->nome} abriu {$estado['nome']} e tirou {$d100}: {$roll['texto']}.", $acesso->jogador->id);
+        $texto = "{$acesso->jogador->nome} abriu {$estado['nome']} e tirou {$d100}: {$roll['texto']}.";
+        if (method_exists($sistema, 'roletaDoTesouro')) {
+            // A roleta (estilo caixa de CS) vai a TODOS da mesa, não só a quem está com o baú aberto; o resultado só aparece no fim dela
+            $this->avisar($mesa, $objeto, $estado, null, $acesso->jogador->id);
+            $roleta = $sistema->roletaDoTesouro($d100);
+            Transmitir::enviar($mesa, 'tesouro-roleta', [
+                'id' => (string) Str::uuid(), 'bau' => $estado['nome'], 'quem' => $acesso->jogador->nome, 'cor' => $acesso->jogador->cor,
+                'casas' => $roleta['casas'], 'alvo' => $roleta['alvo'], 'offset' => $roleta['offset'],
+                'resultado' => [...$roleta['resultado'], 'd100' => $d100, 'texto' => $roll['texto']], 'aviso' => $texto, 'ator' => 0,
+            ], $objeto->camada === 'mestre' ? ['mestre'] : ['mesa']);
+        } else {
+            $this->avisar($mesa, $objeto, $estado, $texto, $acesso->jogador->id);
+        }
 
         return response()->json($estado);
     }
