@@ -4,6 +4,7 @@ import { Send, Trash2 } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import type { AcaoDaRolagem } from '../nucleo/rolagem';
 import type { Mensagem } from '../tipos-mesa';
+import CartaoDano from './CartaoDano.vue';
 import CartaoDanoBrutal from './CartaoDanoBrutal.vue';
 import CartaoGatilho from './CartaoGatilho.vue';
 import CartaoRolagem from './CartaoRolagem.vue';
@@ -143,6 +144,7 @@ const hora = (m: Mensagem) => (m.criada_em ? new Date(m.criada_em).toLocaleTimeS
                         @escolher="(msg, o) => emit('gatilhoEscolher', msg, o)"
                         @ignorar="(msg) => emit('gatilhoIgnorar', msg)"
                     />
+                    <CartaoDano v-else-if="m.tipo === 'dano' && m.dados" :mensagem="m" />
                     <CartaoDanoBrutal
                         v-else-if="m.tipo === 'dano_brutal' && m.dados"
                         :mensagem="m"

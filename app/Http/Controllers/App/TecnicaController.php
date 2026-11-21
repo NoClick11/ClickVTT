@@ -259,8 +259,16 @@ class TecnicaController extends Controller
             return $m;
         });
 
+        // O card da Técnica já mostra o dano de cada alvo; o Dano Brutal confere o TOTAL do golpe por alvo (principal + extras de outro tipo)
+        $porAlvo = [];
         foreach ($aplicados as $r) {
-            $aplicar->avisar($mesa, $acesso, 'todos', $r, postar: false);
+            $aplicar->avisar($mesa, $acesso, 'todos', $r, postar: false, brutal: false);
+            $porAlvo[$r['p']->id] = [$r['p'], ($porAlvo[$r['p']->id][1] ?? 0) + (int) ($r['danoNoPv'] ?? $r['calculo']['final'] ?? 0)];
+        }
+        if (($mesa->sistema->slug ?? '') === 'one-piece') {
+            foreach ($porAlvo as [$alvo, $danoNoPv]) {
+                $aplicar->verificarDanoBrutal($mesa, $acesso, $alvo, $danoNoPv);
+            }
         }
         foreach ($condicionados as $c) {
             if ($c['situacao'] === 'aplicada') {

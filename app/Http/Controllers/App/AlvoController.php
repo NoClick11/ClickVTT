@@ -9,6 +9,7 @@ use App\Models\Personagem;
 use App\Nucleo\Combate\AplicarDano;
 use App\Nucleo\Combate\Dano;
 use App\Nucleo\Combate\Duracoes;
+use App\Nucleo\Combate\Equipes;
 use App\Nucleo\Rolagem\Rolador;
 use App\Nucleo\Sistemas\FichaCampos;
 use App\Nucleo\Sistemas\RegistroSistemas;
@@ -57,7 +58,7 @@ class AlvoController extends Controller
             }
 
             if ($mensagem->personagem_id) {
-                \App\Nucleo\Combate\Equipes::exigirPodeAtingir($mesa, $mensagem->personagem_id, $personagem->id, 'mensagem_id');
+                Equipes::exigirPodeAtingir($mesa, $mensagem->personagem_id, $personagem->id, 'mensagem_id');
             }
             $tipo = $dano['tipo'] ?? null;
             // Fração do dano que vale (arma à distância do anão: metade), antes das defesas do alvo.
@@ -73,7 +74,9 @@ class AlvoController extends Controller
         });
 
         [$r, $mensagem] = $resultado;
-        $texto = $aplicar->avisar($mesa, $acesso, $mensagem->visibilidade, $r, postar: false);
+        // O card do dano vai ao chat; as partes do mesmo golpe (o card do ataque: `golpe`) somam para o Dano Brutal
+        $golpe = isset($mensagem->dados['sistema']['dano']['golpe']) ? (int) $mensagem->dados['sistema']['dano']['golpe'] : null;
+        $texto = $aplicar->avisar($mesa, $acesso, $mensagem->visibilidade, $r, golpe: $golpe, origem: $mensagem->dados['rotulo'] ?? null);
 
         return response()->json(['final' => $r['calculo']['final'], 'modo' => $r['calculo']['modo'], 'texto' => $texto]);
     }
@@ -226,7 +229,7 @@ class AlvoController extends Controller
             Duracoes::transmitir($mesa, $alvo, $campos, $acabaram !== []);
         }
         if ($cura > 0) {
-            \App\Support\Transmitir::enviar($mesa, 'combate-efeito', [
+            Transmitir::enviar($mesa, 'combate-efeito', [
                 'personagem_id' => $alvo->id,
                 'delta' => $cura,
                 'tipo' => 'cura',
@@ -255,7 +258,7 @@ class AlvoController extends Controller
         $mensagem->save();
 
         // Envia o card para a mesa para o jogador poder rolar
-        \App\Support\Transmitir::enviar($mesa, 'mensagem', [
+        Transmitir::enviar($mesa, 'mensagem', [
             'mensagem' => $mensagem->publica(),
             'ator' => 0,
             'substitui' => true,
@@ -269,40 +272,46 @@ class AlvoController extends Controller
     {
         $acesso = AcessoMesa::exigir($request, $mesa);
         abort_unless($mensagem->mesa_id === $mesa->id && $mensagem->tipo === 'dano_brutal', 404);
-        $dados = $mensagem->dados;
-        abort_unless(in_array($dados['estado'] ?? '', ['pendente', 'aguardando_jogador'], true), 422, 'Este teste já foi realizado.');
-        abort_unless($acesso->podeControlar($dados['personagem_id']) || $acesso->ehMestre(), 403, 'Você não controla este personagem.');
-
-        $alvo = Personagem::query()->where('mesa_id', $mesa->id)->findOrFail($dados['personagem_id']);
+        abort_unless($acesso->podeControlar($mensagem->dados['personagem_id']) || $acesso->ehMestre(), 403, 'Você não controla este personagem.');
         $sistema = $this->sistema($mesa, $sistemas);
-        $ficha = $alvo->fichaCompleta($sistema);
-        $vars = $sistema->variaveisDeRolagem($ficha, []);
 
-        $severidade = $dados['severidade'] ?? 'grave';
-        // Grave: CON CD 16 normal. Crítico e Mortal: desvantagem (Mortal: desvantagem pura sobre CON + prof)
-        $expressao = ($severidade === 'critico' || $severidade === 'mortal') ? '2d20kl1+@salv.con' : '1d20+@salv.con';
-        $r = $rolador->rolar($expressao, $vars);
-        $cd = (int) ($dados['cd'] ?? 16);
-        $passou = $r['total'] >= $cd;
+        // Travado: dois cliques (ou duas abas) não rolam a Salvaguarda duas vezes
+        [$mensagem, $alvo, $r, $passou, $cd, $severidade, $dados] = DB::transaction(function () use ($mesa, $mensagem, $sistema, $rolador) {
+            $m = Mensagem::query()->whereKey($mensagem->id)->lockForUpdate()->firstOrFail();
+            $dados = $m->dados;
+            abort_unless(in_array($dados['estado'] ?? '', ['pendente', 'aguardando_jogador'], true), 422, 'Este teste já foi realizado.');
+            $alvo = Personagem::query()->where('mesa_id', $mesa->id)->findOrFail($dados['personagem_id']);
+            $vars = $sistema->variaveisDeRolagem($alvo->fichaCompleta($sistema), []);
 
-        $dados['estado'] = $passou ? 'passou' : 'falhou';
-        $dados['resultado'] = [
-            'total' => $r['total'],
-            'passou' => $passou,
-            'termos' => $r['termos'],
-            'expressao' => $r['expressao'],
-        ];
-        $mensagem->dados = $dados;
-        $mensagem->visibilidade = 'todos';
-        $mensagem->save();
+            $severidade = $dados['severidade'] ?? 'grave';
+            // Grave: CON CD 16 normal. Crítico e Mortal: desvantagem (Mortal: desvantagem pura sobre CON + prof)
+            $expressao = ($severidade === 'critico' || $severidade === 'mortal') ? '2d20kl1+@salv.con' : '1d20+@salv.con';
+            $r = $rolador->rolar($expressao, $vars);
+            $cd = (int) ($dados['cd'] ?? 16);
+            $passou = $r['total'] >= $cd;
 
+            $dados['estado'] = $passou ? 'passou' : 'falhou';
+            $dados['resultado'] = [
+                'total' => $r['total'],
+                'passou' => $passou,
+                'termos' => $r['termos'],
+                'expressao' => $r['expressao'],
+            ];
+            $m->dados = $dados;
+            $m->visibilidade = 'todos';
+            $m->save();
+
+            return [$m, $alvo, $r, $passou, $cd, $severidade, $dados];
+        });
+
+        $card = ['alvo_id' => $alvo->id, 'alvo' => $alvo->nome, 'severidade' => $severidade, 'cd' => $cd, 'salvaguarda' => (int) $r['total'], 'final' => (int) ($dados['dano'] ?? 0)];
         if ($passou) {
-            $this->avisar($mesa, $acesso, 'todos', "🛡️ {$alvo->nome} passou na Salvaguarda de Constituição CD {$cd} ({$r['total']}) e evitou o Dano Brutal ({$severidade})!");
+            AplicarDano::postarCard($mesa, $acesso, 'todos', "{$alvo->nome} passou na Salvaguarda de Constituição CD {$cd} ({$r['total']}) e evitou o Dano Brutal ({$severidade}).", [...$card, 'variante' => 'brutal_evitou']);
         } else {
-            $this->avisar($mesa, $acesso, 'todos', "⚠️ {$alvo->nome} falhou na Salvaguarda de Constituição CD {$cd} ({$r['total']}) contra o Dano Brutal ({$severidade})!");
+            AplicarDano::postarCard($mesa, $acesso, 'todos', "{$alvo->nome} falhou na Salvaguarda de Constituição CD {$cd} ({$r['total']}) contra o Dano Brutal ({$severidade}).", [...$card, 'variante' => 'brutal_falhou']);
         }
 
-        \App\Support\Transmitir::enviar($mesa, 'mensagem', [
+        Transmitir::enviar($mesa, 'mensagem', [
             'mensagem' => $mensagem->publica(),
             'ator' => 0,
             'substitui' => true,
@@ -311,47 +320,51 @@ class AlvoController extends Controller
         return response()->json($mensagem->para($acesso->jogador));
     }
 
-    /** Mestre aplica a redução dos PV máximos pelo Dano Brutal. */
+    /**
+     * Mestre aplica a redução dos PV máximos pelo Dano Brutal. O teto dos PV atuais e a morte instantânea usam os PV máximos EFETIVOS (com itens e
+     * efeitos), não o valor-base da ficha. Travado: o mesmo alerta não é aplicado duas vezes.
+     */
     public function aplicarDanoBrutal(Request $request, Mesa $mesa, Mensagem $mensagem, RegistroSistemas $sistemas, FichaCampos $fichas): JsonResponse
     {
         $acesso = AcessoMesa::exigir($request, $mesa);
         abort_unless($acesso->ehMestre(), 403, 'Apenas o mestre pode aplicar o Dano Brutal.');
         abort_unless($mensagem->mesa_id === $mesa->id && $mensagem->tipo === 'dano_brutal', 404);
-        abort_unless(in_array($mensagem->dados['estado'] ?? '', ['pendente', 'aguardando_jogador', 'falhou'], true), 422, 'Este Dano Brutal já foi resolvido.');
+        $sistema = $this->sistema($mesa, $sistemas);
 
-        $resultado = DB::transaction(function () use ($mesa, $mensagem, $sistemas, $fichas) {
-            $alvo = Personagem::query()->whereKey($mensagem->dados['personagem_id'])->lockForUpdate()->firstOrFail();
-            $dano = (int) $mensagem->dados['dano'];
-            $brutalAntes = (int) ($alvo->ficha['pv']['brutal'] ?? 0);
-            $novoBrutal = $brutalAntes + $dano;
-            $pvMaxOriginal = (int) ($alvo->ficha['pv']['max'] ?? 0);
-            $novoMaxEfetivo = max(0, $pvMaxOriginal - $novoBrutal);
-            $pvAtual = (int) ($alvo->ficha['pv']['atual'] ?? 0);
-            $novoPvAtual = min($pvAtual, $novoMaxEfetivo);
+        $resultado = DB::transaction(function () use ($mensagem, $sistema, $fichas) {
+            $m = Mensagem::query()->whereKey($mensagem->id)->lockForUpdate()->firstOrFail();
+            abort_unless(in_array($m->dados['estado'] ?? '', ['pendente', 'aguardando_jogador', 'falhou'], true), 422, 'Este Dano Brutal já foi resolvido.');
+            $alvo = Personagem::query()->whereKey($m->dados['personagem_id'])->lockForUpdate()->firstOrFail();
+            $dano = (int) $m->dados['dano'];
+            $novoBrutal = (int) ($alvo->ficha['pv']['brutal'] ?? 0) + $dano;
+            $alvo->ficha = $fichas->aplicar($sistema, $alvo->ficha, ['pv.brutal' => $novoBrutal]);
+            $novoMaxEfetivo = AplicarDano::pvMaxEfetivo($sistema, $alvo);
+            $novoPvAtual = min((int) ($alvo->ficha['pv']['atual'] ?? 0), $novoMaxEfetivo);
 
             $campos = ['pv.brutal' => $novoBrutal, 'pv.atual' => $novoPvAtual];
-            $alvo->ficha = $fichas->aplicar($this->sistema($mesa, $sistemas), $alvo->ficha, $campos);
+            $alvo->ficha = $fichas->aplicar($sistema, $alvo->ficha, ['pv.atual' => $novoPvAtual]);
             $alvo->save();
 
-            $dados = $mensagem->dados;
+            $dados = $m->dados;
             $dados['estado'] = 'aplicado';
-            $mensagem->dados = $dados;
-            $mensagem->visibilidade = 'todos';
-            $mensagem->save();
+            $m->dados = $dados;
+            $m->visibilidade = 'todos';
+            $m->save();
 
-            return [$alvo, $campos, $novoMaxEfetivo, $dano];
+            return [$m, $alvo, $campos, $novoMaxEfetivo, $dano];
         });
 
-        [$alvo, $campos, $novoMaxEfetivo, $dano] = $resultado;
+        [$mensagem, $alvo, $campos, $novoMaxEfetivo, $dano] = $resultado;
         Duracoes::transmitir($mesa, $alvo, $campos);
 
+        $card = ['alvo_id' => $alvo->id, 'alvo' => $alvo->nome, 'final' => $dano, 'pv_max' => $novoMaxEfetivo, 'severidade' => $mensagem->dados['severidade'] ?? null];
         if ($novoMaxEfetivo <= 0) {
-            $this->avisar($mesa, $acesso, 'todos', "☠️ {$alvo->nome} teve seus Pontos de Vida máximos reduzidos a 0 pelo Dano Brutal e morre instantaneamente!");
+            AplicarDano::postarCard($mesa, $acesso, 'todos', "{$alvo->nome} teve seus Pontos de Vida máximos reduzidos a 0 pelo Dano Brutal e morre instantaneamente.", [...$card, 'variante' => 'brutal_morte']);
         } else {
-            $this->avisar($mesa, $acesso, 'todos', "🩸 Dano Brutal aplicado a {$alvo->nome}: -{$dano} PV máximos (PV máx. reduzido para {$novoMaxEfetivo}). A ferida só será curada com tratamento médico.");
+            AplicarDano::postarCard($mesa, $acesso, 'todos', "Dano Brutal aplicado a {$alvo->nome}: -{$dano} PV máximos (PV máx. reduzido para {$novoMaxEfetivo}). A ferida só será curada com tratamento médico.", [...$card, 'variante' => 'brutal']);
         }
 
-        \App\Support\Transmitir::enviar($mesa, 'mensagem', [
+        Transmitir::enviar($mesa, 'mensagem', [
             'mensagem' => $mensagem->publica(),
             'ator' => 0,
             'substitui' => true,
@@ -367,13 +380,19 @@ class AlvoController extends Controller
         abort_unless($acesso->ehMestre(), 403, 'Apenas o mestre pode ignorar o Dano Brutal.');
         abort_unless($mensagem->mesa_id === $mesa->id && $mensagem->tipo === 'dano_brutal', 404);
 
-        $dados = $mensagem->dados;
-        $dados['estado'] = 'ignorado';
-        $mensagem->dados = $dados;
-        $mensagem->save();
+        $mensagem = DB::transaction(function () use ($mensagem) {
+            $m = Mensagem::query()->whereKey($mensagem->id)->lockForUpdate()->firstOrFail();
+            abort_if(in_array($m->dados['estado'] ?? '', ['aplicado', 'ignorado'], true), 422, 'Este Dano Brutal já foi resolvido.');
+            $dados = $m->dados;
+            $dados['estado'] = 'ignorado';
+            $m->dados = $dados;
+            $m->save();
+
+            return $m;
+        });
 
         $canal = $mensagem->visibilidade === 'todos' ? ['mesa'] : ['mestre'];
-        \App\Support\Transmitir::enviar($mesa, 'mensagem', [
+        Transmitir::enviar($mesa, 'mensagem', [
             'mensagem' => $mensagem->visibilidade === 'todos' ? $mensagem->publica() : $mensagem->para($acesso->jogador),
             'ator' => 0,
             'substitui' => true,
@@ -398,18 +417,19 @@ class AlvoController extends Controller
             $qtd = $request->input('quantidade') ? min($brutalAntes, (int) $request->input('quantidade')) : $brutalAntes;
             $novoBrutal = max(0, $brutalAntes - $qtd);
             $campos = ['pv.brutal' => $novoBrutal];
-            $p->ficha = $fichas->aplicar($this->sistema($mesa, $sistemas), $p->ficha, $campos);
+            $sistema = $this->sistema($mesa, $sistemas);
+            $p->ficha = $fichas->aplicar($sistema, $p->ficha, $campos);
             $p->save();
 
-            $novoMax = max(0, ((int) ($p->ficha['pv']['max'] ?? 0)) - $novoBrutal);
-
-            return [$p, $campos, $novoMax, $qtd];
+            return [$p, $campos, AplicarDano::pvMaxEfetivo($sistema, $p), $qtd];
         });
 
         if ($resultado) {
             [$p, $campos, $novoMax, $qtd] = $resultado;
             Duracoes::transmitir($mesa, $p, $campos);
-            $this->avisar($mesa, $acesso, 'todos', "🩺 A ferida brutal de {$p->nome} foi tratada! PV máximos restaurados para {$novoMax}.");
+            AplicarDano::postarCard($mesa, $acesso, 'todos', "A ferida brutal de {$p->nome} foi tratada: PV máximos restaurados para {$novoMax}.", [
+                'variante' => 'tratamento', 'alvo_id' => $p->id, 'alvo' => $p->nome, 'final' => $qtd, 'pv_max' => $novoMax,
+            ]);
         }
 
         return response()->json(['ok' => true]);

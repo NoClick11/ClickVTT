@@ -2944,7 +2944,9 @@ async function rolarAcaoDoChat(mensagem: Mensagem, acao: AcaoDaRolagem) {
     const visibilidade: VisibilidadeRolagem =
         mensagem.visibilidade === 'secreto' || mensagem.visibilidade === 'mestre' ? mensagem.visibilidade : 'todos';
     try {
-        aoNovaMensagem(await api.rolar(acao.expressao, visibilidade, mensagem.autor?.personagem_id ?? null, acao.rotuloRolagem, acao.dano));
+        // o dano leva o card do ataque (`golpe`): principal e extras do mesmo golpe somam para o Dano Brutal
+        const dano = acao.dano ? { ...acao.dano, golpe: mensagem.id } : undefined;
+        aoNovaMensagem(await api.rolar(acao.expressao, visibilidade, mensagem.autor?.personagem_id ?? null, acao.rotuloRolagem, dano));
     } catch (e) {
         avisar(mensagemDe(e));
     }

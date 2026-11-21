@@ -5,10 +5,15 @@ namespace Tests\Feature\Jogo;
 use App\Events\EventoMesa;
 use App\Models\EventoDeCombate;
 use App\Models\Jogador;
+use App\Models\Mesa;
 use App\Models\Sistema;
 use App\Models\User;
+use App\Nucleo\Combate\AplicarDano;
+use App\Nucleo\Combate\CombateService;
 use App\Nucleo\Combate\Pipeline;
+use App\Nucleo\Sistemas\RegistroSistemas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
@@ -67,7 +72,7 @@ class ReacaoTest extends TestCase
     }
 
     /** O Orc ataca a Aria: `10+@ataque` = 12 (ataque +2 na ficha padrão) contra defesa 11. */
-    private function ataque($c, int $alvo = null)
+    private function ataque($c, ?int $alvo = null)
     {
         return $this->como($c->mestre)->postJson(route('jogo.rolagens.store', $c->mesa->id), [
             'expressao' => '10+@ataque', 'visibilidade' => 'todos', 'personagem_id' => $c->orc->id, 'alvo_personagem_id' => $alvo ?? $c->aria->id, 'rotulo' => 'Machadada',
@@ -169,7 +174,9 @@ class ReacaoTest extends TestCase
         $this->assertSame('resolvido', EventoDeCombate::latest('id')->first()->estado);
         $this->assertSame([], EventoDeCombate::latest('id')->first()->ofertas);
 
-        $this->cmd($c, 'turno'); $this->cmd($c, 'turno'); $this->cmd($c, 'turno'); // rodada 2: a reação volta
+        $this->cmd($c, 'turno');
+        $this->cmd($c, 'turno');
+        $this->cmd($c, 'turno'); // rodada 2: a reação volta
         $this->ficha($c, $c->bia, $c->bruno, ['pp.atual' => 1]); // mas sem PP (custa 2)
         $this->ataque($c);
         $this->assertSame([], EventoDeCombate::latest('id')->first()->ofertas);
@@ -187,7 +194,7 @@ class ReacaoTest extends TestCase
             'nome' => 'Esquiva', 'origem' => '', 'custo' => 1, 'alcance' => '', 'efeito' => '', 'rolagem' => '', 'descricao' => '', 'acao' => 'reacao', 'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'si', 'defesa' => 2],
         ]]]);
         // o Bruno passa para o lado dos inimigos (a Aria só é atacada por quem é do outro lado) e tem a proteção para aliados dele
-        $itens = collect(\App\Nucleo\Combate\CombateService::normalizar(\App\Models\Mesa::find($c->mesa->id)->combate)['itens']);
+        $itens = collect(CombateService::normalizar(Mesa::find($c->mesa->id)->combate)['itens']);
         $this->cmd($c, 'definir_disposicao', ['item_id' => $itens->firstWhere('nome', 'Bruno')['id'], 'disposicao' => 'inimigo']);
         $this->como($c->mestre)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->bruno->id]), ['campos' => ['pp.atual' => 5, 'tecnicas.lista' => [[
             'nome' => 'Cobrir', 'origem' => '', 'custo' => 1, 'alcance' => '', 'efeito' => '', 'rolagem' => '', 'descricao' => '', 'acao' => 'reacao', 'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'ambos', 'defesa' => 5],
@@ -234,9 +241,9 @@ class ReacaoTest extends TestCase
 
     private function aplicarDano($c, int $personagemId, int $dano, array $contexto = []): array
     {
-        $sistema = app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece');
+        $sistema = app(RegistroSistemas::class)->resolver('one-piece');
 
-        return \Illuminate\Support\Facades\DB::transaction(fn () => app(\App\Nucleo\Combate\AplicarDano::class)->aplicar($c->mesa, $personagemId, $sistema, $dano, 'Contundente', [], null, $contexto));
+        return DB::transaction(fn () => app(AplicarDano::class)->aplicar($c->mesa, $personagemId, $sistema, $dano, 'Contundente', [], null, $contexto));
     }
 
     private function traco($c, string $nome, int $nivelMin): void
@@ -262,7 +269,7 @@ class ReacaoTest extends TestCase
         $this->ataque($c);
         $this->reagir($c, $c->ana, $c->aria, 't:0');
 
-        $f = $c->aria->fresh()->fichaCompleta(app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece'));
+        $f = $c->aria->fresh()->fichaCompleta(app(RegistroSistemas::class)->resolver('one-piece'));
         $reserva = $f['reducao']['reserva'];
         $this->assertGreaterThanOrEqual(10, $reserva);
         $this->assertLessThanOrEqual(80, $reserva);
@@ -272,7 +279,7 @@ class ReacaoTest extends TestCase
         $r = $this->aplicarDano($c, $c->aria->id, 200);
         $this->assertSame(200 - $reserva, $r['calculo']['final']);
         $this->assertStringContainsString('reserva de redução', (string) $r['aviso']);
-        $f = $c->aria->fresh()->fichaCompleta(app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece'));
+        $f = $c->aria->fresh()->fichaCompleta(app(RegistroSistemas::class)->resolver('one-piece'));
         $this->assertSame(0, $f['reducao']['reserva']);
     }
 
@@ -286,7 +293,7 @@ class ReacaoTest extends TestCase
         ]]]);
         $this->ataque($c);
         $this->reagir($c, $c->ana, $c->aria, 'c:0');
-        $sis = app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece');
+        $sis = app(RegistroSistemas::class)->resolver('one-piece');
         $f = $c->aria->fresh()->fichaCompleta($sis);
         $this->assertTrue($f['reducao']['zerar']);
         $this->assertSame(3, $f['caracteristicas'][0]['usos']['atual']); // armar não gasta o uso
@@ -306,7 +313,7 @@ class ReacaoTest extends TestCase
     {
         $c = $this->cenario();
         $this->combate($c); // vez do Bruno (20); a Aria é a seguinte
-        $sis = app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece');
+        $sis = app(RegistroSistemas::class)->resolver('one-piece');
         $this->ficha($c, $c->ana, $c->aria, ['reducao' => ['reserva' => 30, 'dados' => 10, 'turnos' => 1]]);
         $this->cmd($c, 'turno'); // entra a Aria: ainda não acabou o turno dela
         $this->assertSame(30, $c->aria->fresh()->fichaCompleta($sis)['reducao']['reserva']);
@@ -326,7 +333,7 @@ class ReacaoTest extends TestCase
     {
         $c = $this->cenario();
         $this->combate($c);
-        $sis = app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece');
+        $sis = app(RegistroSistemas::class)->resolver('one-piece');
         $this->ficha($c, $c->ana, $c->aria, ['pp.atual' => 6, 'tecnicas.lista' => [[
             'nome' => 'Parry Shot', 'origem' => 'Estilo', 'custo' => 3, 'alcance' => 'Pessoal', 'efeito' => 'reduz', 'rolagem' => '', 'descricao' => 'Reduz o dano.', 'acao' => 'reacao',
             'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'si', 'reducao' => ['reserva' => '8d8', 'mais' => '2d8', 'maximo' => 20, 'unica' => true]],
@@ -383,7 +390,7 @@ class ReacaoTest extends TestCase
     {
         $c = $this->cenario();
         $this->combate($c); // a Aria tem 10 de 20 PV (não é menos da metade)
-        $sis = app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece');
+        $sis = app(RegistroSistemas::class)->resolver('one-piece');
         $virada = ['nome' => 'Guerreiro do Poder Oculto (5º): Virada Heroica', 'origem' => 'Herói', 'tipo' => 'passiva', 'descricao' => '',
             'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'si', 'reducao' => ['zerar' => true, 'gasta' => ['de' => 'Dados Heroicos', 'qtd' => 5], 'pvAbaixoDaMetade' => true]]];
         $this->ficha($c, $c->ana, $c->aria, ['caracteristicas' => [$this->pool($c), $virada]]);
@@ -391,7 +398,9 @@ class ReacaoTest extends TestCase
         $this->assertSame([], EventoDeCombate::latest('id')->first()->ofertas); // 10 de 20 PV: não está abaixo da metade
 
         $this->ficha($c, $c->ana, $c->aria, ['pv.atual' => 9]);
-        $this->cmd($c, 'turno'); $this->cmd($c, 'turno'); $this->cmd($c, 'turno'); // outra rodada: a reação voltou
+        $this->cmd($c, 'turno');
+        $this->cmd($c, 'turno');
+        $this->cmd($c, 'turno'); // outra rodada: a reação voltou
         $this->ataque($c);
         $this->assertNotSame([], EventoDeCombate::latest('id')->first()->ofertas);
         $this->reagir($c, $c->ana, $c->aria, 'c:1');
@@ -410,7 +419,7 @@ class ReacaoTest extends TestCase
     {
         $c = $this->cenario();
         $this->combate($c);
-        $sis = app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece');
+        $sis = app(RegistroSistemas::class)->resolver('one-piece');
         $escudo = ['nome' => 'Escudo (5º): reduzir o dano', 'origem' => 'Herói', 'tipo' => 'passiva', 'descricao' => '',
             'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'si', 'reducao' => ['reserva' => '3d10', 'unica' => true, 'gasta' => ['de' => 'Dados Heroicos', 'qtd' => 3]]]];
         $this->ficha($c, $c->ana, $c->aria, ['caracteristicas' => [$this->pool($c), $escudo]]);
@@ -440,7 +449,7 @@ class ReacaoTest extends TestCase
     {
         $c = $this->cenario();
         $this->combate($c); // vez do Bruno; depois a Aria
-        $sis = app(\App\Nucleo\Sistemas\RegistroSistemas::class)->resolver('one-piece');
+        $sis = app(RegistroSistemas::class)->resolver('one-piece');
         $costura = ['nome' => 'Costura Interna de Emergência', 'origem' => 'Fruta', 'tipo' => 'passiva', 'descricao' => '', 'builder' => 'fruta',
             'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'si', 'pvTemporarios' => '4d10']];
         $this->ficha($c, $c->ana, $c->aria, ['caracteristicas' => [$costura], 'condicoes' => ['sangramento']]);
@@ -463,5 +472,47 @@ class ReacaoTest extends TestCase
         $f2 = $c->aria->fresh()->fichaCompleta($sis);
         $this->assertSame(0, $f2['pv']['temp']);
         $this->assertSame(0, $f2['reducao']['pvTemp']);
+    }
+
+    /** O Orc (mestre) usa uma Técnica de Salvaguarda de DES na Aria. */
+    private function tecnicaDoOrc($c, array $dano)
+    {
+        return $this->como($c->mestre)->postJson(route('jogo.tecnicas.salvaguarda.abrir', $c->mesa->id), [
+            'personagem_id' => $c->orc->id, 'nome' => 'Sopro', 'atributo' => 'des', 'ao_passar' => 'nada', 'desvantagem' => true,
+            'alvos' => [$c->aria->id], 'dano' => $dano,
+        ])->assertCreated()->json();
+    }
+
+    public function test_dano_brutal_soma_as_partes_do_golpe_usa_os_pv_maximos_efetivos_e_nao_aplica_duas_vezes(): void
+    {
+        $c = $this->cenario();
+        // Aria: 30 de PV-base + 12 de efeito = 42 efetivos, cheia; o Orc com CD 20 (VON 30) e a Aria com DES 1: sempre falha
+        $this->como($c->mestre)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->aria->id]), ['campos' => [
+            'pv.max' => 30, 'pv.atual' => 42, 'atributos.des' => 1,
+            'caracteristicas' => [['nome' => 'Vigor', 'origem' => 'Teste', 'tipo' => 'passiva', 'builder' => 'treinamento', 'efeitos' => [['alvo' => 'pv.max', 'modo' => 'soma', 'valor' => 12]]]],
+        ]])->assertOk();
+        $this->como($c->mestre)->patchJson(route('jogo.personagens.ficha', [$c->mesa->id, $c->orc->id]), ['campos' => ['atributos.von' => 30]])->assertOk();
+
+        // 12 Contundente + 8 de Fogo: cada parte sozinha fica abaixo de 1/3 de 42; o golpe inteiro (20) passa, e é "grave" (pelos 30 do valor-base seria "crítico")
+        $card = $this->tecnicaDoOrc($c, ['expressao' => '12', 'tipo' => 'contundente', 'extras' => [['expressao' => '8', 'tipo' => 'fogo']]]);
+        $this->como($c->mestre)->postJson(route('jogo.tecnicas.salvaguarda.rolar', [$c->mesa->id, $card['id']]), ['personagem_id' => $c->aria->id])->assertOk();
+        $this->assertSame(22, $c->aria->fresh()->ficha['pv']['atual']);
+        $alertas = $c->mesa->mensagens()->where('tipo', 'dano_brutal')->get();
+        $this->assertCount(1, $alertas);
+        $this->assertSame(20, $alertas[0]->dados['dano']);
+        $this->assertSame('grave', $alertas[0]->dados['severidade']);
+
+        // aplicar: PV máximos efetivos 42 - 20 = 22; os PV atuais (22) não são cortados (pelo valor-base cairiam para 10)
+        $aplicar = fn () => $this->como($c->mestre)->postJson(route('jogo.dano-brutal.aplicar', [$c->mesa->id, $alertas[0]->id]));
+        $aplicar()->assertOk();
+        $pv = $c->aria->fresh()->ficha['pv'];
+        $this->assertSame(20, $pv['brutal']);
+        $this->assertSame(22, $pv['atual']);
+        $resultado = $c->mesa->mensagens()->where('tipo', 'dano')->latest('id')->first();
+        $this->assertSame('brutal', $resultado->dados['variante']);
+        $this->assertSame(22, $resultado->dados['pv_max']);
+
+        $aplicar()->assertStatus(422); // o mesmo alerta não é aplicado duas vezes
+        $this->assertSame(20, $c->aria->fresh()->ficha['pv']['brutal']);
     }
 }

@@ -87,6 +87,8 @@ class ChatController extends Controller
             'acao.tecnica' => ['nullable', 'boolean'],
             'dano.fonte' => ['nullable', 'string', 'in:black-leg'], // origem do dano extra: o servidor confere as características de quem rola
             'dano.fator' => ['nullable', 'numeric', 'between:0,4'], // fração do dano que vale (0,5 = metade, ex.: arma à distância do anão)
+            // O card do ataque de onde saiu este dano: as partes do mesmo golpe (principal + extras) somam para o Dano Brutal
+            'dano.golpe' => ['nullable', 'integer', Rule::exists('mensagens', 'id')->where('mesa_id', $mesa->id)],
             // Ataque de uma Técnica: o card do chat oferece o dano dela (e o crítico) depois do acerto, e mostra a Salvaguarda do efeito.
             // Arma por munição (pistola, arco...): a munição do inventário escolhida para este ataque (gasta 1 unidade)
             'municao_item_id' => ['nullable', 'integer'],
@@ -179,6 +181,7 @@ class ChatController extends Controller
             $marcas['dano'] = [
                 'tipo' => filled($dados['dano']['tipo'] ?? null) ? trim($dados['dano']['tipo']) : null,
                 ...(isset($dados['dano']['fator']) && (float) $dados['dano']['fator'] !== 1.0 ? ['fator' => (float) $dados['dano']['fator']] : []),
+                ...(isset($dados['dano']['golpe']) ? ['golpe' => (int) $dados['dano']['golpe']] : []),
             ];
             // Dano extra do Black Leg (Fogo do Diable Jambe): Ifrit Jambe e Hell Memories mudam como o dano de Fogo vale contra o alvo
             if (($dados['dano']['fonte'] ?? null) === 'black-leg') {
@@ -322,8 +325,7 @@ class ChatController extends Controller
         $aplicar = app(AplicarDano::class);
         $dano = (int) $rolador->rolar('2d12')['total'];
         $r = DB::transaction(fn () => $aplicar->aplicar($mesa, (int) $personagemId, $sistema, $dano, 'Verdadeiro'));
-        $aplicar->avisar($mesa, $acesso, 'todos', $r);
-        AplicarDano::postar($mesa, $acesso, 'todos', "{$r['p']->nome} errou com vontade: o chicote volta e acerta o próprio personagem ({$dano} de dano Verdadeiro).");
+        $aplicar->avisar($mesa, $acesso, 'todos', [...$r, 'aviso' => trim(($r['aviso'] ?? '').' Errar com Vontade: o chicote volta e acerta o próprio personagem.')], origem: 'Errar com Vontade');
     }
 
     /**

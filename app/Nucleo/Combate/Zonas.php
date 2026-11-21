@@ -165,6 +165,7 @@ final class Zonas
         $tipo = filled($zona->dados['dano_tipo'] ?? null) ? (string) $zona->dados['dano_tipo'] : null;
         $aplicar = app(AplicarDano::class);
         $r = DB::transaction(fn () => $aplicar->aplicar($mesa, $personagemId, $sistema, (int) $rolagem['total'], $tipo, [], null, ['origem' => 'zona']));
-        $aplicar->avisar($mesa, $acesso, 'todos', [...$r, 'aviso' => trim(($r['aviso'] ?? '')." ({$alvo->nome} {$quando} zona ".($zona->nome ?: 'sem nome').", {$rolagem['expressao']} = {$rolagem['total']}).")]);
+        $nome = $zona->nome ?: 'Zona sem nome';
+        $aplicar->avisar($mesa, $acesso, 'todos', [...$r, 'aviso' => trim(($r['aviso'] ?? '')." {$alvo->nome} {$quando} zona ({$rolagem['expressao']} = {$rolagem['total']}).")], origem: $nome);
     }
 }

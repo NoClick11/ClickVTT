@@ -2,13 +2,17 @@
 
 namespace App\Nucleo\Combate;
 
+use App\Models\Item;
+use App\Models\Mensagem;
 use App\Models\Mesa;
 use App\Models\Personagem;
 use App\Nucleo\Sistemas\FichaCampos;
+use App\Nucleo\Sistemas\RegistroSistemas;
 use App\Nucleo\Sistemas\Sistema;
 use App\Support\AcessoMesa;
 use App\Support\EntregarMensagem;
 use App\Support\Transmitir;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -138,8 +142,13 @@ final class AplicarDano
         }
     }
 
-    /** Depois da transação: avisa as fichas (PV novos) e posta no chat o que aconteceu. Devolve o texto do dano do alvo. */
-    public function avisar(Mesa $mesa, AcessoMesa $acesso, string $visibilidade, array $r, bool $postar = true): string
+    /**
+     * Depois da transação: avisa as fichas (PV novos) e posta no chat o card do dano. Devolve o texto do dano do alvo.
+     *
+     * `$brutal` = conferir o Dano Brutal aqui (quem aplica várias partes do mesmo golpe passa false e confere o total com `verificarDanoBrutal`);
+     * `$golpe` = a mensagem do golpe (o card do ataque): as partes de dano do mesmo golpe somam para o Dano Brutal; `$origem` = rótulo do card.
+     */
+    public function avisar(Mesa $mesa, AcessoMesa $acesso, string $visibilidade, array $r, bool $postar = true, bool $brutal = true, ?int $golpe = null, ?string $origem = null): string
     {
         /** @var Personagem $alvo */
         $alvo = $r['p'];
@@ -165,78 +174,140 @@ final class AplicarDano
                     'tipo' => 'dano',
                 ], ['mesa']);
             }
-            self::postar($mesa, $acesso, $visibilidade, "{$hospede->nome} sofreu {$parte} de dano como hóspede de {$alvo->nome}.");
+            self::postarCard($mesa, $acesso, $visibilidade, "{$hospede->nome} sofreu {$parte} de dano como hóspede de {$alvo->nome}.", [
+                'variante' => 'dano', 'alvo_id' => $hospede->id, 'alvo' => $hospede->nome, 'final' => $parte, 'total' => $parte, 'tipo' => null, 'modo' => 'normal',
+                'aviso' => "Hóspede de {$alvo->nome}: metade do dano que ele recebeu.", 'origem' => $origem,
+            ]);
         }
         $texto = self::texto($alvo->nome, $r['total'], $r['tipo'], $r['calculo']);
         if (! empty($r['aviso'])) {
             $texto .= ' '.$r['aviso'];
         }
         if ($postar) {
-            self::postar($mesa, $acesso, $visibilidade, $texto);
+            self::postarCard($mesa, $acesso, $visibilidade, $texto, self::cardDoDano($r, $origem));
         }
 
-        if (($mesa->sistema->slug ?? '') === 'one-piece') {
-            $this->verificarDanoBrutal($mesa, $acesso, $r);
+        if ($brutal && ($mesa->sistema->slug ?? '') === 'one-piece') {
+            $this->verificarDanoBrutal($mesa, $acesso, $alvo, (int) ($r['danoNoPv'] ?? $danoFinal), $golpe);
         }
 
         return $texto;
     }
 
-    /** Regra do Dano Brutal (One Piece): destaque exclusivo para o mestre quando um jogador sofre dano massivo. */
-    private function verificarDanoBrutal(Mesa $mesa, AcessoMesa $acesso, array $r): void
+    /** Os dados do card de dano no chat (quem, quanto, o tipo e as defesas e reduções que mudaram o valor). */
+    public static function cardDoDano(array $r, ?string $origem = null): array
     {
-        /** @var Personagem $alvo */
-        $alvo = $r['p'];
-        if (! empty($alvo->ficha['npc']) || ! empty($alvo->ficha['navio'])) {
-            return;
+        return [
+            'variante' => 'dano', 'alvo_id' => $r['p']->id, 'alvo' => $r['p']->nome, 'total' => (int) $r['total'], 'final' => (int) ($r['calculo']['final'] ?? 0),
+            'tipo' => $r['tipo'] ?? null, 'modo' => $r['calculo']['modo'] ?? 'normal', 'aviso' => $r['aviso'] ?? null, 'origem' => $origem,
+        ];
+    }
+
+    /** A gravidade do Dano Brutal pelo dano que chegou aos PV num golpe, contra os PV máximos efetivos (null = não atinge o limiar). */
+    public static function severidadeBrutal(int $dano, int $pvMax): ?string
+    {
+        if ($pvMax <= 0 || $dano <= 0) {
+            return null;
         }
 
-        $danoNoPv = (int) ($r['danoNoPv'] ?? $r['calculo']['final'] ?? 0);
-        if ($danoNoPv <= 0) {
+        return match (true) {
+            $dano > $pvMax * 2.0 / 3.0 => 'mortal',
+            $dano > $pvMax / 2.0 => 'critico',
+            $dano > $pvMax / 3.0 => 'grave',
+            default => null,
+        };
+    }
+
+    /** Os PV máximos efetivos (com os itens que veste, os efeitos e o Dano Brutal já sofrido), como a ficha mostra. */
+    public static function pvMaxEfetivo(Sistema $sistema, Personagem $p): int
+    {
+        $ficha = $p->fichaCompleta($sistema);
+        $ids = $sistema->itensReferenciados($ficha);
+        $itens = $ids ? Item::query()->where('mesa_id', $p->mesa_id)->whereIn('id', $ids)->get()->mapWithKeys(fn (Item $i) => [$i->id => $i->paraFront()])->all() : [];
+
+        return (int) ($sistema->variaveisDeRolagem($ficha, $itens)['pv.max'] ?? max(0, (int) ($ficha['pv']['max'] ?? 0) - (int) ($ficha['pv']['brutal'] ?? 0)));
+    }
+
+    /**
+     * Regra do Dano Brutal (One Piece): destaque exclusivo para o mestre quando um jogador sofre dano massivo NUM GOLPE. O limiar compara o dano
+     * que chegou aos PV com os PV máximos EFETIVOS. Com `$golpe` (o card do ataque), as partes do mesmo golpe (Contundente + Fogo...) somam:
+     * o alerta ainda aberto desse golpe é atualizado em vez de nascer outro; um alerta já resolvido não recebe mais partes.
+     */
+    public function verificarDanoBrutal(Mesa $mesa, AcessoMesa $acesso, Personagem $alvo, int $danoNoPv, ?int $golpe = null): void
+    {
+        if (! empty($alvo->ficha['npc']) || ! empty($alvo->ficha['navio']) || $danoNoPv <= 0) {
             return;
         }
-
-        $maxHp = (int) ($alvo->ficha['pv']['max'] ?? 0);
-        if ($maxHp <= 0) {
+        $sistema = app(RegistroSistemas::class)->resolver($mesa->sistema->slug);
+        if (! $sistema) {
             return;
         }
+        $mestre = $mesa->jogadores()->where('papel', 'mestre')->first();
 
-        if ($danoNoPv > ($maxHp * 2.0 / 3.0)) {
-            $severidade = 'mortal';
-        } elseif ($danoNoPv > ($maxHp / 2.0)) {
-            $severidade = 'critico';
-        } elseif ($danoNoPv > ($maxHp / 3.0)) {
-            $severidade = 'grave';
-        } else {
-            return;
-        }
+        $msg = DB::transaction(function () use ($mesa, $acesso, $alvo, $danoNoPv, $golpe, $sistema, $mestre) {
+            $total = $danoNoPv;
+            $aberto = null;
+            if ($golpe) {
+                $origem = Mensagem::query()->where('mesa_id', $mesa->id)->whereKey($golpe)->lockForUpdate()->first();
+                if ($origem) {
+                    $dados = $origem->dados ?? [];
+                    $chave = "p{$alvo->id}";
+                    $total = (int) ($dados['brutal'][$chave] ?? 0) + $danoNoPv;
+                    $dados['brutal'][$chave] = $total;
+                    $origem->dados = $dados;
+                    $origem->save();
+                    $anterior = $mesa->mensagens()->where('tipo', 'dano_brutal')->where('personagem_id', $alvo->id)->orderByDesc('id')->limit(20)
+                        ->lockForUpdate()->get()->first(fn (Mensagem $m) => (int) ($m->dados['golpe'] ?? 0) === $golpe);
+                    if ($anterior && in_array($anterior->dados['estado'] ?? '', ['pendente', 'aguardando_jogador'], true)) {
+                        $aberto = $anterior;
+                    } elseif ($anterior) {
+                        $total = $danoNoPv; // o alerta deste golpe já foi resolvido: a parte nova conta sozinha
+                    }
+                }
+            }
+            $severidade = self::severidadeBrutal($total, self::pvMaxEfetivo($sistema, $alvo->fresh() ?? $alvo));
+            if ($severidade === null) {
+                return null;
+            }
+            $texto = "⚠️ Limiar de Dano Brutal ({$severidade}) atingido por {$alvo->nome}: {$total} de dano.";
+            if ($aberto) {
+                $aberto->dados = [...$aberto->dados, 'dano' => $total, 'severidade' => $severidade];
+                $aberto->texto = $texto;
+                $aberto->save();
 
-        $mestreJogador = $mesa->jogadores()->where('papel', 'mestre')->first();
-        $jogadorId = $mestreJogador?->id ?? $acesso->jogador->id;
+                return [$aberto, true];
+            }
 
-        $msg = $mesa->mensagens()->create([
-            'jogador_id' => $jogadorId,
-            'personagem_id' => $alvo->id,
-            'tipo' => 'dano_brutal',
-            'visibilidade' => 'mestre',
-            'texto' => "⚠️ Limiar de Dano Brutal ({$severidade}) atingido por {$alvo->nome}: {$danoNoPv} de dano.",
-            'dados' => [
+            return [$mesa->mensagens()->create([
+                'jogador_id' => $mestre?->id ?? $acesso->jogador->id,
                 'personagem_id' => $alvo->id,
-                'personagem_nome' => $alvo->nome,
-                'dano' => $danoNoPv,
-                'severidade' => $severidade,
-                'cd' => 16,
-                'estado' => 'pendente',
-                'resultado' => null,
-            ],
-        ]);
+                'tipo' => 'dano_brutal',
+                'visibilidade' => 'mestre',
+                'texto' => $texto,
+                'dados' => [
+                    'personagem_id' => $alvo->id,
+                    'personagem_nome' => $alvo->nome,
+                    'dano' => $total,
+                    'severidade' => $severidade,
+                    'cd' => 16,
+                    'estado' => 'pendente',
+                    'resultado' => null,
+                    ...($golpe ? ['golpe' => $golpe] : []),
+                ],
+            ]), false];
+        });
+        if (! $msg) {
+            return;
+        }
+        [$m, $atualizado] = $msg;
+        if ($m->visibilidade === 'todos') {
+            Transmitir::enviar($mesa, 'mensagem', ['mensagem' => $m->publica(), 'ator' => 0, 'substitui' => $atualizado], ['mesa']);
 
-        $paraMestre = $mestreJogador ? $msg->para($mestreJogador) : $msg->para($acesso->jogador);
+            return;
+        }
+        $paraMestre = $mestre ? $m->para($mestre) : $m->para($acesso->jogador);
         if ($paraMestre) {
-            Transmitir::enviar($mesa, 'mensagem', [
-                'mensagem' => $paraMestre,
-                'ator' => 0,
-            ], ['mestre']);
+            Transmitir::enviar($mesa, 'mensagem', ['mensagem' => $paraMestre, 'ator' => 0, 'substitui' => $atualizado], ['mestre']);
         }
     }
 
@@ -251,6 +322,21 @@ final class AplicarDano
             'vulneravel' => "{$nome} recebeu {$calculo['final']} de dano{$tipoTexto} (vulnerável: {$total} em dobro).",
             default => "{$nome} recebeu {$calculo['final']} de dano{$tipoTexto}.",
         };
+    }
+
+    /**
+     * Card de dano (ou do Dano Brutal) no chat: `variante` (`dano`, `brutal`, `brutal_morte`, `brutal_evitou`, `brutal_falhou`, `tratamento`),
+     * quem (`alvo`, `alvo_id`), os números (`final`, `total`, `pv_max`) e o que mudou o valor (`modo`, `aviso`). O `texto` fica para o histórico.
+     *
+     * @param  array<string, mixed>  $card
+     */
+    public static function postarCard(Mesa $mesa, AcessoMesa $acesso, string $visibilidade, string $texto, array $card): void
+    {
+        $mensagem = $mesa->mensagens()->create([
+            'jogador_id' => $acesso->jogador->id, 'personagem_id' => null, 'tipo' => 'dano',
+            'visibilidade' => $visibilidade === 'secreto' ? 'mestre' : $visibilidade, 'texto' => $texto, 'dados' => $card,
+        ]);
+        EntregarMensagem::para($mesa, $mensagem, $acesso);
     }
 
     public static function postar(Mesa $mesa, AcessoMesa $acesso, string $visibilidade, string $texto): void

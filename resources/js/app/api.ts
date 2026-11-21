@@ -243,7 +243,8 @@ export function apiMesa(mesaId: number, atorId: number) {
             visibilidade: VisibilidadeRolagem,
             personagemId: number | null,
             rotulo?: string,
-            dano?: { tipo: string | null; fator?: number; fonte?: string },
+            /** `golpe`: o card do ataque de onde saiu este dano (as partes do mesmo golpe somam para o Dano Brutal). */
+            dano?: { tipo: string | null; fator?: number; fonte?: string; golpe?: number },
             acao?: { categoria: string; tecnica?: boolean },
             alvoPersonagemId?: number | null,
             tecnica?: {
