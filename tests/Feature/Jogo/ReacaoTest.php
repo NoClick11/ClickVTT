@@ -506,6 +506,36 @@ class ReacaoTest extends TestCase
         ])->assertCreated()->json();
     }
 
+    public function test_tecnica_de_salvaguarda_oferece_so_as_reacoes_que_mexem_no_dano_e_as_salvaguardas_esperam(): void
+    {
+        $c = $this->cenario();
+        $this->combate($c);
+        $costura = ['nome' => 'Costura Interna de Emergência', 'origem' => 'Fruta', 'tipo' => 'passiva', 'descricao' => '', 'builder' => 'fruta',
+            'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'si', 'pvTemporarios' => '4d10']];
+        $esquiva = ['nome' => 'Esquiva', 'origem' => '', 'custo' => 1, 'alcance' => '', 'efeito' => '', 'rolagem' => '', 'descricao' => '', 'acao' => 'reacao',
+            'reacao' => ['gatilho' => 'ataque_declarado', 'alcance' => 'si', 'defesa' => 2]];
+        $this->ficha($c, $c->ana, $c->aria, ['caracteristicas' => [$costura], 'pp.atual' => 5, 'tecnicas.lista' => [$esquiva]]);
+
+        $card = $this->tecnicaDoOrc($c, ['expressao' => '15', 'tipo' => 'fogo']);
+        $evento = EventoDeCombate::latest('id')->first();
+        $this->assertSame('dano', $evento->tipo);
+        $this->assertSame('aguardando', $evento->estado);
+        // só a Costura (PV temporários); a Esquiva (+2 na defesa) não serve contra uma Salvaguarda
+        $this->assertSame(['Costura Interna de Emergência'], array_column($evento->ofertas[$c->aria->id], 'rotulo'));
+        $this->assertSame([$evento->id], $c->mesa->mensagens()->find($card['id'])->dados['reagindo']);
+
+        $rolar = fn () => $this->como($c->mestre)->postJson(route('jogo.tecnicas.salvaguarda.rolar', [$c->mesa->id, $card['id']]), ['personagem_id' => $c->aria->id]);
+        $rolar()->assertStatus(422); // a Salvaguarda espera a reação
+
+        $this->reagir($c, $c->ana, $c->aria, 'c:0');
+        $this->assertSame('resolvido', $evento->fresh()->estado);
+        $this->assertSame([], $c->mesa->mensagens()->find($card['id'])->dados['reagindo']);
+        $temp = $c->aria->fresh()->ficha['pv']['temp'];
+        $this->assertGreaterThanOrEqual(4, $temp);
+
+        $rolar()->assertOk();
+    }
+
     public function test_dano_brutal_soma_as_partes_do_golpe_usa_os_pv_maximos_efetivos_e_nao_aplica_duas_vezes(): void
     {
         $c = $this->cenario();

@@ -16,6 +16,8 @@ const emit = defineEmits<{ reagir: [eventoId: number, personagemId: number, opca
 /** Uma oferta por vez (a mais antiga); as outras esperam a sua vez. */
 const oferta = computed(() => props.ofertas[0] ?? null);
 const defesaDoAlvo = computed(() => oferta.value?.contexto.defesa ?? 0);
+/** Dano sem jogada de ataque (Técnica de Salvaguarda, área): não há acerto a mostrar, só o que vem. */
+const aoDano = computed(() => oferta.value?.contexto.tipo === 'dano');
 </script>
 
 <template>
@@ -25,12 +27,19 @@ const defesaDoAlvo = computed(() => oferta.value?.contexto.defesa ?? 0);
                 <DialogTitle class="flex items-center gap-2 font-serif text-xl"
                     ><Shield class="size-5 text-sky-300" /> {{ oferta.titulo }}</DialogTitle
                 >
-                <DialogDescription>
+                <DialogDescription v-if="aoDano">
+                    <strong class="text-ouro-100">{{ oferta.contexto.atacante }}</strong> usa
+                    <strong class="text-ouro-100">{{ oferta.contexto.rotulo }}</strong> em
+                    <strong class="text-ouro-100">{{ oferta.contexto.alvo }}</strong
+                    ><template v-if="oferta.contexto.detalhe"> ({{ oferta.contexto.detalhe }})</template>. O dano ainda não saiu: a reação vale para
+                    ele.
+                </DialogDescription>
+                <DialogDescription v-else>
                     <strong class="text-ouro-100">{{ oferta.contexto.atacante }}</strong> ataca
                     <strong class="text-ouro-100">{{ oferta.contexto.alvo }}</strong> ({{ oferta.contexto.rotulo }}):
                     <strong class="tabular-nums text-red-300">{{ oferta.contexto.total }}</strong> contra defesa
                     <strong class="tabular-nums text-sky-300">{{ defesaDoAlvo }}</strong
-                    >. {{ oferta.contexto.total >= defesaDoAlvo ? 'O ataque acerta.' : 'O ataque erra.' }}
+                    >. {{ (oferta.contexto.total ?? 0) >= defesaDoAlvo ? 'O ataque acerta.' : 'O ataque erra.' }}
                 </DialogDescription>
             </DialogHeader>
             <p class="text-xs text-preto-400">
@@ -50,7 +59,7 @@ const defesaDoAlvo = computed(() => oferta.value?.contexto.defesa ?? 0);
                         </span>
                         <span class="block text-xs text-ouro-200"
                             >{{ textoDoEfeito(o)
-                            }}<span v-if="viraOErro(o, oferta.contexto.total, defesaDoAlvo)" class="ml-1 font-semibold text-green-300"
+                            }}<span v-if="!aoDano && viraOErro(o, oferta.contexto.total ?? 0, defesaDoAlvo)" class="ml-1 font-semibold text-green-300"
                                 >· faz o ataque errar</span
                             ></span
                         >

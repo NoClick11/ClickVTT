@@ -3,23 +3,24 @@
 namespace App\Http\Controllers\App;
 
 use App\Http\Controllers\Controller;
+use App\Models\EventoDeCombate;
 use App\Models\Mensagem;
 use App\Models\Mesa;
 use App\Models\Personagem;
 use App\Nucleo\Combate\AplicarCondicao;
 use App\Nucleo\Combate\AplicarDano;
-use App\Nucleo\Combate\CombateService;
 use App\Nucleo\Combate\Duracoes;
 use App\Nucleo\Combate\Equipes;
-use App\Nucleo\Combate\Visibilidade;
 use App\Nucleo\Combate\Pipeline;
+use App\Nucleo\Combate\Visibilidade;
 use App\Nucleo\Rolagem\Rolador;
 use App\Nucleo\Rolagem\RolagemInvalida;
 use App\Nucleo\Sistemas\RegistroSistemas;
 use App\Sistemas\OnePiece\ConsumoDaSaijo;
+use App\Sistemas\OnePiece\Municoes;
+use App\Sistemas\OnePiece\Regras;
 use App\Support\AcessoMesa;
 use App\Support\EntregarMensagem;
-use App\Support\Transmitir;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +37,7 @@ class TecnicaController extends Controller
     private const ATRIBUTOS = ['for', 'des', 'con', 'sab', 'pre', 'von'];
 
     /** Abre a Salvaguarda coletiva no chat. */
-    public function abrir(Request $request, Mesa $mesa, RegistroSistemas $sistemas, Rolador $rolador): JsonResponse
+    public function abrir(Request $request, Mesa $mesa, RegistroSistemas $sistemas, Rolador $rolador, Pipeline $pipeline): JsonResponse
     {
         $acesso = AcessoMesa::exigir($request, $mesa);
         $d = $request->validate([
@@ -107,6 +108,30 @@ class TecnicaController extends Controller
             'efeito' => $d['efeito'] ?? null, 'aplica' => $d['aplica'] ?? null, 'secundaria' => $d['secundaria'] ?? null,
         ], $d['alvos']);
 
+        // Técnica com dano: cada alvo (e quem o protege) pode reagir ANTES do dano (Costura Interna, Kiai no Tate, reduções...). As Salvaguardas
+        // esperam as janelas fecharem, para a redução armada já valer quando o dano sair.
+        if (isset($d['dano'])) {
+            $reagindo = [];
+            foreach ($d['alvos'] as $alvoId) {
+                $evento = $pipeline->danoDeclarado($mesa, $acesso, $mensagem, $atacante->id, (int) $alvoId, trim($d['nome']), 'Salvaguarda de '.strtoupper($d['atributo'])." CD {$variaveis['cd']}");
+                if ($evento) {
+                    $reagindo[] = $evento->id;
+                }
+            }
+            if ($reagindo) {
+                $mensagem = DB::transaction(function () use ($mensagem, $reagindo) {
+                    $m = Mensagem::query()->whereKey($mensagem->id)->lockForUpdate()->firstOrFail();
+                    // a janela pode ter fechado enquanto as outras abriam (o mestre encerrou): só as que seguem abertas
+                    $abertas = EventoDeCombate::query()->whereIn('id', $reagindo)->where('estado', 'aguardando')->pluck('id')->all();
+                    $m->dados = [...$m->dados, 'reagindo' => array_values($abertas)];
+                    $m->save();
+
+                    return $m;
+                });
+                EntregarMensagem::para($mesa, $mensagem, $acesso, substitui: true);
+            }
+        }
+
         return response()->json($mensagem->para($acesso->jogador), 201);
     }
 
@@ -121,7 +146,7 @@ class TecnicaController extends Controller
         $sistema = $sistemas->resolver($mesa->sistema->slug) ?? throw ValidationException::withMessages(['sistema' => 'Este sistema não tem ficha.']);
         $personagem = $mesa->personagens()->findOrFail($d['personagem_id']);
 
-        return response()->json(['gasto' => \App\Sistemas\OnePiece\Municoes::gastarDaTecnica($mesa, $personagem, $sistema, $d['tecnica'])]);
+        return response()->json(['gasto' => Municoes::gastarDaTecnica($mesa, $personagem, $sistema, $d['tecnica'])]);
     }
 
     /**
@@ -240,6 +265,9 @@ class TecnicaController extends Controller
             if (($dados['estado'] ?? null) !== 'aguardando') {
                 throw ValidationException::withMessages(['personagem_id' => 'Esta Técnica já foi resolvida.']);
             }
+            if (! empty($dados['reagindo'])) {
+                throw ValidationException::withMessages(['personagem_id' => 'Aguardando as reações dos alvos (o mestre pode encerrar a janela).']);
+            }
             $i = collect($dados['alvos'])->search(fn ($a) => $a['personagem_id'] === $d['personagem_id']);
             if ($i === false || $dados['alvos'][$i]['estado'] !== 'pendente') {
                 throw ValidationException::withMessages(['personagem_id' => 'Este personagem não tem Salvaguarda a rolar.']);
@@ -303,7 +331,7 @@ class TecnicaController extends Controller
                 $dados['alvos'][$i]['final'] = 0;
                 if ($base > 0) {
                     $fichaDoAtacante = $atacante ? $atacante->fichaCompleta($sistema) : [];
-                    $ignora = $atacante ? [...\App\Sistemas\OnePiece\Regras::golpeMoralDaTecnica($fichaDoAtacante, $t['nome'], $t['dano']['tipo']), ...\App\Sistemas\OnePiece\Regras::ignoraDaPrincipal($fichaDoAtacante, $t['nome']), ...\App\Sistemas\OnePiece\Regras::cortanteDaTecnica($fichaDoAtacante, $t['nome'], $t['dano']['tipo'])] : [];
+                    $ignora = $atacante ? [...Regras::golpeMoralDaTecnica($fichaDoAtacante, $t['nome'], $t['dano']['tipo']), ...Regras::ignoraDaPrincipal($fichaDoAtacante, $t['nome']), ...Regras::cortanteDaTecnica($fichaDoAtacante, $t['nome'], $t['dano']['tipo'])] : [];
                     $res = $aplicar->aplicar($mesa, $a['personagem_id'], $sistema, $base, $t['dano']['tipo'], $ignora, $t['atacante_id'], ['origem' => 'salvaguarda', 'atributo' => $t['atributo'] ?? null, 'passou' => (bool) $a['passou']]);
                     $dados['alvos'][$i]['final'] = $res['calculo']['final'];
                     $dados['alvos'][$i]['modo'] = $res['calculo']['modo'];
@@ -315,7 +343,7 @@ class TecnicaController extends Controller
             foreach ($t['dano']['extras'] ?? [] as $x => $extra) {
                 $re = $rolador->rolar($extra['expressao'], $vars);
                 $dados['dano']['extras'][$x] = ['total' => $re['total'], 'expressao' => $re['expressao'], 'tipo' => $extra['tipo']];
-                $ignoraExtra = \App\Sistemas\OnePiece\Regras::fogoDoBlackLeg($fichaAtacante, $extra['tipo']);
+                $ignoraExtra = Regras::fogoDoBlackLeg($fichaAtacante, $extra['tipo']);
                 foreach ($dados['alvos'] as $i => $a) {
                     $baseExtra = $a['passou'] ? ($t['aoPassar'] === 'metade' ? intdiv($re['total'], 2) : 0) : $re['total'];
                     if ($baseExtra > 0) {

@@ -25,6 +25,9 @@ final class Pipeline
 {
     public const GATILHO_ATAQUE = 'ataque_declarado';
 
+    /** Dano sem jogada de ataque a caminho (Técnica de Salvaguarda, área): só as reações defensivas que mexem no dano. */
+    public const GATILHO_DANO = 'dano_recebido';
+
     public function __construct(
         private readonly RegistroSistemas $sistemas,
         private readonly CombateService $combate,
@@ -81,6 +84,40 @@ final class Pipeline
     }
 
     /**
+     * Dano sem jogada de ataque a caminho (Técnica de Salvaguarda, Técnica de área): com o combate em curso, abre a janela de reação do alvo (e dos
+     * aliados que o protegem) ANTES de o dano sair, só com as reações defensivas que mexem no dano (reduzir, zerar, PV temporários, cura). A reação
+     * arma o efeito na ficha e o dano, quando for aplicado, já passa por ele. Devolve o evento, ou null se ninguém pode reagir.
+     */
+    public function danoDeclarado(Mesa $mesa, AcessoMesa $acesso, Mensagem $mensagem, ?int $atacanteId, int $alvoId, string $rotulo, string $detalhe): ?EventoDeCombate
+    {
+        $sistema = $this->sistemas->resolver($mesa->sistema->slug);
+        $estado = CombateService::normalizar($mesa->fresh()->combate);
+        if (! $sistema instanceof SistemaDeCombate || $estado['fase'] !== 'em_curso' || $alvoId === $atacanteId) {
+            return null;
+        }
+        $alvo = Personagem::query()->where('mesa_id', $mesa->id)->find($alvoId);
+        if (! $alvo) {
+            return null;
+        }
+        $atacante = $atacanteId ? Personagem::query()->where('mesa_id', $mesa->id)->find($atacanteId) : null;
+        $contexto = [
+            'gatilho' => self::GATILHO_DANO, 'mensagem_id' => $mensagem->id, 'atacante_id' => $atacante?->id, 'alvo_id' => $alvo->id,
+            'atacante' => $atacante?->nome ?? $rotulo, 'alvo' => $alvo->nome, 'rotulo' => $rotulo, 'detalhe' => $detalhe,
+        ];
+        $ofertas = $this->ofertas($mesa, $sistema, $estado, $contexto);
+        if ($ofertas === []) {
+            return null;
+        }
+        $evento = $mesa->eventosDeCombate()->create(['tipo' => 'dano', 'estado' => 'aguardando', 'contexto' => $contexto, 'ofertas' => $ofertas, 'respostas' => []]);
+        foreach ($ofertas as $personagemId => $lista) {
+            $this->enviarOferta($mesa, $evento, (int) $personagemId, $lista);
+        }
+        $this->enviarResumo($mesa, $evento);
+
+        return $evento;
+    }
+
+    /**
      * Quem pode reagir: todo participante (menos o atacante) com ao menos uma reação oferecida pelo sistema, com a categoria
      * disponível (reação por rodada), do lado do alvo e com o alcance da reação (`si`: só o alvo; `aliado`: outro da equipe
      * do alvo; `ambos`).
@@ -104,7 +141,7 @@ final class Pipeline
             }
             $ficha = $p->fichaCompleta($sistema);
             $lista = [];
-            foreach ($sistema->ofertasDeReacao(self::GATILHO_ATAQUE, $contexto, $ficha, $sistema->variaveisDeRolagem($ficha, [])) as $o) {
+            foreach ($sistema->ofertasDeReacao($contexto['gatilho'] ?? self::GATILHO_ATAQUE, $contexto, $ficha, $sistema->variaveisDeRolagem($ficha, [])) as $o) {
                 $cfg = $cats[$o['categoria'] ?? 'reacao'] ?? null;
                 if ($cfg && ($cfg['porRodada'] ?? null) !== null && (int) ($item['acoes'][$cfg['id']] ?? 0) >= $cfg['porRodada']) {
                     continue; // já reagiu nesta rodada
@@ -232,6 +269,9 @@ final class Pipeline
      */
     public function resolver(Mesa $mesa, AcessoMesa $acesso, EventoDeCombate $evento): EventoDeCombate
     {
+        if ($evento->tipo === 'dano') {
+            return $this->resolverDano($mesa, $acesso, $evento);
+        }
         $e = DB::transaction(function () use ($evento) {
             $e = EventoDeCombate::query()->whereKey($evento->id)->lockForUpdate()->firstOrFail();
             if ($e->estado !== 'aguardando') {
@@ -260,6 +300,41 @@ final class Pipeline
         $mensagem = $mesa->mensagens()->find($c['mensagem_id']);
         if ($mensagem) {
             $this->marcarMensagem($mesa, $acesso, $mensagem, ['estado' => 'resolvido', 'evento_id' => $e->id, 'alvo' => $c['alvo'], 'alvo_id' => $c['alvo_id'], ...$r]);
+        }
+        $this->enviarResumo($mesa, $e);
+
+        return $e;
+    }
+
+    /**
+     * Fecha a janela de reação de um dano sem ataque: não há acerto a decidir (as reações já armaram o efeito na ficha). O card da Técnica que
+     * esperava as reações libera as Salvaguardas quando a última janela dela fecha.
+     */
+    private function resolverDano(Mesa $mesa, AcessoMesa $acesso, EventoDeCombate $evento): EventoDeCombate
+    {
+        $e = DB::transaction(function () use ($evento) {
+            $e = EventoDeCombate::query()->whereKey($evento->id)->lockForUpdate()->firstOrFail();
+            if ($e->estado === 'aguardando') {
+                $e->estado = 'resolvido';
+                $e->resultado = null;
+                $e->save();
+            }
+
+            return $e;
+        });
+        $card = DB::transaction(function () use ($mesa, $e) {
+            $m = $mesa->mensagens()->whereKey($e->contexto['mensagem_id'] ?? 0)->lockForUpdate()->first();
+            if (! $m || $m->tipo !== 'tecnica' || empty($m->dados['reagindo'])) {
+                return null;
+            }
+            $abertas = EventoDeCombate::query()->whereIn('id', $m->dados['reagindo'])->where('estado', 'aguardando')->pluck('id')->all();
+            $m->dados = [...$m->dados, 'reagindo' => array_values($abertas)];
+            $m->save();
+
+            return $m;
+        });
+        if ($card) {
+            EntregarMensagem::para($mesa, $card, $acesso, substitui: true);
         }
         $this->enviarResumo($mesa, $e);
 
@@ -334,12 +409,41 @@ final class Pipeline
     public static function payloadDaOferta(EventoDeCombate $evento, int $personagemId, array $opcoes, string $nome): array
     {
         $c = $evento->contexto;
+        $dano = $evento->tipo === 'dano';
 
         return [
-            'evento_id' => $evento->id, 'personagem_id' => $personagemId, 'personagem' => $nome, 'titulo' => 'Reação ao ataque',
-            'contexto' => ['atacante' => $c['atacante'], 'alvo' => $c['alvo'], 'alvo_id' => $c['alvo_id'], 'rotulo' => $c['rotulo'], 'total' => $c['total'], 'defesa' => $c['defesa']],
-            'opcoes' => array_map(fn ($o) => ['id' => $o['id'], 'rotulo' => $o['rotulo'], 'descricao' => $o['descricao'] ?? '', 'custo' => $o['custo'] ?? [], 'cura' => $o['cura'] ?? null, 'defesa' => collect($o['efeitos'] ?? [])->where('alvo', 'defesa')->sum('valor')], $opcoes),
+            'evento_id' => $evento->id, 'personagem_id' => $personagemId, 'personagem' => $nome, 'titulo' => $dano ? 'Reação ao dano' : 'Reação ao ataque',
+            'contexto' => [
+                'tipo' => $dano ? 'dano' : 'ataque', 'atacante' => $c['atacante'], 'alvo' => $c['alvo'], 'alvo_id' => $c['alvo_id'], 'rotulo' => $c['rotulo'],
+                'total' => $c['total'] ?? null, 'defesa' => $c['defesa'] ?? null, 'detalhe' => $c['detalhe'] ?? null,
+            ],
+            'opcoes' => array_map(fn ($o) => [
+                'id' => $o['id'], 'rotulo' => $o['rotulo'], 'descricao' => $o['descricao'] ?? '', 'custo' => $o['custo'] ?? [], 'cura' => $o['cura'] ?? null,
+                'defesa' => collect($o['efeitos'] ?? [])->where('alvo', 'defesa')->sum('valor'), 'efeito' => self::efeitoNoDano($o),
+            ], $opcoes),
         ];
+    }
+
+    /** O que a reação faz com o dano, em palavras (para o modal): reduzir, zerar, metade, PV temporários... Vazio se só mexe na defesa. */
+    private static function efeitoNoDano(array $o): string
+    {
+        $r = $o['reducao'] ?? null;
+        $partes = [];
+        if (is_array($r)) {
+            $partes[] = match (true) {
+                isset($r['mais']) && ! isset($r['reserva']) => "+{$r['mais']} na reserva de redução",
+                isset($r['reserva']) => "reduz {$r['reserva']} do dano",
+                ! empty($r['zerar']) => 'zera o próximo dano',
+                ! empty($r['metade']) => 'metade do próximo dano',
+                ! empty($r['piso']) => 'os PV não caem abaixo de 1',
+                default => 'reduz o dano',
+            };
+        }
+        if (! empty($o['pvTemporarios'])) {
+            $partes[] = "{$o['pvTemporarios']} PV temporários";
+        }
+
+        return implode(' · ', $partes);
     }
 
     /** Resumo público da janela: quem ataca, quem é o alvo, quem ainda não respondeu e o resultado. */

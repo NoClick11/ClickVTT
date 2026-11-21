@@ -152,6 +152,8 @@ export function destaqueDaRolagem(d: DadosRolagem): 'critico' | 'falha' | null {
 export interface DadosDaTecnica {
     rotulo: string;
     estado: 'aguardando' | 'resolvido';
+    /** Janelas de reação ao dano ainda abertas (ids): as Salvaguardas esperam elas fecharem. */
+    reagindo?: number[];
     tecnica: {
         nome: string;
         atributo: string;

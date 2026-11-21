@@ -15,6 +15,8 @@ const resolvido = computed(() => d.value.estado === 'resolvido');
 const podeRolar = (id: number) => props.mestre || props.meusPersonagens.includes(id);
 const sigla = computed(() => d.value.tecnica.atributo.toUpperCase());
 const faltam = computed(() => d.value.alvos.filter((a) => a.estado === 'pendente').length);
+/** Alguém ainda decide a reação ao dano (Costura, Kiai no Tate...): as Salvaguardas esperam. */
+const reagindo = computed(() => (d.value.reagindo?.length ?? 0) > 0);
 const dadosDoAlvo = (a: (typeof d.value.alvos)[number]) =>
     dadosRolados({ expressao: '', rotulo: null, termos: a.termos ?? [], total: a.total ?? 0 })
         .map((x) => (x.descartado ? `(${x.valor})` : String(x.valor)))
@@ -62,7 +64,7 @@ const aoPassar = computed(() => (d.value.tecnica.aoPassar === 'metade' ? 'metade
                         <button
                             v-if="podeRolar(a.personagem_id)"
                             type="button"
-                            :disabled="ocupados?.includes(a.personagem_id)"
+                            :disabled="reagindo || ocupados?.includes(a.personagem_id)"
                             class="rounded-md border border-orange-400/70 bg-orange-500/15 px-2.5 py-1 font-semibold text-orange-100 transition hover:bg-orange-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ouro-400 disabled:opacity-50"
                             :title="`Rolar a Salvaguarda de ${sigla} de ${a.nome}${d.tecnica.desvantagem ? ' (desvantagem)' : ''}`"
                             @click="emit('rolar', mensagem, a.personagem_id)"
@@ -103,7 +105,12 @@ const aoPassar = computed(() => (d.value.tecnica.aoPassar === 'metade' ? 'metade
                 </li>
             </ul>
 
-            <p v-if="!resolvido" class="mt-2 text-[11px] text-preto-400" role="status">Falta rolar {{ faltam }}. O dano sai quando todos rolarem.</p>
+            <p v-if="!resolvido && reagindo" class="mt-2 text-[11px] text-sky-300" role="status">
+                Aguardando as reações dos alvos. As Salvaguardas liberam quando todos responderem.
+            </p>
+            <p v-else-if="!resolvido" class="mt-2 text-[11px] text-preto-400" role="status">
+                Falta rolar {{ faltam }}. O dano sai quando todos rolarem.
+            </p>
             <div
                 v-else-if="d.dano"
                 class="mt-2.5 flex items-center justify-between gap-2 rounded-md border border-orange-400/50 bg-orange-500/10 px-2.5 py-1.5 text-xs text-orange-100"

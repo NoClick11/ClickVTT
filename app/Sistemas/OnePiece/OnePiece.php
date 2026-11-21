@@ -4,6 +4,7 @@ namespace App\Sistemas\OnePiece;
 
 use App\Models\Mesa;
 use App\Nucleo\Combate\Dano;
+use App\Nucleo\Combate\Pipeline;
 use App\Nucleo\Combate\SistemaDeCombate;
 use App\Nucleo\Efeitos\Formula;
 use App\Nucleo\Rolagem\Rolador;
@@ -160,9 +161,20 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
     {
         $ofertas = [];
         $nivel = (int) ($ficha['nivel'] ?? 1);
-        $monta = function (string $id, array $dados, array $custo) use ($gatilho, &$ofertas, $variaveis) {
+        $aoDano = $gatilho === Pipeline::GATILHO_DANO;
+        $monta = function (string $id, array $dados, array $custo) use ($gatilho, $aoDano, &$ofertas, $variaveis) {
             $r = $dados['reacao'] ?? null;
-            if (! is_array($r) || ($r['gatilho'] ?? null) !== $gatilho) {
+            if (! is_array($r)) {
+                return;
+            }
+            if ($aoDano) {
+                // Dano sem jogada de ataque (Técnica de Salvaguarda, área): só as reações defensivas que mexem no dano (reduzem, zeram, dão PV
+                // temporários ou curam). Bônus na defesa não serve: não há ataque a errar.
+                $mexeNoDano = isset($r['reducao']) || isset($r['pvTemporarios']) || isset($r['cura']);
+                if (! in_array($r['gatilho'] ?? null, [Pipeline::GATILHO_ATAQUE, Pipeline::GATILHO_DANO], true) || ! $mexeNoDano) {
+                    return;
+                }
+            } elseif (($r['gatilho'] ?? null) !== $gatilho) {
                 return;
             }
             $ofertas[] = [
@@ -170,7 +182,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
                 'id' => $id, 'rotulo' => $dados['nome'] ?? 'Reação', 'descricao' => $dados['descricao'] ?? '', 'categoria' => $r['categoria'] ?? 'reacao',
                 'alcance' => $r['alcance'] ?? 'si', 'cura' => $r['cura'] ?? null, 'custo' => $custo, 'reducao' => $r['reducao'] ?? null, 'pvTemporarios' => $r['pvTemporarios'] ?? null,
                 // `defesa` é um número ou uma fórmula da ficha de quem reage (ex.: `@prof-floor(@prof/2)`)
-                'efeitos' => isset($r['defesa']) ? [['alvo' => 'defesa', 'modo' => 'soma', 'valor' => is_numeric($r['defesa']) ? (int) $r['defesa'] : (int) Formula::avaliar((string) $r['defesa'], $variaveis)]] : [],
+                'efeitos' => isset($r['defesa']) && ! $aoDano ? [['alvo' => 'defesa', 'modo' => 'soma', 'valor' => is_numeric($r['defesa']) ? (int) $r['defesa'] : (int) Formula::avaliar((string) $r['defesa'], $variaveis)]] : [],
             ];
         };
         foreach (['t' => $ficha['tecnicas']['lista'] ?? [], 'a' => $ficha['akuma']['lista'] ?? []] as $tipo => $lista) {

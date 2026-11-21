@@ -13,6 +13,8 @@ export interface OpcaoDeReacao {
     cura: string | null;
     /** Bônus na defesa de quem foi atacado (pode ser de outro jogador: o efeito é redirecionado). */
     defesa: number;
+    /** O que a reação faz com o dano, em palavras (`reduz 10d8 do dano`, `4d10 PV temporários`); vazio se só mexe na defesa. */
+    efeito?: string;
 }
 
 /** O que o modal de reação mostra: o ataque (quem, contra quem, os números) e as opções do personagem. */
@@ -21,7 +23,20 @@ export interface OfertaDeReacao {
     personagem_id: number;
     personagem: string;
     titulo: string;
-    contexto: { atacante: string; alvo: string; alvo_id: number; rotulo: string; total: number; defesa: number };
+    /**
+     * `ataque`: jogada de ataque contra a defesa (`total`, `defesa`). `dano`: dano sem ataque a caminho (Técnica de Salvaguarda, área), com o
+     * `detalhe` (ex.: "Salvaguarda de DES CD 15"); aí só aparecem as reações que mexem no dano.
+     */
+    contexto: {
+        tipo?: 'ataque' | 'dano';
+        atacante: string;
+        alvo: string;
+        alvo_id: number;
+        rotulo: string;
+        total: number | null;
+        defesa: number | null;
+        detalhe?: string | null;
+    };
     opcoes: OpcaoDeReacao[];
 }
 
@@ -42,7 +57,9 @@ export function textoDoCusto(c: OpcaoDeReacao['custo']): string {
 
 /** O efeito da opção em palavras (`+3 na defesa`, `cura 1d8`), para o jogador escolher sabendo o que acontece. */
 export function textoDoEfeito(o: OpcaoDeReacao): string {
-    return [o.defesa ? `${o.defesa > 0 ? '+' : ''}${o.defesa} na defesa` : '', o.cura ? `cura ${o.cura}` : ''].filter(Boolean).join(' · ');
+    return [o.defesa ? `${o.defesa > 0 ? '+' : ''}${o.defesa} na defesa` : '', o.cura ? `cura ${o.cura}` : '', o.efeito ?? '']
+        .filter(Boolean)
+        .join(' · ');
 }
 
 /** Com a defesa de partida e o ataque, a opção muda o resultado? (+defesa que faz o ataque errar) — dica de qual escolher. */
