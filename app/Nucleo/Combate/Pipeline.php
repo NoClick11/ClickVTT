@@ -176,8 +176,9 @@ final class Pipeline
         $campos = null;
         $cura = null;
         $rolagemDaReacao = null;
+        $rolagemPv = null;
         $rotuloDaReacao = null;
-        $e = DB::transaction(function () use ($mesa, $acesso, $evento, $personagemId, $opcaoId, $sistema, &$resolveuAgora, &$campos, &$cura, &$rolagemDaReacao, &$rotuloDaReacao) {
+        $e = DB::transaction(function () use ($mesa, $acesso, $evento, $personagemId, $opcaoId, $sistema, &$resolveuAgora, &$campos, &$cura, &$rolagemDaReacao, &$rolagemPv, &$rotuloDaReacao) {
             $e = EventoDeCombate::query()->whereKey($evento->id)->lockForUpdate()->firstOrFail();
             if ($e->estado !== 'aguardando') {
                 throw ValidationException::withMessages(['evento' => 'A janela de reação já fechou.']);
@@ -204,7 +205,9 @@ final class Pipeline
                 $pago = $sistema->pagarReacao($ficha, $oferta);
                 // A rolagem da redução de dano (Kiri Shigure, Parry Shot...) vai para o chat; não é campo da ficha
                 $rolagemDaReacao = $pago['_rolagem'] ?? null;
-                unset($pago['_rolagem']);
+                // PV temporários rolados pela reação (Costura Interna): também vão ao chat com os dados
+                $rolagemPv = $pago['_rolagemPv'] ?? null;
+                unset($pago['_rolagem'], $pago['_rolagemPv']);
                 if ($pago) {
                     $p->ficha = $this->fichas->aplicar($sistema, $p->ficha, $pago);
                     $p->save();
@@ -231,26 +234,37 @@ final class Pipeline
             Duracoes::transmitir($mesa, $campos[0], $campos[1]);
         }
         if ($cura) {
-            $this->curar($mesa, $sistema, (int) $e->contexto['alvo_id'], $this->valor($cura));
+            // Cura em dados: rolada aqui e mostrada no chat com os dados; valor fixo só cura
+            $pontos = $this->valor($cura);
+            if (is_string($cura) && str_contains($cura, 'd')) {
+                $r = $this->rolador->rolar($cura);
+                $pontos = (int) $r['total'];
+                $this->mostrarRolagemDaReacao($mesa, $acesso, $personagemId, (string) $rotuloDaReacao, $r['expressao'], $r['termos'], $pontos, "cura {$pontos} PV de ".($e->contexto['alvo'] ?? '?'));
+            }
+            $this->curar($mesa, $sistema, (int) $e->contexto['alvo_id'], $pontos);
         }
         if ($rolagemDaReacao) {
-            $this->mostrarReducao($mesa, $acesso, $personagemId, (string) $rotuloDaReacao, $rolagemDaReacao);
+            $r = $rolagemDaReacao;
+            $this->mostrarRolagemDaReacao($mesa, $acesso, $personagemId, (string) $rotuloDaReacao, $r['expressao'], $r['termos'], (int) $r['total'], "reduz {$r['total']} do dano (reserva {$r['reserva']})");
+        }
+        if ($rolagemPv) {
+            $this->mostrarRolagemDaReacao($mesa, $acesso, $personagemId, (string) $rotuloDaReacao, $rolagemPv['expressao'], $rolagemPv['termos'], (int) $rolagemPv['total'], "{$rolagemPv['total']} PV temporários");
         }
         $this->enviarResumo($mesa, $e);
 
         return $resolveuAgora ? $this->resolver($mesa, $acesso, $e) : $e;
     }
 
-    /** O chat mostra os dados da redução de dano armada pela reação (quanto ela tira do próximo dano). */
-    private function mostrarReducao(Mesa $mesa, AcessoMesa $acesso, int $personagemId, string $rotulo, array $r): void
+    /**
+     * O chat mostra os dados que a reação rolou, como uma rolagem comum (expressão, dados e total), com o efeito no rótulo: a redução armada
+     * (Kiri Shigure, Parry Shot, Yamantaka), os PV temporários (Costura Interna) ou a cura.
+     */
+    private function mostrarRolagemDaReacao(Mesa $mesa, AcessoMesa $acesso, int $personagemId, string $rotulo, string $expressao, array $termos, int $total, string $efeito): void
     {
         $mensagem = $mesa->mensagens()->create([
             'jogador_id' => $acesso->jogador->id, 'personagem_id' => $personagemId, 'tipo' => 'rolagem', 'visibilidade' => 'todos',
-            'texto' => $r['expressao'],
-            'dados' => [
-                'expressao' => $r['expressao'], 'rotulo' => "{$rotulo}: reduz {$r['total']} do dano (reserva {$r['reserva']})",
-                'termos' => $r['termos'], 'total' => $r['total'],
-            ],
+            'texto' => $expressao,
+            'dados' => ['expressao' => $expressao, 'rotulo' => "{$rotulo}: {$efeito}", 'termos' => $termos, 'total' => $total],
         ]);
         EntregarMensagem::para($mesa, $mensagem, $acesso);
     }

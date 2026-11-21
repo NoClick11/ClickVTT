@@ -21,6 +21,12 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
         return Tesouros::resolver($d100);
     }
 
+    /** A faixa da roleta do baú (só o visual da animação; o resultado é o d100 já sorteado). */
+    public function roletaDoTesouro(int $d100): array
+    {
+        return [...Tesouros::roleta($d100), 'resultado' => Tesouros::casa($d100)];
+    }
+
     public function catalogoDeLoja(): array
     {
         $c = Itens::catalogo();
@@ -287,8 +293,14 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
         if (! $dados) {
             return [];
         }
-        $total ??= (int) app(Rolador::class)->rolar($dados)['total'];
-        $campos = ['pv.temp' => $total, 'reducao.pvTemp' => $total];
+        $rolagem = null;
+        if ($total === null) {
+            $r = app(Rolador::class)->rolar($dados);
+            $total = (int) $r['total'];
+            // `_rolagemPv` é só para o chat (quem chama a tira dos campos): os dados da reação aparecem como uma rolagem
+            $rolagem = ['expressao' => $r['expressao'], 'termos' => $r['termos'], 'total' => $total];
+        }
+        $campos = ['pv.temp' => $total, 'reducao.pvTemp' => $total, ...($rolagem ? ['_rolagemPv' => $rolagem] : [])];
         if (in_array('sangramento', $ficha['condicoes'] ?? [], true)) {
             $campos['condicoes'] = array_values(array_diff($ficha['condicoes'], ['sangramento']));
             $campos['duracoes'] = array_diff_key($ficha['duracoes'] ?? [], ['sangramento' => 1]);

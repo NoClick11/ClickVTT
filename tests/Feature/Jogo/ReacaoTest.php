@@ -460,6 +460,11 @@ class ReacaoTest extends TestCase
         $this->assertLessThanOrEqual(40, $f['pv']['temp']);
         $this->assertSame($f['pv']['temp'], $f['reducao']['pvTemp']);
         $this->assertNotContains('sangramento', $f['condicoes']); // o Sangramento termina, mas não era preciso tê-lo
+        // a rolagem dos PV temporários aparece no chat, com os dados e o total
+        $rolagem = $c->mesa->mensagens()->where('tipo', 'rolagem')->where('personagem_id', $c->aria->id)->latest('id')->first();
+        $this->assertSame('4d10', $rolagem->dados['expressao']);
+        $this->assertSame($f['pv']['temp'], $rolagem->dados['total']);
+        $this->assertStringContainsString('PV temporários', $rolagem->dados['rotulo']);
 
         // o dano gasta os PV temporários antes dos PV
         $this->aplicarDano($c, $c->aria->id, 3);
