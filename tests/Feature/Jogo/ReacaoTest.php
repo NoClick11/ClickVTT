@@ -474,6 +474,29 @@ class ReacaoTest extends TestCase
         $this->assertSame(0, $f2['reducao']['pvTemp']);
     }
 
+    public function test_costura_usada_de_novo_antes_do_turno_troca_pela_rolagem_nova_e_nada_fica_preso(): void
+    {
+        $sis = app(RegistroSistemas::class)->resolver('one-piece');
+        $f = ['pv' => ['atual' => 20, 'max' => 20, 'temp' => 0], 'reducao' => []];
+        $aplicar = function (array $f, array $campos): array {
+            $f['pv']['temp'] = $campos['pv.temp'];
+            $f['reducao']['pvTemp'] = $campos['reducao.pvTemp'];
+
+            return $f;
+        };
+
+        // 1º uso: 30; 2º uso com rolagem menor (12): troca pelo novo valor, e a anotação acompanha (no início do turno sai tudo)
+        $f = $aplicar($f, $sis->darPvTemporarios($f, '4d10', 30));
+        $f = $aplicar($f, $sis->darPvTemporarios($f, '4d10', 12));
+        $this->assertSame(12, $f['pv']['temp']);
+        $this->assertSame(12, $f['reducao']['pvTemp']);
+
+        // rolagem maior: também troca
+        $f = $aplicar($f, $sis->darPvTemporarios($f, '4d10', 25));
+        $this->assertSame(25, $f['pv']['temp']);
+        $this->assertSame(25, $f['reducao']['pvTemp']);
+    }
+
     /** O Orc (mestre) usa uma Técnica de Salvaguarda de DES na Aria. */
     private function tecnicaDoOrc($c, array $dano)
     {

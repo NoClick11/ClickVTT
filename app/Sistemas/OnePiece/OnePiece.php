@@ -264,18 +264,19 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
     }
 
     /**
-     * Reação que dá PV temporários (Costura Interna de Emergência): rola os dados, fica com o maior entre o que já tinha e o novo, anota o valor para o
-     * início do próximo turno do dono tirá-lo e encerra o Sangramento, se houver.
+     * Reação que dá PV temporários (Costura Interna de Emergência): rola os dados e os PV temporários passam a ser a rolagem nova (usada de novo
+     * antes do turno do dono, troca pelo novo valor, mesmo menor), anota o valor para o início do próximo turno do dono tirá-lo e encerra o
+     * Sangramento, se houver. Como os PV temporários e a anotação são sempre o mesmo valor, nada sobra na ficha depois do turno.
      *
      * @return array<string, mixed>
      */
-    private function darPvTemporarios(array $ficha, ?string $dados): array
+    public function darPvTemporarios(array $ficha, ?string $dados, ?int $total = null): array
     {
         if (! $dados) {
             return [];
         }
-        $total = (int) app(Rolador::class)->rolar($dados)['total'];
-        $campos = ['pv.temp' => max((int) ($ficha['pv']['temp'] ?? 0), $total), 'reducao.pvTemp' => $total];
+        $total ??= (int) app(Rolador::class)->rolar($dados)['total'];
+        $campos = ['pv.temp' => $total, 'reducao.pvTemp' => $total];
         if (in_array('sangramento', $ficha['condicoes'] ?? [], true)) {
             $campos['condicoes'] = array_values(array_diff($ficha['condicoes'], ['sangramento']));
             $campos['duracoes'] = array_diff_key($ficha['duracoes'] ?? [], ['sangramento' => 1]);
