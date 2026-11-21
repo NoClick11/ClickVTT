@@ -10,8 +10,8 @@ export type VisibilidadeRolagem = 'todos' | 'mestre' | 'secreto';
 
 export interface Mensagem {
     id: number;
-    /** `dano` = card do dano aplicado e dos resultados do Dano Brutal (`CartaoDano`). */
-    tipo: 'texto' | 'rolagem' | 'tecnica' | 'gatilho' | 'dano' | 'dano_brutal';
+    /** `dano` = card do dano aplicado e dos resultados do Dano Brutal (`CartaoDano`); `xp` = card da distribuição de XP (`CartaoXp`). */
+    tipo: 'texto' | 'rolagem' | 'tecnica' | 'gatilho' | 'dano' | 'dano_brutal' | 'xp';
     /** `secreto_oculto` = aviso mostrado aos jogadores quando o mestre rola em segredo. */
     visibilidade: VisibilidadeRolagem | 'secreto_oculto';
     /** `id` = JOGADOR que enviou; nome/cor = do personagem quando falou como ele. */

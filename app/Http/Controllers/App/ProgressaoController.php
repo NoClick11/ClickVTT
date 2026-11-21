@@ -51,17 +51,26 @@ class ProgressaoController extends Controller
         $porCabeca = intdiv((int) $dados['total'], count($ids));
         abort_if($porCabeca < 1, 422, 'O total é pequeno demais para dividir entre '.count($ids).' personagens.');
 
-        $nomes = DB::transaction(function () use ($mesa, $sistema, $ids, $porCabeca) {
+        [$nomes, $linhas] = DB::transaction(function () use ($mesa, $sistema, $ids, $porCabeca) {
             $nomes = [];
-            foreach (Personagem::query()->where('mesa_id', $mesa->id)->whereIn('id', $ids)->lockForUpdate()->get() as $p) {
+            $linhas = [];
+            foreach (Personagem::query()->where('mesa_id', $mesa->id)->whereIn('id', $ids)->orderBy('nome')->lockForUpdate()->get() as $p) {
                 $ficha = array_replace_recursive($sistema->fichaPadrao(), $p->ficha ?? []);
                 $ficha['xp']['atual'] = min(self::LIMITE_XP, (int) ($ficha['xp']['atual'] ?? 0) + $porCabeca);
                 $p->ficha = $ficha;
                 $p->save();
                 $nomes[] = $p->nome;
+                // a linha do card: XP novo, nível e quanto falta para o próximo (o sistema dá o `xp.proximo`)
+                $nivel = (int) ($ficha['nivel'] ?? 1);
+                $proximo = $sistema->variaveisDeRolagem($ficha, [])['xp.proximo'] ?? null;
+                $linhas[] = [
+                    'id' => $p->id, 'nome' => $p->nome, 'cor' => $p->cor, 'nivel' => $nivel, 'xp' => (int) $ficha['xp']['atual'],
+                    'proximo' => $proximo !== null ? (int) $proximo : null,
+                    'pronto' => $proximo !== null && $nivel < 20 && (int) $ficha['xp']['atual'] >= (int) $proximo,
+                ];
             }
 
-            return $nomes;
+            return [$nomes, $linhas];
         });
 
         // Cada ficha se atualiza na hora para o mestre e para os donos dela.
@@ -71,12 +80,15 @@ class ProgressaoController extends Controller
                 'personagem_id' => $p->id, 'campos' => ['xp' => $p->ficha['xp']], 'ator' => 0,
             ], $canais);
         }
+        // Card no chat (`CartaoXp`): o total, quanto coube a cada um e a barra até o próximo nível; o texto fica para o histórico
+        $sobra = (int) $dados['total'] - $porCabeca * count($ids);
         $aviso = $mesa->mensagens()->create([
-            'jogador_id' => $acesso->jogador->id, 'personagem_id' => null, 'tipo' => 'texto', 'visibilidade' => 'todos',
-            'texto' => "O mestre distribuiu XP: {$porCabeca} para cada (".implode(', ', $nomes).').', 'dados' => null,
+            'jogador_id' => $acesso->jogador->id, 'personagem_id' => null, 'tipo' => 'xp', 'visibilidade' => 'todos',
+            'texto' => "O mestre distribuiu XP: {$porCabeca} para cada (".implode(', ', $nomes).').',
+            'dados' => ['total' => (int) $dados['total'], 'por_cabeca' => $porCabeca, 'sobra' => $sobra, 'personagens' => $linhas],
         ]);
         EntregarMensagem::para($mesa, $aviso, $acesso);
 
-        return response()->json(['por_cabeca' => $porCabeca, 'sobra' => (int) $dados['total'] - $porCabeca * count($ids), 'personagens' => $nomes]);
+        return response()->json(['por_cabeca' => $porCabeca, 'sobra' => $sobra, 'personagens' => $nomes]);
     }
 }

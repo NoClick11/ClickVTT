@@ -9,6 +9,7 @@ import CartaoDanoBrutal from './CartaoDanoBrutal.vue';
 import CartaoGatilho from './CartaoGatilho.vue';
 import CartaoRolagem from './CartaoRolagem.vue';
 import CartaoTecnica from './CartaoTecnica.vue';
+import CartaoXp from './CartaoXp.vue';
 
 const props = defineProps<{
     mensagens: Mensagem[];
@@ -145,6 +146,7 @@ const hora = (m: Mensagem) => (m.criada_em ? new Date(m.criada_em).toLocaleTimeS
                         @ignorar="(msg) => emit('gatilhoIgnorar', msg)"
                     />
                     <CartaoDano v-else-if="m.tipo === 'dano' && m.dados" :mensagem="m" />
+                    <CartaoXp v-else-if="m.tipo === 'xp' && m.dados" :mensagem="m" />
                     <CartaoDanoBrutal
                         v-else-if="m.tipo === 'dano_brutal' && m.dados"
                         :mensagem="m"
