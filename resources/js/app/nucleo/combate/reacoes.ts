@@ -15,6 +15,9 @@ export interface OpcaoDeReacao {
     defesa: number;
     /** O que a reação faz com o dano, em palavras (`reduz 10d8 do dano`, `4d10 PV temporários`); vazio se só mexe na defesa. */
     efeito?: string;
+    /** Quantos PP a mais o jogador pode gastar para aumentar a redução (0/ausente = não tem) e o que cada um soma (ex.: `1d8`). */
+    extraMax?: number;
+    maisPorPp?: string | null;
 }
 
 /** O que o modal de reação mostra: o ataque (quem, contra quem, os números) e as opções do personagem. */

@@ -355,10 +355,10 @@ async function dispararDoTurno(personagemId: number) {
 const ofertasDeReacao = ref<OfertaDeReacao[]>(copia(props.reacoes?.ofertas ?? []));
 const janelasDeReacao = ref<ResumoEvento[]>(copia(props.reacoes?.eventos ?? []));
 const reagindo = ref(false);
-async function reagir(eventoId: number, personagemId: number, opcao: string | null) {
+async function reagir(eventoId: number, personagemId: number, opcao: string | null, extra = 0) {
     reagindo.value = true;
     try {
-        const res = await api.reagir(eventoId, personagemId, opcao);
+        const res = await api.reagir(eventoId, personagemId, opcao, extra);
         if (res.combate) {
             combate.value = normalizarCombate(res.combate);
         }

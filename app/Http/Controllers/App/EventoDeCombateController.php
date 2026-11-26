@@ -23,9 +23,10 @@ class EventoDeCombateController extends Controller
         $dados = $request->validate([
             'personagem_id' => ['required', 'integer', Rule::exists('personagens', 'id')->where('mesa_id', $mesa->id)],
             'opcao' => ['nullable', 'string', 'max:20'],
+            'extra' => ['nullable', 'integer', 'between:0,20'], // PP a mais na redução de dano (Kiri Shigure)
         ]);
 
-        $e = $pipeline->reagir($mesa, $acesso, $evento, $dados['personagem_id'], $dados['opcao'] ?? null);
+        $e = $pipeline->reagir($mesa, $acesso, $evento, $dados['personagem_id'], $dados['opcao'] ?? null, (int) ($dados['extra'] ?? 0));
 
         return response()->json([
             'evento' => Pipeline::resumo($e),

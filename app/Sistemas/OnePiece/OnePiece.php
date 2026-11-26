@@ -194,7 +194,15 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
         foreach (['t' => $ficha['tecnicas']['lista'] ?? [], 'a' => $ficha['akuma']['lista'] ?? []] as $tipo => $lista) {
             foreach ($lista as $i => $t) {
                 if ((int) ($t['custo'] ?? 0) <= (int) ($ficha['pp']['atual'] ?? 0)) {
+                    $antes = count($ofertas);
                     $monta("{$tipo}:{$i}", $t, ['pp' => (int) ($t['custo'] ?? 0)]);
+                    // Kiri Shigure: dá para gastar PP a mais já ao reagir, 1d8 de redução por PP (até o máximo de dados)
+                    if (count($ofertas) > $antes) {
+                        $ofertas[$antes]['extraMax'] = $this->extraMaximoDaReserva($ficha, $t['reacao']['reducao'] ?? null, (int) ($t['custo'] ?? 0));
+                        if ($ofertas[$antes]['extraMax'] <= 0) {
+                            unset($ofertas[$antes]['extraMax']);
+                        }
+                    }
                     // Yamantaka: com a reserva já armada, 1 PP soma mais dados a ela (até o máximo)
                     $mais = $t['reacao']['reducao'] ?? null;
                     if (is_array($mais) && isset($mais['mais']) && (int) ($ficha['reducao']['reserva'] ?? 0) > 0
@@ -251,6 +259,11 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
     public function pagarReacao(array $ficha, array $oferta): array
     {
         [$tipo, $i] = explode(':', (string) $oferta['id']);
+        // PP a mais escolhidos pelo jogador (Kiri Shigure): cada um soma `mais` dados à reserva; limitado pelo máximo de dados e pelos PP que sobram
+        $extra = 0;
+        if ($tipo !== 'c' && ($oferta['extra'] ?? 0) > 0) {
+            $extra = min((int) $oferta['extra'], $this->extraMaximoDaReserva($ficha, $oferta['reducao'] ?? null, (int) ($oferta['custo']['pp'] ?? 0)));
+        }
         // Reserva que gasta Dados Heroicos (Escudo do Deus da Arma): paga ao armar. No `zerar` (Virada Heroica) paga ao zerar o dano.
         $gasta = $oferta['reducao']['gasta'] ?? null;
         if ($tipo === 'c' && is_array($gasta) && empty($oferta['reducao']['zerar'])) {
@@ -271,14 +284,15 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
                 $campos = [];
             }
         } else {
-            $campos = ($oferta['custo']['pp'] ?? 0) > 0 ? ['pp.atual' => max(0, (int) ($ficha['pp']['atual'] ?? 0) - (int) $oferta['custo']['pp'])] : [];
+            $gastoPp = (int) ($oferta['custo']['pp'] ?? 0) + $extra;
+            $campos = $gastoPp > 0 ? ['pp.atual' => max(0, (int) ($ficha['pp']['atual'] ?? 0) - $gastoPp)] : [];
             // Técnica que zera o dano (Blue Bird, barreira): os PP já foram pagos agora, então o dano zera sem gastar usos de característica
             if (! empty($oferta['reducao']['zerar'])) {
                 $campos['reducao.zerarPago'] = true;
             }
         }
 
-        return [...$campos, ...$this->armarReducao($ficha, $oferta['reducao'] ?? null), ...$this->darPvTemporarios($ficha, $oferta['pvTemporarios'] ?? null)];
+        return [...$campos, ...$this->armarReducao($ficha, $oferta['reducao'] ?? null, $extra), ...$this->darPvTemporarios($ficha, $oferta['pvTemporarios'] ?? null)];
     }
 
     /**
@@ -309,6 +323,21 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
         return $campos;
     }
 
+    /** Quantos PP a mais cabem na reserva de redução (`mais` dados por PP, até `maximo` dados), sem passar dos PP que sobram depois do custo. */
+    private function extraMaximoDaReserva(array $ficha, ?array $reducao, int $custo): int
+    {
+        if (! is_array($reducao) || ! isset($reducao['reserva'], $reducao['mais'], $reducao['maximo'])) {
+            return 0;
+        }
+        $porPp = (int) explode('d', (string) $reducao['mais'])[0];
+        if ($porPp <= 0) {
+            return 0;
+        }
+        $cabe = intdiv(max(0, (int) $reducao['maximo'] - (int) explode('d', (string) $reducao['reserva'])[0]), $porPp);
+
+        return max(0, min($cabe, (int) ($ficha['pp']['atual'] ?? 0) - $custo));
+    }
+
     /** O índice da característica (pelo nome) que ainda tem `$qtd` usos, ou null. */
     private function indiceDaCaracteristica(array $ficha, string $nome, int $qtd): ?int
     {
@@ -327,7 +356,7 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
      *
      * @return array<string, mixed>
      */
-    private function armarReducao(array $ficha, ?array $reducao): array
+    private function armarReducao(array $ficha, ?array $reducao, int $extra = 0): array
     {
         if (! $reducao) {
             return [];
@@ -336,8 +365,10 @@ class OnePiece implements Sistema, SistemaComLoja, SistemaComTesouros, SistemaDe
         $atual = $ficha['reducao'] ?? [];
         $rolar = fn (string $d): array => [(int) app(Rolador::class)->rolar($d)['total'], (int) explode('d', $d)[0]];
         if (isset($reducao['reserva'])) {
-            $r = app(Rolador::class)->rolar($reducao['reserva']);
-            [$total, $dados] = [(int) $r['total'], (int) explode('d', $reducao['reserva'])[0]];
+            [$base, $faces] = array_map('intval', explode('d', $reducao['reserva']));
+            $dados = $base + ($extra > 0 ? $extra * (int) explode('d', (string) ($reducao['mais'] ?? '0d0'))[0] : 0);
+            $r = app(Rolador::class)->rolar("{$dados}d{$faces}");
+            $total = (int) $r['total'];
 
             // `unica` (Parry Shot): a reserva vale só para o próximo dano que o personagem sofrer. `_rolagem` é só para o chat (quem chama a tira dos campos)
             return ['reducao.reserva' => $total, 'reducao.dados' => $dados, 'reducao.turnos' => $turnos, 'reducao.unica' => ! empty($reducao['unica']),

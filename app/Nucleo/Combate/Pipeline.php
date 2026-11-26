@@ -166,7 +166,7 @@ final class Pipeline
      * Um personagem responde a janela: passa (`$opcaoId` null) ou usa uma reação (paga o custo, gasta a categoria e soma o
      * modificador à defesa ou cura quem foi atacado). Quando todos responderam, resolve.
      */
-    public function reagir(Mesa $mesa, AcessoMesa $acesso, EventoDeCombate $evento, int $personagemId, ?string $opcaoId): EventoDeCombate
+    public function reagir(Mesa $mesa, AcessoMesa $acesso, EventoDeCombate $evento, int $personagemId, ?string $opcaoId, int $extra = 0): EventoDeCombate
     {
         abort_unless($acesso->podeControlar($personagemId), 403, 'Este personagem não é seu.');
         $sistema = $this->sistemas->resolver($mesa->sistema->slug);
@@ -178,7 +178,7 @@ final class Pipeline
         $rolagemDaReacao = null;
         $rolagemPv = null;
         $rotuloDaReacao = null;
-        $e = DB::transaction(function () use ($mesa, $acesso, $evento, $personagemId, $opcaoId, $sistema, &$resolveuAgora, &$campos, &$cura, &$rolagemDaReacao, &$rolagemPv, &$rotuloDaReacao) {
+        $e = DB::transaction(function () use ($mesa, $acesso, $evento, $personagemId, $opcaoId, $extra, $sistema, &$resolveuAgora, &$campos, &$cura, &$rolagemDaReacao, &$rolagemPv, &$rotuloDaReacao) {
             $e = EventoDeCombate::query()->whereKey($evento->id)->lockForUpdate()->firstOrFail();
             if ($e->estado !== 'aguardando') {
                 throw ValidationException::withMessages(['evento' => 'A janela de reação já fechou.']);
@@ -202,6 +202,7 @@ final class Pipeline
                 }
                 $p = Personagem::query()->whereKey($personagemId)->lockForUpdate()->firstOrFail();
                 $ficha = $p->fichaCompleta($sistema);
+                $oferta['extra'] = max(0, $extra); // PP a mais na redução (o sistema limita ao que cabe)
                 $pago = $sistema->pagarReacao($ficha, $oferta);
                 // A rolagem da redução de dano (Kiri Shigure, Parry Shot...) vai para o chat; não é campo da ficha
                 $rolagemDaReacao = $pago['_rolagem'] ?? null;
@@ -434,6 +435,7 @@ final class Pipeline
             'opcoes' => array_map(fn ($o) => [
                 'id' => $o['id'], 'rotulo' => $o['rotulo'], 'descricao' => $o['descricao'] ?? '', 'custo' => $o['custo'] ?? [], 'cura' => $o['cura'] ?? null,
                 'defesa' => collect($o['efeitos'] ?? [])->where('alvo', 'defesa')->sum('valor'), 'efeito' => self::efeitoNoDano($o),
+                'extraMax' => $o['extraMax'] ?? 0, 'maisPorPp' => $o['extraMax'] ?? 0 ? ($o['reducao']['mais'] ?? null) : null,
             ], $opcoes),
         ];
     }

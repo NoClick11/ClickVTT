@@ -331,10 +331,11 @@ export function apiMesa(mesaId: number, atorId: number) {
                 so_condicoes: soCondicoes,
             }),
         /** Responde a janela de reação: usa a reação `opcao` ou passa (`null`). */
-        reagir: (eventoId: number, personagemId: number, opcao: string | null) =>
+        reagir: (eventoId: number, personagemId: number, opcao: string | null, extra = 0) =>
             requisitar<{ evento: ResumoEvento; combate: Combate }>(atorId, 'POST', r('jogo.combate.eventos.reagir', eventoId), {
                 personagem_id: personagemId,
                 opcao,
+                ...(extra > 0 ? { extra } : {}),
             }),
         /** O mestre fecha a janela de reação: quem não respondeu conta como "passou". */
         encerrarJanela: (eventoId: number) =>
