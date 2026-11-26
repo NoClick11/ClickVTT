@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button';
 import type { Personagem } from '@/site/types';
 import { ChevronLeft, ChevronRight, ListOrdered } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import type { ObjetoDto } from '../engine/tipos';
 import { itemAtual, type Combate, type ItemTurno } from '../nucleo/combate/estado';
 
@@ -40,6 +40,21 @@ const seuTurno = computed(() => {
     return props.combate.fase === 'em_curso' && atual.value?.personagem_id != null && props.meusPersonagens.includes(atual.value.personagem_id);
 });
 
+/** A fila não tem barra de rolagem: ela acompanha o combatente do turno, mantendo-o no meio. */
+const fila = ref<HTMLOListElement | null>(null);
+function centralizarAtual() {
+    const ol = fila.value;
+    const li = ol?.querySelector<HTMLElement>('[aria-current="step"]');
+    if (!ol || !li) return;
+    const alvo = li.offsetLeft - (ol.clientWidth - li.offsetWidth) / 2;
+    ol.scrollTo({ left: Math.max(0, alvo), behavior: 'smooth' });
+}
+watch(
+    () => [props.combate.atual, props.combate.itens.length, props.combate.fase, props.combate.ativo],
+    () => nextTick(centralizarAtual),
+);
+onMounted(() => nextTick(centralizarAtual));
+
 /** Busca a imagem do token ou personagem se existir. */
 function imagemDoCombatente(i: ItemTurno): string | null {
     if (i.objeto_id) {
@@ -60,7 +75,7 @@ function corDisposicao(i: ItemTurno): string {
 <template>
     <div
         v-if="combate.ativo"
-        class="pointer-events-auto absolute left-1/2 top-14 z-20 flex max-w-[85vw] -translate-x-1/2 items-center rounded-lg border border-[#5c5035]/80 bg-[#141312]/95 p-1.5 shadow-2xl shadow-black/80 backdrop-blur-md"
+        class="pointer-events-auto absolute left-1/2 top-14 z-20 flex w-[min(760px,85vw)] -translate-x-1/2 items-center rounded-lg border border-[#5c5035]/80 bg-[#141312]/95 p-1.5 shadow-2xl shadow-black/80 backdrop-blur-md"
         role="status"
         aria-label="Ordem dos turnos de combate"
     >
@@ -98,7 +113,7 @@ function corDisposicao(i: ItemTurno): string {
         </Button>
 
         <!-- Carrossel de Combatentes / Combat Cards -->
-        <ol class="scrollbar-thin flex min-w-0 items-center gap-1.5 overflow-x-auto px-1.5 py-0.5">
+        <ol ref="fila" class="relative flex min-w-0 flex-1 items-center gap-1.5 overflow-x-hidden px-1.5 py-0.5">
             <!-- Todos os cartões têm a mesma largura e o mesmo retrato (o nome longo é cortado; o do turno só ganha o destaque) -->
             <li
                 v-for="i in combate.itens"
