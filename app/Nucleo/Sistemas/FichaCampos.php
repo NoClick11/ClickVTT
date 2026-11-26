@@ -53,7 +53,8 @@ class FichaCampos
 
         // O Laravel pula as regras de um valor "" (só `required` o barra): aqui "" só vale onde o campo é texto.
         foreach (Arr::dot($parcial) as $chave => $valor) {
-            if ($valor === '' && ! $this->ehTexto($regras[preg_replace('/(?<=^|\.)\d+(?=\.|$)/', '*', (string) $chave)] ?? [])) {
+            $generica = preg_replace('/(?<=^|\.)\d+(?=\.|$)/', '*', (string) $chave);
+            if ($valor === '' && ! $this->ehTexto($regras[$generica] ?? []) && ! $this->dentroDeBlocoLivre($regras, $generica)) {
                 $erros["campos.{$chave}"] = ['Valor vazio não é permitido neste campo.'];
             }
         }
@@ -81,6 +82,23 @@ class FichaCampos
         }
 
         return $nova;
+    }
+
+    /** Bloco livre (ex.: `npc`): tem regra só no pai, sem regras para os campos de dentro; ali "" é válido. */
+    private function dentroDeBlocoLivre(array $regras, string $chave): bool
+    {
+        $partes = explode('.', $chave);
+        while (count($partes) > 1) {
+            array_pop($partes);
+            $pai = implode('.', $partes);
+            if (isset($regras[$pai])) {
+                $prefixo = $pai.'.';
+
+                return ! collect(array_keys($regras))->contains(fn ($k) => str_starts_with((string) $k, $prefixo));
+            }
+        }
+
+        return false;
     }
 
     /** @param  mixed  $regra  regra(s) do campo, em array ou string "a|b" */
